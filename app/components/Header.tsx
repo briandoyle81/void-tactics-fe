@@ -38,7 +38,7 @@ import { useRouter } from "next/navigation";
 import { navigateToClientTab } from "../utils/clientNavigation";
 import { useOpsConsoleAccess } from "../hooks/useOpsConsoleAccess";
 import { ADMIN_PATH } from "../config/routes";
-import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/layout";
+import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import AuthSignIn from "./AuthSignIn";
 import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
 

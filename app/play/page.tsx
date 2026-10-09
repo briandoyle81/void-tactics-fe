@@ -29,7 +29,7 @@ import { useAppMode } from "../hooks/useAppMode";
 import { OPS_CONSOLE_TABS, type OpsConsoleTab } from "../hooks/useOpsConsoleAccess";
 import { PENDING_CLIENT_DETAIL_STORAGE_KEY, setGameClientMounted } from "../utils/clientNavigation";
 import posthog from "posthog-js";
-import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/layout";
+import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import { TOURNAMENTS_ENABLED } from "../config/alpha";
 
 // Screens load when first opened, so the boot screen and Command Deck don't
