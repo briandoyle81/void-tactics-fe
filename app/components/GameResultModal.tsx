@@ -2,7 +2,16 @@
 
 import React from "react";
 import { nodeContentTextClass, type ResolvedNodeContent } from "../hooks/useNodeContent";
-import { STYLE_LABEL } from "../styles/fontStyles";
+import { usePressStartedHere } from "../hooks/usePressStartedHere";
+import { STYLE_LABEL, STYLE_MONO } from "../styles/fontStyles";
+import type { DialogCharacterId } from "../data/dialog/characters";
+import {
+  CrewReportLetterhead,
+  CrewReportSignature,
+  DEFAULT_REPORTER,
+  useCrewReporter,
+  useReportArrivalSound,
+} from "./CrewReport";
 
 /** Why a mission was lost — only rendered when !isVictory and nodeId is set
  * (a PvP defeat just shows the score, no lore-flavored explanation). Only
@@ -56,6 +65,8 @@ interface GameResultModalProps {
    * DialogLineCard.
    */
   comms?: React.ReactNode;
+  /** Who files the report (a dialog character). Defaults to the adjutant. */
+  reporterId?: DialogCharacterId;
 }
 
 // End-of-game overlay for both PvP and single-player — one shared screen,
@@ -79,6 +90,7 @@ export function GameResultModal({
   victoryReason,
   isTie = false,
   comms,
+  reporterId = DEFAULT_REPORTER,
 }: GameResultModalProps) {
   const accentColor = isTie
     ? "var(--color-amber)"
@@ -87,102 +99,128 @@ export function GameResultModal({
       : "var(--color-warning-red)";
   const isMission = nodeId != null;
   const nodeTitle = isMission ? nodeContent : undefined;
+  // Stays up until the player picks an option; only a press that starts on
+  // a button counts, since this opens right as the last move resolves (see
+  // usePressStartedHere).
+  const pressProps = usePressStartedHere();
 
+  const reporter = useCrewReporter(reporterId);
+  useReportArrivalSound();
+  const headline = isTie
+    ? "Draw"
+    : isMission
+      ? isVictory
+        ? "Mission Complete"
+        : "Mission Failed"
+      : isVictory
+        ? "Victory"
+        : "Defeat";
+
+  // Filed as a crew report (see CrewReport.tsx), centered over the board.
+  // The outcome and score stay the headline.
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/90 p-4">
       <div
-        className="relative w-full max-w-md border-2 bg-near-black p-6 font-mono"
+        className="relative max-h-full w-full max-w-md overflow-y-auto border-2 bg-near-black font-mono"
         style={{ borderColor: accentColor, borderRadius: 0 }}
+        role="dialog"
+        aria-label={`${headline} report`}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-3 top-3 border px-2 py-0.5 text-xs text-text-muted hover:text-white"
-          style={{ borderColor: "var(--color-gunmetal)", borderRadius: 0 }}
-        >
-          ✕
-        </button>
+        <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: accentColor }} aria-hidden />
+        <CrewReportLetterhead
+          title={isMission ? "Mission report" : "Battle report"}
+          subtitle="After action"
+          reporter={reporter}
+        />
 
-        <div className="text-center">
-          <div
-            className="text-3xl font-bold uppercase tracking-widest"
-            style={{ ...STYLE_LABEL, color: accentColor }}
-          >
-            {isTie
-              ? "Draw"
-              : isMission
-                ? isVictory
-                  ? "Mission Complete"
-                  : "Mission Failed"
-                : isVictory
-                  ? "Victory"
-                  : "Defeat"}
-          </div>
-          {nodeTitle && (
+        <div className="px-6 pb-6 pt-5">
+          <div className="text-center">
             <div
-              className={`mt-2 text-sm uppercase tracking-wider ${nodeContentTextClass(nodeTitle.titleStatus, "text-text-muted")}`}
+              className="text-3xl font-bold uppercase tracking-widest"
+              style={{ ...STYLE_LABEL, color: accentColor }}
             >
-              {nodeTitle.title}
+              {headline}
             </div>
+            {nodeTitle && (
+              <div
+                className={`mt-2 text-sm uppercase tracking-wider ${nodeContentTextClass(nodeTitle.titleStatus, "text-text-muted")}`}
+              >
+                {nodeTitle.title}
+              </div>
+            )}
+          </div>
+
+          <table className="mt-5 w-full border-collapse text-left text-xs" style={STYLE_MONO}>
+            <thead>
+              <tr
+                className="border-b border-solid text-[10px] uppercase tracking-widest text-text-muted"
+                style={{ borderColor: "var(--color-gunmetal)" }}
+              >
+                <th className="py-1 font-normal" />
+                <th className="py-1 text-right font-normal">You</th>
+                <th className="py-1 text-right font-normal">Enemy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="py-2 uppercase tracking-wider text-text-muted">
+                  Final score
+                  <span className="block text-[10px] normal-case tracking-normal">{maxScore} to win</span>
+                </td>
+                <td className="py-2 text-right text-3xl font-bold tabular-nums" style={{ color: "var(--color-cyan)" }}>
+                  {myScore}
+                </td>
+                <td className="py-2 text-right text-3xl font-bold tabular-nums" style={{ color: "var(--color-warning-red)" }}>
+                  {opponentScore}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {isVictory && !isTie && victoryReason && (
+            <p className="mt-4 text-center text-xs text-text-secondary">
+              {VICTORY_REASON_COPY[victoryReason]}
+            </p>
           )}
-        </div>
 
-        <div className="mt-6 flex items-center justify-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-text-muted">You</span>
-            <span className="font-bold" style={{ color: "var(--color-cyan)" }}>
-              {myScore}
-            </span>
+          {isMission && !isVictory && missionLossReason && (
+            <p className="mt-4 text-center text-xs text-text-secondary">
+              {LOSS_REASON_COPY[missionLossReason]}
+            </p>
+          )}
+
+          {isMission && (
+            <p className="mt-4 text-center text-xs text-text-secondary">
+              {isVictory
+                ? "The node's completion is recorded — any nodes it unlocks are now available."
+                : "This mission is not marked complete. You can try again any time."}
+            </p>
+          )}
+
+          {comms && <div className="mt-5">{comms}</div>}
+
+          <div className="mt-4">
+            <CrewReportSignature reporter={reporter} />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-text-muted">Enemy</span>
-            <span className="font-bold" style={{ color: "var(--color-warning-red)" }}>
-              {opponentScore}
-            </span>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              {...pressProps(onPrimaryAction)}
+              className="flex-1 border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
+              style={{ ...STYLE_LABEL, borderColor: accentColor, color: accentColor, borderRadius: 0 }}
+            >
+              {primaryActionLabel}
+            </button>
+            <button
+              type="button"
+              {...pressProps(onClose)}
+              className="flex-1 border px-4 py-2 text-sm uppercase tracking-wider text-text-secondary transition-colors hover:bg-white/5"
+              style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", borderRadius: 0 }}
+            >
+              Review Board
+            </button>
           </div>
-          <span className="text-text-muted">/ {maxScore}</span>
-        </div>
-
-        {isVictory && !isTie && victoryReason && (
-          <p className="mt-4 text-center text-xs text-text-secondary">
-            {VICTORY_REASON_COPY[victoryReason]}
-          </p>
-        )}
-
-        {isMission && !isVictory && missionLossReason && (
-          <p className="mt-4 text-center text-xs text-text-secondary">
-            {LOSS_REASON_COPY[missionLossReason]}
-          </p>
-        )}
-
-        {isMission && (
-          <p className="mt-4 text-center text-xs text-text-secondary">
-            {isVictory
-              ? "The node's completion is recorded — any nodes it unlocks are now available."
-              : "This mission is not marked complete. You can try again any time."}
-          </p>
-        )}
-
-        {comms && <div className="mt-5">{comms}</div>}
-
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            onClick={onPrimaryAction}
-            className="flex-1 border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
-            style={{ borderColor: accentColor, color: accentColor, borderRadius: 0 }}
-          >
-            {primaryActionLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 border px-4 py-2 text-sm uppercase tracking-wider text-text-secondary transition-colors hover:bg-white/5"
-            style={{ borderColor: "var(--color-gunmetal)", borderRadius: 0 }}
-          >
-            Review Board
-          </button>
         </div>
       </div>
     </div>

@@ -737,6 +737,9 @@ export function useGameplayInteraction({
   const isShowingProposedMove = useMemo(() => {
     if (selectedShipId === null) return false;
     if (!isShipOwnedByCurrentPlayer(selectedShipId)) return false;
+    // A submitted proposal stays up (locked, button pending) until its tx
+    // settles, even though the board already shows the ship as moved.
+    if (isSubmitting) return true;
     if (movedShipIdsSet.has(selectedShipId)) {
       const attrs = getShipAttributes(selectedShipId);
       const isDisabled = attrs && attrs.hullPoints === 0;
@@ -914,7 +917,8 @@ export function useGameplayInteraction({
 
       if (position.row >= 0 && position.row < gridHeight && position.col >= 0 && position.col < gridWidth) {
         newGrid[position.row][position.col] = shipPosition;
-        if (selectedShipId === shipPosition.shipId && previewPosition) {
+        // No proposal ghost while submitting: the board shows the predicted result.
+        if (selectedShipId === shipPosition.shipId && previewPosition && !isSubmitting) {
           newGrid[previewPosition.row][previewPosition.col] = {
             ...shipPosition,
             position: { row: previewPosition.row, col: previewPosition.col },
@@ -958,7 +962,7 @@ export function useGameplayInteraction({
     }
 
     return newGrid;
-  }, [aliveShipPositions, allShipPositions, selectedShipId, previewPosition, currentTurn, playerAddress, isGameOver, lastMove, shipMap, gridHeight, gridWidth]);
+  }, [aliveShipPositions, allShipPositions, selectedShipId, previewPosition, currentTurn, playerAddress, isGameOver, lastMove, shipMap, gridHeight, gridWidth, isSubmitting]);
 
   return {
     // state

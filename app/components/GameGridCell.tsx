@@ -658,6 +658,15 @@ export const GameGridCell = React.memo(function GameGridCell({
                   }
                 };
 
+                // Your own ship's move arrow / dest preview only on your
+                // turn; off-turn, selecting it is just for inspecting.
+                // (Enemy ships keep their grey inspection arrow.)
+                const showsMoveHover =
+                  isMovementTile &&
+                  !draggedShipId &&
+                  (isCurrentPlayerTurn ||
+                    (selectedShipId != null && !isShipOwnedByCurrentPlayer(selectedShipId)));
+
                 const canMoveShip = selectedShipId
                   ? isShipOwnedByCurrentPlayer(selectedShipId) && isMyTurn
                   : false;
@@ -850,7 +859,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                               });
                             }
                           }
-                        : isMovementTile && !draggedShipId
+                        : showsMoveHover
                           ? () => {
                               const pos = { row: rowIndex, col: colIndex };
                               setHoveredMoveTile(pos);
@@ -860,7 +869,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                     onMouseLeave={
                       shouldRenderShipContent
                         ? () => setHoveredCell(null)
-                        : isMovementTile && !draggedShipId
+                        : showsMoveHover
                           ? () => {
                               setHoveredMoveTile(null);
                             }

@@ -10,8 +10,10 @@ import { buildPendingMove, type PendingMove } from "../utils/pendingMove";
 // - capture(): at click, before the wallet prompt / POST. Snapshots the
 //   move from the state the player actually submitted, so later refetches
 //   (which clear selection/targets) can't change what gets displayed.
+//   From here the board shows the predicted result, and the caller keeps the
+//   submitted proposal up, locked, with its button pending.
 // - markSent(): the tx was broadcast (web3) or the POST went out (web2).
-//   From here the board shows the predicted result.
+//   From here fresh data may show it.
 // - fail(): the wallet rejected, the tx reverted, or the POST errored. The
 //   board goes back to fresh data.
 // - Resolves itself once fresh data's lastMove differs from the one at
@@ -77,6 +79,8 @@ export function usePendingMove({
     pendingMove,
     /** Ref mirror of pendingMove for async handlers. */
     pendingRef,
+    /** True from submit until the move lands or fails (any phase). */
+    isSubmitting: pendingMove != null,
     /** True while a sent move is waiting to land. */
     isAwaitingSync: pendingMove?.phase === "sent",
     capture,

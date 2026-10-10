@@ -92,6 +92,31 @@ export function gameStateSyncKey(game: {
   ].join("/");
 }
 
+/**
+ * True when `next` is an older read of the match than `current`: an RPC node
+ * (or a request that started before our own move) can answer after a newer
+ * read already landed. Taking it would roll the board back a move, then
+ * forward again on the next poll. Ordered by game over, round, lastMove
+ * time, then moves made this round; equal or newer is never "older".
+ */
+export function isOlderGameState(
+  next: Parameters<typeof gameStateSyncKey>[0],
+  current: Parameters<typeof gameStateSyncKey>[0],
+): boolean {
+  const progress = (g: Parameters<typeof gameStateSyncKey>[0]) => [
+    /^0x0+$/i.test(g.metadata.winner) || g.metadata.winner === "" ? 0 : 1,
+    Number(g.turnState.currentRound),
+    Number(g.lastMove?.timestamp ?? 0),
+    g.creatorMovedShipIds.length + g.joinerMovedShipIds.length,
+  ];
+  const a = progress(next);
+  const b = progress(current);
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] < b[i];
+  }
+  return false;
+}
+
 export type GameStateSyncSnapshot = Parameters<typeof gameStateSyncKey>[0] & {
   metadata: { winner: string; gameId?: number | bigint };
 };

@@ -23,6 +23,14 @@ const EMPTY_TARGET_REFS: Array<{
 }> = [];
 const NOOP_CONFIRM = () => {};
 
+type SubmittedProposal = {
+  selectedShipId: number;
+  previewPosition: { row: number; col: number } | null;
+  targetShipId: number | null;
+  retreatPrepShipId: number | null;
+  movementRange: Array<{ row: number; col: number }>;
+};
+
 /** Viewport bounds for a grid cell (fixed tooltip placement vs the moused tile). */
 export function measureGridCellViewportBounds(
   layoutRoot: HTMLElement | null,
@@ -194,8 +202,15 @@ interface GameGridProps {
   optimisticSosShipIds?: Set<number>;
   /** Targets a submitted move is predicted to destroy; held until chain data confirms. */
   optimisticDestroyShipIds?: Set<number>;
-  /** True while the current move tx/request is in flight. */
+  /**
+   * True while the current move tx/request is in flight. The board then
+   * shows the submitted move's predicted result (from the caller's game
+   * state) without the proposal overlays; only the confirm widget stays, at
+   * its submitted spot, locked (see GameGrid below).
+   */
   isSubmitting?: boolean;
+  /** Set by GameGrid while submitting: the proposal the confirm widget stays anchored to. */
+  submittedProposal?: SubmittedProposal | null;
   /**
    * Builds the tooltip's ship-card content for the hovered cell. Delegated
    * to the caller because building `ShipCard`'s `ShipCardData`/`shipImage`
@@ -813,8 +828,15 @@ const GameGridBoard = React.memo(function GameGridBoard({
   optimisticSosShipIds = EMPTY_SHIP_ID_SET,
   optimisticDestroyShipIds = EMPTY_SHIP_ID_SET,
   isSubmitting = false,
+  submittedProposal = null,
   renderShipCard,
 }: GameGridProps) {
+  // The confirm widget follows the submitted proposal while submitting.
+  const widgetShipId = submittedProposal ? submittedProposal.selectedShipId : selectedShipId;
+  const widgetPreview = submittedProposal ? submittedProposal.previewPosition : previewPosition;
+  const widgetTargetId = submittedProposal ? submittedProposal.targetShipId : targetShipId;
+  const widgetRetreatPrepId = submittedProposal ? submittedProposal.retreatPrepShipId : retreatPrepShipId;
+  const widgetMovementRange = submittedProposal ? submittedProposal.movementRange : movementRange;
   const setHoveredCell = useSetGridHoveredCell();
   const setHoveredMoveTile = useSetGridDestHoveredTile();
   const { outerWrapperRef, gridContainerRef, zoom } = useGridPanZoom();
@@ -867,7 +889,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
   React.useEffect(() => {
     setHoveredCell(null);
     setHoveredMoveTile(null);
-  }, [currentTurn, setHoveredCell, setHoveredMoveTile]);
+  }, [currentTurn, isCurrentPlayerTurn, setHoveredCell, setHoveredMoveTile]);
   // A clicked destination stops being a movement tile once the ship moves, so
   // its mouseleave never fires to clear the hover. Without this, selecting the
   // next ship (e.g. a second move in the same turn) reused the first ship's
@@ -984,19 +1006,19 @@ const GameGridBoard = React.memo(function GameGridBoard({
   >(null);
   React.useEffect(() => {
     setConfirmWidgetVertical(null);
-  }, [selectedShipId, previewPosition?.row, previewPosition?.col, targetShipId]);
+  }, [widgetShipId, widgetPreview?.row, widgetPreview?.col, widgetTargetId]);
   const confirmWidgetAnchor = React.useMemo(
     () => computeConfirmWidgetAnchor({
       showConfirmWidget,
-      previewPosition,
-      selectedShipId,
-      targetShipId,
+      previewPosition: widgetPreview,
+      selectedShipId: widgetShipId,
+      targetShipId: widgetTargetId,
       grid,
       allShipPositions,
       selfHasEffectLabel,
       preferredVertical: confirmWidgetVertical,
     }),
-    [showConfirmWidget, previewPosition, selectedShipId, targetShipId, grid, allShipPositions, selfHasEffectLabel, confirmWidgetVertical],
+    [showConfirmWidget, widgetPreview, widgetShipId, widgetTargetId, grid, allShipPositions, selfHasEffectLabel, confirmWidgetVertical],
   );
 
   const handleGridContextMenu = React.useCallback(
@@ -1169,7 +1191,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
           />
 
           {showConfirmWidget &&
-            (previewPosition || retreatPrepShipId != null) &&
+            (widgetPreview || widgetRetreatPrepId != null) &&
             onCancelMove &&
             confirmWidgetAnchor && (
               <GameGridConfirmWidget
@@ -1178,17 +1200,18 @@ const GameGridBoard = React.memo(function GameGridBoard({
                 onConfirmMove={onConfirmMove ?? NOOP_CONFIRM}
                 onCancelMove={onCancelMove}
                 confirmButton={confirmButton}
-                selectedShipId={selectedShipId}
+                isSubmitting={submittedProposal != null}
+                selectedShipId={widgetShipId}
                 shipMap={shipMap}
                 selectedWeaponType={selectedWeaponType}
                 specialType={specialType}
-                targetShipId={targetShipId}
+                targetShipId={widgetTargetId}
                 isRammingMovePreview={isRammingMovePreview ?? false}
-                retreatPrepShipId={retreatPrepShipId}
+                retreatPrepShipId={widgetRetreatPrepId}
                 isFactionAbilitySupported={isFactionAbilitySupported}
                 factionAbilityRange={factionAbilityRange}
-                previewPosition={previewPosition}
-                movementRange={movementRange}
+                previewPosition={widgetPreview}
+                movementRange={widgetMovementRange}
                 grid={grid}
                 isShipOwnedByCurrentPlayer={isShipOwnedByCurrentPlayer}
                 getShipAttributes={getShipAttributes}
@@ -1206,9 +1229,54 @@ const GameGridBoard = React.memo(function GameGridBoard({
 });
 
 export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
+  // While a move is submitting, the selection is still the submitted
+  // proposal (it keeps the submit UI mounted until the tx settles), but the
+  // board already shows its predicted result. Drop the proposal overlays
+  // (ghost, ranges, target labels) so the two don't fight; the confirm
+  // widget alone stays where it was, showing the pending button.
+  const {
+    isSubmitting,
+    selectedShipId,
+    previewPosition,
+    targetShipId,
+    retreatPrepShipId,
+    movementRange,
+  } = props;
+  const submittedProposal = React.useMemo<SubmittedProposal | null>(
+    () =>
+      isSubmitting && selectedShipId != null
+        ? {
+            selectedShipId,
+            previewPosition,
+            targetShipId,
+            retreatPrepShipId: retreatPrepShipId ?? null,
+            movementRange,
+          }
+        : null,
+    [isSubmitting, selectedShipId, previewPosition, targetShipId, retreatPrepShipId, movementRange],
+  );
   return (
     <DestHoverProvider>
-      <GameGridBoard {...props} />
+      {submittedProposal ? (
+        <GameGridBoard
+          {...props}
+          selectedShipId={null}
+          previewPosition={null}
+          targetShipId={null}
+          retreatPrepShipId={null}
+          movementRange={EMPTY_RANGE_CELLS}
+          shootingRange={EMPTY_RANGE_CELLS}
+          validTargets={EMPTY_TARGET_REFS}
+          labelTargets={EMPTY_TARGET_REFS}
+          assistableTargets={EMPTY_TARGET_REFS}
+          assistableTargetsFromStart={EMPTY_TARGET_REFS}
+          rammingPreviewPosition={null}
+          isRammingMovePreview={false}
+          submittedProposal={submittedProposal}
+        />
+      ) : (
+        <GameGridBoard {...props} />
+      )}
     </DestHoverProvider>
   );
 });

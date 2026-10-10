@@ -29,7 +29,10 @@ export interface PendingMove {
   baselineLastMoveKey: string;
   /** Wall-clock ms, used as the patched lastMove's timestamp. */
   submittedAt: number;
-  /** "signing": wallet prompt open, not displayed yet. "sent": displayed. */
+  /**
+   * "signing": wallet prompt open (web3) — displayed, but can't land yet.
+   * "sent": broadcast / POSTed, so fresh data may now show it.
+   */
   phase: "signing" | "sent";
 }
 
@@ -223,14 +226,15 @@ interface PatchableGame<Id extends AnyId, LM extends LastMoveLike> {
  * removed on Retreat), predicted hull/reactor changes, evicted/destroyed
  * ships marked, mover marked as moved this round, and lastMove set to this
  * move (old tile -> final tile) so the last-move arrow/ghost shows it.
- * Returns `game` unchanged when nothing is pending or it isn't sent yet.
+ * Applied from the moment of submit (any phase); returns `game` unchanged
+ * when nothing is pending.
  */
 export function applyPendingMoveToGame<
   Id extends AnyId,
   LM extends LastMoveLike,
   G extends PatchableGame<Id, LM>,
 >(game: G, pending: PendingMove | null, toId: (n: number) => Id): G {
-  if (!pending || pending.phase !== "sent") return game;
+  if (!pending) return game;
 
   const shipAttributes = game.shipIds.map((id, i) => {
     const override = pending.attributeOverrides[Number(id)];

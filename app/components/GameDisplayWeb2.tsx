@@ -17,7 +17,7 @@ import { useGameShipsWeb2 } from "../hooks/useGameShipsWeb2";
 import { useGameStreamWeb2 } from "../hooks/useGameStreamWeb2";
 import { useGamePollingWeb2 } from "../hooks/useGamePollingWeb2";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
-import { gameStateSyncKey } from "../utils/normalizeGameDataView";
+import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
 import { useDamageCalculationWeb2 } from "../hooks/useDamageCalculationWeb2";
 import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
 import { usePendingMove } from "../hooks/usePendingMove";
@@ -120,7 +120,11 @@ function GameDisplayWeb2({
 
   const [selectedShipId, setSelectedShipId] = useState<number | null>(null);
   const [draggedShipId, setDraggedShipId] = useState<number | null>(null);
+  // True from submit until the POST settles. The submitted proposal stays
+  // up, locked, its button showing [...]; the ref is for handlers that run
+  // before a re-render (see the guarded setters after useGameplayInteraction).
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = React.useRef(false);
   const [showReplay, setShowReplay] = useState(startInReplay);
   const [showFleetModal, setShowFleetModal] = useState(false);
 
@@ -146,7 +150,11 @@ function GameDisplayWeb2({
   const gameSyncKeyRef = React.useRef(gameStateSyncKey(initialGame));
   const incomingGame = gameData ?? latestGameDataRef.current;
   const incomingSyncKey = gameStateSyncKey(incomingGame);
-  if (incomingSyncKey !== gameSyncKeyRef.current) {
+  // Never step back to an older read (see isOlderGameState).
+  if (
+    incomingSyncKey !== gameSyncKeyRef.current &&
+    !isOlderGameState(incomingGame, latestGameDataRef.current)
+  ) {
     gameSyncKeyRef.current = incomingSyncKey;
     latestGameDataRef.current = incomingGame;
   }
@@ -611,9 +619,9 @@ function GameDisplayWeb2({
     specialType,
     specialRange,
     specialData,
-    handleCancelMove,
-    handleGridRightClickDeselect,
-    handleRetreatClick,
+    handleCancelMove: clearProposal,
+    handleGridRightClickDeselect: interactionRightClickDeselect,
+    handleRetreatClick: interactionRetreatClick,
     buildActionPayload,
     recordOptimisticSos,
     clearOptimisticSos,
@@ -621,12 +629,48 @@ function GameDisplayWeb2({
     recordOptimisticDestroy,
     clearOptimisticDestroy,
     optimisticDestroyShipIds,
-    setPreviewPosition,
-    setTargetShipId,
-    setSelectedWeaponType,
+    setPreviewPosition: interactionSetPreviewPosition,
+    setTargetShipId: interactionSetTargetShipId,
+    setSelectedWeaponType: interactionSetWeaponType,
     setDragOverCell,
     getHoverPreview,
   } = interaction;
+
+  // Player input can't cancel or change a submitted proposal while it's
+  // locked; clearProposal (the submit lifecycle's own) still clears it.
+  const handleCancelMove = useCallback(() => {
+    if (!submitLockRef.current) clearProposal();
+  }, [clearProposal]);
+  const handleGridRightClickDeselect = useCallback(() => {
+    if (!submitLockRef.current) interactionRightClickDeselect();
+  }, [interactionRightClickDeselect]);
+  const handleRetreatClick = useCallback(() => {
+    if (!submitLockRef.current) interactionRetreatClick();
+  }, [interactionRetreatClick]);
+  const setPreviewPosition = useCallback(
+    (position: { row: number; col: number } | null) => {
+      if (!submitLockRef.current) interactionSetPreviewPosition(position);
+    },
+    [interactionSetPreviewPosition],
+  );
+  const setTargetShipId = useCallback(
+    (id: number | null) => {
+      if (!submitLockRef.current) interactionSetTargetShipId(id);
+    },
+    [interactionSetTargetShipId],
+  );
+  const setSelectedWeaponType = useCallback(
+    (type: "weapon" | "special" | "ram") => {
+      if (!submitLockRef.current) interactionSetWeaponType(type);
+    },
+    [interactionSetWeaponType],
+  );
+  const setSelectedShipIdForInput = useCallback((id: number | null) => {
+    if (!submitLockRef.current) setSelectedShipId(id);
+  }, []);
+  const setDraggedShipIdForInput = useCallback((id: number | null) => {
+    if (!submitLockRef.current) setDraggedShipId(id);
+  }, []);
 
   // Escape deselects/cancels the current move — mirrors GameDisplay.tsx's
   // window keydown handler (mouse/tap deselect via handleGridRightClickDeselect
@@ -663,6 +707,7 @@ function GameDisplayWeb2({
   recordPlayerMoveRef.current = recordPlayerMove;
 
   const handleSubmitMove = useCallback(async () => {
+    if (submitLockRef.current) return;
     const payload = buildActionPayload();
     if (!payload) return;
     if (interaction.ramActionError) {
@@ -718,7 +763,10 @@ function GameDisplayWeb2({
           ? { kind: "heal", amount: dmg.baseDamage }
           : { kind: "damage", reducedDamage: dmg.reducedDamage, reactorCritical: dmg.reactorCritical };
     }
-    // Show the predicted result straight away (the POST is the "send").
+    // Show the predicted result straight away (the POST is the "send"), with
+    // the proposal locked and its button pending until the POST settles.
+    submitLockRef.current = true;
+    setIsSubmitting(true);
     const key = capturePendingMove({
       shipId: payload.shipId,
       actionType: payload.actionType,
@@ -732,8 +780,6 @@ function GameDisplayWeb2({
       baselineLastMoveKey: lastMoveKey(chainGame.lastMove),
     });
     markPendingMoveSent(key);
-    handleCancelMove();
-    setIsSubmitting(true);
     try {
       // buildActionPayload already returns ActionType.FactionAbility (with
       // the real target) for a ram/repair move — web2's engine implements
@@ -747,8 +793,11 @@ function GameDisplayWeb2({
         specialType: payload.specialType,
       });
       // The response is the new state; put it in the cache so the pending
-      // move resolves now instead of on the next fetch. It lacks the lobby
-      // fields GET /api/games/[id] attaches, so keep those from the cache.
+      // move resolves now instead of on the next fetch. A GET that started
+      // before the POST would land after this with the old board, so cancel
+      // it first. The response lacks the lobby fields GET /api/games/[id]
+      // attaches, so keep those from the cache.
+      await queryClient.cancelQueries({ queryKey: ["gamesWeb2", gameId] });
       queryClient.setQueryData<Web2GameDataView>(["gamesWeb2", gameId], (prev) =>
         prev
           ? {
@@ -762,6 +811,9 @@ function GameDisplayWeb2({
             }
           : newState,
       );
+      // Success: retire the submitted proposal.
+      submitLockRef.current = false;
+      clearProposal();
       posthog.capture("game_move_submitted", {
         game_id: String(gameId),
         ship_id: String(payload.shipId),
@@ -773,11 +825,18 @@ function GameDisplayWeb2({
       refetchGame();
       refetch?.();
     } catch (e) {
+      // Back to no move entered.
       failPendingMove(key);
+      submitLockRef.current = false;
+      clearProposal();
       clearOptimisticSos();
       clearOptimisticDestroy();
+      // isCurrentPlayerTurn dipped while submitting and flips back now,
+      // which isn't a turn change, so no "your turn" cue.
+      prevTurnRef.current = true;
       toast.error(e instanceof Error ? e.message : "Move failed");
     } finally {
+      submitLockRef.current = false;
       setIsSubmitting(false);
     }
   }, [
@@ -800,7 +859,7 @@ function GameDisplayWeb2({
     clearOptimisticDestroy,
     calculateDamageForShip,
     getShipAttributes,
-    handleCancelMove,
+    clearProposal,
     refetchGame,
     refetch,
   ]);
@@ -812,7 +871,7 @@ function GameDisplayWeb2({
   // would otherwise be the hook's only signal. Stamping the ref marks this as
   // handled so it isn't a double cue.
   onPendingMoveResolvedRef.current = () => {
-    handleCancelMove();
+    clearProposal();
     clearOptimisticSos();
     clearOptimisticDestroy();
     if (!readOnly && chainGame.turnState.currentTurn === userId) {
@@ -1044,7 +1103,7 @@ function GameDisplayWeb2({
         isSelected={selectedShipId === shipId}
         optimisticSos={optimisticSosShipIds.has(shipId)}
         shipImage={ship && <ShipImageWeb2 ship={ship} className="w-full h-full" showLoadingState={false} hideRankStars />}
-        onClick={() => setSelectedShipId(shipId)}
+        onClick={() => setSelectedShipIdForInput(shipId)}
         fleetHoverAnchor={
           shipPos
             ? {
@@ -1113,14 +1172,14 @@ function GameDisplayWeb2({
       retreatPrepShipId={retreatPrepShipId}
       retreatPrepIsCreator={retreatPrepIsCreator}
       onGridRightClickDeselect={handleGridRightClickDeselect}
-      setSelectedShipId={setSelectedShipId}
+      setSelectedShipId={setSelectedShipIdForInput}
       setPreviewPosition={setPreviewPosition}
       setTargetShipId={setTargetShipId}
       setSelectedWeaponType={setSelectedWeaponType}
-      setDraggedShipId={setDraggedShipId}
+      setDraggedShipId={setDraggedShipIdForInput}
       setDragOverCell={setDragOverCell}
       showConfirmWidget={showConfirmWidget}
-      confirmWidgetLabel={confirmWidgetLabel}
+      confirmWidgetLabel={isSubmitting ? "[...]" : confirmWidgetLabel}
       onConfirmMove={handleSubmitMove}
       onCancelMove={handleCancelMove}
       renderShipCard={renderShipCard}
@@ -1416,11 +1475,12 @@ function GameDisplayWeb2({
                           className="flex-1 px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
                           style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "color-mix(in srgb, var(--color-warning-red) 10%, transparent)", borderRadius: 0 }}
                         >
-                          Confirm Retreat
+                          {isSubmitting ? "[...]" : "Confirm Retreat"}
                         </button>
                         <button
                           type="button"
                           onClick={handleCancelMove}
+                          disabled={isSubmitting}
                           className="px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
                           style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", color: "var(--color-text-secondary)", borderRadius: 0 }}
                         >
@@ -1593,11 +1653,12 @@ function GameDisplayWeb2({
                       className="flex-1 px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
                       style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "color-mix(in srgb, var(--color-warning-red) 10%, transparent)", borderRadius: 0 }}
                     >
-                      Confirm Retreat
+                      {isSubmitting ? "[...]" : "Confirm Retreat"}
                     </button>
                     <button
                       type="button"
                       onClick={handleCancelMove}
+                      disabled={isSubmitting}
                       className="px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
                       style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", color: "var(--color-text-secondary)", borderRadius: 0 }}
                     >

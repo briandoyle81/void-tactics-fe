@@ -50,9 +50,10 @@ function pending(game: ReturnType<typeof makeGame>, overrides: Partial<Parameter
 }
 
 describe("applyPendingMoveToGame", () => {
-  it("shows nothing until the move is sent", () => {
+  it("shows the move from submit (while signing too); nothing when none is pending", () => {
     const game = makeGame();
-    expect(applyPendingMoveToGame(game, pending(game, { phase: "signing" }), (n) => n)).toBe(game);
+    const signing = applyPendingMoveToGame(game, pending(game, { actionType: ActionType.Pass, phase: "signing" }), (n) => n);
+    expect(signing.shipPositions[0].position).toEqual({ row: 5, col: 6 });
     expect(applyPendingMoveToGame(game, null, (n) => n)).toBe(game);
   });
 

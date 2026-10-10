@@ -1,14 +1,22 @@
 "use client";
 
 import React from "react";
-import { STYLE_LABEL } from "../styles/fontStyles";
+import { usePressStartedHere } from "../hooks/usePressStartedHere";
+import { STYLE_LABEL, STYLE_MONO } from "../styles/fontStyles";
+import type { DialogCharacterId } from "../data/dialog/characters";
+import {
+  CrewReportLetterhead,
+  CrewReportSignature,
+  DEFAULT_REPORTER,
+  useCrewReporter,
+  useReportArrivalSound,
+} from "./CrewReport";
 
 interface RoundStartModalProps {
   round: number | bigint;
   /** True when the local player acts first this round. */
   isMyTurnFirst: boolean;
   onClose: () => void;
-  autoDismissMs?: number;
   /** Points each side gained during the round that just ended (not
    * cumulative totals) — omitted on the very first showing (game start),
    * where there's no prior round to diff against. */
@@ -20,16 +28,18 @@ interface RoundStartModalProps {
   opponentScore?: number;
   /** Cumulative target needed to win. */
   maxScore?: number;
+  /** Who files the report (a dialog character). Defaults to the adjutant. */
+  reporterId?: DialogCharacterId;
 }
 
-// Shared between GameDisplay.tsx (live PvP/single-player) and
-// SimulatedGameDisplay.tsx (tutorial) — announces a new round and who acts
-// first, auto-dismissing after `autoDismissMs` or on click. Animates in and
-// out (round-start-* classes in globals.css) so it doesn't pop over the
-// board; the exit plays before onClose unmounts it. Styled to match
-// GameResultModal.tsx's card/backdrop/typography conventions (same z-index,
-// square corners, STYLE_LABEL heading) so the two read as one family of
-// end-of-turn-sequence overlays.
+// Shared between GameDisplay.tsx, GameDisplayWeb2.tsx and
+// SimulatedGameDisplay.tsx (tutorial) — announces a new round, who acts first
+// and the score, as a report filed by a crew member (`reporterId`, any
+// dialog character; the adjutant by default). It reads as a document, not a
+// comms line, and the round/first player/score stay the headline. Stays up
+// until the player acknowledges it, so it can't be missed. Animates in and
+// out (round-start-* classes in globals.css); the exit plays before onClose
+// unmounts it. Same z-index and backdrop as GameResultModal.tsx.
 /** Length of the exit animation (round-start-out in globals.css). */
 const EXIT_MS = 200;
 
@@ -37,12 +47,12 @@ export function RoundStartModal({
   round,
   isMyTurnFirst,
   onClose,
-  autoDismissMs = 5000,
   myRoundScore,
   opponentRoundScore,
   myScore,
   opponentScore,
   maxScore,
+  reporterId = DEFAULT_REPORTER,
 }: RoundStartModalProps) {
   const hasRoundScore = myRoundScore != null && opponentRoundScore != null;
   const hasCurrentScore = myScore != null && opponentScore != null;
@@ -72,16 +82,14 @@ export function RoundStartModal({
     [],
   );
 
-  // Parent re-renders (game poll, 1s timer tick) used to pass a new onClose
-  // every time and reset this timeout, so the overlay never auto-dismissed.
-  React.useEffect(() => {
-    const timer = setTimeout(close, autoDismissMs);
-    return () => clearTimeout(timer);
-  }, [autoDismissMs, close]);
+  // Only a press that starts on OK closes it (see usePressStartedHere).
+  const pressProps = usePressStartedHere();
 
   const accentColor = isMyTurnFirst
     ? "var(--color-cyan)"
     : "var(--color-warning-red)";
+  const reporter = useCrewReporter(reporterId);
+  useReportArrivalSound();
 
   return (
     <div
@@ -89,96 +97,99 @@ export function RoundStartModal({
         // Ignore input while fading out so the board is clickable right away.
         isClosing ? "round-start-closing pointer-events-none" : ""
       }`}
-      onClick={close}
       role="presentation"
     >
       <div
-        className="round-start-card relative w-full max-w-md overflow-hidden border-2 bg-near-black p-6 font-mono text-center"
+        className="round-start-card relative w-full max-w-md overflow-hidden border-2 bg-near-black font-mono"
         style={{ borderColor: accentColor, borderRadius: 0 }}
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label={`Round ${round.toString()} report`}
       >
         <div
           className="round-start-sweep absolute inset-x-0 top-0 h-1"
           style={{ backgroundColor: accentColor }}
           aria-hidden
         />
-        <div className="text-sm uppercase tracking-widest text-text-muted">
-          Round {round.toString()}
-        </div>
-        <div
-          className="mt-2 text-3xl font-bold uppercase tracking-widest"
-          style={{ ...STYLE_LABEL, color: accentColor }}
-        >
-          {isMyTurnFirst ? "You go first" : "Opponent goes first"}
-        </div>
 
-        {hasRoundScore && (
-          <div className="mt-5">
-            <div className="text-[10px] uppercase tracking-widest text-text-muted">
-              Last Round
-            </div>
-            <div className="mt-1 flex items-center justify-center gap-6">
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-text-muted">You</span>
-                <span
-                  className="text-3xl font-bold tabular-nums"
-                  style={{ color: "var(--color-cyan)" }}
-                >
-                  +{myRoundScore}
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-text-muted">Enemy</span>
-                <span
-                  className="text-3xl font-bold tabular-nums"
-                  style={{ color: "var(--color-warning-red)" }}
-                >
-                  +{opponentRoundScore}
-                </span>
-              </div>
-            </div>
+        <CrewReportLetterhead
+          title="Round report"
+          subtitle={`No. ${round.toString().padStart(2, "0")}`}
+          reporter={reporter}
+        />
+
+        <div className="px-6 pb-6 pt-5 text-center">
+          <div
+            className="text-4xl font-bold uppercase tracking-widest text-text-primary"
+            style={STYLE_LABEL}
+          >
+            Round {round.toString()}
           </div>
-        )}
-
-        {hasCurrentScore && (
-          <div className="mt-5">
-            <div className="text-[10px] uppercase tracking-widest text-text-muted">
-              Score
-            </div>
-            <div className="mt-1 flex items-center justify-center gap-6">
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-text-muted">You</span>
-                <span
-                  className="text-3xl font-bold tabular-nums"
-                  style={{ color: "var(--color-cyan)" }}
-                >
-                  {myScore}
-                </span>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs text-text-muted">Enemy</span>
-                <span
-                  className="text-3xl font-bold tabular-nums"
-                  style={{ color: "var(--color-warning-red)" }}
-                >
-                  {opponentScore}
-                </span>
-              </div>
-              {maxScore != null && (
-                <span className="text-sm text-text-muted">/ {maxScore} to win</span>
-              )}
-            </div>
+          <div
+            className="mt-1 text-2xl font-bold uppercase tracking-widest"
+            style={{ ...STYLE_LABEL, color: accentColor }}
+          >
+            {isMyTurnFirst ? "You go first" : "Opponent goes first"}
           </div>
-        )}
 
-        <button
-          type="button"
-          onClick={close}
-          className="mt-6 w-full border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
-          style={{ borderColor: accentColor, color: accentColor, borderRadius: 0 }}
-        >
-          OK
-        </button>
+          {(hasRoundScore || hasCurrentScore) && (
+            <table className="mt-5 w-full border-collapse text-left text-xs" style={STYLE_MONO}>
+              <thead>
+                <tr
+                  className="border-b border-solid text-[10px] uppercase tracking-widest text-text-muted"
+                  style={{ borderColor: "var(--color-gunmetal)" }}
+                >
+                  <th className="py-1 font-normal" />
+                  <th className="py-1 text-right font-normal">You</th>
+                  <th className="py-1 text-right font-normal">Enemy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hasRoundScore && (
+                  <tr className="border-b border-dashed" style={{ borderColor: "var(--color-gunmetal)" }}>
+                    <td className="py-2 uppercase tracking-wider text-text-muted">Last round</td>
+                    <td className="py-2 text-right text-xl font-bold tabular-nums" style={{ color: "var(--color-cyan)" }}>
+                      +{myRoundScore}
+                    </td>
+                    <td className="py-2 text-right text-xl font-bold tabular-nums" style={{ color: "var(--color-warning-red)" }}>
+                      +{opponentRoundScore}
+                    </td>
+                  </tr>
+                )}
+                {hasCurrentScore && (
+                  <tr>
+                    <td className="py-2 uppercase tracking-wider text-text-muted">
+                      Score
+                      {maxScore != null && (
+                        <span className="block text-[10px] normal-case tracking-normal">
+                          {maxScore} to win
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right text-3xl font-bold tabular-nums" style={{ color: "var(--color-cyan)" }}>
+                      {myScore}
+                    </td>
+                    <td className="py-2 text-right text-3xl font-bold tabular-nums" style={{ color: "var(--color-warning-red)" }}>
+                      {opponentScore}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+
+          <div className="mt-4">
+            <CrewReportSignature reporter={reporter} />
+          </div>
+
+          <button
+            type="button"
+            {...pressProps(close)}
+            className="mt-4 w-full border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
+            style={{ ...STYLE_LABEL, borderColor: accentColor, color: accentColor, borderRadius: 0 }}
+          >
+            Acknowledged
+          </button>
+        </div>
       </div>
     </div>
   );

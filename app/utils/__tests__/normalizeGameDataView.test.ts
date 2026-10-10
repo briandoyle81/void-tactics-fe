@@ -4,6 +4,7 @@ import {
   keepUnchangedGamesList,
   shareUnchangedGameData,
   toOnChainActionType,
+  isOlderGameState,
 } from "../normalizeGameDataView";
 import { ActionType } from "../../types/types";
 
@@ -96,5 +97,33 @@ describe("shareUnchangedGameData", () => {
     expect(shareUnchangedGameData(undefined, boardSnapshot(0))).toEqual(
       boardSnapshot(0),
     );
+  });
+});
+
+describe("isOlderGameState", () => {
+  const snap = (over: { winner?: string; round?: number; ts?: number; moved?: number[] } = {}) => ({
+    metadata: { winner: over.winner ?? "0x0000000000000000000000000000000000000000" },
+    turnState: { currentTurn: "0xa", currentRound: over.round ?? 1, turnStartTime: 0 },
+    creatorScore: 0,
+    joinerScore: 0,
+    lastMove: { timestamp: over.ts ?? 100, shipId: 1, targetShipId: 0, oldRow: 0, oldCol: 0, newRow: 0, newCol: 1, actionType: 0 },
+    shipPositions: [],
+    shipAttributes: [],
+    creatorMovedShipIds: over.moved ?? [],
+    joinerMovedShipIds: [],
+  });
+
+  it("rejects a read from before the current one", () => {
+    expect(isOlderGameState(snap({ ts: 100 }), snap({ ts: 200 }))).toBe(true);
+    expect(isOlderGameState(snap({ round: 1, ts: 300 }), snap({ round: 2, ts: 200 }))).toBe(true);
+    expect(isOlderGameState(snap({ ts: 100, moved: [] }), snap({ ts: 100, moved: [1] }))).toBe(true);
+    expect(isOlderGameState(snap(), snap({ winner: "0xabc" }))).toBe(true);
+  });
+
+  it("accepts equal or newer reads (web2's empty winner counts as none)", () => {
+    expect(isOlderGameState(snap({ ts: 200 }), snap({ ts: 100 }))).toBe(false);
+    expect(isOlderGameState(snap(), snap())).toBe(false);
+    expect(isOlderGameState(snap({ winner: "" }), snap())).toBe(false);
+    expect(isOlderGameState(snap({ winner: "user-1" }), snap({ winner: "" }))).toBe(false);
   });
 });

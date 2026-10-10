@@ -49,10 +49,10 @@ function speakerFor(item: DialogQueueItem) {
 // Shared comms panel for in-mission dialog (useMissionDialog), rendered as
 // GameBoardLayout's overlay in GameDisplay, GameDisplayWeb2 and
 // SimulatedGameDisplay. Non-blocking: only the panel itself takes clicks.
-// Shows the current line (if any) docked bottom-left plus a COMMS LOG toggle
-// listing every message so far. A mission's opening lines (missionStart)
-// show larger, top-center of the board ("incoming transmission"), since
-// they set up the mission; everything after docks.
+// Shows the current line (if any) top-center of the board, plus a COMMS LOG
+// toggle (bottom-left) listing every message so far. A mission's opening
+// lines (missionStart) show larger ("incoming transmission"), since they set
+// up the mission.
 export function MissionDialogPanel({
   line,
   log,
@@ -125,8 +125,9 @@ export function MissionDialogPanel({
         </div>
       )}
 
-      {line && isSpotlight && (
-        // Positioned against GameBoardLayout's overlay layer (the board).
+      {line && (
+        // Every line shows top-center of the board (positioned against
+        // GameBoardLayout's overlay layer), where it's hard to miss.
         <div className="absolute left-1/2 top-0 w-[min(36rem,92%)] -translate-x-1/2">
           <DialogLineCard
             key={line.key}
@@ -136,20 +137,9 @@ export function MissionDialogPanel({
             onAdvance={onAdvance}
             onDismiss={onDismiss}
             compact={compact}
-            spotlight
+            spotlight={isSpotlight}
           />
         </div>
-      )}
-      {line && !isSpotlight && (
-        <DialogLineCard
-          key={line.key}
-          line={line}
-          position={position}
-          total={total}
-          onAdvance={onAdvance}
-          onDismiss={onDismiss}
-          compact={compact}
-        />
       )}
 
       <button

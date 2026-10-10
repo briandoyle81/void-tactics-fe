@@ -23,7 +23,7 @@ import { useShipsByIds } from "../hooks/useShipsByIds";
 import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
-import { toOnChainActionType, gameStateSyncKey } from "../utils/normalizeGameDataView";
+import { toOnChainActionType, gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
 import { GameFleetDetailsModal } from "./GameFleetDetailsModal";
 import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
@@ -229,7 +229,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const [replayNotFound, setReplayNotFound] = React.useState(false);
   const [replayAutoPlay, setReplayAutoPlay] = React.useState(false);
   const replayAutoPlayRef = React.useRef(false);
-  const { clearAllTransactions, transactionState, completeTransaction } = useTransaction();
+  const { clearAllTransactions, completeTransaction } = useTransaction();
   const [selectedShipId, setSelectedShipId] = useState<bigint | null>(null);
   // Drag and drop state — `selectedShipId`/`draggedShipId` stay here (not
   // owned by `useGameplayInteraction`) because resolving their equipped
@@ -289,7 +289,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const gameSyncKeyRef = React.useRef(gameStateSyncKey(initialGame));
   const incomingGame = gameData ?? latestGameDataRef.current;
   const incomingSyncKey = gameStateSyncKey(incomingGame);
-  if (incomingSyncKey !== gameSyncKeyRef.current) {
+  // Never step back to an older read (see isOlderGameState).
+  if (
+    incomingSyncKey !== gameSyncKeyRef.current &&
+    !isOlderGameState(incomingGame, latestGameDataRef.current)
+  ) {
     gameSyncKeyRef.current = incomingSyncKey;
     latestGameDataRef.current = incomingGame;
   }
@@ -805,8 +809,17 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // Check if it's the current player's turn
   const isMyTurn = game.turnState.currentTurn === address;
-  // A sent move hasn't landed yet: hold off acting again until it has.
-  const awaitingTurnSyncAfterSubmit = pendingMove.isAwaitingSync;
+  // A submitted move hasn't landed yet: hold off acting again until it has.
+  const awaitingTurnSyncAfterSubmit = pendingMove.isSubmitting;
+  // From submit until the tx succeeds or fails, the submitted proposal stays
+  // up, locked (see handleCancelMove). The ref is for handlers that run
+  // before a re-render.
+  const [isProposalLocked, setIsProposalLockedState] = useState(false);
+  const proposalLockedRef = React.useRef(false);
+  const setProposalLocked = React.useCallback((locked: boolean) => {
+    proposalLockedRef.current = locked;
+    setIsProposalLockedState(locked);
+  }, []);
   const isMyTurnEffective = isMyTurn && !awaitingTurnSyncAfterSubmit;
   const canActInGame = !readOnly && isMyTurnEffective;
   // Set once this player's flee/retreat tx has a receipt. That receipt
@@ -819,10 +832,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const gameWinnerResult = chainWinnerResult ?? (didFlee ? "opponent" : null);
   const isGameOver = gameWinnerResult !== null;
   const moveShipTxId = `move-ship-${selectedShipId}-${game.metadata.gameId}`;
-  const isSubmittingMove =
-    (transactionState.isPending &&
-      transactionState.activeTransactionId === moveShipTxId) ||
-    awaitingTurnSyncAfterSubmit;
 
   // Single-player games are regular Game sessions where the "opponent" is
   // the SinglePlayerMatch contract — same read APIs as PvP, just a
@@ -1040,7 +1049,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     currentTurn: game.turnState.currentTurn,
     isGameOver,
     isCurrentPlayerTurn: canActInGame,
-    isSubmitting: isSubmittingMove,
+    isSubmitting: isProposalLocked,
     blockedGrid,
     impassableGrid,
     lastMove: lastMoveForInteraction,
@@ -1075,7 +1084,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     handleCancelMove: interactionHandleCancelMove,
     handleGridRightClickDeselect: interactionHandleGridRightClickDeselect,
     retreatPrepIsCreator,
-    setSelectedWeaponType: setWeaponTypeFromGrid,
+    setSelectedWeaponType: interactionSetWeaponType,
     getHoverPreview,
     recordOptimisticSos,
     clearOptimisticSos,
@@ -1093,6 +1102,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const validTargets = React.useMemo(
     () => toBigTargets(interaction.validTargets),
     [interaction.validTargets, toBigTargets],
+  );
+  const setWeaponTypeFromGrid = React.useCallback(
+    (type: "weapon" | "special" | "ram") => {
+      if (!proposalLockedRef.current) interactionSetWeaponType(type);
+    },
+    [interactionSetWeaponType],
   );
   const targetShipId =
     interaction.targetShipId != null ? BigInt(interaction.targetShipId) : null;
@@ -1134,13 +1149,20 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // Wrap the shared hook's handlers to also clear the last-move-display
   // tracking refs above (web3-only concern, not known to the shared hook).
-  const handleCancelMove = React.useCallback(() => {
+  const clearProposal = React.useCallback(() => {
     isDisplayingLastMoveRef.current = false;
     lastDisplayedMoveRef.current = null;
     interactionHandleCancelMove();
   }, [interactionHandleCancelMove]);
+  // Player-facing cancel: a no-op while the submitted proposal is locked
+  // (clearProposal, used by the submit lifecycle itself, still clears it).
+  const handleCancelMove = React.useCallback(() => {
+    if (proposalLockedRef.current) return;
+    clearProposal();
+  }, [clearProposal]);
 
   const handleGridRightClickDeselect = React.useCallback(() => {
+    if (proposalLockedRef.current) return;
     isDisplayingLastMoveRef.current = false;
     lastDisplayedMoveRef.current = null;
     interactionHandleGridRightClickDeselect();
@@ -1157,18 +1179,17 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       // nothing was pending, this failure was already reported (the receipt
       // watcher below and the button can both see a revert).
       const hadPendingMove = failPendingMove();
-      // Clear the selection first so the confirm widget (gated on
-      // selectedShipId via isShowingProposedMove/showConfirmWidget) is
-      // removed from the tree immediately. Flipping
-      // the pending move (awaitingTurnSyncAfterSubmit) re-enables
-      // isCurrentPlayerTurn — doing that before the selection clears let
-      // the widget briefly re-render in its normal enabled "ready to
-      // submit" appearance before disappearing, which read as a flash back
-      // to the pre-submit state instead of a clean vanish.
-      handleCancelMove();
+      // Back to no move entered: unlock and clear the submitted proposal in
+      // the same render the predicted result drops, so the widget never
+      // reappears in its enabled "ready to submit" state.
+      setProposalLocked(false);
+      clearProposal();
       clearOptimisticSos();
       clearOptimisticDestroy();
       if (!hadPendingMove) return;
+      // Still our turn: isMyTurnEffective dipped while submitting and flips
+      // back now, which isn't a turn change, so no "your turn" cue.
+      prevTurnRef.current = true;
 
       const errorMessage =
         (error as Error)?.message || String(error) || "Unknown error";
@@ -1207,7 +1228,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         toast.error(`Transaction failed: ${errorMessage}`);
       }
     },
-    [failPendingMove, handleCancelMove, clearOptimisticSos, clearOptimisticDestroy],
+    [failPendingMove, setProposalLocked, clearProposal, clearOptimisticSos, clearOptimisticDestroy],
   );
 
   /** Tutorial parity: pulse is driven by tutorial steps in SimulatedGameDisplay; live game leaves it off. */
@@ -1396,6 +1417,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // would ALSO fire a render later and double the sound. Stamping the ref
   // marks that transition as handled.
   onPendingMoveResolvedRef.current = () => {
+    setProposalLocked(false);
     interaction.handleCancelMove();
     clearOptimisticSos();
     clearOptimisticDestroy();
@@ -1756,9 +1778,32 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     recordOptimisticDestroy,
   ]);
 
-  const setSelectedShipIdForDisplay = interaction.setSelectedShipId;
-  const setTargetShipIdForDisplay = interaction.setTargetShipId;
-  const setDraggedShipIdForDisplay = interaction.setDraggedShipId;
+  // Grid/fleet input can't change a locked (submitted) proposal.
+  const { setSelectedShipId: interactionSetSelectedShipId, setTargetShipId: interactionSetTargetShipId, setDraggedShipId: interactionSetDraggedShipId, setPreviewPosition: interactionSetPreviewPosition } = interaction;
+  const setSelectedShipIdForDisplay = React.useCallback(
+    (id: number | null) => {
+      if (!proposalLockedRef.current) interactionSetSelectedShipId(id);
+    },
+    [interactionSetSelectedShipId],
+  );
+  const setTargetShipIdForDisplay = React.useCallback(
+    (id: number | null) => {
+      if (!proposalLockedRef.current) interactionSetTargetShipId(id);
+    },
+    [interactionSetTargetShipId],
+  );
+  const setDraggedShipIdForDisplay = React.useCallback(
+    (id: number | null) => {
+      if (!proposalLockedRef.current) interactionSetDraggedShipId(id);
+    },
+    [interactionSetDraggedShipId],
+  );
+  const setPreviewPositionForDisplay = React.useCallback(
+    (position: { row: number; col: number } | null) => {
+      if (!proposalLockedRef.current) interactionSetPreviewPosition(position);
+    },
+    [interactionSetPreviewPosition],
+  );
 
   const renderShipCard = React.useCallback(
     (cell: GameGridTooltipHoveredCell): React.ReactNode | null => {
@@ -1783,10 +1828,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // ── Submitting a move (both submit buttons) ───────────────────────────────
   // onBeforeSend (click, before the wallet prompt) snapshots the move into
-  // usePendingMove; onTransactionSent (broadcast) shows its predicted result
-  // and clears the proposal UI; the receipt watcher below confirms or reverts
-  // it. Nothing here reads state at receipt time, so refetches that land
-  // first (and clear selection/targets) can't change what's displayed.
+  // usePendingMove: the board shows its predicted result from then on, and
+  // the proposal stays up, locked, its button showing [...]. The receipt
+  // watcher below settles it: success retires the proposal (the prediction
+  // stays until chain data shows the move), failure drops both. Nothing here
+  // reads state at receipt time, so refetches that land first can't change
+  // what's displayed.
   const [pendingMoveTx, setPendingMoveTx] = React.useState<{
     hash: `0x${string}`;
     key: number;
@@ -1835,6 +1882,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           ? { kind: "heal", amount: dmg.baseDamage }
           : { kind: "damage", reducedDamage: dmg.reducedDamage, reactorCritical: dmg.reactorCritical };
     }
+    // Before capture: reads the target's pre-move hull.
+    snapshotOptimisticSosIfNeeded();
+    setProposalLocked(true);
     capturePendingMove({
       shipId: payload.shipId,
       actionType: payload.actionType,
@@ -1860,19 +1910,19 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     calculateDamageForDisplay,
     getShipAttributesForDisplay,
     capturePendingMove,
+    setProposalLocked,
+    snapshotOptimisticSosIfNeeded,
   ]);
 
   const handleMoveTxSent = React.useCallback(
     (hash: `0x${string}`) => {
       const pending = pendingMoveRef.current;
       if (!pending) return;
-      snapshotOptimisticSosIfNeeded();
       markPendingMoveSent(pending.key);
       setPendingMoveTx({ hash, key: pending.key, transactionId: moveShipTxId });
-      // The predicted result now renders from `game`; retire the proposal.
-      handleCancelMove();
+      // The proposal stays up (locked, button pending) until the receipt.
     },
-    [pendingMoveRef, snapshotOptimisticSosIfNeeded, markPendingMoveSent, moveShipTxId, handleCancelMove],
+    [pendingMoveRef, markPendingMoveSent, moveShipTxId],
   );
 
   // Watched here, not in the submit button: the button unmounts as soon as
@@ -1892,6 +1942,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         return;
       }
       completeTransaction(pendingMoveTx.transactionId, true);
+      setProposalLocked(false);
+      clearProposal();
       toast.success("Move submitted successfully!");
       recordPlayerMove();
       void Promise.resolve(refetchGame());
@@ -1907,6 +1959,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     pendingMoveReceiptError,
     completeTransaction,
     handleMoveSubmitError,
+    clearProposal,
+    setProposalLocked,
     recordPlayerMove,
     refetchGame,
     refetch,
@@ -1971,8 +2025,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         onBeforeSend={captureMoveForSubmit}
         onTransactionSent={handleMoveTxSent}
         onError={handleMoveSubmitError}
+        disabled={isProposalLocked}
       >
-        {confirmWidgetLabel}
+        {/* Pending until the receipt, not just until the wallet returns. */}
+        {isProposalLocked ? "[...]" : confirmWidgetLabel}
       </TransactionButton>
     );
   }, [
@@ -1986,6 +2042,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     computedActionType,
     targetShipId,
     confirmWidgetLabel,
+    isProposalLocked,
     isShipOwnedByCurrentPlayer,
     movedShipIdsSet,
     interaction.ramActionError,
@@ -2051,7 +2108,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       ? " animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
                       : ""
                   }`}
-                  loadingText="[SUBMITTING...]"
+                  loadingText="[...]"
+                  disabled={isProposalLocked}
                   errorText="[ERR]"
                   onBeforeSend={captureMoveForSubmit}
                   onTransactionSent={(hash) => {
@@ -2114,16 +2172,21 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     return true;
                   }}
                 >
-                  {isSelectedShipDisabled ? "RETREAT" : confirmWidgetLabel}
+                  {isProposalLocked
+                    ? "[...]"
+                    : isSelectedShipDisabled
+                      ? "RETREAT"
+                      : confirmWidgetLabel}
                 </TransactionButton>
             );
           })()}
           <button
             type="button"
             onClick={handleCancelMove}
+            disabled={isProposalLocked}
             className={`px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150${
               isRail ? " min-w-0 flex-[1]" : ""
-            } ${isRail ? "order-1" : "order-1"}`}
+            } ${isRail ? "order-1" : "order-1"}${isProposalLocked ? " opacity-50 cursor-not-allowed" : ""}`}
             style={
               isRail
                 ? {
@@ -2537,7 +2600,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     <button
                       key={target.shipId.toString()}
                       type="button"
-                      onClick={() => setTargetShipId(target.shipId)}
+                      onClick={() => {
+                        if (!proposalLockedRef.current) setTargetShipId(target.shipId);
+                      }}
                       className={proposedMoveTargetBtnClass}
                       style={{
                         ...STYLE_LABEL,
@@ -3053,7 +3118,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     type="button"
                     onClick={() => {
                       setIsMobileWeaponMenuOpen(false);
-                      setSelectedShipId(null);
+                      if (!proposalLockedRef.current) setSelectedShipId(null);
                     }}
                     className="px-1.5 py-0.5 text-[10px] uppercase border border-solid"
                     style={{
@@ -3161,7 +3226,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       getShipAttributes={getShipAttributesForDisplay}
                       optimisticSosShipIds={optimisticSosShipIds}
                       optimisticDestroyShipIds={optimisticDestroyShipIds}
-                      isSubmitting={isSubmittingMove}
+                      isSubmitting={isProposalLocked}
                       disableTooltips={true}
                       address={address}
                       currentTurn={game.turnState.currentTurn}
@@ -3190,7 +3255,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       tutorialDefaultLabel={tutorialDefaultLabel}
                       onGridRightClickDeselect={handleGridRightClickDeselect}
                       setSelectedShipId={setSelectedShipIdForDisplay}
-                      setPreviewPosition={interaction.setPreviewPosition}
+                      setPreviewPosition={setPreviewPositionForDisplay}
                       setTargetShipId={setTargetShipIdForDisplay}
                       setSelectedWeaponType={setWeaponTypeFromGrid}
                       setDraggedShipId={setDraggedShipIdForDisplay}
@@ -3679,7 +3744,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   isSelected={selectedShipId === shipId}
                   optimisticSos={optimisticSosShipIds.has(Number(shipId))}
                   shipImage={ship && <ShipImage ship={ship} className="w-full h-full" showLoadingState={false} hideRankStars />}
-                  onClick={() => setSelectedShipId(shipId)}
+                  onClick={() => {
+                    if (!proposalLockedRef.current) setSelectedShipId(shipId);
+                  }}
                   fleetHoverAnchor={
                     shipPos
                       ? {
@@ -3773,7 +3840,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           getShipAttributes={getShipAttributesForDisplay}
           optimisticSosShipIds={optimisticSosShipIds}
           optimisticDestroyShipIds={optimisticDestroyShipIds}
-          isSubmitting={isSubmittingMove}
+          isSubmitting={isProposalLocked}
           disableTooltips={disableTooltips}
           address={address}
           currentTurn={game.turnState.currentTurn}
@@ -3802,7 +3869,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           tutorialDefaultLabel={tutorialDefaultLabel}
           onGridRightClickDeselect={handleGridRightClickDeselect}
           setSelectedShipId={setSelectedShipIdForDisplay}
-          setPreviewPosition={interaction.setPreviewPosition}
+          setPreviewPosition={setPreviewPositionForDisplay}
           setTargetShipId={setTargetShipIdForDisplay}
           setSelectedWeaponType={setWeaponTypeFromGrid}
           setDraggedShipId={setDraggedShipIdForDisplay}

@@ -16,6 +16,8 @@ interface GameGridConfirmWidgetProps {
   onCancelMove: () => void;
   /** When provided, replaces the default confirm button (e.g. pass a TransactionButton). */
   confirmButton?: React.ReactNode;
+  /** The move was submitted: no weapon switching or cancel until it settles. */
+  isSubmitting?: boolean;
   selectedShipId: number | null;
   shipMap: Map<number, GridShip>;
   selectedWeaponType: "weapon" | "special" | "ram";
@@ -45,6 +47,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
   onConfirmMove,
   onCancelMove,
   confirmButton,
+  isSubmitting = false,
   selectedShipId,
   shipMap,
   selectedWeaponType,
@@ -148,7 +151,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
   );
 
   const embeddedWeaponSelector = (() => {
-    if (isRammingMovePreview) return null;
+    if (isRammingMovePreview || isSubmitting) return null;
     const ship = selectedShipId ? shipMap.get(selectedShipId) : null;
     if (!ship) return null;
     // A ship in retreat mode (forced for 0hp, or voluntarily toggled) can
@@ -289,6 +292,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
             <button
               type="button"
               onClick={onConfirmMove}
+              disabled={isSubmitting}
               className="flex-[2] px-4 py-2 text-xs uppercase font-bold tracking-widest transition-colors duration-100"
               style={{
                 ...STYLE_LABEL,
@@ -314,6 +318,8 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
           <button
             type="button"
             onClick={onCancelMove}
+            disabled={isSubmitting}
+            aria-disabled={isSubmitting}
             className="px-3 py-2 text-sm font-bold transition-colors duration-100"
             style={{
               ...STYLE_LABEL,
