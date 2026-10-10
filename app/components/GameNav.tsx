@@ -32,7 +32,7 @@ export function GameNav({
 }: {
   active: GameSection;
   onSelect: (section: GameSection) => void;
-  /** Shows a dot on Battles (it's your turn somewhere). */
+  /** Shows a dot on Battles (it's your turn in a PvP game). */
   battlesAlert: boolean;
 }) {
   useEffect(() => {

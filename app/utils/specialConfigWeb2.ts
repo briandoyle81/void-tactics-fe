@@ -29,7 +29,7 @@ export interface SpecialConfigEntry {
 const VARIANT_1_SPECIALS: Record<number, SpecialConfigEntry> = {
   1: { range: 1, strength: 1, movement: 0 }, // EMP: adds a status effect + reactor-critical stack, not HP damage — `strength` isn't currently read for its effect magnitude
   2: { range: 3, strength: 40, movement: 0 }, // Repair Drones: heals 40 HP
-  3: { range: 3, strength: 30, movement: 0 }, // Flak Array: damage comes from the firing ship's own gun stats (applyShootDamage), not this `strength` — only `range` is load-bearing here
+  3: { range: 3, strength: 30, movement: 0 }, // Flak Array: `strength` minus each target's damage reduction, as hull damage to every ship in `range` (FlakArrayResolver.sol)
 };
 
 const VARIANT_2_SPECIALS: Record<number, SpecialConfigEntry> = {

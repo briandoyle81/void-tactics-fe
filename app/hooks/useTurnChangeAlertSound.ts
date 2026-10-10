@@ -1,4 +1,5 @@
 import { useEffect, useRef, type MutableRefObject } from "react";
+import { playSoundEffect } from "./useSoundEffects";
 
 /** Shared by every "it's your turn" cue — the transition-based hook below,
  * and GameDisplay.tsx/GameDisplayWeb2.tsx's own "still my turn after my
@@ -6,13 +7,7 @@ import { useEffect, useRef, type MutableRefObject } from "react";
  * never dips isMyTurn false->true, so that case can't rely on the hook's
  * transition detection and calls this directly instead). */
 export function playTurnAlertSound() {
-  const audio = new Audio("/sound/alert.mp3");
-  audio.volume = 0.5;
-  audio.play().catch((err) => {
-    // Most commonly a browser autoplay-policy rejection — surfaced so
-    // it's diagnosable instead of a silent, unexplained no-op.
-    console.warn("[playTurnAlertSound] audio.play() failed:", err);
-  });
+  playSoundEffect("/sound/alert.mp3");
 }
 
 /**

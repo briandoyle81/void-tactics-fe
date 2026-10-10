@@ -7,6 +7,7 @@ import { useShipAttributesByIdsWeb2 } from "../hooks/useShipAttributesByIdsWeb2"
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { Web2Ship } from "../types/web2Ship";
 import { apiMutate } from "../lib/apiMutate";
+import { constructAllShipsWeb2 } from "../utils/constructShipsWeb2";
 import ShipCard from "./ShipCard";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
 import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
@@ -375,12 +376,12 @@ const ManageNavyWeb2: React.FC = () => {
 
   const handleConstructAll = () =>
     runAction("construct ships", async () => {
-      const result = await apiMutate<{ constructed: number }>("/api/ships/construct", "POST", { all: true });
+      const constructed = await constructAllShipsWeb2();
       if (userId && showConstructDeliveryTutorial) {
         persistConstructDeliveryTutorialCompletedWeb2(userId);
         setShowConstructDeliveryTutorial(false);
       }
-      toast.success(`Constructed ${result.constructed} ship(s)`);
+      toast.success(`Constructed ${constructed} ship(s)`);
     });
 
   const handleRecycleClick = (ship: Web2Ship) => {

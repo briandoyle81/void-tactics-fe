@@ -148,4 +148,55 @@ describe("useMissionDialog", () => {
     expect(stored.everDisabled.enemy).toEqual(["7"]);
     expect(result.current.total).toBeGreaterThan(0);
   });
+
+  describe("holdNewLines", () => {
+    const render = (gameId: string) =>
+      renderHook(
+        ({ hold, outcome }: { hold: boolean; outcome: "defeat" | null }) =>
+          useMissionDialog({
+            gameId,
+            mission: { kind: "roguelike", nodeId: 1 },
+            snapshot: { ...OPENING, outcome },
+            enabled: true,
+            holdNewLines: hold,
+          }),
+        { initialProps: { hold: true, outcome: null as "defeat" | null } },
+      );
+
+    it("waits to start a batch until released", () => {
+      const { result, rerender } = render("hold-1");
+      expect(result.current.current).toBeNull();
+      rerender({ hold: false, outcome: null });
+      expect(result.current.current?.key).toBe("roguelike-1-start@missionStart");
+    });
+
+    it("keeps a batch that's already showing, even when held again", () => {
+      const { result, rerender } = render("hold-2");
+      rerender({ hold: false, outcome: null });
+      rerender({ hold: true, outcome: null });
+      expect(result.current.current?.key).toBe("roguelike-1-start@missionStart");
+      // Lines added while it's showing continue the same batch.
+      rerender({ hold: true, outcome: "defeat" });
+      act(() => result.current.advance());
+      expect(result.current.current?.key).toBe("roguelike-1-defeat@missionDefeat");
+    });
+  });
+
+  it("counts lines dismissed unread until the comms log is opened", () => {
+    const { result, rerender } = renderHook(
+      ({ outcome }: { outcome: "defeat" | null }) =>
+        useMissionDialog({
+          gameId: "unread-1",
+          mission: { kind: "roguelike", nodeId: 1 },
+          snapshot: { ...OPENING, outcome },
+          enabled: true,
+        }),
+      { initialProps: { outcome: null as "defeat" | null } },
+    );
+    rerender({ outcome: "defeat" }); // entry showing + defeat + reply waiting
+    act(() => result.current.dismissAll());
+    expect(result.current.unreadCount).toBe(2);
+    act(() => result.current.markLogSeen());
+    expect(result.current.unreadCount).toBe(0);
+  });
 });

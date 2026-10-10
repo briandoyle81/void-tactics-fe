@@ -1607,3 +1607,56 @@ select:focus {
     animation: none !important;
   }
 }
+
+/* Mission dialog: a new comms line slides in, then its border glows three
+   times in the speaker's color (--dialog-color) and holds steady. */
+@keyframes dialog-arrive {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dialog-arrive-spotlight {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dialog-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 14px 2px var(--dialog-color);
+  }
+}
+
+.dialog-arrive {
+  animation:
+    dialog-arrive 200ms ease-out both,
+    dialog-glow 700ms ease-in-out 200ms 3;
+}
+
+.dialog-arrive-spotlight {
+  animation:
+    dialog-arrive-spotlight 260ms ease-out both,
+    dialog-glow 700ms ease-in-out 260ms 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-arrive,
+  .dialog-arrive-spotlight {
+    animation: none !important;
+  }
+}

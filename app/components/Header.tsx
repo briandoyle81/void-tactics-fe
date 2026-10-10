@@ -26,6 +26,7 @@ import { ALPHA_DISCORD_INVITE_URL } from "../config/alpha";
 import { useFreeShipClaimStatus } from "../hooks/useFreeShipClaimStatus";
 import type { StoreSection } from "./storeSections";
 import { useGameMusic } from "../hooks/useGameMusic";
+import { useSoundEffectsSetting } from "../hooks/useSoundEffects";
 import { formatDec } from "../utils/formatDec";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useUserBalanceWeb2 } from "../hooks/useUserBalanceWeb2";
@@ -929,6 +930,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
   }, [isConnected, isWeb2LoggedIn]);
 
   const music = useGameMusic();
+  const soundEffects = useSoundEffectsSetting();
   const isSignedIn = showWeb2Panel || showWeb3Panel;
   const callsign = showWeb2Panel
     ? (web2Username ?? web2Email ?? "Commander")
@@ -1229,6 +1231,19 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                       Music
                       <span className={music.enabled ? "text-phosphor-green" : "text-text-muted"}>
                         {music.enabled ? "On" : "Off"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={soundEffects.enabled}
+                      onClick={soundEffects.toggle}
+                      className={`${menuItemClass} justify-between text-cyan`}
+                      style={{ fontFamily: MONO_FONT }}
+                    >
+                      Sound effects
+                      <span className={soundEffects.enabled ? "text-phosphor-green" : "text-text-muted"}>
+                        {soundEffects.enabled ? "On" : "Off"}
                       </span>
                     </button>
 

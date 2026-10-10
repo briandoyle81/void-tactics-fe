@@ -25,6 +25,14 @@ import { NavyFilterToolbar } from "./NavyFilterToolbar";
 import { ManageNavyShipsCountHeading } from "./ManageNavyShipsCountHeading";
 import { NavyPagination } from "./NavyPagination";
 import { DUPLICATE_SHIP_ID_TOAST, hasDuplicateShipIds } from "../utils/fleetShipIds";
+import {
+  MIN_CONSTRUCTED_SHIPS_FOR_RUN,
+  getRoguelikeRunRequirements,
+  isRunEligibleConstructedShip,
+} from "../utils/roguelikeRunRequirements";
+import { RoguelikeRunRequirementsPanel } from "./RoguelikeRunRequirementsPanel";
+import { ConstructShipsButton } from "./ConstructShipsButton";
+import { manageNavyActionButtonClassName } from "./ManageNavyActionButton";
 
 const SHIPS_PER_PAGE = 100;
 
@@ -50,9 +58,8 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
   const { address } = useAccount();
   const { startRun } = useRoguelikeMatch();
   const [isStarting, setIsStarting] = React.useState(false);
-  const [showInGameProperties, setShowInGameProperties] = React.useState(true);
 
-  const { ships, isLoading: shipsLoading } = useOwnedShips(baseSepolia.id);
+  const { ships, isLoading: shipsLoading, refetch: refetchShips } = useOwnedShips(baseSepolia.id);
 
   const { data: requiredVariant } = useRoguelikeCampaignRequiredVariant(
     DEFAULT_ROGUELIKE_CAMPAIGN_ID,
@@ -125,11 +132,35 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
     setDragOverPosition: fleet.setDragOverPosition,
     attributesMap,
     attributesLoading,
-    showInGameProperties,
+    showInGameProperties: true,
     flipShips: false,
   });
 
   const isOverCap = fleet.totalCost > costLimit && costLimit > 0;
+
+  const constructedCount = React.useMemo(
+    () =>
+      ships.filter((s) =>
+        isRunEligibleConstructedShip(
+          {
+            constructed: s.shipData.constructed,
+            destroyed: s.shipData.timestampDestroyed > 0n,
+            variant: s.traits.variant,
+          },
+          requiredVariant ?? 0,
+        ),
+      ).length,
+    [ships, requiredVariant],
+  );
+  const unconstructedShips = React.useMemo(
+    () => ships.filter((s) => !s.shipData.constructed),
+    [ships],
+  );
+  const requirements = getRoguelikeRunRequirements({
+    constructedCount,
+    rosterCost: fleet.totalCost,
+    costLimit,
+  });
 
   const handleStartRun = async () => {
     if (!address) {
@@ -146,6 +177,14 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
     }
     if (isOverCap) {
       toast.error(`Roster cost exceeds this campaign's ${costLimit} limit.`);
+      return;
+    }
+    if (!requirements.hasEnoughConstructed) {
+      toast.error(`You need at least ${MIN_CONSTRUCTED_SHIPS_FOR_RUN} constructed ships to start a run.`);
+      return;
+    }
+    if (!requirements.meetsMinRosterCost) {
+      toast.error(`Roster cost must be at least ${requirements.minRosterCost}.`);
       return;
     }
     setIsStarting(true);
@@ -196,11 +235,17 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
         <button
           type="button"
           onClick={() => void handleStartRun()}
-          disabled={isStarting || fleet.selectedShips.length === 0 || isOverCap}
+          disabled={
+            isStarting ||
+            fleet.selectedShips.length === 0 ||
+            isOverCap ||
+            !requirements.hasEnoughConstructed ||
+            !requirements.meetsMinRosterCost
+          }
           className="shrink-0 self-start border-2 border-phosphor-green px-6 py-3 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-40"
           style={{ borderRadius: 0 }}
         >
-          {isStarting ? "[STARTING RUN...]" : `[START RUN (${fleet.selectedShips.length})]`}
+          {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
         </button>
       </div>
 
@@ -214,6 +259,21 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
         </span>
         <span>Selected: {fleet.selectedShips.length}</span>
       </div>
+
+      <RoguelikeRunRequirementsPanel
+        requirements={requirements}
+        rosterCost={fleet.totalCost}
+        costLimit={costLimit}
+        constructButton={
+          unconstructedShips.length > 0 ? (
+            <ConstructShipsButton
+              unconstructedShips={unconstructedShips}
+              className={manageNavyActionButtonClassName("green")}
+              onConstructed={refetchShips}
+            />
+          ) : undefined
+        }
+      />
 
       <div
         className="border border-solid p-3 sm:p-4"
@@ -253,16 +313,6 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
             onSetDraftValue={filterState.setDraftValue}
           />
 
-          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
-            <label className="flex min-w-0 cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showInGameProperties}
-                onChange={(e) => setShowInGameProperties(e.target.checked)}
-              />
-              <span className="truncate text-text-secondary">Show in-game stats</span>
-            </label>
-          </div>
         </div>
       </div>
 

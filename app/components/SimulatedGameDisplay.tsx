@@ -3048,6 +3048,8 @@ export function SimulatedGameDisplay({
     snapshot: dialogSnapshot,
     enabled: true,
     paused: roundStartInfo != null,
+    // New lines wait for the player's turn, when they're looking at the board.
+    holdNewLines: !isMyTurn,
     persist: false,
   });
   const missionDialogOverlay =
@@ -3060,6 +3062,8 @@ export function SimulatedGameDisplay({
         onAdvance={missionDialog.advance}
         onDismiss={missionDialog.dismissAll}
         compact={isLandscapeMobile}
+        unreadCount={missionDialog.unreadCount}
+        onLogOpened={missionDialog.markLogSeen}
         className={
           tutorialGridPanelConfig && tutorialTaskPanelAnchor === "left" ? "ml-auto" : ""
         }

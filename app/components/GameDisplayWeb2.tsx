@@ -9,7 +9,7 @@ import {
   Attributes,
   GRID_DIMENSIONS,
 } from "../types/types";
-import type { Web2GameDataView, Web2LastMove } from "../types/web2Game";
+import type { Web2GameDataView } from "../types/web2Game";
 import { Web2Ship } from "../types/web2Ship";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useGetGame } from "../hooks/useGamesWeb2";
@@ -20,6 +20,8 @@ import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { gameStateSyncKey } from "../utils/normalizeGameDataView";
 import { useDamageCalculationWeb2 } from "../hooks/useDamageCalculationWeb2";
 import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
+import { usePendingMove } from "../hooks/usePendingMove";
+import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
 import { RoundStartModal } from "./RoundStartModal";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { GameResultModal, type MissionLossReason } from "./GameResultModal";
@@ -36,7 +38,7 @@ import {
 } from "../hooks/useGameplayInteraction";
 import { apiMutate } from "../lib/apiMutate";
 import { apiFetch } from "../lib/apiFetch";
-import { getSpecialConfigWeb2 } from "../utils/specialConfigWeb2";
+import { getSpecialConfigWeb2, isAoeSpecialWeb2, isLightningFieldSpecial, isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { wouldDestroy, wouldEnterSos } from "../utils/calculateDamage";
 import { requireShipValue } from "../utils/requireShipValue";
 import { getFactionAbilityConfigWeb2 } from "../utils/factionAbilityConfigWeb2";
@@ -148,7 +150,25 @@ function GameDisplayWeb2({
     gameSyncKeyRef.current = incomingSyncKey;
     latestGameDataRef.current = incomingGame;
   }
-  const game = latestGameDataRef.current;
+  // Server data. `game` (below) is this plus the predicted result of a
+  // submitted move that hasn't landed yet — same as GameDisplay.tsx, see
+  // usePendingMove.
+  const chainGame = latestGameDataRef.current;
+  const onPendingMoveResolvedRef = React.useRef<(() => void) | null>(null);
+  const pendingMove = usePendingMove({
+    chainLastMoveKey: lastMoveKey(chainGame.lastMove),
+    isGameOver: chainGame.metadata.winner !== "",
+    onResolved: () => onPendingMoveResolvedRef.current?.(),
+  });
+  const {
+    capture: capturePendingMove,
+    markSent: markPendingMoveSent,
+    fail: failPendingMove,
+  } = pendingMove;
+  const game = useMemo(
+    () => applyPendingMoveToGame(chainGame, pendingMove.pendingMove, (n) => n),
+    [chainGame, pendingMove.pendingMove],
+  );
 
   // ── Replay ──────────────────────────────────────────────────────────────
   // Server-authoritative Prisma GameTurn history (vs. GameDisplay.tsx's
@@ -287,7 +307,9 @@ function GameDisplayWeb2({
     [displayGame.shipPositions],
   );
 
-  const isCurrentPlayerTurn = !readOnly && game.turnState.currentTurn === userId;
+  // Matches web3's isMyTurnEffective: no acting again until a sent move lands.
+  const isCurrentPlayerTurn =
+    !readOnly && game.turnState.currentTurn === userId && !pendingMove.isAwaitingSync;
   // Mirrors GameDisplay.tsx: once the flee request succeeds the game is a
   // loss, so the result screen shows straight away instead of the board.
   const [didFlee, setDidFlee] = useState(false);
@@ -418,19 +440,21 @@ function GameDisplayWeb2({
     if (roguelikeDialogNodeId > 0) return { kind: "roguelike", nodeId: roguelikeDialogNodeId };
     return null;
   }, [campaignDialogNodeId, roguelikeDialogNodeId]);
+  // Confirmed data only: a pending move's predicted result must not fire
+  // dialog lines (they'd stay fired even if the move then fails).
   const dialogSnapshot = useMemo(() => {
-    const isCreatorNow = game.metadata.creator === userId;
+    const isCreatorNow = chainGame.metadata.creator === userId;
     return buildDialogSnapshot({
-      round: game.turnState.currentRound,
-      myScore: isCreatorNow ? game.creatorScore : game.joinerScore,
-      enemyScore: isCreatorNow ? game.joinerScore : game.creatorScore,
-      ships: game.shipPositions.map((p) => {
-        const index = game.shipIds?.findIndex((id) => id === p.shipId) ?? -1;
+      round: chainGame.turnState.currentRound,
+      myScore: isCreatorNow ? chainGame.creatorScore : chainGame.joinerScore,
+      enemyScore: isCreatorNow ? chainGame.joinerScore : chainGame.creatorScore,
+      ships: chainGame.shipPositions.map((p) => {
+        const index = chainGame.shipIds?.findIndex((id) => id === p.shipId) ?? -1;
         return {
           id: String(p.shipId),
           isMine: p.isCreator === isCreatorNow,
           status: p.status,
-          hullPoints: index >= 0 ? (game.shipAttributes?.[index]?.hullPoints ?? null) : null,
+          hullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.hullPoints ?? null) : null,
         };
       }),
       // Victory/defeat triggers; a draw is neither.
@@ -438,14 +462,14 @@ function GameDisplayWeb2({
         gameWinnerResult === "me" ? "victory" : gameWinnerResult === "opponent" ? "defeat" : null,
     });
   }, [
-    game.metadata.creator,
+    chainGame.metadata.creator,
     userId,
-    game.turnState.currentRound,
-    game.creatorScore,
-    game.joinerScore,
-    game.shipPositions,
-    game.shipIds,
-    game.shipAttributes,
+    chainGame.turnState.currentRound,
+    chainGame.creatorScore,
+    chainGame.joinerScore,
+    chainGame.shipPositions,
+    chainGame.shipIds,
+    chainGame.shipAttributes,
     gameWinnerResult,
   ]);
   const missionDialog = useMissionDialog({
@@ -455,6 +479,10 @@ function GameDisplayWeb2({
     // Stays on after the game ends so victory/defeat lines can play.
     enabled: !readOnly && !isReplaying,
     paused: roundStartInfo != null && !isGameOver,
+    // New lines wait for the player's turn (and for a submitted move to
+    // land), when they're looking at the board; a line already showing
+    // stays put.
+    holdNewLines: !isCurrentPlayerTurn && !isGameOver,
   });
   // On the board while the game runs (and after the result screen is
   // dismissed); while the result screen is up, lines play inside it instead
@@ -470,10 +498,13 @@ function GameDisplayWeb2({
         onAdvance={missionDialog.advance}
         onDismiss={missionDialog.dismissAll}
         compact={isLandscapeMobile}
+        unreadCount={missionDialog.unreadCount}
+        onLogOpened={missionDialog.markLogSeen}
       />
     ) : null;
   const missionDebriefNode = missionDialog.current ? (
     <DialogLineCard
+      key={missionDialog.current.key}
       line={missionDialog.current}
       position={missionDialog.position}
       total={missionDialog.total}
@@ -584,7 +615,6 @@ function GameDisplayWeb2({
     handleGridRightClickDeselect,
     handleRetreatClick,
     buildActionPayload,
-    recordOptimisticMove,
     recordOptimisticSos,
     clearOptimisticSos,
     optimisticSosShipIds,
@@ -626,7 +656,7 @@ function GameDisplayWeb2({
   const { recordPlayerMove } = useGamePollingWeb2({
     gameId,
     turnTime: game.turnState.turnTime,
-    gameData: game,
+    gameData: chainGame,
     refetchGame,
     onRefetch: useCallback(() => setTargetShipId(null), [setTargetShipId]),
   });
@@ -635,14 +665,46 @@ function GameDisplayWeb2({
   const handleSubmitMove = useCallback(async () => {
     const payload = buildActionPayload();
     if (!payload) return;
-    if (
-      payload.targetShipId > 0 &&
-      (payload.actionType === ActionType.Shoot ||
-        payload.actionType === ActionType.Special)
+    if (interaction.ramActionError) {
+      toast.error(interaction.ramActionError);
+      return;
+    }
+    const current = aliveShipPositions.find((p) => p.shipId === payload.shipId)?.position;
+    if (!current) return;
+    const targetPosition =
+      payload.targetShipId > 0
+        ? (aliveShipPositions.find((p) => p.shipId === payload.targetShipId)?.position ?? null)
+        : null;
+    let effect: PendingMoveEffect = { kind: "none" };
+    if (payload.actionType === ActionType.FactionAbility) {
+      effect = selectedShipFactionAbility?.isHeal
+        ? { kind: "heal", amount: selectedShipFactionAbility.strength ?? 0 }
+        : { kind: "ram" };
+    } else if (
+      payload.actionType === ActionType.Special &&
+      isAoeSpecialWeb2(selectedShipVariant ?? 1, payload.specialType)
     ) {
+      // Flak Array / Electric Storm hit everything in range of the
+      // destination, not a chosen target.
+      if (specialRange != null && specialData?.strength != null) {
+        effect = predictAoeEffect({
+          kind: isLightningFieldSpecial(selectedShipVariant ?? 1, payload.specialType) ? "storm" : "flak",
+          center: { row: payload.row, col: payload.col },
+          range: specialRange,
+          strength: specialData.strength,
+          casterShipId: payload.shipId,
+          positions: aliveShipPositions,
+          getShipAttributes,
+        });
+      }
+    } else if (
+      payload.targetShipId > 0 &&
+      (payload.actionType === ActionType.Shoot || payload.actionType === ActionType.Special)
+    ) {
+      const isSpecial = payload.actionType === ActionType.Special;
       const dmg = calculateDamageForShip(
         payload.targetShipId,
-        payload.actionType === ActionType.Special ? "special" : "weapon",
+        isSpecial ? "special" : "weapon",
         payload.specialType === 3 ? true : undefined,
       );
       const targetAttrs = getShipAttributes(payload.targetShipId);
@@ -651,64 +713,67 @@ function GameDisplayWeb2({
       } else if (wouldEnterSos(dmg, targetAttrs)) {
         recordOptimisticSos([payload.targetShipId]);
       }
+      effect =
+        isSpecial && isRepairDronesSpecial(selectedShipVariant ?? 1, payload.specialType)
+          ? { kind: "heal", amount: dmg.baseDamage }
+          : { kind: "damage", reducedDamage: dmg.reducedDamage, reactorCritical: dmg.reactorCritical };
     }
+    // Show the predicted result straight away (the POST is the "send").
+    const key = capturePendingMove({
+      shipId: payload.shipId,
+      actionType: payload.actionType,
+      targetShipId: payload.targetShipId,
+      row: payload.row,
+      col: payload.col,
+      current,
+      targetPosition,
+      getShipAttributes,
+      effect,
+      baselineLastMoveKey: lastMoveKey(chainGame.lastMove),
+    });
+    markPendingMoveSent(key);
+    handleCancelMove();
     setIsSubmitting(true);
     try {
       // buildActionPayload already returns ActionType.FactionAbility (with
       // the real target) for a ram/repair move — web2's engine implements
-      // that action directly (see gameEngineWeb2.ts), no override needed
-      // (isFactionAbilitySupported is always true for web2, so
-      // isRammingMovePreview's legacy auto-ram path never applies here).
-      const finalActionType = payload.actionType;
-      const finalTargetShipId = payload.targetShipId;
-      await apiMutate(`/api/games/${gameId}/action`, "POST", {
+      // that action directly (see gameEngineWeb2.ts), no override needed.
+      const newState = await apiMutate<Web2GameDataView>(`/api/games/${gameId}/action`, "POST", {
         shipId: payload.shipId,
         row: payload.row,
         col: payload.col,
-        actionType: finalActionType,
-        targetShipId: finalTargetShipId,
+        actionType: payload.actionType,
+        targetShipId: payload.targetShipId,
         specialType: payload.specialType,
       });
+      // The response is the new state; put it in the cache so the pending
+      // move resolves now instead of on the next fetch. It lacks the lobby
+      // fields GET /api/games/[id] attaches, so keep those from the cache.
+      queryClient.setQueryData<Web2GameDataView>(["gamesWeb2", gameId], (prev) =>
+        prev
+          ? {
+              ...newState,
+              mapId: newState.mapId || prev.mapId,
+              metadata: {
+                ...newState.metadata,
+                campaignNodeId: prev.metadata.campaignNodeId,
+                roguelikeRunId: prev.metadata.roguelikeRunId,
+              },
+            }
+          : newState,
+      );
       posthog.capture("game_move_submitted", {
         game_id: String(gameId),
         ship_id: String(payload.shipId),
-        move_type: ActionType[finalActionType] ?? String(finalActionType),
-        ...(finalTargetShipId ? { target_ship_id: String(finalTargetShipId) } : {}),
+        move_type: ActionType[payload.actionType] ?? String(payload.actionType),
+        ...(payload.targetShipId ? { target_ship_id: String(payload.targetShipId) } : {}),
       });
-      const currentPosition = aliveShipPositions.find((p) => p.shipId === payload.shipId);
-      // Ram relocates the acting ship onto the victim's (now-vacated) tile
-      // as an effect — its final position is NOT the submitted
-      // row/col (only a legal staging tile within range of the target; see
-      // RamResolver.sol / gameEngineWeb2.ts's FactionAbility case). Repair
-      // never relocates anyone.
-      const isRamRelocate =
-        finalActionType === ActionType.FactionAbility &&
-        selectedShipFactionAbility?.isHeal === false;
-      const ramTargetPosition = isRamRelocate
-        ? aliveShipPositions.find((p) => p.shipId === finalTargetShipId)?.position
-        : undefined;
-      const optimisticMove: Web2LastMove = {
-        shipId: payload.shipId,
-        oldRow: currentPosition?.position.row ?? payload.row,
-        oldCol: currentPosition?.position.col ?? payload.col,
-        newRow: finalActionType === ActionType.Retreat ? -1 : (ramTargetPosition?.row ?? payload.row),
-        newCol: finalActionType === ActionType.Retreat ? -1 : (ramTargetPosition?.col ?? payload.col),
-        actionType: finalActionType,
-        targetShipId: finalTargetShipId,
-        timestamp: Date.now(),
-      };
-      recordOptimisticMove(optimisticMove);
-      setOptimisticLastMoveWeb2(optimisticMove);
       recordPlayerMoveRef.current?.();
       toast.success("Move submitted!");
-      handleCancelMove();
       refetchGame();
       refetch?.();
     } catch (e) {
-      // Clear the selection first so the confirm widget vanishes cleanly
-      // instead of briefly re-rendering in its normal "ready to submit"
-      // state before disappearing — matches GameDisplay.tsx's ordering.
-      handleCancelMove();
+      failPendingMove(key);
       clearOptimisticSos();
       clearOptimisticDestroy();
       toast.error(e instanceof Error ? e.message : "Move failed");
@@ -716,11 +781,19 @@ function GameDisplayWeb2({
       setIsSubmitting(false);
     }
   }, [
+    interaction.ramActionError,
     buildActionPayload,
     aliveShipPositions,
     selectedShipFactionAbility,
+    selectedShipVariant,
+    specialRange,
+    specialData,
+    chainGame.lastMove,
     gameId,
-    recordOptimisticMove,
+    queryClient,
+    capturePendingMove,
+    markPendingMoveSent,
+    failPendingMove,
     recordOptimisticSos,
     clearOptimisticSos,
     recordOptimisticDestroy,
@@ -733,39 +806,23 @@ function GameDisplayWeb2({
   ]);
 
   // Optimistic last-move: mirrors GameDisplay.tsx's own local
-  // `optimisticLastMove` state (separate from useGameplayInteraction's
-  // `recordOptimisticMove`, which already covers the grid's ghost-preview
-  // position) — keeps the "Last Move" text panel + grid highlight showing
-  // the just-submitted move during the gap before the next poll/SSE tick
-  // updates `game.lastMove`.
-  const [optimisticLastMoveWeb2, setOptimisticLastMoveWeb2] = useState<Web2LastMove | null>(null);
-  React.useEffect(() => {
-    if (!optimisticLastMoveWeb2 || !game.lastMove) return;
-    const matches =
-      game.lastMove.shipId === optimisticLastMoveWeb2.shipId &&
-      game.lastMove.actionType === optimisticLastMoveWeb2.actionType &&
-      game.lastMove.targetShipId === optimisticLastMoveWeb2.targetShipId &&
-      game.lastMove.oldRow === optimisticLastMoveWeb2.oldRow &&
-      game.lastMove.oldCol === optimisticLastMoveWeb2.oldCol &&
-      game.lastMove.newRow === optimisticLastMoveWeb2.newRow &&
-      game.lastMove.newCol === optimisticLastMoveWeb2.newCol;
-    if (matches) {
-      setOptimisticLastMoveWeb2(null);
-      // Still my turn after my own move was confirmed (a same-turn
-      // multi-move sequence) — web2's isCurrentPlayerTurn has no artificial
-      // "awaiting sync" dip like web3's isMyTurnEffective, so it never
-      // transitions false->true for this case and useTurnChangeAlertSound's
-      // own detection can't catch it; play the cue directly. Stamping the
-      // ref marks this as handled so the hook doesn't also treat a later,
-      // unrelated transition as a double cue.
-      if (!readOnly && game.turnState.currentTurn === userId) {
-        playTurnAlertSound();
-        prevTurnRef.current = true;
-      }
+  // A sent move landed in server data (usePendingMove resolved it). Still my
+  // turn after it (a same-turn multi-move sequence): play the cue directly,
+  // since isCurrentPlayerTurn's false->true flip as the pending move clears
+  // would otherwise be the hook's only signal. Stamping the ref marks this as
+  // handled so it isn't a double cue.
+  onPendingMoveResolvedRef.current = () => {
+    handleCancelMove();
+    clearOptimisticSos();
+    clearOptimisticDestroy();
+    if (!readOnly && chainGame.turnState.currentTurn === userId) {
+      playTurnAlertSound();
+      prevTurnRef.current = true;
     }
-  }, [optimisticLastMoveWeb2, game.lastMove, game.turnState.currentTurn, userId, readOnly]);
+  };
 
-  const lastMove = isReplaying ? (replaySnapshotGame?.lastMove ?? undefined) : (optimisticLastMoveWeb2 ?? game.lastMove);
+  // A submitted-but-unconfirmed move is already folded into `game`.
+  const lastMove = isReplaying ? (replaySnapshotGame?.lastMove ?? undefined) : game.lastMove;
   const lastMoveShipId = lastMove?.shipId ?? null;
   const lastMoveOldPosition = useMemo(
     () => (lastMove ? { row: lastMove.oldRow, col: lastMove.oldCol } : null),

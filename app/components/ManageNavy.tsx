@@ -31,6 +31,7 @@ import { NavyFilterToolbar } from "./NavyFilterToolbar";
 import { NavyPagination } from "./NavyPagination";
 import { FreeShipClaimButton } from "./FreeShipClaimButton";
 import { ShipActionButton } from "./ShipActionButton";
+import { ConstructShipsButton } from "./ConstructShipsButton";
 import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
@@ -982,50 +983,17 @@ const ManageNavy: React.FC = () => {
               >
                 <div className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:flex-nowrap md:items-center md:justify-center md:gap-4">
                   {fleetCompositionSelectControl}
-                  {fleetStats.unconstructedShips > STALE_COST_SYNC_BATCH_CAP ? (
-                    <ShipActionButton
-                      action="constructShips"
-                      shipIds={shipsByStatus.unconstructed
-                        .slice(0, STALE_COST_SYNC_BATCH_CAP)
-                        .map((ship: Ship) => ship.id)}
-                      ships={shipsByStatus.unconstructed.slice(0, STALE_COST_SYNC_BATCH_CAP)}
-                      className="w-full justify-center px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
-                      disabled={fleetStats.unconstructedShips === 0}
-                      onSuccess={async () => {
-                        if (address) {
-                          persistConstructDeliveryTutorialCompleted(
-                            address,
-                            chainId,
-                          );
-                          setShowConstructDeliveryTutorial(false);
-                        }
-                        toast.success("60 ships construction started!");
-                        await refetch();
-                      }}
-                    >
-                      [CONSTRUCT 60 SHIPS]
-                    </ShipActionButton>
-                  ) : (
-                    <ShipActionButton
-                      action="constructAll"
-                      ships={shipsByStatus.unconstructed}
-                      className="w-full justify-center px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
-                      disabled={fleetStats.unconstructedShips === 0}
-                      onSuccess={async () => {
-                        if (address) {
-                          persistConstructDeliveryTutorialCompleted(
-                            address,
-                            chainId,
-                          );
-                          setShowConstructDeliveryTutorial(false);
-                        }
-                        toast.success("Ships constructed successfully!");
-                        await refetch();
-                      }}
-                    >
-                      [CONSTRUCT ALL SHIPS]
-                    </ShipActionButton>
-                  )}
+                  <ConstructShipsButton
+                    unconstructedShips={shipsByStatus.unconstructed}
+                    className="w-full justify-center px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
+                    onConstructed={async () => {
+                      if (address) {
+                        persistConstructDeliveryTutorialCompleted(address, chainId);
+                        setShowConstructDeliveryTutorial(false);
+                      }
+                      await refetch();
+                    }}
+                  />
                   {staleCostBulkButton}
                 </div>
               </div>
@@ -1058,36 +1026,11 @@ const ManageNavy: React.FC = () => {
           <div className="relative flex w-full flex-col gap-4 md:inline-flex md:w-auto md:flex-row md:items-start md:gap-4">
             <div className="relative z-10 flex w-full shrink-0 flex-col gap-3 md:flex-row md:gap-4 md:w-auto">
               {fleetCompositionSelectControl}
-              {fleetStats.unconstructedShips > STALE_COST_SYNC_BATCH_CAP ? (
-                <ShipActionButton
-                  action="constructShips"
-                  shipIds={shipsByStatus.unconstructed
-                    .slice(0, STALE_COST_SYNC_BATCH_CAP)
-                    .map((ship: Ship) => ship.id)}
-                  ships={shipsByStatus.unconstructed.slice(0, STALE_COST_SYNC_BATCH_CAP)}
-                  className="w-full justify-center px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
-                  disabled={fleetStats.unconstructedShips === 0}
-                  onSuccess={async () => {
-                    toast.success("60 ships construction started!");
-                    await refetch();
-                  }}
-                >
-                  [CONSTRUCT 60 SHIPS]
-                </ShipActionButton>
-              ) : (
-                <ShipActionButton
-                  action="constructAll"
-                  ships={shipsByStatus.unconstructed}
-                  className="w-full justify-center px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
-                  disabled={fleetStats.unconstructedShips === 0}
-                  onSuccess={async () => {
-                    toast.success("Ships constructed successfully!");
-                    await refetch();
-                  }}
-                >
-                  [CONSTRUCT ALL SHIPS]
-                </ShipActionButton>
-              )}
+              <ConstructShipsButton
+                unconstructedShips={shipsByStatus.unconstructed}
+                className="w-full justify-center px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
+                onConstructed={refetch}
+              />
               {staleCostBulkButton}
               <div
                 className="pointer-events-auto absolute inset-0 z-20 hidden rounded-none bg-near-black/85 md:block"
@@ -1130,36 +1073,11 @@ const ManageNavy: React.FC = () => {
           <div className="relative flex w-full flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-3">
             <div className="relative z-10 flex w-full shrink-0 flex-col gap-3 md:flex-row md:flex-nowrap md:items-center md:gap-3 md:w-auto">
               {fleetCompositionSelectControl}
-              {fleetStats.unconstructedShips > STALE_COST_SYNC_BATCH_CAP ? (
-                <ShipActionButton
-                  action="constructShips"
-                  shipIds={shipsByStatus.unconstructed
-                    .slice(0, STALE_COST_SYNC_BATCH_CAP)
-                    .map((ship: Ship) => ship.id)}
-                  ships={shipsByStatus.unconstructed.slice(0, STALE_COST_SYNC_BATCH_CAP)}
-                  className={manageNavyActionButtonClassName("green")}
-                  disabled={fleetStats.unconstructedShips === 0}
-                  onSuccess={async () => {
-                    toast.success("60 ships construction started!");
-                    await refetch();
-                  }}
-                >
-                  [CONSTRUCT 60 SHIPS]
-                </ShipActionButton>
-              ) : (
-                <ShipActionButton
-                  action="constructAll"
-                  ships={shipsByStatus.unconstructed}
-                  className={manageNavyActionButtonClassName("green")}
-                  disabled={fleetStats.unconstructedShips === 0}
-                  onSuccess={async () => {
-                    toast.success("Ships constructed successfully!");
-                    await refetch();
-                  }}
-                >
-                  [CONSTRUCT ALL SHIPS]
-                </ShipActionButton>
-              )}
+              <ConstructShipsButton
+                unconstructedShips={shipsByStatus.unconstructed}
+                className={manageNavyActionButtonClassName("green")}
+                onConstructed={refetch}
+              />
               {staleCostBulkButton}
 
               <ManageNavyActionButton

@@ -179,22 +179,29 @@ export function RoguelikeGraphWeb2({ run, onRunEnded, onStartRun }: RoguelikeGra
     });
   }
 
+  // Same as RoguelikeGraph.tsx: snap to the run's current node (or the
+  // root, with no run) only when that position or the mode changes, never on
+  // the player's own selection.
+  const currentRunNodeId = run ? run.currentNodeId : null;
   React.useEffect(() => {
-    if (!isBrowseMode) {
-      setSelectedNodeId(run.currentNodeId);
+    if (currentRunNodeId != null) {
+      setSelectedNodeId(currentRunNodeId);
       return;
     }
-    if (!editMode) {
-      if (rootNodeId != null) setSelectedNodeId(rootNodeId);
-      return;
-    }
+    if (!editMode && rootNodeId != null) setSelectedNodeId(rootNodeId);
+  }, [currentRunNodeId, editMode, rootNodeId]);
+
+  // Edit Mode without a run restores the last selected node (only fills an
+  // empty selection).
+  React.useEffect(() => {
+    if (!isBrowseMode || !editMode) return;
     if (selectedNodeId !== null || campaignNodes.length === 0) return;
     const saved = localStorage.getItem(MISSION_SELECTED_NODE_KEY);
     const savedId = saved ? Number(saved) : NaN;
     if (Number.isFinite(savedId) && byId.has(savedId)) {
       setSelectedNodeId(savedId);
     }
-  }, [isBrowseMode, editMode, rootNodeId, run?.currentNodeId, campaignNodes, selectedNodeId, byId]);
+  }, [isBrowseMode, editMode, campaignNodes, selectedNodeId, byId]);
 
   React.useEffect(() => {
     if (!editMode) {

@@ -31,6 +31,8 @@ import { PENDING_CLIENT_DETAIL_STORAGE_KEY, setGameClientMounted } from "../util
 import posthog from "posthog-js";
 import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import { TOURNAMENTS_ENABLED } from "../config/alpha";
+import { AI_USER_ID } from "../config/aiUser";
+import { isPveGame } from "../utils/pveGames";
 
 // Screens load when first opened, so the boot screen and Command Deck don't
 // download (and in dev, compile) the game view, tutorial, Lobbies, hangar,
@@ -376,16 +378,20 @@ export default function GameClient() {
   }, []);
 
   const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
-  const yourTurnCount =
+  const yourTurnGames =
     appMode === "web2"
-      ? playerGamesWeb2.filter(
-          (g) => g.metadata.winner === "" && g.turnState.currentTurn === currentUserId,
-        ).length
+      ? playerGamesWeb2
+          .filter((g) => g.metadata.winner === "" && g.turnState.currentTurn === currentUserId)
+          .map((g) => ({ isPve: g.metadata.joiner === AI_USER_ID }))
       : isConnected
-        ? playerGames.filter(
-            (g) => g.metadata.winner === ZERO_ADDR && g.turnState.currentTurn === address,
-          ).length
-        : 0;
+        ? playerGames
+            .filter((g) => g.metadata.winner === ZERO_ADDR && g.turnState.currentTurn === address)
+            .map((g) => ({ isPve: isPveGame(g) }))
+        : [];
+  // Your-turn counts (Battles tab marker, header bell, Command Deck) are for
+  // opponents waiting on you, so PvE missions (always your turn while open)
+  // don't count.
+  const pvpYourTurnCount = yourTurnGames.filter((g) => !g.isPve).length;
   // Web2 mode signs in via NextAuth, never connects a wallet — `status`
   // (wagmi) would stay "disconnected" forever for those users.
   const isSignedIn = appMode === "web2" ? isLoggedIn : status === "connected";
@@ -432,13 +438,13 @@ export default function GameClient() {
           (appMode === "web2" ? (
             <CommandDeckWeb2
               layout={commandDeckLayout}
-              yourTurnCount={yourTurnCount}
+              yourTurnCount={pvpYourTurnCount}
               onOpen={(destination) => openTab(TAB_FOR_DESTINATION[destination])}
             />
           ) : (
             <CommandDeckWeb3
               layout={commandDeckLayout}
-              yourTurnCount={yourTurnCount}
+              yourTurnCount={pvpYourTurnCount}
               onOpen={(destination) => openTab(TAB_FOR_DESTINATION[destination])}
             />
           ))}
@@ -496,12 +502,12 @@ export default function GameClient() {
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--color-near-black)" }}>
       <SessionRestoreProbe isConnected={isConnected} onChange={setIsRestoringSession} />
       <div className="shrink-0" style={hudRowStyle} aria-hidden={hideGlobalChrome}>
-        <Header yourTurnCount={isSignedIn ? yourTurnCount : undefined} showSignIn={false} />
+        <Header yourTurnCount={isSignedIn ? pvpYourTurnCount : undefined} showSignIn={false} />
         {showNav && (
           <GameNav
             active={SECTION_FOR_TAB[activeTab]}
             onSelect={(section) => openTab(TAB_FOR_SECTION[section])}
-            battlesAlert={yourTurnCount > 0}
+            battlesAlert={pvpYourTurnCount > 0}
           />
         )}
       </div>

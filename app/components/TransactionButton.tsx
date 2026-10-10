@@ -43,6 +43,8 @@ interface TransactionButtonProps {
 
   // Validation
   validateBeforeTransaction?: () => boolean | string; // Return true or error message
+  /** Called once per click after validation passes, before the wallet prompt — snapshot exactly what's being submitted here. */
+  onBeforeSend?: () => void;
 
   /** Merged with defaults (e.g. square corners). Use for theme borders on the underlying button. */
   style?: React.CSSProperties;
@@ -64,6 +66,7 @@ export function TransactionButton({
   onSuccess,
   onError,
   onTransactionSent,
+  onBeforeSend,
   onReceipt,
   validateBeforeTransaction,
   style: buttonStyle,
@@ -164,6 +167,7 @@ export function TransactionButton({
           return;
         }
       }
+      onBeforeSend?.();
 
       await switchToSelectedChainIfNeeded();
 

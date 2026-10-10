@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import { MAP_ADMIN_ADDRESS } from "../config/alpha";
 import { useIsEncounterEditor } from "../hooks/useIsEncounterEditor";
@@ -71,6 +71,7 @@ function MissionSeedExportPanel() {
   const [baseline, setBaseline] = useState<Partial<MissionSeedFiles>>({});
   const [fileError, setFileError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = async (fileList: FileList | null) => {
     if (!fileList) return;
@@ -125,16 +126,30 @@ function MissionSeedExportPanel() {
         three downloads over them. Read-only.
       </p>
 
-      <label className="block text-xs text-text-secondary">
-        Current seed files ({Object.values(SEED_FILE_NAMES).join(", ")}):
+      <div className="space-y-2">
+        <p className="text-xs text-text-secondary">
+          Current seed files ({Object.values(SEED_FILE_NAMES).join(", ")}). Select all three at once.
+        </p>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="px-4 py-2 rounded-none font-mono text-sm border-2 border-cyan text-cyan hover:bg-cyan/10"
+        >
+          [LOAD SEED FILES]
+        </button>
         <input
+          ref={fileInputRef}
           type="file"
           accept="application/json,.json"
           multiple
-          onChange={(e) => void handleFiles(e.target.files)}
-          className="mt-1 block text-xs"
+          className="hidden"
+          onChange={(e) => {
+            void handleFiles(e.target.files);
+            // Clear so picking the same file again still fires onChange.
+            e.target.value = "";
+          }}
         />
-      </label>
+      </div>
       <ul className="text-xs font-mono">
         {(Object.keys(SEED_FILE_NAMES) as SeedSlot[]).map((slot) => (
           <li key={slot} className={baseline[slot] ? "text-phosphor-green" : "text-text-muted"}>

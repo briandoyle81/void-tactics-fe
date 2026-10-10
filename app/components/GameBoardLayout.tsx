@@ -9,7 +9,7 @@ interface GameBoardLayoutProps {
   containerRef?: React.Ref<HTMLDivElement>;
   /** Fires on left-click directly on the board frame (e.g. padding), not on the grid or controls. */
   onBoardChromeMouseDown?: () => void;
-  /** Drawn over the bottom-left of the board without blocking it (e.g. MissionDialogPanel). */
+  /** Drawn over the board without blocking it, docked bottom-left (e.g. MissionDialogPanel). */
   overlay?: React.ReactNode;
 }
 
@@ -47,7 +47,10 @@ export const GameBoardLayout: React.FC<GameBoardLayoutProps> = ({
       {children}
 
       {overlay ? (
-        <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-[70] flex lg:bottom-4 lg:left-4">
+        // Covers the board (clicks pass through) so the overlay can dock at the
+        // bottom-left and also place a top-center card (MissionDialogPanel's
+        // opening transmission).
+        <div className="pointer-events-none absolute inset-2 z-[70] flex items-end lg:inset-4">
           {overlay}
         </div>
       ) : null}

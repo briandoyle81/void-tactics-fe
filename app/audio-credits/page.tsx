@@ -40,7 +40,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: April 15, 2026
+          Last updated: October 9, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -70,6 +70,51 @@ export default function AudioCreditsPage() {
             </p>
             <p style={{ color: "var(--color-text-secondary)" }}>
               <span className="opacity-80">License:</span> Attribution 4.0
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2
+              className="text-lg font-bold uppercase tracking-wide"
+              style={{
+                fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
+              }}
+            >
+              Comms Sound Effect
+            </h2>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              &ldquo;comms.mp3&rdquo;
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              Sound Effect by{" "}
+              <a
+                href="https://pixabay.com/users/alexis_gaming_cam-50011695/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=338296"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                ALEXIS_GAMING_CAM
+              </a>{" "}
+              from{" "}
+              <a
+                href="https://pixabay.com/sound-effects//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=338296"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Pixabay
+              </a>
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              <span className="opacity-80">License:</span>{" "}
+              <a
+                href="https://pixabay.com/service/license-summary/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Pixabay License Summary
+              </a>
             </p>
           </section>
 

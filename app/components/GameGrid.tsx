@@ -244,6 +244,7 @@ const GameGridCells = React.memo(function GameGridCells({
   isRammingMovePreview,
   isHoldPreviewActive,
   factionAbilityIsHeal,
+  isFactionAbilitySupported,
   retreatPrepShipId,
   retreatPrepIsCreator,
   isMyTurn,
@@ -303,6 +304,7 @@ const GameGridCells = React.memo(function GameGridCells({
   isRammingMovePreview: boolean;
   isHoldPreviewActive: boolean;
   factionAbilityIsHeal: boolean;
+  isFactionAbilitySupported: boolean;
   retreatPrepShipId?: number | null;
   retreatPrepIsCreator?: boolean | null;
   isMyTurn: boolean;
@@ -389,6 +391,7 @@ const GameGridCells = React.memo(function GameGridCells({
             isRammingMovePreview={isRammingMovePreview}
             isHoldPreviewActive={isHoldPreviewActive}
             factionAbilityIsHeal={factionAbilityIsHeal}
+            isFactionAbilitySupported={isFactionAbilitySupported}
             retreatPrepShipId={retreatPrepShipId}
             retreatPrepIsCreator={retreatPrepIsCreator}
             isMyTurn={isMyTurn}
@@ -455,6 +458,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   isRammingMovePreview,
   isHoldPreviewActive,
   factionAbilityIsHeal,
+  isFactionAbilitySupported,
   factionAbilityStrength,
   showLastMoveEmpReplayWhenSelected,
   retreatPrepShipId,
@@ -534,6 +538,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   isRammingMovePreview: boolean;
   isHoldPreviewActive: boolean;
   factionAbilityIsHeal: boolean;
+  isFactionAbilitySupported: boolean;
   factionAbilityStrength?: number;
   showLastMoveEmpReplayWhenSelected: boolean;
   retreatPrepShipId?: number | null;
@@ -631,6 +636,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         isRammingMovePreview={isRammingMovePreview}
         isHoldPreviewActive={isHoldPreviewActive}
         factionAbilityIsHeal={factionAbilityIsHeal}
+        isFactionAbilitySupported={isFactionAbilitySupported}
         retreatPrepShipId={retreatPrepShipId}
         retreatPrepIsCreator={retreatPrepIsCreator}
         isMyTurn={isMyTurn}
@@ -1084,6 +1090,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
             isRammingMovePreview={Boolean(isRammingMovePreview)}
             isHoldPreviewActive={isHoldPreviewActive}
             factionAbilityIsHeal={factionAbilityIsHeal}
+            isFactionAbilitySupported={isFactionAbilitySupported}
             factionAbilityStrength={factionAbilityStrength}
             showLastMoveEmpReplayWhenSelected={showLastMoveEmpReplayWhenSelected}
             retreatPrepShipId={retreatPrepShipId}

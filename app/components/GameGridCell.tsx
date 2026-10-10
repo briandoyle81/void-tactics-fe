@@ -92,6 +92,8 @@ interface GameGridCellProps {
   /** Staged hold: preview sits on the selected ship's current tile. */
   isHoldPreviewActive?: boolean;
   factionAbilityIsHeal?: boolean;
+  /** See useFactionAbilityConfig.ts: Ram via RamResolver (true) vs. the legacy land-on-it ram. */
+  isFactionAbilitySupported?: boolean;
   retreatPrepShipId?: number | null;
   retreatPrepIsCreator?: boolean | null;
   isMyTurn: boolean;
@@ -163,6 +165,7 @@ export const GameGridCell = React.memo(function GameGridCell({
   isRammingMovePreview = false,
   isHoldPreviewActive = false,
   factionAbilityIsHeal = false,
+  isFactionAbilitySupported = false,
   retreatPrepShipId,
   retreatPrepIsCreator,
   isMyTurn,
@@ -356,6 +359,21 @@ export const GameGridCell = React.memo(function GameGridCell({
                         const targetAttrs = getShipAttributes(cell.shipId);
                         return !!targetAttrs && targetAttrs.hullPoints === 0;
                       })();
+
+                    // Ram via RamResolver: the ship can't land on the target's
+                    // tile (Game.sol rejects moves onto occupied tiles). Just
+                    // pick the target; useGameplayInteraction stages a legal
+                    // move within ram range of it, or drops the target if
+                    // there is none.
+                    if (
+                      isDisabledEnemy &&
+                      isFactionAbilitySupported &&
+                      selectedWeaponType === "ram" &&
+                      !factionAbilityIsHeal
+                    ) {
+                      setTargetShipId(cell.shipId);
+                      return;
+                    }
 
                     if (isDisabledEnemy) {
                       // Find selected ship's actual current position.

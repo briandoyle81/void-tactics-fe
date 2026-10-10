@@ -493,8 +493,13 @@ export async function applyGameAction(
           newState = { ...newState, shipAttributes: newAttrs };
         }
       } else if (variant !== 2 && specialType === 3) {
-        // Flak Array: deal gun damage to every active ship within range except the firing ship — no LOS check, friendly fire included
-        const flakRange = getSpecialConfigWeb2(1, 3)!.range;
+        // Flak Array: every active ship within range except the firing
+        // ship (no LOS check, friendly fire included) takes the special's
+        // strength, reduced by its damage reduction, as hull damage only —
+        // FlakArrayResolver.sol's hullDelta path (applySpecialHullDamage),
+        // not a gun hit.
+        const flakConfig = getSpecialConfigWeb2(1, 3)!;
+        const flakRange = flakConfig.range;
         const allActiveIds = [
           ...newState.creatorActiveShipIds,
           ...newState.joinerActiveShipIds,
@@ -509,7 +514,10 @@ export async function applyGameAction(
             Math.abs(targetPos.position.row - row) +
             Math.abs(targetPos.position.col - col);
           if (dist <= flakRange) {
-            newState = applyShootDamage(newState, shipId, targetId);
+            const targetIdx = newState.shipIds.findIndex((id) => id === targetId);
+            const reduction = targetIdx !== -1 ? (newState.shipAttributes[targetIdx]?.damageReduction ?? 0) : 0;
+            const damage = flakConfig.strength - Math.floor((flakConfig.strength * reduction) / 100);
+            newState = applySpecialHullDamage(newState, targetId, damage);
           }
         }
       } else if (variant === 2 && specialType === 1) {

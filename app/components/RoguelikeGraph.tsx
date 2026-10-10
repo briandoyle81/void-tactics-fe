@@ -239,24 +239,29 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
   }
 
   // Play mode snaps to the current run node, and the run-less preview to
-  // the root node. Edit Mode without a run restores the last selected node
-  // so leaving Mission and coming back keeps the panel.
+  // the root node — only when that position (or the mode) changes, never
+  // on the player's own selection, or picking the next mission would snap
+  // straight back to the current one.
+  const currentRunNodeId = run ? Number(run.currentNodeId) : null;
   React.useEffect(() => {
-    if (!isBrowseMode) {
-      setSelectedNodeId(Number(run.currentNodeId));
+    if (currentRunNodeId != null) {
+      setSelectedNodeId(currentRunNodeId);
       return;
     }
-    if (!editMode) {
-      if (rootNodeId != null) setSelectedNodeId(rootNodeId);
-      return;
-    }
+    if (!editMode && rootNodeId != null) setSelectedNodeId(rootNodeId);
+  }, [currentRunNodeId, editMode, rootNodeId]);
+
+  // Edit Mode without a run restores the last selected node so leaving
+  // Mission and coming back keeps the panel (only fills an empty selection).
+  React.useEffect(() => {
+    if (!isBrowseMode || !editMode) return;
     if (selectedNodeId !== null || campaignNodes.length === 0) return;
     const saved = localStorage.getItem(missionSelectedNodeKey(address));
     const savedId = saved ? Number(saved) : NaN;
     if (Number.isFinite(savedId) && byNumberId.has(savedId)) {
       setSelectedNodeId(savedId);
     }
-  }, [isBrowseMode, editMode, rootNodeId, run?.currentNodeId, campaignNodes, selectedNodeId, address, byNumberId]);
+  }, [isBrowseMode, editMode, campaignNodes, selectedNodeId, address, byNumberId]);
 
   React.useEffect(() => {
     if (!editMode) {

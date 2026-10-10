@@ -11,19 +11,9 @@ import { useGetRoguelikeRun } from "../hooks/useRoguelikeRun";
 import type { RoguelikeRun } from "../types/roguelike";
 import { GameDataView } from "../types/types";
 import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
-import { SINGLE_PLAYER_MATCH_ADDRESS } from "../hooks/useSinglePlayerMatch";
 import { ROGUELIKE_MATCH_ADDRESS } from "../hooks/useRoguelikeMatch";
 import { useShowPveGames } from "../hooks/useShowPveGames";
-
-// PvE = a campaign or roguelike mission, i.e. a game orchestrated by
-// SinglePlayerMatch or RoguelikeMatch (same test as GameDisplay.tsx).
-function isPveGame(game: GameDataView): boolean {
-  const orchestrator = game.metadata.orchestrator?.toLowerCase();
-  return (
-    orchestrator === SINGLE_PLAYER_MATCH_ADDRESS.toLowerCase() ||
-    orchestrator === ROGUELIKE_MATCH_ADDRESS.toLowerCase()
-  );
-}
+import { isPveGame } from "../utils/pveGames";
 
 function shortAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;

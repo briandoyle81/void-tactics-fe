@@ -212,7 +212,6 @@ export function MapPlacementsEditorWeb2({
   // Same in-game stats regular fleet selection shows, computed locally from
   // each config's equipment/traits (AI configs aren't real ships, so there's
   // no on-chain attributes read for them — same approach as tutorial ships).
-  const [showInGameProperties, setShowInGameProperties] = useState(true);
   const rosterPreviews = useMemo(
     () =>
       new Map(
@@ -240,7 +239,7 @@ export function MapPlacementsEditorWeb2({
         isSelected={false}
         onToggleSelection={() => armRosterForTapToPlace(c.id)}
         onRecycleClick={() => {}}
-        showInGameProperties={showInGameProperties}
+        showInGameProperties
         inGameAttributes={rosterPreviews.get(c.id.toString())!.attributes}
         selectionMode
         hideRecycle
@@ -342,14 +341,6 @@ export function MapPlacementsEditorWeb2({
                   <option value={1}>{getFactionName(1)}</option>
                   <option value={2}>{getFactionName(2)}</option>
                 </select>
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-text-secondary">
-                  <input
-                    type="checkbox"
-                    checked={showInGameProperties}
-                    onChange={(e) => setShowInGameProperties(e.target.checked)}
-                  />
-                  Show in-game stats
-                </label>
                 <FleetShipListPanel widthClass="w-full" items={rosterItems} />
               </div>
               <div className="w-3/4 h-full flex items-center justify-center">

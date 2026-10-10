@@ -97,7 +97,10 @@ function missionKey(mission: DialogMission | null): string {
  * - `enabled` is false for games without a mission and replays. It stays on
  *   when the game ends so victory/defeat lines (snapshot.outcome) can play;
  *   views show the queue inside the result screen at that point. `paused`
- *   holds the queue (e.g. while RoundStartModal is open).
+ *   holds the queue and hides the current line (e.g. while RoundStartModal
+ *   is open). `holdNewLines` only delays *starting* a new batch (e.g. while
+ *   it isn't the player's turn); a batch already on screen keeps playing so
+ *   a line being read never vanishes.
  * - `log` is every message shown so far (plus any dismissed unread), kept
  *   alongside the rest of the state and still readable after the game ends.
  * - Pure derived state from data the views already have: no RPC calls.
@@ -108,6 +111,7 @@ export function useMissionDialog({
   snapshot,
   enabled,
   paused = false,
+  holdNewLines = false,
   persist = true,
 }: {
   gameId: string;
@@ -116,6 +120,8 @@ export function useMissionDialog({
   snapshot: DialogObservation | null;
   enabled: boolean;
   paused?: boolean;
+  /** Don't start showing a new batch yet; one already on screen continues. */
+  holdNewLines?: boolean;
   /**
    * false keeps state in memory only and treats a return to the opening
    * state as a restart (the tutorial, which starts over on every visit).
@@ -125,10 +131,14 @@ export function useMissionDialog({
   // `index` is the line being shown; once it passes the end the queue is
   // drained, and the next batch starts a fresh queue (so "1/3" counts only
   // lines that are waiting together).
-  const [queue, setQueue] = useState<{ items: DialogLogEntry[]; index: number }>({
+  // `started`: some line of this batch has been on screen.
+  const [queue, setQueue] = useState<{ items: DialogLogEntry[]; index: number; started: boolean }>({
     items: [],
     index: 0,
+    started: false,
   });
+  // Lines dismissed unread since the comms log was last opened.
+  const [unreadCount, setUnreadCount] = useState(0);
   const [log, setLog] = useState<DialogLogEntry[]>([]);
 
   // Latest mission object without making it an effect dependency (views
@@ -144,8 +154,8 @@ export function useMissionDialog({
   const enqueue = useCallback((items: DialogLogEntry[]) => {
     setQueue((q) =>
       q.index >= q.items.length
-        ? { items, index: 0 }
-        : { items: [...q.items, ...items], index: q.index },
+        ? { items, index: 0, started: false }
+        : { items: [...q.items, ...items], index: q.index, started: q.started },
     );
   }, []);
 
@@ -153,7 +163,8 @@ export function useMissionDialog({
   // switching games or remounting.
   useEffect(() => {
     const pending = persist && gameId ? (readStored(gameId)?.pending ?? []) : [];
-    setQueue({ items: pending, index: 0 });
+    setQueue({ items: pending, index: 0, started: false });
+    setUnreadCount(0);
     memoryStateRef.current = null;
     setLog(persist && gameId ? readStoredLog(gameId) : []);
   }, [gameId, persist]);
@@ -215,8 +226,9 @@ export function useMissionDialog({
       const fresh = mergeDisabledShips(observation, null).snapshot;
       if (isOpeningSnapshot(fresh) && !isOpeningSnapshot(stored.last)) {
         stored = null;
-        setQueue({ items: [], index: 0 });
+        setQueue({ items: [], index: 0, started: false });
         setLog([]);
+        setUnreadCount(0);
       }
     }
     const merged = mergeDisabledShips(observation, stored?.everDisabled);
@@ -295,7 +307,7 @@ export function useMissionDialog({
   ]);
 
   const advance = useCallback(
-    () => setQueue((q) => ({ items: q.items, index: q.index + 1 })),
+    () => setQueue((q) => ({ ...q, index: q.index + 1 })),
     [],
   );
   const dismissAll = useCallback(() => {
@@ -303,10 +315,13 @@ export function useMissionDialog({
     const skipped = queue.items.slice(queue.index);
     setLog((l) => appendToLog(l, skipped));
     clearPending(skipped.map((item) => item.key));
-    setQueue((q) => ({ items: q.items, index: q.items.length }));
+    // The one on screen was seen; the rest were skipped unread.
+    setUnreadCount((n) => n + Math.max(0, skipped.length - 1));
+    setQueue((q) => ({ ...q, index: q.items.length }));
   }, [queue, clearPending]);
+  const markLogSeen = useCallback(() => setUnreadCount(0), []);
 
-  const active = enabled && !paused;
+  const active = enabled && !paused && (!holdNewLines || queue.started);
   const current = active && queue.index < queue.items.length ? queue.items[queue.index] : null;
 
   // A line enters the log (and leaves the pending list) as soon as it's shown.
@@ -314,6 +329,7 @@ export function useMissionDialog({
     if (!current) return;
     setLog((l) => appendToLog(l, [current]));
     clearPending([current.key]);
+    setQueue((q) => (q.started ? q : { ...q, started: true }));
   }, [current, clearPending]);
 
   return {
@@ -324,5 +340,8 @@ export function useMissionDialog({
     total: queue.items.length,
     advance,
     dismissAll,
+    /** Lines dismissed unread since the comms log was last opened. */
+    unreadCount,
+    markLogSeen,
   };
 }

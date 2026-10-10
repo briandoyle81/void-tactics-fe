@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { isAoeSpecialWeb2, isLightningFieldSpecial, isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { useQueryClient } from "@tanstack/react-query";
 import { baseSepolia } from "viem/chains";
 import posthog from "posthog-js";
@@ -74,6 +75,8 @@ import {
   useSpecialStrengthAt,
 } from "../hooks/useShipAttributesContract";
 import { useFactionAbilityConfig } from "../hooks/useFactionAbilityConfig";
+import { usePendingMove } from "../hooks/usePendingMove";
+import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
 import { requireShipValue } from "../utils/requireShipValue";
 import { FleeSafetySwitch } from "./FleeSafetySwitch";
 import { FleeConfirmButtonWeb3 } from "./FleeConfirmButtonWeb3";
@@ -226,7 +229,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const [replayNotFound, setReplayNotFound] = React.useState(false);
   const [replayAutoPlay, setReplayAutoPlay] = React.useState(false);
   const replayAutoPlayRef = React.useRef(false);
-  const { clearAllTransactions, transactionState } = useTransaction();
+  const { clearAllTransactions, transactionState, completeTransaction } = useTransaction();
   const [selectedShipId, setSelectedShipId] = useState<bigint | null>(null);
   // Drag and drop state — `selectedShipId`/`draggedShipId` stay here (not
   // owned by `useGameplayInteraction`) because resolving their equipped
@@ -290,7 +293,26 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     gameSyncKeyRef.current = incomingSyncKey;
     latestGameDataRef.current = incomingGame;
   }
-  const game = latestGameDataRef.current;
+  // Confirmed chain data. `game` (below) is this plus the predicted result
+  // of a submitted move that hasn't landed yet (see usePendingMove), and is
+  // what everything renders from.
+  const chainGame = latestGameDataRef.current;
+  const onPendingMoveResolvedRef = React.useRef<(() => void) | null>(null);
+  const pendingMove = usePendingMove({
+    chainLastMoveKey: lastMoveKey(chainGame.lastMove),
+    isGameOver: chainGame.metadata.winner !== ZERO_ADDR,
+    onResolved: () => onPendingMoveResolvedRef.current?.(),
+  });
+  const {
+    capture: capturePendingMove,
+    markSent: markPendingMoveSent,
+    fail: failPendingMove,
+    pendingRef: pendingMoveRef,
+  } = pendingMove;
+  const game = React.useMemo(
+    () => applyPendingMoveToGame(chainGame, pendingMove.pendingMove, (n) => BigInt(n)),
+    [chainGame, pendingMove.pendingMove],
+  );
 
   // ── Replay overlay: replaySnapshotGame → displayGame ───────────────────────
   const replaySnapshotGame: GameDataView | null = React.useMemo(() => {
@@ -464,73 +486,71 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     [shipCardGridTwoCols],
   );
 
-  // Optimistic last-move handling:
-  // When a tx is confirmed, there can be a short delay before the
-  // blockchain/refetch updates `game.lastMove`. During that gap we want
-  // to keep the submitted move rendered as the "last move".
-  const [optimisticLastMove, setOptimisticLastMove] = React.useState<
-    LastMove | null
-  >(null);
+  // A submitted-but-unconfirmed move is already folded into `game` (see
+  // usePendingMove), including its lastMove.
+  const optimisticLastMove: LastMove | null = pendingMove.isAwaitingSync ? (game.lastMove ?? null) : null;
   const displayedLastMove: LastMove | undefined = isReplaying
     ? (replaySnapshotGame?.lastMove ?? undefined)
-    : (optimisticLastMove ?? game.lastMove);
+    : game.lastMove;
 
   // Initialize game record once on mount
   React.useEffect(() => {
-    if (!gameRecordRef.current && game.metadata.gameId) {
+    if (!gameRecordRef.current && chainGame.metadata.gameId) {
       const initial = buildInitialRecord(
-        String(game.metadata.gameId),
-        game.metadata.creator,
-        game.metadata.joiner,
-        game,
+        String(chainGame.metadata.gameId),
+        chainGame.metadata.creator,
+        chainGame.metadata.joiner,
+        chainGame,
       );
       gameRecordRef.current = initial;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once on mount only
 
+  // Reads chainGame, never the predicted `game`: only confirmed moves are
+  // recorded for replay.
   // Save to localStorage after every confirmed move — ours OR opponent's.
-  // game.lastMove.timestamp changes whenever game refetches with a new move.
+  // chainGame.lastMove.timestamp changes whenever game refetches with a new move.
   React.useEffect(() => {
-    const newTs = game.lastMove?.timestamp;
+    const newTs = chainGame.lastMove?.timestamp;
     if (newTs === lastMoveTimestampRef.current) return; // no new move
     lastMoveTimestampRef.current = newTs;
 
     // Only participants record (not spectators)
-    if (!address || !game.lastMove) return;
-    const creatorAddr = game.metadata.creator.toLowerCase();
-    const joinerAddr = game.metadata.joiner.toLowerCase();
+    if (!address || !chainGame.lastMove) return;
+    const creatorAddr = chainGame.metadata.creator.toLowerCase();
+    const joinerAddr = chainGame.metadata.joiner.toLowerCase();
     const myAddr = address.toLowerCase();
     if (myAddr !== creatorAddr && myAddr !== joinerAddr) return;
 
     // Who just moved: after a move, currentTurn switches to the other player
-    const currentTurnAddr = game.turnState.currentTurn.toLowerCase();
+    const currentTurnAddr = chainGame.turnState.currentTurn.toLowerCase();
     const whoJustMoved =
-      currentTurnAddr === creatorAddr ? game.metadata.joiner : game.metadata.creator;
+      currentTurnAddr === creatorAddr ? chainGame.metadata.joiner : chainGame.metadata.creator;
 
     const prev = gameRecordRef.current;
     const base = prev ?? buildInitialRecord(
-      String(game.metadata.gameId),
-      game.metadata.creator,
-      game.metadata.joiner,
-      game,
+      String(chainGame.metadata.gameId),
+      chainGame.metadata.creator,
+      chainGame.metadata.joiner,
+      chainGame,
     );
-    const updated = appendTurn(base, game, whoJustMoved, game.lastMove);
+    const updated = appendTurn(base, chainGame, whoJustMoved, chainGame.lastMove);
     gameRecordRef.current = updated;
-    saveGameRecord(String(game.metadata.gameId), updated);
-  }, [game, address]);
+    saveGameRecord(String(chainGame.metadata.gameId), updated);
+  }, [chainGame, address]);
 
   // Finalize the record once when the game ends
   React.useEffect(() => {
-    const winner = game.metadata.winner;
+    const winner = chainGame.metadata.winner;
     if (!winner || winner === ZERO_ADDR || archivedRef.current) return;
     const record = gameRecordRef.current;
     if (!record) return;
     archivedRef.current = true;
     const final = finalizeRecord(record, winner);
     gameRecordRef.current = final;
-    saveGameRecord(String(game.metadata.gameId), final, { immediate: true });
-  }, [game.metadata.winner, game.metadata.gameId]);
+    saveGameRecord(String(chainGame.metadata.gameId), final, { immediate: true });
+  }, [chainGame.metadata.winner, chainGame.metadata.gameId]);
 
   // ── Replay callbacks ────────────────────────────────────────────────────────
 
@@ -785,8 +805,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // Check if it's the current player's turn
   const isMyTurn = game.turnState.currentTurn === address;
-  const [awaitingTurnSyncAfterSubmit, setAwaitingTurnSyncAfterSubmit] =
-    React.useState(false);
+  // A sent move hasn't landed yet: hold off acting again until it has.
+  const awaitingTurnSyncAfterSubmit = pendingMove.isAwaitingSync;
   const isMyTurnEffective = isMyTurn && !awaitingTurnSyncAfterSubmit;
   const canActInGame = !readOnly && isMyTurnEffective;
   // Set once this player's flee/retreat tx has a receipt. That receipt
@@ -882,7 +902,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const { recordPlayerMove } = useGamePolling({
     gameId: Number(game.metadata.gameId),
     turnTime: game.turnState.turnTime,
-    gameData: game,
+    gameData: chainGame,
     refetchGame,
     onRefetch: () => interaction.setTargetShipId(null),
     isSinglePlayerGame: isVsAIGame,
@@ -1133,10 +1153,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // read as an unexplained flash back to the pre-submit state.
   const handleMoveSubmitError = React.useCallback(
     (error: unknown) => {
+      // Drop the predicted result so the board shows chain data again. If
+      // nothing was pending, this failure was already reported (the receipt
+      // watcher below and the button can both see a revert).
+      const hadPendingMove = failPendingMove();
       // Clear the selection first so the confirm widget (gated on
       // selectedShipId via isShowingProposedMove/showConfirmWidget) is
       // removed from the tree immediately. Flipping
-      // awaitingTurnSyncAfterSubmit back to false re-enables
+      // the pending move (awaitingTurnSyncAfterSubmit) re-enables
       // isCurrentPlayerTurn — doing that before the selection clears let
       // the widget briefly re-render in its normal enabled "ready to
       // submit" appearance before disappearing, which read as a flash back
@@ -1144,7 +1168,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       handleCancelMove();
       clearOptimisticSos();
       clearOptimisticDestroy();
-      setAwaitingTurnSyncAfterSubmit(false);
+      if (!hadPendingMove) return;
 
       const errorMessage =
         (error as Error)?.message || String(error) || "Unknown error";
@@ -1183,7 +1207,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         toast.error(`Transaction failed: ${errorMessage}`);
       }
     },
-    [handleCancelMove, clearOptimisticSos, clearOptimisticDestroy],
+    [failPendingMove, handleCancelMove, clearOptimisticSos, clearOptimisticDestroy],
   );
 
   /** Tutorial parity: pulse is driven by tutorial steps in SimulatedGameDisplay; live game leaves it off. */
@@ -1364,73 +1388,22 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // transition detection from double-firing the same cue a render later.
   const prevTurnRef = React.useRef<boolean | null>(null);
 
-  // Clear optimistic last move once the contract state catches up.
-  React.useEffect(() => {
-    if (!optimisticLastMove) return;
-    if (!game.lastMove) return;
-
-    const matches =
-      game.lastMove.shipId === optimisticLastMove.shipId &&
-      game.lastMove.actionType === optimisticLastMove.actionType &&
-      game.lastMove.targetShipId === optimisticLastMove.targetShipId &&
-      game.lastMove.oldRow === optimisticLastMove.oldRow &&
-      game.lastMove.oldCol === optimisticLastMove.oldCol &&
-      game.lastMove.newRow === optimisticLastMove.newRow &&
-      game.lastMove.newCol === optimisticLastMove.newCol;
-
-    if (matches) {
-      setOptimisticLastMove(null);
-      setAwaitingTurnSyncAfterSubmit(false);
-      // The blockchain state has caught up to the submitted preview.
-      // Clear local proposal UI now (not immediately on submit) so the
-      // previewed board state remains visible during the sync gap.
-      interaction.handleCancelMove();
-      // A same-turn multi-move sequence (still my turn after this move)
-      // plays the cue directly here rather than waiting on
-      // useTurnChangeAlertSound's own false->true transition detection —
-      // that transition (isMyTurnEffective dipped false for the submit's
-      // "awaiting sync" window and is about to flip back true next render)
-      // would otherwise ALSO fire a render later and double the sound.
-      // Stamping the ref now marks that transition as already handled so
-      // the hook's own effect sees prevTurnRef.current === true next render
-      // and stays silent — this also correctly skips the "opponent just
-      // finished" cleanup in the effect below, since no real hand-off
-      // happened here.
-      if (!readOnly && game.turnState.currentTurn === address) {
-        playTurnAlertSound();
-        prevTurnRef.current = true;
-      }
+  // A sent move landed in chain data (usePendingMove resolved it): drop the
+  // leftover proposal UI. A same-turn multi-move sequence (still my turn
+  // after this move) plays the cue here rather than via
+  // useTurnChangeAlertSound's false->true detection: isMyTurnEffective dipped
+  // false while the move was pending and is about to flip back true, which
+  // would ALSO fire a render later and double the sound. Stamping the ref
+  // marks that transition as handled.
+  onPendingMoveResolvedRef.current = () => {
+    interaction.handleCancelMove();
+    clearOptimisticSos();
+    clearOptimisticDestroy();
+    if (!readOnly && chainGame.turnState.currentTurn === address) {
+      playTurnAlertSound();
+      prevTurnRef.current = true;
     }
-    // interaction is a fresh object every render; depend on the stable handler only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    optimisticLastMove,
-    game.lastMove,
-    game.turnState.currentTurn,
-    address,
-    readOnly,
-    optimisticLastMove?.shipId,
-    optimisticLastMove?.actionType,
-    optimisticLastMove?.targetShipId,
-    optimisticLastMove?.oldRow,
-    optimisticLastMove?.oldCol,
-    optimisticLastMove?.newRow,
-    optimisticLastMove?.newCol,
-    interaction.handleCancelMove,
-  ]);
-
-  // If chain state already says it is no longer our turn, allow local UI to
-  // resume normal turn derivation immediately.
-  React.useEffect(() => {
-    if (!awaitingTurnSyncAfterSubmit) return;
-    if (!isMyTurn) {
-      setAwaitingTurnSyncAfterSubmit(false);
-      // Turn advanced onchain; clear any locally held proposal state.
-      interaction.handleCancelMove();
-    }
-    // interaction is a fresh object every render; depend on the stable handler only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [awaitingTurnSyncAfterSubmit, isMyTurn, interaction.handleCancelMove]);
+  };
 
   // For Retreat, newRow/newCol are -1 (fled); don't highlight a cell
   const highlightedMovePosition = React.useMemo(() => {
@@ -1591,19 +1564,21 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     if (roguelikeDialogNodeId > 0) return { kind: "roguelike", nodeId: roguelikeDialogNodeId };
     return null;
   }, [isSinglePlayerGame, nodeIdForGame, roguelikeDialogNodeId]);
+  // Confirmed data only: a pending move's predicted result must not fire
+  // dialog lines (they'd stay fired even if the move then fails).
   const dialogSnapshot = React.useMemo(() => {
-    const isCreatorNow = game.metadata.creator === address;
+    const isCreatorNow = chainGame.metadata.creator === address;
     return buildDialogSnapshot({
-      round: Number(game.turnState.currentRound),
-      myScore: Number(isCreatorNow ? game.creatorScore : game.joinerScore),
-      enemyScore: Number(isCreatorNow ? game.joinerScore : game.creatorScore),
-      ships: game.shipPositions.map((p) => {
-        const index = game.shipIds?.findIndex((id) => id === p.shipId) ?? -1;
+      round: Number(chainGame.turnState.currentRound),
+      myScore: Number(isCreatorNow ? chainGame.creatorScore : chainGame.joinerScore),
+      enemyScore: Number(isCreatorNow ? chainGame.joinerScore : chainGame.creatorScore),
+      ships: chainGame.shipPositions.map((p) => {
+        const index = chainGame.shipIds?.findIndex((id) => id === p.shipId) ?? -1;
         return {
           id: p.shipId.toString(),
           isMine: p.isCreator === isCreatorNow,
           status: p.status,
-          hullPoints: index >= 0 ? (game.shipAttributes?.[index]?.hullPoints ?? null) : null,
+          hullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.hullPoints ?? null) : null,
         };
       }),
       // Victory/defeat triggers; a draw is neither.
@@ -1611,14 +1586,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         gameWinnerResult === "me" ? "victory" : gameWinnerResult === "opponent" ? "defeat" : null,
     });
   }, [
-    game.metadata.creator,
+    chainGame.metadata.creator,
     address,
-    game.turnState.currentRound,
-    game.creatorScore,
-    game.joinerScore,
-    game.shipPositions,
-    game.shipIds,
-    game.shipAttributes,
+    chainGame.turnState.currentRound,
+    chainGame.creatorScore,
+    chainGame.joinerScore,
+    chainGame.shipPositions,
+    chainGame.shipIds,
+    chainGame.shipAttributes,
     gameWinnerResult,
   ]);
   const missionDialog = useMissionDialog({
@@ -1628,6 +1603,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     // Stays on after the game ends so victory/defeat lines can play.
     enabled: !readOnly && !isReplaying,
     paused: roundStartInfo != null && !isGameOver,
+    // New lines wait for the player's turn (and for a submitted move to
+    // land), when they're looking at the board; a line already showing
+    // stays put.
+    holdNewLines: !isMyTurnEffective && !isGameOver,
   });
   // On the board while the game runs (and after the result screen is
   // dismissed); while the result screen is up, lines play inside it instead
@@ -1643,10 +1622,13 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         onAdvance={missionDialog.advance}
         onDismiss={missionDialog.dismissAll}
         compact={isLandscapeMobile}
+        unreadCount={missionDialog.unreadCount}
+        onLogOpened={missionDialog.markLogSeen}
       />
     ) : null;
   const missionDebriefNode = missionDialog.current ? (
     <DialogLineCard
+      key={missionDialog.current.key}
       line={missionDialog.current}
       position={missionDialog.position}
       total={missionDialog.total}
@@ -1799,6 +1781,137 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     [shipMap, getShipAttributes, isShipOwnedByCurrentPlayer, movedShipIdsSet],
   );
 
+  // ── Submitting a move (both submit buttons) ───────────────────────────────
+  // onBeforeSend (click, before the wallet prompt) snapshots the move into
+  // usePendingMove; onTransactionSent (broadcast) shows its predicted result
+  // and clears the proposal UI; the receipt watcher below confirms or reverts
+  // it. Nothing here reads state at receipt time, so refetches that land
+  // first (and clear selection/targets) can't change what's displayed.
+  const [pendingMoveTx, setPendingMoveTx] = React.useState<{
+    hash: `0x${string}`;
+    key: number;
+    transactionId: string;
+  } | null>(null);
+
+  const captureMoveForSubmit = React.useCallback(() => {
+    const payload = interaction.buildActionPayload();
+    if (!payload) return;
+    const current = game.shipPositions.find((p) => Number(p.shipId) === payload.shipId)?.position;
+    if (!current) return;
+    const targetPosition =
+      payload.targetShipId > 0
+        ? (game.shipPositions.find((p) => Number(p.shipId) === payload.targetShipId)?.position ?? null)
+        : null;
+    let effect: PendingMoveEffect = { kind: "none" };
+    if (payload.actionType === ActionType.FactionAbility) {
+      effect = selectedShipFactionAbilityIsHeal
+        ? { kind: "heal", amount: Number(selectedShipFactionAbilityStrength ?? 0) }
+        : { kind: "ram" };
+    } else if (
+      payload.actionType === ActionType.Special &&
+      isAoeSpecialWeb2(selectedShipVariant || 1, specialType)
+    ) {
+      // Flak Array / Electric Storm hit everything in range of the
+      // destination, not a chosen target.
+      if (selectedSpecialRange != null && specialData?.strength != null) {
+        effect = predictAoeEffect({
+          kind: isLightningFieldSpecial(selectedShipVariant || 1, specialType) ? "storm" : "flak",
+          center: { row: payload.row, col: payload.col },
+          range: selectedSpecialRange,
+          strength: specialData.strength,
+          casterShipId: payload.shipId,
+          positions: game.shipPositions,
+          getShipAttributes: getShipAttributesForDisplay,
+        });
+      }
+    } else if (
+      payload.targetShipId > 0 &&
+      (payload.actionType === ActionType.Shoot || payload.actionType === ActionType.Special)
+    ) {
+      const isSpecial = payload.actionType === ActionType.Special;
+      const dmg = calculateDamageForDisplay(payload.targetShipId, isSpecial ? "special" : "weapon");
+      effect =
+        isSpecial && isRepairDronesSpecial(selectedShipVariant || 1, specialType)
+          ? { kind: "heal", amount: dmg.baseDamage }
+          : { kind: "damage", reducedDamage: dmg.reducedDamage, reactorCritical: dmg.reactorCritical };
+    }
+    capturePendingMove({
+      shipId: payload.shipId,
+      actionType: payload.actionType,
+      targetShipId: payload.targetShipId,
+      row: payload.row,
+      col: payload.col,
+      current,
+      targetPosition,
+      getShipAttributes: getShipAttributesForDisplay,
+      effect,
+      baselineLastMoveKey: lastMoveKey(chainGame.lastMove),
+    });
+  }, [
+    interaction,
+    game.shipPositions,
+    chainGame.lastMove,
+    selectedShipFactionAbilityIsHeal,
+    selectedShipFactionAbilityStrength,
+    selectedShipVariant,
+    specialType,
+    selectedSpecialRange,
+    specialData,
+    calculateDamageForDisplay,
+    getShipAttributesForDisplay,
+    capturePendingMove,
+  ]);
+
+  const handleMoveTxSent = React.useCallback(
+    (hash: `0x${string}`) => {
+      const pending = pendingMoveRef.current;
+      if (!pending) return;
+      snapshotOptimisticSosIfNeeded();
+      markPendingMoveSent(pending.key);
+      setPendingMoveTx({ hash, key: pending.key, transactionId: moveShipTxId });
+      // The predicted result now renders from `game`; retire the proposal.
+      handleCancelMove();
+    },
+    [pendingMoveRef, snapshotOptimisticSosIfNeeded, markPendingMoveSent, moveShipTxId, handleCancelMove],
+  );
+
+  // Watched here, not in the submit button: the button unmounts as soon as
+  // the proposal clears, and its own receipt handling goes with it.
+  const { data: pendingMoveReceipt, error: pendingMoveReceiptError } = useWaitForTransactionReceipt({
+    hash: pendingMoveTx?.hash,
+    chainId: appChainId,
+    query: { enabled: !!pendingMoveTx },
+  });
+  React.useEffect(() => {
+    if (!pendingMoveTx) return;
+    if (pendingMoveReceipt) {
+      setPendingMoveTx(null);
+      if (pendingMoveReceipt.status === "reverted") {
+        completeTransaction(pendingMoveTx.transactionId, false, new Error("Transaction reverted on-chain"));
+        handleMoveSubmitError(new Error("execution reverted"));
+        return;
+      }
+      completeTransaction(pendingMoveTx.transactionId, true);
+      toast.success("Move submitted successfully!");
+      recordPlayerMove();
+      void Promise.resolve(refetchGame());
+      void Promise.resolve(refetch?.());
+    } else if (pendingMoveReceiptError) {
+      setPendingMoveTx(null);
+      completeTransaction(pendingMoveTx.transactionId, false, pendingMoveReceiptError);
+      handleMoveSubmitError(pendingMoveReceiptError);
+    }
+  }, [
+    pendingMoveTx,
+    pendingMoveReceipt,
+    pendingMoveReceiptError,
+    completeTransaction,
+    handleMoveSubmitError,
+    recordPlayerMove,
+    refetchGame,
+    refetch,
+  ]);
+
   const confirmMoveButton = React.useMemo(() => {
     if (!showConfirmWidget) return undefined;
     const computedRow = computedMoveCoords.row;
@@ -1852,53 +1965,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               return "Invalid position coordinates";
             }
           }
+          if (interaction.ramActionError) return interaction.ramActionError;
           return true;
         }}
-        onTransactionSent={() => {
-          snapshotOptimisticSosIfNeeded();
-          setAwaitingTurnSyncAfterSubmit(true);
-        }}
-        onSuccess={async () => {
-          const currentPosition = game.shipPositions.find(p => p.shipId === selectedShipId);
-          const submittedTargetShipId = targetShipId ?? 0n;
-          const oldRow = currentPosition?.position.row ?? computedRow;
-          const oldCol = currentPosition?.position.col ?? computedCol;
-          const isRamRelocate =
-            computedActionType === ActionType.FactionAbility && !selectedShipFactionAbilityIsHeal;
-          const ramTargetPosition = isRamRelocate
-            ? game.shipPositions.find((p) => p.shipId === submittedTargetShipId)?.position
-            : undefined;
-          const optimisticNewRow =
-            computedActionType === ActionType.Retreat ? -1 : (ramTargetPosition?.row ?? computedRow);
-          const optimisticNewCol =
-            computedActionType === ActionType.Retreat ? -1 : (ramTargetPosition?.col ?? computedCol);
-          setOptimisticLastMove({
-            shipId: selectedShipId!,
-            oldRow,
-            oldCol,
-            newRow: optimisticNewRow,
-            newCol: optimisticNewCol,
-            actionType: computedActionType,
-            targetShipId: submittedTargetShipId,
-            timestamp: BigInt(Date.now()),
-          });
-          interaction.recordOptimisticMove({
-            shipId: Number(selectedShipId),
-            oldRow,
-            oldCol,
-            newRow: optimisticNewRow,
-            newCol: optimisticNewCol,
-            actionType: computedActionType,
-            targetShipId: Number(submittedTargetShipId),
-            timestamp: Date.now(),
-          });
-          snapshotOptimisticSosIfNeeded();
-          toast.success("Move submitted successfully!");
-          recordPlayerMove();
-          handleCancelMove();
-          void Promise.resolve(refetchGame());
-          void Promise.resolve(refetch?.());
-        }}
+        onBeforeSend={captureMoveForSubmit}
+        onTransactionSent={handleMoveTxSent}
         onError={handleMoveSubmitError}
       >
         {confirmWidgetLabel}
@@ -1908,7 +1979,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     showConfirmWidget,
     selectedShipId,
     game.metadata.gameId,
-    game.shipPositions,
     gameContract.address,
     gameContract.abi,
     computedMoveCoords.row,
@@ -1918,13 +1988,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     confirmWidgetLabel,
     isShipOwnedByCurrentPlayer,
     movedShipIdsSet,
-    snapshotOptimisticSosIfNeeded,
-    selectedShipFactionAbilityIsHeal,
-    interaction.recordOptimisticMove,
-    recordPlayerMove,
-    handleCancelMove,
-    refetchGame,
-    refetch,
+    interaction.ramActionError,
+    captureMoveForSubmit,
+    handleMoveTxSent,
     handleMoveSubmitError,
   ]);
 
@@ -1987,10 +2053,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   }`}
                   loadingText="[SUBMITTING...]"
                   errorText="[ERR]"
+                  onBeforeSend={captureMoveForSubmit}
                   onTransactionSent={(hash) => {
-                    snapshotOptimisticSosIfNeeded();
-                    setAwaitingTurnSyncAfterSubmit(true);
-                    if (selectedShipId == null) return;
+                    // Read before handleMoveTxSent clears the selection.
+                    const analyticsShipId = selectedShipId;
+                    handleMoveTxSent(hash);
+                    if (analyticsShipId == null) return;
                     const moveTypeLabel =
                       ActionType[computedActionType] ??
                       String(computedActionType);
@@ -2003,7 +2071,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     }
                     posthog.capture("game_move_submitted", {
                       game_id: String(game.metadata.gameId),
-                      ship_id: selectedShipId.toString(),
+                      ship_id: analyticsShipId.toString(),
                       move_type: moveTypeLabel,
                       ...(targetShipIdForAnalytics != null
                         ? { target_ship_id: targetShipIdForAnalytics }
@@ -2011,77 +2079,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       tx_hash: hash,
                       chain_id: appChainId,
                     });
-                  }}
-                  onSuccess={async () => {
-                    const currentPosition = game.shipPositions.find(
-                      (pos) => pos.shipId === selectedShipId,
-                    );
-                    const oldRow = currentPosition
-                      ? currentPosition.position.row
-                      : computedRow;
-                    const oldCol = currentPosition
-                      ? currentPosition.position.col
-                      : computedCol;
-
-                    const submittedTargetShipId = targetShipId ?? 0n;
-                    // Ram relocates the acting ship onto the victim's
-                    // (now-vacated) tile as an effect — its final position
-                    // is NOT the submitted destRow/destCol (that's only a
-                    // legal staging tile within range of the target; see
-                    // RamResolver.sol). Repair never relocates anyone.
-                    const isRamRelocate =
-                      computedActionType === ActionType.FactionAbility && !selectedShipFactionAbilityIsHeal;
-                    const ramTargetPosition = isRamRelocate
-                      ? game.shipPositions.find((p) => p.shipId === submittedTargetShipId)?.position
-                      : undefined;
-                    const optimisticNewRow =
-                      computedActionType === ActionType.Retreat
-                        ? -1
-                        : (ramTargetPosition?.row ?? computedRow);
-                    const optimisticNewCol =
-                      computedActionType === ActionType.Retreat
-                        ? -1
-                        : (ramTargetPosition?.col ?? computedCol);
-
-                    setOptimisticLastMove({
-                      shipId: selectedShipId!,
-                      oldRow,
-                      oldCol,
-                      newRow: optimisticNewRow,
-                      newCol: optimisticNewCol,
-                      actionType: computedActionType,
-                      targetShipId: submittedTargetShipId,
-                      timestamp: BigInt(Date.now()),
-                    });
-                    interaction.recordOptimisticMove({
-                      shipId: Number(selectedShipId),
-                      oldRow,
-                      oldCol,
-                      newRow: optimisticNewRow,
-                      newCol: optimisticNewCol,
-                      actionType: computedActionType,
-                      targetShipId: Number(submittedTargetShipId),
-                      timestamp: Date.now(),
-                    });
-                    snapshotOptimisticSosIfNeeded();
-
-                    toast.success("Move submitted successfully!");
-                    recordPlayerMove();
-                    handleCancelMove();
-                    void Promise.resolve(refetchGame());
-                    void Promise.resolve(refetch?.());
-                    // Retire the proposed-move UI (confirm/submit button)
-                    // now that the move is confirmed successful, instead of
-                    // waiting for the later chain-sync effect to notice
-                    // game.lastMove matches and clear it — that wait could
-                    // take a while (poll interval, RPC lag), during which
-                    // the button sat there re-enabled, looking like nothing
-                    // had been submitted. optimisticLastMove (just set
-                    // above) already hands display duty to the "last move"
-                    // ghost/arrow system in the same render, so there's no
-                    // visual gap. awaitingTurnSyncAfterSubmit is left alone
-                    // — it still guards against acting again before the
-                    // chain genuinely reflects the new turn state.
                   }}
                   onError={handleMoveSubmitError}
                   validateBeforeTransaction={() => {
@@ -2113,6 +2110,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                         return "Invalid position coordinates";
                       }
                     }
+                    if (interaction.ramActionError) return interaction.ramActionError;
                     return true;
                   }}
                 >

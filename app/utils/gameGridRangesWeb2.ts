@@ -116,6 +116,46 @@ interface ShootingRangeParams {
   impassableGrid?: boolean[][];
 }
 
+/**
+ * Where a ship should end its move to Ram `target`. Mirrors RamResolver.sol:
+ * the ship makes a normal legal move (or stays put), then must be within
+ * `range` of the target from that tile; the resolver then relocates it onto
+ * the target's tile. `moveTiles` is computeMovementRange's output with no
+ * preview set (legal, path-checked, unoccupied destinations). Keeps
+ * `preferred` (the already-proposed move) when it works, else prefers
+ * staying put, else the shortest move. Null when the target can't be rammed
+ * this turn.
+ */
+export function findRamStagingTile({
+  current,
+  moveTiles,
+  target,
+  range,
+  preferred,
+}: {
+  current: { row: number; col: number };
+  moveTiles: readonly { row: number; col: number }[];
+  target: { row: number; col: number };
+  range: number;
+  preferred?: { row: number; col: number } | null;
+}): { row: number; col: number } | null {
+  const dist = (a: { row: number; col: number }, b: { row: number; col: number }) =>
+    Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
+  const inRange = (t: { row: number; col: number }) => dist(t, target) <= range;
+  const isCandidate = (t: { row: number; col: number }) =>
+    (t.row === current.row && t.col === current.col) ||
+    moveTiles.some((m) => m.row === t.row && m.col === t.col);
+
+  if (preferred && isCandidate(preferred) && inRange(preferred)) return preferred;
+  if (inRange(current)) return current;
+  let best: { row: number; col: number } | null = null;
+  for (const tile of moveTiles) {
+    if (!inRange(tile)) continue;
+    if (!best || dist(tile, current) < dist(best, current)) best = tile;
+  }
+  return best;
+}
+
 export function computeMovementRange({
   gridWidth,
   gridHeight,

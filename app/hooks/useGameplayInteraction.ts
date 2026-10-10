@@ -8,6 +8,7 @@ import {
   computeLabelTargets,
   computeHoverValidTargets,
   computeHoverShootingRange,
+  findRamStagingTile,
 } from "../utils/gameGridRangesWeb2";
 import { hasLineOfSight, buildEnemyOccupiedGrid } from "../utils/gameGridRanges";
 import { resolveActionRange } from "../utils/requireShipValue";
@@ -154,7 +155,6 @@ export function useGameplayInteraction({
   const [selectedWeaponType, setSelectedWeaponType] = useState<"weapon" | "special" | "ram">("weapon");
   const [weaponPreferenceByShipId, setWeaponPreferenceByShipId] = useState<Record<string, "weapon" | "special">>({});
   const [dragOverCell, setDragOverCell] = useState<{ row: number; col: number } | null>(null);
-  const [optimisticLastMove, setOptimisticLastMove] = useState<Web2LastMove | null>(null);
 
   const isShipOwnedByCurrentPlayer = useCallback(
     (shipId: number): boolean => {
@@ -377,6 +377,59 @@ export function useGameplayInteraction({
       }),
     [gridWidth, gridHeight, selectedShipId, shipMap, aliveShipPositions, getShipAttributes, previewPosition, isEnemyDisabledShipId, isFactionAbilitySupported, impassableGrid],
   );
+
+  // Ram via RamResolver (see findRamStagingTile): the ship makes a normal
+  // legal move, then the target must be within ram range of where it ends.
+  // ramMoveTiles is the full legal destination set regardless of any staged
+  // preview (movementRange above empties once a preview is set).
+  const isResolverRamMode =
+    isFactionAbilitySupported && selectedWeaponType === "ram" && !selectedShipFactionAbilityIsHeal;
+  const ramMoveTiles = useMemo(
+    () =>
+      isResolverRamMode
+        ? computeMovementRange({
+            gridWidth,
+            gridHeight,
+            selectedShipId,
+            hasShips: shipMap.size > 0,
+            shipMap,
+            getShipAttributes,
+            shipPositions: aliveShipPositions,
+            previewPosition: null,
+            canEnterOccupiedCell: () => false,
+            impassableGrid,
+          })
+        : EMPTY_RANGE_CELLS,
+    [isResolverRamMode, gridWidth, gridHeight, selectedShipId, shipMap, getShipAttributes, aliveShipPositions, impassableGrid],
+  );
+
+  // Picking a Ram target stages the move for it: keep the proposed move if
+  // it's already in range, else stay put or take the shortest legal move.
+  // A target nothing can reach this turn is dropped.
+  useLayoutEffect(() => {
+    if (!isResolverRamMode || selectedShipId == null || targetShipId == null) return;
+    if (selectedShipFactionAbilityRange == null) return; // range still loading
+    const current = aliveShipPositions.find((p) => p.shipId === selectedShipId)?.position;
+    const target = aliveShipPositions.find((p) => p.shipId === targetShipId)?.position;
+    if (!current || !target || !isEnemyDisabledShipId(targetShipId)) {
+      setTargetShipId(null);
+      return;
+    }
+    const staging = findRamStagingTile({
+      current,
+      moveTiles: ramMoveTiles,
+      target,
+      range: selectedShipFactionAbilityRange,
+      preferred: previewPosition,
+    });
+    if (!staging) {
+      setTargetShipId(null);
+      return;
+    }
+    if (!previewPosition || previewPosition.row !== staging.row || previewPosition.col !== staging.col) {
+      setPreviewPosition(staging);
+    }
+  }, [isResolverRamMode, selectedShipId, targetShipId, selectedShipFactionAbilityRange, aliveShipPositions, isEnemyDisabledShipId, ramMoveTiles, previewPosition]);
 
   const validTargets = useMemo(() => {
     if (!selectedShipId || shipMap.size === 0) return EMPTY_TARGET_REFS;
@@ -728,6 +781,27 @@ export function useGameplayInteraction({
     return cur ? cur.position : { row: 0, col: 0 };
   }, [previewPosition, selectedShipId, aliveShipPositions]);
 
+  // Submit-time check for a Ram, matching RamResolver.sol + Game.sol: a
+  // downed enemy target, a legal destination (or staying put), and the
+  // target within ram range of it. Null when not a Ram or when it's valid.
+  const ramActionError = useMemo((): string | null => {
+    if (!isResolverRamMode || computedActionType !== ActionType.FactionAbility) return null;
+    if (targetShipId == null || !isEnemyDisabledShipId(targetShipId)) return "Ram needs a disabled enemy ship as its target";
+    const target = aliveShipPositions.find((p) => p.shipId === targetShipId)?.position;
+    const current = aliveShipPositions.find((p) => p.shipId === selectedShipId)?.position;
+    if (!target || !current) return "Ram target not found";
+    const dest = computedMoveCoords;
+    const staysPut = dest.row === current.row && dest.col === current.col;
+    if (!staysPut && !ramMoveTiles.some((t) => t.row === dest.row && t.col === dest.col)) {
+      return "Your ship can't move there";
+    }
+    const range = selectedShipFactionAbilityRange ?? 1;
+    if (Math.abs(target.row - dest.row) + Math.abs(target.col - dest.col) > range) {
+      return "Ram target is out of range";
+    }
+    return null;
+  }, [isResolverRamMode, computedActionType, targetShipId, isEnemyDisabledShipId, aliveShipPositions, selectedShipId, computedMoveCoords, ramMoveTiles, selectedShipFactionAbilityRange]);
+
   // Retreat never has a previewPosition/targetShipId (it submits at the
   // ship's current tile — see computedMoveCoords' fallback below), so it
   // needs its own inclusion here rather than falling out of the
@@ -766,10 +840,6 @@ export function useGameplayInteraction({
       specialType,
     };
   }, [selectedShipId, computedMoveCoords, computedActionType, targetShipId, specialType]);
-
-  const recordOptimisticMove = useCallback((move: Web2LastMove) => {
-    setOptimisticLastMove(move);
-  }, []);
 
   const [optimisticSosShipIds, setOptimisticSosShipIds] = useState<Set<number>>(
     () => new Set(),
@@ -834,25 +904,6 @@ export function useGameplayInteraction({
     });
   }, [allShipPositions]);
 
-  // Clear the optimistic overlay once fresh data's lastMove matches it.
-  React.useEffect(() => {
-    if (!optimisticLastMove || !lastMove) return;
-    const matches =
-      lastMove.shipId === optimisticLastMove.shipId &&
-      lastMove.actionType === optimisticLastMove.actionType &&
-      lastMove.targetShipId === optimisticLastMove.targetShipId &&
-      lastMove.oldRow === optimisticLastMove.oldRow &&
-      lastMove.oldCol === optimisticLastMove.oldCol &&
-      lastMove.newRow === optimisticLastMove.newRow &&
-      lastMove.newCol === optimisticLastMove.newCol;
-    if (matches) {
-      setOptimisticLastMove(null);
-      // The confirmed move's outcome is now in chain data; stop overriding it.
-      clearOptimisticDestroy();
-      handleCancelMove();
-    }
-  }, [optimisticLastMove, lastMove, handleCancelMove, clearOptimisticDestroy]);
-
   const displayGrid: (GridShipPosition | null)[][] = useMemo(() => {
     const newGrid: (GridShipPosition | null)[][] = Array(gridHeight)
       .fill(null)
@@ -860,30 +911,6 @@ export function useGameplayInteraction({
 
     aliveShipPositions.forEach((shipPosition) => {
       const { position } = shipPosition;
-
-      // Optimistic last move: render the ship at its submitted destination
-      // (or remove it for retreat) until fresh data catches up.
-      if (optimisticLastMove && shipPosition.shipId === optimisticLastMove.shipId) {
-        if (optimisticLastMove.actionType === ActionType.Retreat) return;
-
-        if (optimisticLastMove.newRow >= 0 && optimisticLastMove.newRow < gridHeight && optimisticLastMove.newCol >= 0 && optimisticLastMove.newCol < gridWidth) {
-          if (!newGrid[optimisticLastMove.newRow][optimisticLastMove.newCol]) {
-            newGrid[optimisticLastMove.newRow][optimisticLastMove.newCol] = {
-              ...shipPosition,
-              position: { row: optimisticLastMove.newRow, col: optimisticLastMove.newCol },
-            };
-          }
-        }
-
-        const oR = optimisticLastMove.oldRow;
-        const oC = optimisticLastMove.oldCol;
-        const nR = optimisticLastMove.newRow;
-        const nC = optimisticLastMove.newCol;
-        if ((oR !== nR || oC !== nC) && oR >= 0 && oR < gridHeight && oC >= 0 && oC < gridWidth && !newGrid[oR][oC]) {
-          newGrid[oR][oC] = { ...shipPosition, position: { row: oR, col: oC }, isPreview: true };
-        }
-        return;
-      }
 
       if (position.row >= 0 && position.row < gridHeight && position.col >= 0 && position.col < gridWidth) {
         newGrid[position.row][position.col] = shipPosition;
@@ -931,7 +958,7 @@ export function useGameplayInteraction({
     }
 
     return newGrid;
-  }, [aliveShipPositions, allShipPositions, selectedShipId, previewPosition, optimisticLastMove, currentTurn, playerAddress, isGameOver, lastMove, shipMap, gridHeight, gridWidth]);
+  }, [aliveShipPositions, allShipPositions, selectedShipId, previewPosition, currentTurn, playerAddress, isGameOver, lastMove, shipMap, gridHeight, gridWidth]);
 
   return {
     // state
@@ -943,6 +970,7 @@ export function useGameplayInteraction({
     dragOverCell,
     // setters
     setSelectedShipId,
+    ramActionError,
     setPreviewPosition,
     setTargetShipId,
     setSelectedWeaponType: setWeaponTypeFromGrid,
@@ -977,7 +1005,6 @@ export function useGameplayInteraction({
     handleRetreatClick,
     resetSelection,
     buildActionPayload,
-    recordOptimisticMove,
     recordOptimisticSos,
     clearOptimisticSos,
     optimisticSosShipIds,
