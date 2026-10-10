@@ -228,6 +228,13 @@ export default function GameClient() {
   const appMode = useAppMode();
   const commandDeckLayout = useCommandDeckLayout();
   const [isRestoringSession, setIsRestoringSession] = useState(false);
+  // Until SessionRestoreProbe first reports, a wallet session that's about
+  // to come back looks exactly like "signed out".
+  const [hasRestoreProbeReported, setHasRestoreProbeReported] = useState(false);
+  const handleRestoreProbeChange = useCallback((isRestoring: boolean) => {
+    setIsRestoringSession(isRestoring);
+    setHasRestoreProbeReported(true);
+  }, []);
 
   const [activeTab, setActiveTab] = useState<ClientTab>("Command Deck");
   const [isHydrated, setIsHydrated] = useState(false);
@@ -359,13 +366,17 @@ export default function GameClient() {
   }, []);
 
   // Once both identities are definitively logged out, return to the
-  // Command Deck so the next sign-in doesn't land on a stale screen.
+  // Command Deck so the next sign-in doesn't land on a stale screen. Not
+  // while a wallet session is still coming back after a reload: wagmi reads
+  // "disconnected" until it does, and resetting then overwrote the saved
+  // tab (a refresh mid-match landed on the Command Deck, not the match).
   useEffect(() => {
     if (status === "connecting" || status === "reconnecting" || isUserLoading) return;
+    if (!hasRestoreProbeReported || isRestoringSession) return;
     if (!isConnected && !isLoggedIn && activeTab !== "Command Deck") {
       setActiveTab("Command Deck");
     }
-  }, [status, isConnected, isLoggedIn, isUserLoading, activeTab]);
+  }, [status, isConnected, isLoggedIn, isUserLoading, activeTab, hasRestoreProbeReported, isRestoringSession]);
 
   useEffect(() => {
     if (isHydrated) localStorage.setItem("void-tactics-active-tab", activeTab);
@@ -500,7 +511,7 @@ export default function GameClient() {
 
   return (
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--color-near-black)" }}>
-      <SessionRestoreProbe isConnected={isConnected} onChange={setIsRestoringSession} />
+      <SessionRestoreProbe isConnected={isConnected} onChange={handleRestoreProbeChange} />
       <div className="shrink-0" style={hudRowStyle} aria-hidden={hideGlobalChrome}>
         <Header yourTurnCount={isSignedIn ? pvpYourTurnCount : undefined} showSignIn={false} />
         {showNav && (

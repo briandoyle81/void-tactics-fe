@@ -235,14 +235,13 @@ const Games: React.FC = () => {
   const prevAddressRef = useRef<string | undefined>(address);
   useEffect(() => {
     // If address changes from something to null/undefined, it's an explicit disconnect
+    // The saved id is keyed by address, so it stays: a wallet that drops
+    // for a moment while reconnecting must not lose the open match.
     if (prevAddressRef.current && !address) {
       setSelectedGame(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(storageKey);
-      }
     }
     prevAddressRef.current = address;
-  }, [address, storageKey]);
+  }, [address]);
 
   // Notify Home layout when a game detail is open so global chrome
   // (header/tabs) can be hidden consistently.

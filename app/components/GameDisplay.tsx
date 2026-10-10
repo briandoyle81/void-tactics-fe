@@ -1234,6 +1234,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   /** Tutorial parity: pulse is driven by tutorial steps in SimulatedGameDisplay; live game leaves it off. */
   const shouldPulseSubmitMoveButton = React.useMemo(() => false, []);
 
+  // A submitted Retreat plays as the last move straight away (warp-out at
+  // its tile) instead of the ship just vanishing while the locked proposal
+  // waits on the tx: last-move chrome ignores the selection for it.
+  const isSubmittedRetreatShowing =
+    isProposalLocked && pendingMove.pendingMove?.actionType === ActionType.Retreat;
+  const lastMoveSelectedShipId = isSubmittedRetreatShowing ? null : selectedShipId;
+  const proposalHidesLastMove = isShowingProposedMove && !isSubmittedRetreatShowing;
+
   // Determine if we should show last move preview
   // Show to both players UNLESS:
   // - They have a ship selected, OR
@@ -1243,7 +1251,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       computeShouldShowLastMove({
         winner: game.metadata.winner,
         displayedLastMove,
-        selectedShipId,
+        selectedShipId: lastMoveSelectedShipId,
         shipMap,
         optimisticLastMove,
         shipPositions: game.shipPositions,
@@ -1253,7 +1261,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       displayedLastMove,
       optimisticLastMove,
       game.shipPositions,
-      selectedShipId,
+      lastMoveSelectedShipId,
       shipMap,
     ],
   );
@@ -1265,7 +1273,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       computeShouldShowLastMove({
         winner: game.metadata.winner,
         displayedLastMove,
-        selectedShipId,
+        selectedShipId: lastMoveSelectedShipId,
         shipMap,
         optimisticLastMove,
         shipPositions: game.shipPositions,
@@ -1276,7 +1284,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       optimisticLastMove,
       game.shipPositions,
       shipMap,
-      selectedShipId,
+      lastMoveSelectedShipId,
     ],
   );
 
@@ -1432,7 +1440,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     if (
       !shouldShowLastMove ||
       !displayedLastMove ||
-      isShowingProposedMove ||
+      proposalHidesLastMove ||
       (displayedLastMove.actionType as ActionType) === ActionType.Retreat ||
       displayedLastMove.newRow < 0 ||
       displayedLastMove.newCol < 0
@@ -1440,32 +1448,32 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       return null;
     }
     return { row: displayedLastMove.newRow, col: displayedLastMove.newCol };
-  }, [shouldShowLastMove, displayedLastMove, isShowingProposedMove]);
+  }, [shouldShowLastMove, displayedLastMove, proposalHidesLastMove]);
 
   // Last move props for GameGrid
   const lastMoveShipId =
-    shouldShowLastMoveOnGrid && displayedLastMove && !isShowingProposedMove
+    shouldShowLastMoveOnGrid && displayedLastMove && !proposalHidesLastMove
       ? displayedLastMove.shipId
       : null;
   const lastMoveOldPosition = React.useMemo(() => {
-    if (!shouldShowLastMoveOnGrid || !displayedLastMove || isShowingProposedMove) {
+    if (!shouldShowLastMoveOnGrid || !displayedLastMove || proposalHidesLastMove) {
       return null;
     }
     return { row: displayedLastMove.oldRow, col: displayedLastMove.oldCol };
-  }, [shouldShowLastMoveOnGrid, displayedLastMove, isShowingProposedMove]);
+  }, [shouldShowLastMoveOnGrid, displayedLastMove, proposalHidesLastMove]);
 
   const lastMoveNewPosition = React.useMemo(() => {
     if (
       !shouldShowLastMoveOnGrid ||
       !displayedLastMove ||
-      isShowingProposedMove ||
+      proposalHidesLastMove ||
       displayedLastMove.newRow < 0 ||
       displayedLastMove.newCol < 0
     ) {
       return null;
     }
     return { row: displayedLastMove.newRow, col: displayedLastMove.newCol };
-  }, [shouldShowLastMoveOnGrid, displayedLastMove, isShowingProposedMove]);
+  }, [shouldShowLastMoveOnGrid, displayedLastMove, proposalHidesLastMove]);
 
   // Keep the last mover's to-tile for weapon aiming after last-move chrome
   // is hidden (player selected a ship). Otherwise beams lock onto the
@@ -1487,14 +1495,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   }, [displayedLastMove]);
 
   const lastMoveActionType =
-    shouldShowLastMoveOnGrid && displayedLastMove && !isShowingProposedMove
+    shouldShowLastMoveOnGrid && displayedLastMove && !proposalHidesLastMove
       ? displayedLastMove.actionType
       : null;
 
   const lastMoveTargetShipId =
     shouldShowLastMoveOnGrid &&
     displayedLastMove &&
-    !isShowingProposedMove &&
+    !proposalHidesLastMove &&
     ((displayedLastMove.actionType as ActionType) === ActionType.Special ||
       (displayedLastMove.actionType as ActionType) === ActionType.Shoot ||
       (displayedLastMove.actionType as ActionType) ===
@@ -1505,7 +1513,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // Who made the last move: use ship owner when ship is in map; otherwise derive from turn (after a move, turn switches to the other player)
   const lastMoveIsCurrentPlayer =
-    shouldShowLastMoveOnGrid && displayedLastMove && !isShowingProposedMove
+    shouldShowLastMoveOnGrid && displayedLastMove && !proposalHidesLastMove
       ? (() => {
           const ship = shipMap.get(displayedLastMove!.shipId);
           if (ship) return ship.owner === address;

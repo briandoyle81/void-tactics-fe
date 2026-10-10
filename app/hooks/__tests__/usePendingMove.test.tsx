@@ -63,14 +63,16 @@ describe("usePendingMove", () => {
     expect(onResolved).toHaveBeenCalledTimes(1);
   });
 
-  it("doesn't resolve a move that was never sent", () => {
+  it("resolves even if 'sent' was never reported, once fresh data shows the move", () => {
     const { result, rerender, onResolved } = setup();
     act(() => {
       result.current.capture(captureParams("a"));
     });
-    rerender({ chainLastMoveKey: "b", isGameOver: false });
+    rerender({ chainLastMoveKey: "a", isGameOver: false });
     expect(result.current.pendingMove?.phase).toBe("signing");
-    expect(onResolved).not.toHaveBeenCalled();
+    rerender({ chainLastMoveKey: "b", isGameOver: false });
+    expect(result.current.pendingMove).toBeNull();
+    expect(onResolved).toHaveBeenCalledTimes(1);
   });
 
   it("fail drops the move once; a stale key or second call is a no-op", () => {

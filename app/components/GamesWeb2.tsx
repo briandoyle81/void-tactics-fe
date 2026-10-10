@@ -65,7 +65,6 @@ const GamesWeb2: React.FC = () => {
 
   const storageKey = useMemo(() => `selectedGameIdWeb2-${userId || "anonymous"}`, [userId]);
   const viewModeKey = useMemo(() => `gamesViewModeWeb2-${userId || "anonymous"}`, [userId]);
-  const hasAttemptedRestore = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -78,12 +77,10 @@ const GamesWeb2: React.FC = () => {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const gameToRestore = games.find((g) => g.metadata.gameId.toString() === saved);
-        if (gameToRestore) {
-          setSelectedGame(gameToRestore);
-        } else if (!hasAttemptedRestore.current) {
-          localStorage.removeItem(storageKey);
-          hasAttemptedRestore.current = true;
-        }
+        // Not found yet: keep the saved id. The first list can be a cached
+        // one that predates the game, and deleting here made a refresh
+        // intermittently fall back to the list (same as Games.tsx).
+        if (gameToRestore) setSelectedGame(gameToRestore);
       }
     }
   }, [isMounted, games, isLoading, selectedGame, userId, storageKey, viewModeKey, isLoggedIn]);

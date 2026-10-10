@@ -225,6 +225,20 @@ export function TransactionButton({
     }
   };
 
+  // onTransactionSent, once per hash. Called from both effects below: the
+  // receipt can land in the same render the hash appears (fast chains, a
+  // cached receipt), and callers that track the tx from "sent" (the move
+  // submit) must still hear about it, and before its success.
+  const notifySent = React.useCallback(
+    (sentHash: `0x${string}`) => {
+      if (transactionSentHashRef.current === sentHash) return;
+      transactionSentHashRef.current = sentHash;
+      setTransactionHash(transactionId, sentHash);
+      onTransactionSent?.(sentHash);
+    },
+    [setTransactionHash, transactionId, onTransactionSent],
+  );
+
   // Handle transaction completion based on receipt confirmation
   React.useEffect(() => {
     const isOwnSentHash =
@@ -235,6 +249,7 @@ export function TransactionButton({
       // Prevent duplicate handling for the same tx hash.
       if (completedHashRef.current === hash) return;
       completedHashRef.current = hash;
+      notifySent(hash);
 
       // `isConfirmed` (useWaitForTransactionReceipt's isSuccess) only means
       // a receipt was fetched — it stays true even when the transaction
@@ -298,6 +313,7 @@ export function TransactionButton({
     onSuccess,
     onError,
     onReceipt,
+    notifySent,
   ]);
 
   // Clear error when component unmounts or transaction changes
@@ -337,31 +353,13 @@ export function TransactionButton({
     }
   }, [transactionState.activeTransactionId, transactionState.isPending]);
 
-  // Trigger onTransactionSent when hash becomes available (transaction sent, before receipt)
+  // Trigger onTransactionSent when the hash becomes available. Not gated on
+  // the receipt still loading: that query starts the moment the hash exists,
+  // and skipping "sent" whenever it had already flipped to confirming left
+  // callers that track the tx from here (the move submit) waiting forever.
   React.useEffect(() => {
-    if (
-      hash &&
-      (isActiveTransaction || isLocallyPending) &&
-      onTransactionSent &&
-      !isConfirmed &&
-      !isConfirming &&
-      transactionSentHashRef.current !== hash
-    ) {
-      // Hash is available - transaction was sent by wallet, but receipt not yet confirmed
-      transactionSentHashRef.current = hash;
-      setTransactionHash(transactionId, hash);
-      onTransactionSent(hash);
-    }
-  }, [
-    hash,
-    isActiveTransaction,
-    isLocallyPending,
-    onTransactionSent,
-    isConfirmed,
-    isConfirming,
-    setTransactionHash,
-    transactionId,
-  ]);
+    if (hash && (isActiveTransaction || isLocallyPending)) notifySent(hash);
+  }, [hash, isActiveTransaction, isLocallyPending, notifySent]);
 
   // Reset the ref when transaction changes
   React.useEffect(() => {

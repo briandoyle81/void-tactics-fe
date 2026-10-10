@@ -17,7 +17,8 @@ import { buildPendingMove, type PendingMove } from "../utils/pendingMove";
 // - fail(): the wallet rejected, the tx reverted, or the POST errored. The
 //   board goes back to fresh data.
 // - Resolves itself once fresh data's lastMove differs from the one at
-//   submit time, i.e. the move (or anything after it) is in the data.
+//   submit time, i.e. the move (or anything after it) is in the data, in
+//   any phase.
 export function usePendingMove({
   chainLastMoveKey,
   isGameOver,
@@ -68,7 +69,10 @@ export function usePendingMove({
       setPendingMove(null);
       return;
     }
-    if (pendingMove.phase !== "sent") return;
+    // Any phase: if fresh data already shows a new lastMove, the move landed
+    // even if "sent" was never reported (only the mover changes lastMove on
+    // their own turn). Waiting on markSent here could strand the board on
+    // the prediction until a reload.
     if (chainLastMoveKey === pendingMove.baselineLastMoveKey) return;
     setPendingMove(null);
     onResolvedRef.current?.(pendingMove);
