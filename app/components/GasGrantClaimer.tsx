@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAuthToken, useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
@@ -54,6 +54,24 @@ export function GasGrantClaimer() {
       (vc) => vc.address?.toLowerCase() === address && vc.walletProvider === "embeddedWallet",
     );
 
+  // Refetch the wallet's ETH balance (wagmi's "balance" queries, e.g. the
+  // HUD pill) once the grant lands. Repeated a few times: RPC providers
+  // load-balance across nodes, and one that hasn't seen the new block yet
+  // returns the old balance, which would otherwise stick.
+  const refreshBalancesAfter = useCallback(async (txHash: `0x${string}`) => {
+    const refetchBalances = () =>
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "balance" });
+    try {
+      await publicClient?.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+    } catch (error) {
+      console.warn("Gas grant receipt not confirmed yet:", error);
+    }
+    for (const delayMs of [0, 2_000, 5_000, 10_000]) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      await refetchBalances();
+    }
+  }, [publicClient, queryClient]);
+
   useEffect(() => {
     if (chainId !== baseSepolia.id || !address || !isEmbedded || isDone(address)) return;
     let cancelled = false;
@@ -74,10 +92,7 @@ export function GasGrantClaimer() {
         markDone(address);
         if (result.status !== "sent" || !result.txHash || cancelled) return;
         toast.success("Your wallet received test ETH to cover transaction fees.");
-        await publicClient?.waitForTransactionReceipt({ hash: result.txHash });
-        void queryClient.invalidateQueries({
-          predicate: (query) => query.queryKey[0] === "balance",
-        });
+        await refreshBalancesAfter(result.txHash);
       } catch (error) {
         console.error("Gas grant request failed:", error);
       }
@@ -85,7 +100,7 @@ export function GasGrantClaimer() {
     return () => {
       cancelled = true;
     };
-  }, [chainId, address, isEmbedded, publicClient, queryClient]);
+  }, [chainId, address, isEmbedded, refreshBalancesAfter]);
 
   return null;
 }
