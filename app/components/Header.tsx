@@ -42,6 +42,7 @@ import { ADMIN_PATH } from "../config/routes";
 import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import AuthSignIn from "./AuthSignIn";
 import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
+import { CopyAddressButton } from "./CopyAddressButton";
 import { openRecoveryCodes, RecoveryCodesHost } from "./RecoveryCodesModal";
 
 function resolveChainIdFromQueryParam(value: string | null): number | null {
@@ -984,31 +985,34 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
         </div>
 
         {isSignedIn && isHydrated && (
-          <button
-            type="button"
-            onClick={() => dispatchNavigateToProfile(router.push)}
-            className="hidden min-w-0 items-center gap-2 text-left lg:flex"
-            title="Profile"
-          >
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center border border-solid text-xs font-bold"
-              style={{
-                fontFamily: MONO_FONT,
-                borderColor: "var(--color-cyan)",
-                color: "var(--color-cyan)",
-                backgroundColor: "var(--color-steel)",
-              }}
-              aria-hidden
+          <div className="hidden min-w-0 items-center gap-1 lg:flex">
+            <button
+              type="button"
+              onClick={() => dispatchNavigateToProfile(router.push)}
+              className="flex min-w-0 items-center gap-2 text-left"
+              title="Profile"
             >
-              {initials}
-            </span>
-            <span
-              className="truncate text-sm font-semibold uppercase tracking-wider text-text-primary"
-              style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" }}
-            >
-              {callsign}
-            </span>
-          </button>
+              <span
+                className="flex h-8 w-8 shrink-0 items-center justify-center border border-solid text-xs font-bold"
+                style={{
+                  fontFamily: MONO_FONT,
+                  borderColor: "var(--color-cyan)",
+                  color: "var(--color-cyan)",
+                  backgroundColor: "var(--color-steel)",
+                }}
+                aria-hidden
+              >
+                {initials}
+              </span>
+              <span
+                className="truncate text-sm font-semibold uppercase tracking-wider text-text-primary"
+                style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" }}
+              >
+                {callsign}
+              </span>
+            </button>
+            {!showWeb2Panel && account.address && <CopyAddressButton address={account.address} />}
+          </div>
         )}
 
         {!isSignedIn && (

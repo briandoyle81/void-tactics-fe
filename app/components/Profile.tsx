@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { usePlayerGames } from "../hooks/usePlayerGames";
 import { PlayerStatsPanel } from "./PlayerStatsPanel";
 import { GameHistoryList, type GameHistoryRowData } from "./GameHistoryList";
+import { CopyAddressButton } from "./CopyAddressButton";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -98,6 +99,13 @@ const Profile: React.FC = () => {
       <h3 className="text-2xl font-bold mb-6 tracking-wider text-center">
         [PROFILE]
       </h3>
+      {address && (
+        <div className="mb-6 flex items-center justify-center gap-2">
+          <span className="text-xs uppercase tracking-wider text-text-muted">Address</span>
+          <span className="min-w-0 break-all text-sm text-text-primary select-all">{address}</span>
+          <CopyAddressButton address={address} />
+        </div>
+      )}
       <PlayerStatsPanel
         isSignedIn={isConnected}
         signInPrompt="// Connect wallet to view statistics"
