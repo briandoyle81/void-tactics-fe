@@ -143,7 +143,10 @@ export async function POST(req: NextRequest) {
       { timeout: 30_000, maxWait: 30_000 },
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message.slice(0, 500) : String(e);
+    // viem's shortMessage/details, never the full message: that includes
+    // the RPC URL, which can carry an API key.
+    const err = e as { shortMessage?: string; details?: string; message?: string };
+    const message = [err.shortMessage ?? "Send failed", err.details].filter(Boolean).join(": ").slice(0, 300);
     console.error("[gas-faucet] send failed:", message);
     // The transaction above rolled back, so re-record the hash (if one was
     // signed) with the failure; a retry checks it before resending.

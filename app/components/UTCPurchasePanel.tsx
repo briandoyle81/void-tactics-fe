@@ -11,6 +11,7 @@ import { getNativeTokenSymbol, getSelectedChainId } from "../config/networks";
 import { useShipPurchaserPurchaseInfo } from "../hooks/useShipPurchaserPurchaseInfo";
 import type { Abi } from "viem";
 import { formatEther } from "viem";
+import { UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
 
 /** Store › Credits (web3): buy UTC with the chain's native token. */
 const UTCPurchasePanel: React.FC = () => {
@@ -97,7 +98,7 @@ const UTCPurchasePanel: React.FC = () => {
   return (
     <UTCPurchasePanelShell
       balanceValueLabel={
-        utcBalance ? `${formatEther(utcBalance as bigint)} UTC` : "0.00 UTC"
+        `${formatBalance(utcBalance ? Number(formatEther(utcBalance as bigint)) : 0, UTC_DISPLAY_DECIMALS)} UTC`
       }
       balanceDescription={
         <>

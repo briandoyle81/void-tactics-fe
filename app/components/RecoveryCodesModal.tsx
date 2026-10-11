@@ -26,6 +26,11 @@ import { toast } from "react-hot-toast";
 
 const OPEN_EVENT = "void-tactics-open-recovery-codes";
 
+/** Dynamic's "Backup codes are not enabled for this environment": a dashboard setting, not something verifying fixes. */
+function isCodesDisabledError(error: unknown): boolean {
+  return error instanceof Error && /not enabled/i.test(error.message);
+}
+
 export type RecoveryCodesReason = "first-passkey" | "used-code" | "manual";
 
 export function openRecoveryCodes(reason: RecoveryCodesReason = "manual"): void {
@@ -88,6 +93,7 @@ function RecoveryCodesModal({
         try {
           setCodes((await load()).recoveryCodes);
         } catch (firstError) {
+          if (isCodesDisabledError(firstError)) throw firstError;
           console.warn("Recovery codes need verification:", firstError);
           await promptMfaRef.current();
           setCodes((await load()).recoveryCodes);
@@ -95,7 +101,11 @@ function RecoveryCodesModal({
         setSaved(false);
       } catch (loadError) {
         console.error("Failed to load recovery codes:", loadError);
-        setError("Couldn't load your recovery codes. Try again from Settings (gear icon) › Recovery codes on a device with your passkey.");
+        setError(
+          isCodesDisabledError(loadError)
+            ? "Recovery codes aren't available yet. Your passkey still works on this device."
+            : "Couldn't load your recovery codes. Try again from Settings (gear icon) › Recovery codes on a device with your passkey.",
+        );
       } finally {
         isLoadingRef.current = false;
         setIsBusy(false);

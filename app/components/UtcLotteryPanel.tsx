@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import type { Abi } from "viem";
+import { UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
 import { toast } from "react-hot-toast";
 import { TransactionButton } from "./TransactionButton";
 import lotteryHookDeploy from "../contracts/base-sepolia/uniswap-lottery-hook.json";
@@ -208,7 +209,7 @@ export function UtcLotteryPanel() {
                     <span className="text-xs text-text-muted font-mono">UTC</span>
                   </div>
                   <div className="text-[11px] text-text-muted font-mono mb-3">
-                    Balance: {utcBalance != null ? formatEther(utcBalance) : "0"} UTC
+                    Balance: {formatBalance(utcBalance != null ? Number(formatEther(utcBalance)) : 0, UTC_DISPLAY_DECIMALS)} UTC
                     {amountInWei != null && (
                       <>
                         {" · "}

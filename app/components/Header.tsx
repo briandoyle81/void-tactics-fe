@@ -43,6 +43,7 @@ import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import AuthSignIn from "./AuthSignIn";
 import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
 import { CopyAddressButton } from "./CopyAddressButton";
+import { ETH_DISPLAY_DECIMALS, UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
 import { openRecoveryCodes, RecoveryCodesHost } from "./RecoveryCodesModal";
 
 function resolveChainIdFromQueryParam(value: string | null): number | null {
@@ -375,20 +376,6 @@ function HeaderTitleBlock() {
 }
 
 const MONO_FONT = "var(--font-jetbrains-mono), 'Courier New', monospace";
-
-/** Balance for a HUD pill: whole numbers from 100, compact from 10k. */
-function formatAmount(value: number): string {
-  if (!Number.isFinite(value)) return "0";
-  if (Math.abs(value) >= 10_000) {
-    return new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(value);
-  }
-  return value.toLocaleString("en-US", {
-    maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 2,
-  });
-}
 
 /** A resource in the HUD: label, balance, and a + that tops it up. */
 function ResourcePill({
@@ -1037,7 +1024,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
               <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto md:gap-2 [scrollbar-width:none]">
                 <ResourcePill
                   label="UTC"
-                  value={formatAmount(utcValue)}
+                  value={formatBalance(utcValue, UTC_DISPLAY_DECIMALS)}
                   color="var(--color-amber)"
                   title="Universal Credits"
                   plus={{
@@ -1059,7 +1046,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                 {showWeb3Panel && (
                   <ResourcePill
                     label={nativeTokenSymbol}
-                    value={formatAmount(nativeValue)}
+                    value={formatBalance(nativeValue, ETH_DISPLAY_DECIMALS)}
                     color="var(--color-phosphor-green)"
                     title={`${nativeTokenSymbol} balance`}
                     className="hidden sm:flex"
