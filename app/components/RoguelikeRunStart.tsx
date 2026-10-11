@@ -33,6 +33,7 @@ import {
 import { RoguelikeRunRequirementsPanel } from "./RoguelikeRunRequirementsPanel";
 import { ConstructShipsButton } from "./ConstructShipsButton";
 import { manageNavyActionButtonClassName } from "./ManageNavyActionButton";
+import { AdjutantFleetGuide, fleetGuideStep } from "./AdjutantFleetGuide";
 
 const SHIPS_PER_PAGE = 100;
 
@@ -215,11 +216,31 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
     }
   };
 
+  const constructButton =
+    unconstructedShips.length > 0 ? (
+      <ConstructShipsButton
+        unconstructedShips={unconstructedShips}
+        className={manageNavyActionButtonClassName("green")}
+        onConstructed={refetchShips}
+      />
+    ) : undefined;
+  const guideStep = fleetGuideStep({
+    shipsLoading,
+    shipCount: ships.length,
+    hasEnoughConstructed: requirements.hasEnoughConstructed,
+    unconstructedCount: unconstructedShips.length,
+  });
+
   return (
     <div className="flex flex-col gap-4 border-2 border-cyan p-6 font-mono" style={{ borderRadius: 0 }}>
+      <AdjutantFleetGuide
+        step={guideStep}
+        minConstructed={MIN_CONSTRUCTED_SHIPS_FOR_RUN}
+        constructButton={constructButton}
+      />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-xl font-bold text-cyan">[ROGUELIKE CAMPAIGN]</h3>
+          <h3 className="text-xl font-bold text-cyan">[SELECT YOUR FLEET]</h3>
           <p className="mt-2 text-sm text-text-secondary">
             Commit a roster once — it persists (with accumulated hull damage)
             across every mission until the run ends. Branching paths lock out
@@ -264,15 +285,7 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
         requirements={requirements}
         rosterCost={fleet.totalCost}
         costLimit={costLimit}
-        constructButton={
-          unconstructedShips.length > 0 ? (
-            <ConstructShipsButton
-              unconstructedShips={unconstructedShips}
-              className={manageNavyActionButtonClassName("green")}
-              onConstructed={refetchShips}
-            />
-          ) : undefined
-        }
+        constructButton={constructButton}
       />
 
       <div
