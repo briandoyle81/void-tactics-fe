@@ -11,7 +11,11 @@ import {
   TokenScope,
   WalletProviderEnum,
 } from "@dynamic-labs/sdk-api-core";
-import { registerPasskey, NoWebAuthNSupportError } from "@dynamic-labs-sdk/client";
+import {
+  getMfaRecoveryCodes,
+  registerPasskey,
+  NoWebAuthNSupportError,
+} from "@dynamic-labs-sdk/client";
 import { toast } from "react-hot-toast";
 import {
   isPasskeyMarkedOnDevice,
@@ -19,6 +23,7 @@ import {
   markPasskeyOnDevice,
   persistPasskeyPromptPermanentlyDismissed,
 } from "../utils/passkeyPromptStorage";
+import { openRecoveryCodes, type RecoveryCodesReason } from "./RecoveryCodesModal";
 
 function isWebAuthnSupported(): boolean {
   return typeof window !== "undefined" && typeof window.PublicKeyCredential !== "undefined";
@@ -59,6 +64,16 @@ function isWebAuthnSupported(): boolean {
 // show this again" (persisted per Dynamic userId). An account can hold one
 // passkey per device, so a user whose passkey lives on another device is
 // offered one for this device ("Add a passkey for this device").
+//
+// A second device: once the account has a passkey, Dynamic only accepts an
+// existing MFA factor (that passkey, or a recovery code), not the email
+// code, to add another. So on [ENABLE PASSKEY] we first try verifying with
+// one of the account's recovery codes read from this device, so the player
+// never sees one; if Dynamic won't hand them over here, the prompt asks for
+// a code (found under Settings (gear icon) › Recovery codes on the device with the
+// passkey, see RecoveryCodesModal.tsx) or offers the existing passkey
+// (e.g. on a phone via the browser's QR option).
+
 // Verification methods that don't need a device-bound factor (re-auth:
 // an email/SMS code, social, or an external wallet signature).
 const REAUTH_FORMATS = new Set<JwtVerifiedCredentialFormatEnum>([
@@ -71,15 +86,17 @@ const REAUTH_FORMATS = new Set<JwtVerifiedCredentialFormatEnum>([
 export function PasskeyEnablePrompt() {
   const { user } = useDynamicContext();
   const refreshUser = useRefreshUser();
-  const { checkStepUpAuth, promptStepUpAuth } = useStepUpAuthentication();
+  const { checkStepUpAuth, promptStepUpAuth, verifyRecoveryCode } = useStepUpAuthentication();
   const [isOpen, setIsOpen] = React.useState(false);
   const [dontShowAgain, setDontShowAgain] = React.useState(false);
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [hasPasskeyElsewhere, setHasPasskeyElsewhere] = React.useState(false);
   // Dynamic will only accept an existing MFA factor (passkey, authenticator
-  // app or recovery code) to add this passkey, not an email code. Shown as
-  // an explanation first, so the browser's passkey picker isn't a surprise.
+  // app or recovery code) to add this passkey, not an email code, and the
+  // automatic recovery-code route didn't work: ask for a code.
   const [needsExistingFactor, setNeedsExistingFactor] = React.useState(false);
+  const [recoveryCode, setRecoveryCode] = React.useState("");
+  const [codeError, setCodeError] = React.useState<string | null>(null);
   const hasEvaluatedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -113,53 +130,49 @@ export function PasskeyEnablePrompt() {
     setIsOpen(false);
   };
 
-  const handleEnable = async () => {
+  const verifyWithCode = async (code: string): Promise<boolean> => {
+    const response = await verifyRecoveryCode({
+      code,
+      requestedScopes: [TokenScope.Credentiallink],
+    });
+    return response != null;
+  };
+
+  /** The direct route: verify with one of the account's codes, read from this device. */
+  const tryAccountRecoveryCode = async (): Promise<boolean> => {
+    try {
+      const [code] = (await getMfaRecoveryCodes()).recoveryCodes;
+      return code != null && (await verifyWithCode(code));
+    } catch (error) {
+      console.warn("Recovery codes aren't readable from this device:", error);
+      return false;
+    }
+  };
+
+  /** Creates the passkey once verified; `showCodes` opens the recovery codes after. */
+  const createPasskey = async (showCodes: RecoveryCodesReason | null) => {
+    await registerPasskey();
+    if (user?.userId) markPasskeyOnDevice(user.userId);
+    try {
+      await refreshUser();
+    } catch (refreshError) {
+      // The passkey itself registered fine — a failed resync here just
+      // means the legacy `user` object stays stale until next reload, not
+      // that anything actually failed.
+      console.error("Failed to refresh user after registering passkey:", refreshError);
+    }
+    toast.success("Passkey added — you can use it to sign in next time.");
+    if (dontShowAgain && user?.userId) {
+      persistPasskeyPromptPermanentlyDismissed(user.userId);
+    }
+    setIsOpen(false);
+    if (showCodes) openRecoveryCodes(showCodes);
+  };
+
+  const run = async (step: () => Promise<void>) => {
     setIsRegistering(true);
     try {
-      // Adding a passkey links a credential, which needs a fresh
-      // verification. Dynamic picks the method: re-auth (the email code)
-      // when allowed, otherwise an existing MFA factor — it blocks re-auth
-      // once the account has MFA devices and MFA is enabled for the
-      // environment (docs: /auth/step-up-auth).
-      const { isRequired, credentials } = await checkStepUpAuth({
-        scope: TokenScope.Credentiallink,
-      });
-      if (
-        isRequired &&
-        !needsExistingFactor &&
-        !credentials.some((c) => REAUTH_FORMATS.has(c.format))
-      ) {
-        setNeedsExistingFactor(true);
-        return;
-      }
-      if (isRequired) {
-        setIsOpen(false);
-        // Resolves with undefined on a *successful* verification (see
-        // Dynamic's useStepUpPromptReauth: onSuccess calls
-        // deferred.resolve(undefined)) — cancellation/failure rejects the
-        // promise instead, which the outer catch below handles. There's no
-        // truthy value to check here; reaching this line without throwing
-        // means the elevated token is already stored.
-        await promptStepUpAuth({
-          requestedScopes: [TokenScope.Credentiallink],
-        });
-      }
-
-      await registerPasskey();
-      if (user?.userId) markPasskeyOnDevice(user.userId);
-      try {
-        await refreshUser();
-      } catch (refreshError) {
-        // The passkey itself registered fine — a failed resync here just
-        // means the legacy `user` object stays stale until next reload, not
-        // that anything actually failed.
-        console.error("Failed to refresh user after registering passkey:", refreshError);
-      }
-      toast.success("Passkey added — you can use it to sign in next time.");
-      if (dontShowAgain && user?.userId) {
-        persistPasskeyPromptPermanentlyDismissed(user.userId);
-      }
-      setIsOpen(false);
+      await step();
     } catch (error) {
       console.error("Failed to register passkey:", error);
       const isCancelledReauth =
@@ -175,7 +188,77 @@ export function PasskeyEnablePrompt() {
     }
   };
 
+  const handleEnable = () =>
+    run(async () => {
+      // Adding a passkey links a credential, which needs a fresh
+      // verification. Dynamic picks the method: re-auth (the email code)
+      // when allowed, otherwise an existing MFA factor — it blocks re-auth
+      // once the account has MFA devices (docs: /auth/step-up-auth).
+      const { isRequired, credentials } = await checkStepUpAuth({
+        scope: TokenScope.Credentiallink,
+      });
+      if (isRequired && !credentials.some((c) => REAUTH_FORMATS.has(c.format))) {
+        if (await tryAccountRecoveryCode()) {
+          await createPasskey(null);
+        } else {
+          setNeedsExistingFactor(true);
+        }
+        return;
+      }
+      if (isRequired) {
+        setIsOpen(false);
+        // Resolves with undefined on a *successful* verification (see
+        // Dynamic's useStepUpPromptReauth: onSuccess calls
+        // deferred.resolve(undefined)) — cancellation/failure rejects the
+        // promise instead, which run() handles. There's no truthy value to
+        // check here; reaching this line without throwing means the
+        // elevated token is already stored.
+        await promptStepUpAuth({ requestedScopes: [TokenScope.Credentiallink] });
+      }
+      await createPasskey(hasPasskeyElsewhere ? null : "first-passkey");
+    });
+
+  const handleUseCode = () =>
+    run(async () => {
+      const code = recoveryCode.trim();
+      if (!code) return;
+      setCodeError(null);
+      let verified = false;
+      try {
+        verified = await verifyWithCode(code);
+      } catch (error) {
+        console.warn("Recovery code rejected:", error);
+      }
+      if (!verified) {
+        setCodeError("That code didn't work. Check it and try again; each code works once.");
+        return;
+      }
+      setRecoveryCode("");
+      await createPasskey("used-code");
+    });
+
+  /** Verify with the existing passkey (e.g. on a phone via the browser's QR option). */
+  const handleUsePasskey = () =>
+    run(async () => {
+      setIsOpen(false);
+      await promptStepUpAuth({ requestedScopes: [TokenScope.Credentiallink] });
+      await createPasskey(null);
+    });
+
   if (!isOpen) return null;
+
+  const buttonClass =
+    "px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider text-xs disabled:cursor-not-allowed disabled:opacity-50";
+  const secondaryStyle = {
+    borderColor: "var(--color-gunmetal)",
+    color: "var(--color-text-secondary)",
+    backgroundColor: "var(--color-steel)",
+  };
+  const primaryStyle = {
+    borderColor: "var(--color-phosphor-green)",
+    color: "var(--color-phosphor-green)",
+    backgroundColor: "var(--color-steel)",
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -186,7 +269,7 @@ export function PasskeyEnablePrompt() {
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-lg font-bold text-cyan tracking-wider">
             {needsExistingFactor
-              ? "[CONFIRM WITH YOUR PASSKEY]"
+              ? "[CONFIRM IT'S YOU]"
               : hasPasskeyElsewhere
                 ? "[ADD A PASSKEY FOR THIS DEVICE?]"
                 : "[ENABLE FASTER SIGN-IN?]"}
@@ -203,12 +286,35 @@ export function PasskeyEnablePrompt() {
         </div>
 
         {needsExistingFactor ? (
-          <p className="text-sm text-text-secondary leading-relaxed">
-            Before adding a passkey here, confirm it&apos;s you with the passkey you already
-            have. If it&apos;s on your phone, choose &ldquo;Use a phone or tablet&rdquo; in the
-            next window and scan the code. If it&apos;s only on another computer, it can&apos;t
-            be used from here; keep signing in on this device with your email code.
-          </p>
+          <>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              To add a passkey on this device, enter one of your recovery codes.
+            </p>
+            <form
+              className="mt-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleUseCode();
+              }}
+            >
+              <input
+                type="text"
+                value={recoveryCode}
+                onChange={(e) => setRecoveryCode(e.target.value)}
+                placeholder="Recovery code"
+                autoComplete="one-time-code"
+                spellCheck={false}
+                className="w-full bg-steel border-2 border-gunmetal px-3 py-2 text-sm text-text-primary tracking-wider"
+                disabled={isRegistering}
+              />
+              {codeError && <p className="mt-2 text-xs text-amber">{codeError}</p>}
+            </form>
+            <p className="mt-3 text-xs text-text-muted leading-relaxed">
+              No code? On the device with your passkey, open Settings (gear icon) › Recovery codes. If your
+              passkey is on your phone, use it instead: choose &ldquo;Use a phone or tablet&rdquo;
+              in the next window and scan the code.
+            </p>
+          </>
         ) : (
           <p className="text-sm text-text-secondary leading-relaxed">
             {hasPasskeyElsewhere
@@ -226,37 +332,48 @@ export function PasskeyEnablePrompt() {
           Don&apos;t show this again
         </label>
 
-        <div className="mt-5 flex gap-2 justify-end">
+        <div className="mt-5 flex flex-wrap gap-2 justify-end">
           <button
             type="button"
             onClick={dismiss}
             disabled={isRegistering}
-            className="px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider text-xs disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              borderColor: "var(--color-gunmetal)",
-              color: "var(--color-text-secondary)",
-              backgroundColor: "var(--color-steel)",
-            }}
+            className={buttonClass}
+            style={secondaryStyle}
           >
             [NOT NOW]
           </button>
-          <button
-            type="button"
-            onClick={() => void handleEnable()}
-            disabled={isRegistering}
-            className="px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider text-xs disabled:cursor-not-allowed disabled:opacity-50"
-            style={{
-              borderColor: "var(--color-phosphor-green)",
-              color: "var(--color-phosphor-green)",
-              backgroundColor: "var(--color-steel)",
-            }}
-          >
-            {isRegistering
-              ? "[FOLLOW THE PROMPT...]"
-              : needsExistingFactor
-                ? "[CONTINUE]"
-                : "[ENABLE PASSKEY]"}
-          </button>
+          {needsExistingFactor ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleUsePasskey()}
+                disabled={isRegistering}
+                className={buttonClass}
+                style={secondaryStyle}
+              >
+                [USE MY PASSKEY]
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleUseCode()}
+                disabled={isRegistering || !recoveryCode.trim()}
+                className={buttonClass}
+                style={primaryStyle}
+              >
+                {isRegistering ? "[FOLLOW THE PROMPT...]" : "[USE CODE]"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleEnable()}
+              disabled={isRegistering}
+              className={buttonClass}
+              style={primaryStyle}
+            >
+              {isRegistering ? "[FOLLOW THE PROMPT...]" : "[ENABLE PASSKEY]"}
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -42,6 +42,7 @@ import { ADMIN_PATH } from "../config/routes";
 import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import AuthSignIn from "./AuthSignIn";
 import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
+import { openRecoveryCodes, RecoveryCodesHost } from "./RecoveryCodesModal";
 
 function resolveChainIdFromQueryParam(value: string | null): number | null {
   if (!value) return null;
@@ -595,7 +596,9 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
   const router = useRouter();
   const { hasAccess: hasOpsConsoleAccess } = useOpsConsoleAccess();
   const config = useConfig();
-  const { setShowDynamicUserProfile } = useDynamicContext();
+  const { setShowDynamicUserProfile, user: dynamicUser } = useDynamicContext();
+  // Recovery codes only exist once the account has a passkey.
+  const hasPasskey = dynamicUser?.verifiedCredentials?.some((vc) => vc.format === "passkey") ?? false;
 
   const [selectedChainId, setSelectedChainIdState] = useState<number>(() => {
     if (typeof window === "undefined") return DEFAULT_CHAIN_ID;
@@ -1150,6 +1153,17 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                         My Account
                       </HeaderMenuItem>
                     )}
+                    {showWeb3Panel && hasPasskey && (
+                      <HeaderMenuItem
+                        title="Codes for adding a passkey on another device"
+                        onClick={() => {
+                          closeSettings();
+                          openRecoveryCodes();
+                        }}
+                      >
+                        Recovery codes
+                      </HeaderMenuItem>
+                    )}
                     {hasOpsConsoleAccess && (
                       <Link
                         href={ADMIN_PATH}
@@ -1292,6 +1306,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
           off showDynamicUserProfile. */}
       <DynamicUserProfile />
       <PasskeyEnablePrompt />
+      <RecoveryCodesHost />
     </header>
   );
 };
