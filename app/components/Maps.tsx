@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -20,6 +20,7 @@ import { MapsListShell } from "./MapsListShell";
 import { PresetMap, MapMode } from "../types/types";
 import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
 import { MAP_ADMIN_ADDRESS } from "../config/alpha";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 export default function Maps() {
   const { address } = useAccount();
@@ -27,10 +28,11 @@ export default function Maps() {
   const { data: mapCount, refetch: refetchMapCount } = useMapCount();
   const queryClient = useQueryClient();
   const { address: mapsAddress } = useMapsContract();
-  const [showEditor, setShowEditor] = useState(false);
-  const [editingMapId, setEditingMapId] = useState<number | undefined>(
-    undefined
-  );
+  // The editor is in the URL (`map=<id>` or `map=new`, see urlState.ts):
+  // refresh keeps it open, Back closes it.
+  const mapParam = useUrlParam("map");
+  const showEditor = mapParam != null;
+  const editingMapId = mapParam && /^\d+$/.test(mapParam) ? Number(mapParam) : undefined;
 
   const maps = useMemo((): PresetMap[] => {
     if (!allMapsData || !Array.isArray(allMapsData) || allMapsData.length !== 3) {
@@ -60,8 +62,7 @@ export default function Maps() {
 
   useEffect(() => {
     const onChainChanged = () => {
-      setShowEditor(false);
-      setEditingMapId(undefined);
+      setUrlParams({ map: null }, { replace: true });
     };
     window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
     return () => {
@@ -70,8 +71,7 @@ export default function Maps() {
   }, []);
 
   const handleCreateMap = () => {
-    setEditingMapId(undefined);
-    setShowEditor(true);
+    setUrlParams({ map: "new" });
   };
 
   const handleEditMap = (mapId: number) => {
@@ -82,13 +82,11 @@ export default function Maps() {
       );
       return;
     }
-    setEditingMapId(mapId);
-    setShowEditor(true);
+    setUrlParams({ map: mapId });
   };
 
   const handleEditorSave = () => {
-    setShowEditor(false);
-    setEditingMapId(undefined);
+    setUrlParams({ map: null }, { back: true });
     // Refetch every Maps contract read (list, modes, impassable tiles,
     // zones). Was a full page reload, which dropped the wallet session for
     // a while and showed the Ops Console as signed out.
@@ -102,8 +100,7 @@ export default function Maps() {
   };
 
   const handleEditorCancel = () => {
-    setShowEditor(false);
-    setEditingMapId(undefined);
+    setUrlParams({ map: null }, { back: true });
   };
 
   if (showEditor) {

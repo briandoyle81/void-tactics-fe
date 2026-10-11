@@ -85,6 +85,7 @@ import { ClaimFreeShipsControls } from "./ClaimFreeShipsControls";
 import { invalidateAllShipPurchasePriceCachesForChain } from "../utils/shipPurchaseInfoCache";
 import { ManageNavyFleetCompositionCardSlot } from "./ManageNavyFleetCompositionCardSlot";
 import ShipConstructor from "./ShipConstructor";
+import { parseBigintParam, setUrlParams, useUrlParam } from "../utils/urlState";
 
 
 const ManageNavy: React.FC = () => {
@@ -417,14 +418,14 @@ const ManageNavy: React.FC = () => {
   const [selectedShips, setSelectedShips] = React.useState<Set<string>>(
     new Set(),
   );
-  const [customizeShipId, setCustomizeShipId] = React.useState<bigint | null>(
-    null,
-  );
+  // The ship being customized is in the URL (`ship=<id>`, see urlState.ts):
+  // refresh keeps the customize screen open, Back closes it.
+  const customizeShipId = parseBigintParam(useUrlParam("ship"));
 
   React.useEffect(() => {
     if (customizeShipId == null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setCustomizeShipId(null);
+      if (e.key === "Escape") setUrlParams({ ship: null }, { back: true });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -1331,7 +1332,7 @@ const ManageNavy: React.FC = () => {
                     toggleShipSelection(ship.id.toString())
                   }
                   onRecycleClick={() => handleRecycleClick(ship)}
-                  onCustomizeClick={() => setCustomizeShipId(ship.id)}
+                  onCustomizeClick={() => setUrlParams({ ship: ship.id.toString() })}
                   showInGameProperties={showInGameProperties}
                   inGameAttributes={attributesMap.get(ship.id)}
                   attributesLoading={attributesLoading}
@@ -1470,7 +1471,7 @@ const ManageNavy: React.FC = () => {
       {customizeShipId != null && (
         <div
           className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 p-3"
-          onClick={() => setCustomizeShipId(null)}
+          onClick={() => setUrlParams({ ship: null }, { back: true })}
         >
           <div
             className="max-h-[92vh] w-[95%] overflow-y-auto"
@@ -1478,7 +1479,7 @@ const ManageNavy: React.FC = () => {
           >
             <ShipConstructor
               initialShipId={customizeShipId}
-              onClose={() => setCustomizeShipId(null)}
+              onClose={() => setUrlParams({ ship: null }, { back: true })}
             />
           </div>
         </div>

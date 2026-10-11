@@ -40,6 +40,8 @@ import { RetreatRunConfirmModal } from "./operations/RetreatRunConfirmModal";
 import { useRunRosterHullWeb2 } from "../hooks/useRunRosterHull";
 import { getRunMapAction } from "../utils/runMapAction";
 import { aiConfigToPreviewShipWeb2 } from "../utils/aiShipConfigWeb2";
+import { useUrlSelectedNode } from "../hooks/useUrlSelectedNode";
+import { CLIENT_TAB_SLUGS } from "../utils/clientNavigation";
 
 const DEFAULT_ROGUELIKE_CAMPAIGN_ID = 1;
 const ADD_NODE_SENTINEL_ID = Number.MAX_SAFE_INTEGER;
@@ -183,13 +185,24 @@ export function RoguelikeGraphWeb2({ run, onRunEnded, onStartRun }: RoguelikeGra
   // root, with no run) only when that position or the mode changes, never on
   // the player's own selection.
   const currentRunNodeId = run ? run.currentNodeId : null;
+  // The first snap after a load takes the node the URL names instead (a
+  // refresh keeps the player's selection; see useUrlSelectedNode).
+  const takeInitialUrlNode = useUrlSelectedNode(selectedNodeId, CLIENT_TAB_SLUGS.Mission);
   React.useEffect(() => {
     if (currentRunNodeId != null) {
-      setSelectedNodeId(currentRunNodeId);
+      setSelectedNodeId(takeInitialUrlNode() ?? currentRunNodeId);
       return;
     }
-    if (!editMode && rootNodeId != null) setSelectedNodeId(rootNodeId);
-  }, [currentRunNodeId, editMode, rootNodeId]);
+    if (!editMode && rootNodeId != null) setSelectedNodeId(takeInitialUrlNode() ?? rootNodeId);
+  }, [currentRunNodeId, editMode, rootNodeId, takeInitialUrlNode]);
+  // A URL node that isn't on this map (stale link, a different campaign):
+  // fall back to the snap target.
+  React.useEffect(() => {
+    if (editMode || campaignNodes.length === 0 || selectedNodeId == null) return;
+    if (byId.has(selectedNodeId)) return;
+    const fallback = currentRunNodeId ?? rootNodeId;
+    if (fallback != null && fallback !== selectedNodeId) setSelectedNodeId(fallback);
+  }, [editMode, campaignNodes, selectedNodeId, byId, currentRunNodeId, rootNodeId]);
 
   // Edit Mode without a run restores the last selected node (only fills an
   // empty selection).

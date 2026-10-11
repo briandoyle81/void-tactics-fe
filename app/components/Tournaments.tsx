@@ -33,6 +33,7 @@ import type {
   TurnPaceOption,
   GameLengthOption,
 } from "../utils/tournamentCreateFormOptions";
+import { parseBigintParam, setUrlParams, type SetUrlParamsOptions, useUrlParam } from "../utils/urlState";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -381,14 +382,32 @@ type View =
   | { type: "create" };
 
 export function Tournaments() {
-  const [view, setView] = useState<View>({ type: "list" });
+  // In the URL (`tournament=<id>` / `create=1`, see urlState.ts): refresh
+  // keeps the screen, Back returns to the list.
+  const tournamentParam = useUrlParam("tournament");
+  const isCreateOpen = useUrlParam("create") === "1";
+  const detailId = parseBigintParam(tournamentParam);
+  const view: View =
+    detailId != null
+      ? { type: "detail", tournamentId: detailId }
+      : isCreateOpen
+        ? { type: "create" }
+        : { type: "list" };
+  const setView = (next: View, options?: SetUrlParamsOptions) =>
+    setUrlParams(
+      {
+        tournament: next.type === "detail" ? next.tournamentId.toString() : null,
+        create: next.type === "create" ? "1" : null,
+      },
+      options,
+    );
   const { tournaments, isLoading, refetch } = useTournamentList();
 
   if (view.type === "detail") {
     return (
       <TournamentDetail
         tournamentId={view.tournamentId}
-        onBack={() => setView({ type: "list" })}
+        onBack={() => setView({ type: "list" }, { back: true })}
       />
     );
   }
@@ -396,8 +415,8 @@ export function Tournaments() {
   if (view.type === "create") {
     return (
       <CreateTournament
-        onBack={() => setView({ type: "list" })}
-        onCreated={(id) => setView({ type: "detail", tournamentId: id })}
+        onBack={() => setView({ type: "list" }, { back: true })}
+        onCreated={(id) => setView({ type: "detail", tournamentId: id }, { replace: true })}
         onSuccess={refetch}
       />
     );

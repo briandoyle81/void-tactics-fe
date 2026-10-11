@@ -14,6 +14,7 @@ import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
 import { ROGUELIKE_MATCH_ADDRESS } from "../hooks/useRoguelikeMatch";
 import { useShowPveGames } from "../hooks/useShowPveGames";
 import { isPveGame } from "../utils/pveGames";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 function shortAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -21,9 +22,13 @@ function shortAddress(addr: string): string {
 
 const Games: React.FC = () => {
   const { address, isConnected } = useAccount();
+  // The open match is in the URL (`?game=<id>`, `&replay=1` when opened
+  // from the inbox's Replay button; see urlState.ts), so a refresh reopens
+  // it and Back returns to the list. `selectedGame` is the list row it was
+  // opened from (GameDisplay fetches live state itself).
+  const urlGameId = useUrlParam("game");
+  const startInReplay = useUrlParam("replay") === "1";
   const [selectedGame, setSelectedGame] = useState<GameDataView | null>(null);
-  // Opened via the inbox's Replay button.
-  const [startInReplay, setStartInReplay] = useState(false);
   const { games, isLoading, isFetching, error, refetch } = usePlayerGames({
     enabled: !selectedGame,
   });
@@ -93,68 +98,25 @@ const Games: React.FC = () => {
     [sortedGames, showPve],
   );
 
-  // Persist selectedGame to localStorage
-  const storageKey = useMemo(
-    () => `selectedGameId-${address || "anonymous"}`,
-    [address]
-  );
-
-  // Persist view mode (list | detail) to avoid unintended restores
-  const viewModeKey = useMemo(
-    () => `gamesViewMode-${address || "anonymous"}`,
-    [address]
-  );
-
   // Mark component as mounted after hydration
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Restore selectedGame from localStorage once wallet is connected and games are loaded
-  // Only restore after component has mounted to avoid hydration mismatches
+  // Follow the URL: open the match it names once the list has it (a match
+  // just created may not be in it yet: keep the id and wait, see
+  // waitingForSeededGame), close it when the id goes (Back, the list
+  // button).
   useEffect(() => {
-    if (
-      isMounted &&
-      typeof window !== "undefined" &&
-      isConnected &&
-      address &&
-      !selectedGame &&
-      games.length > 0
-    ) {
-      // Only restore if the last view mode was 'detail'
-      const viewMode = localStorage.getItem(viewModeKey);
-      if (viewMode !== "detail") return;
-
-      const saved = localStorage.getItem(storageKey);
-
-      if (saved) {
-        try {
-          const gameId = saved;
-          const gameToRestore = games.find(
-            (game) => game.metadata.gameId.toString() === gameId
-          );
-          if (gameToRestore) {
-            setSelectedGame(gameToRestore);
-          }
-          // Do not delete the seeded id just because this snapshot does not
-          // include it yet. GO TO GAMES writes the new gameId before this
-          // tab's list has refetched, and wiping it left joiners on an empty
-          // or stale list until a hard refresh.
-        } catch (error) {
-          console.warn("Failed to restore selectedGame:", error);
-        }
-      }
+    if (!urlGameId) {
+      if (selectedGame) setSelectedGame(null);
+      return;
     }
-  }, [
-    isMounted,
-    games,
-    isLoading,
-    selectedGame,
-    address,
-    storageKey,
-    viewModeKey,
-    isConnected,
-  ]);
+    if (selectedGame?.metadata.gameId.toString() === urlGameId) return;
+    if (!isConnected || !address) return;
+    const game = games.find((g) => g.metadata.gameId.toString() === urlGameId);
+    setSelectedGame(game ?? null);
+  }, [urlGameId, selectedGame, games, isConnected, address]);
 
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
@@ -174,72 +136,36 @@ const Games: React.FC = () => {
     };
   }, [isMounted, isConnected]);
 
-  const waitingForSeededGame = (() => {
-    if (!isMounted || typeof window === "undefined" || selectedGame) {
-      return false;
-    }
-    if (localStorage.getItem(viewModeKey) !== "detail") return false;
-    const saved = localStorage.getItem(storageKey);
-    if (!saved) return false;
-    return !games.some((game) => game.metadata.gameId.toString() === saved);
-  })();
+  const waitingForSeededGame =
+    isMounted &&
+    !selectedGame &&
+    urlGameId != null &&
+    !games.some((game) => game.metadata.gameId.toString() === urlGameId);
   const showGamesLoading =
     isLoading ||
     (waitingForSeededGame && (!mountRefetchDone || isFetching));
 
-  // Validate restored game - ensure user is still part of it
+  // The open match left this player's list (e.g. no longer theirs): close it.
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      address &&
-      selectedGame &&
-      games.length > 0
-    ) {
-      const game = games.find(
-        (g) =>
-          g.metadata.gameId.toString() ===
-          selectedGame.metadata.gameId.toString()
-      );
-      if (!game) {
-        // Game no longer exists, clear it
-        setSelectedGame(null);
-        localStorage.removeItem(storageKey);
-      }
-    }
-  }, [selectedGame, address, storageKey, games]);
+    if (!address || !selectedGame || games.length === 0) return;
+    const stillListed = games.some(
+      (g) => g.metadata.gameId.toString() === selectedGame.metadata.gameId.toString(),
+    );
+    if (!stillListed) setUrlParams({ game: null, replay: null }, { replace: true });
+  }, [selectedGame, address, games]);
 
-  // Track previous selectedGame to detect explicit clears
+  // Back on the list: refresh it (it doesn't poll while a match is open).
   const prevSelectedGameRef = useRef<GameDataView | null>(null);
-
-  // Save selectedGame to localStorage when it changes
-  // Only save after component has mounted to avoid hydration mismatches
   useEffect(() => {
-    if (isMounted && typeof window !== "undefined" && address) {
-      if (selectedGame) {
-        const gameId = selectedGame.metadata.gameId.toString();
-        localStorage.setItem(storageKey, gameId);
-        localStorage.setItem(viewModeKey, "detail");
-      } else if (prevSelectedGameRef.current) {
-        // Only clear if selectedGame was previously set (explicit clear)
-        // Don't clear on initial mount when it's null
-        localStorage.removeItem(storageKey);
-        localStorage.setItem(viewModeKey, "list");
-        void refetchRef.current();
-      }
-      prevSelectedGameRef.current = selectedGame;
-    }
-  }, [isMounted, selectedGame, address, storageKey, viewModeKey]);
+    if (prevSelectedGameRef.current && !selectedGame) void refetchRef.current();
+    prevSelectedGameRef.current = selectedGame;
+  }, [selectedGame]);
 
-  // Clear selected game only when address becomes null (explicit disconnect)
-  // Don't clear on temporary disconnects during page refresh
+  // A disconnect closes the match on screen; the URL keeps the id, so a
+  // wallet that drops for a moment while reconnecting reopens it.
   const prevAddressRef = useRef<string | undefined>(address);
   useEffect(() => {
-    // If address changes from something to null/undefined, it's an explicit disconnect
-    // The saved id is keyed by address, so it stays: a wallet that drops
-    // for a moment while reconnecting must not lose the open match.
-    if (prevAddressRef.current && !address) {
-      setSelectedGame(null);
-    }
+    if (prevAddressRef.current && !address) setSelectedGame(null);
     prevAddressRef.current = address;
   }, [address]);
 
@@ -269,9 +195,7 @@ const Games: React.FC = () => {
   useEffect(() => {
     const onChainChanged = () => {
       setSelectedGame(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("selectedGameId");
-      }
+      setUrlParams({ game: null, replay: null }, { replace: true });
       void refetchRef.current();
     };
     window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
@@ -281,13 +205,8 @@ const Games: React.FC = () => {
   }, []);
 
   const handleBackToList = useCallback(() => {
-    setSelectedGame(null);
-    setStartInReplay(false);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(storageKey);
-      localStorage.setItem(viewModeKey, "list");
-    }
-  }, [storageKey, viewModeKey]);
+    setUrlParams({ game: null, replay: null }, { back: true });
+  }, []);
 
   // The run's live mission shows its title in the inbox; other missions
   // aren't tied to a node after the fact, so they read "Operations".
@@ -337,13 +256,11 @@ const Games: React.FC = () => {
       secondsRemaining: isFinished || !turnTime ? null : calculateTimeRemaining(game),
       startedAtMs: Number(game.metadata.startedAt) * 1000,
       onOpen: () => {
-        setStartInReplay(false);
-        setSelectedGame(game);
+        setUrlParams({ game: game.metadata.gameId.toString(), replay: null });
       },
       onReplay: isFinished
         ? () => {
-            setStartInReplay(true);
-            setSelectedGame(game);
+            setUrlParams({ game: game.metadata.gameId.toString(), replay: "1" });
           }
         : undefined,
     };

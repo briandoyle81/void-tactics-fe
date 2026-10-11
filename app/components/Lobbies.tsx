@@ -64,7 +64,14 @@ import {
 import type { MapPickerMap } from "./MapPickerModal";
 import type { MapPosition, ScoringPosition } from "../types/types";
 import { usePlayerGames } from "../hooks/usePlayerGames";
-import { navigateToGame } from "../utils/navigateToGame";
+import { parseBigintParam, useUrlParam } from "../utils/urlState";
+import {
+  closeFleetViewParam,
+  openFleetViewParam,
+  setCreateFormParam,
+  setSelectedLobbyParam,
+} from "../utils/lobbyUrlState";
+import { navigateToGame, navigateToGamesTab } from "../utils/navigateToGame";
 import { normalizeGameDataView } from "../utils/normalizeGameDataView";
 import { useLobby } from "../hooks/useLobbiesContract";
 import {
@@ -268,7 +275,9 @@ const Lobbies: React.FC = () => {
   const canCreateLobby = !paused && isConnected;
   const needsPaymentForLobby =
     activeLobbiesCount >= Number(freeGamesPerAddress || 0n);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  // Screen state in the URL (lobbyUrlState.ts): refresh keeps it, Back
+  // closes it.
+  const showCreateForm = useUrlParam("create") === "1";
   const lobbyIdsAtCreateRef = useRef<Set<string>>(new Set());
   const waitForLobby = useCallback(
     async (
@@ -284,33 +293,13 @@ const Lobbies: React.FC = () => {
     [loadLobbies],
   );
 
-  // Navigate to Games tab (used by the Go to Games button elsewhere in this
-  // file once a game actually exists to navigate to).
-  const navigateToGamesTab = useCallback(() => {
-    localStorage.setItem("void-tactics-active-tab", "Games");
-    // Fallback marker so Home can detect explicit Games navigation intent.
-    localStorage.setItem("void-tactics-force-games-tab", "true");
-
-    // Use fresh event objects per target (re-dispatching the same Event object
-    // is unreliable across environments).
-    window.dispatchEvent(
-      new CustomEvent("void-tactics-navigate-to-games", {
-        bubbles: true,
-      }),
-    );
-    document.dispatchEvent(
-      new CustomEvent("void-tactics-navigate-to-games", {
-        bubbles: true,
-      }),
-    );
-  }, []);
 
   useEffect(() => {
     if ((needsShipsForLobbyUi || needsConstructForLobbyUi) && showCreateForm) {
-      setShowCreateForm(false);
+      setCreateFormParam(false, { replace: true });
     }
   }, [needsShipsForLobbyUi, needsConstructForLobbyUi, showCreateForm]);
-  const [selectedLobby, setSelectedLobby] = useState<bigint | null>(null);
+  const selectedLobby = parseBigintParam(useUrlParam("lobby"));
   const [openingGameLobbyId, setOpeningGameLobbyId] = useState<string | null>(
     null,
   );
@@ -353,19 +342,18 @@ const Lobbies: React.FC = () => {
         if (chainId && address) {
           removeFleetDraft(chainId, address, selectedLobby);
         }
-        setSelectedLobby(null);
+        setSelectedLobbyParam(null, { replace: true });
       }
     }
   }, [selectedLobby, address, lobbyList.lobbies, chainId]);
 
   const [isCreatingFleet, setIsCreatingFleet] = useState(false);
   const [fleetTxLobbyId, setFleetTxLobbyId] = useState<string | null>(null);
-  const [showFleetView, setShowFleetView] = useState(false);
+
   const [showLoadFleetMenu, setShowLoadFleetMenu] = useState(false);
-  const [viewingFleetId, setViewingFleetId] = useState<bigint | null>(null);
-  const [viewingFleetOwner, setViewingFleetOwner] = useState<string | null>(
-    null,
-  );
+  const viewingFleetId = parseBigintParam(useUrlParam("fleet"));
+  const viewingFleetOwner = useUrlParam("fleetOwner");
+  const showFleetView = viewingFleetId != null && viewingFleetOwner != null;
 
   const savedFleetCompositions = useMemo(() => {
     if (!chainId || !address) return [] as FleetComposition[];
@@ -947,7 +935,9 @@ const Lobbies: React.FC = () => {
     if (lid != null && address && chainId) {
       removeFleetDraft(chainId, address, lid);
     }
-    setSelectedLobby(null);
+    // Replace, not back: callers make more URL changes right after, and
+    // history.back() is async.
+    setSelectedLobbyParam(null, { replace: true });
     setSelectedShips([]);
     setShipPositions([]);
     setSelectedShipId(null);
@@ -996,7 +986,7 @@ const Lobbies: React.FC = () => {
         setOpeningGameLobbyId(null);
       }
     },
-    [address, refetchGames, resetFleetSelectionModalState, navigateToGamesTab],
+    [address, refetchGames, resetFleetSelectionModalState],
   );
 
   const goToGameForLobbyRef = useRef(goToGameForLobby);
@@ -1030,13 +1020,11 @@ const Lobbies: React.FC = () => {
 
   useEffect(() => {
     const onChainChanged = () => {
-      setShowCreateForm(false);
+      setCreateFormParam(false, { replace: true });
       resetFleetSelectionModalState();
-      setShowFleetView(false);
+      closeFleetViewParam({ replace: true });
       setIsCreatingFleet(false);
       setFleetTxLobbyId(null);
-      setViewingFleetId(null);
-      setViewingFleetOwner(null);
       setDraggedShipId(null);
       setDragOverPosition(null);
     };
@@ -1051,7 +1039,7 @@ const Lobbies: React.FC = () => {
 
   /** Close the fleet modal but keep in-memory and saved draft selection. */
   const closeFleetModalOnly = useCallback(() => {
-    setSelectedLobby(null);
+    setSelectedLobbyParam(null);
     setFiltersExpanded(false);
     setShowFleetConfirmation(false);
     setShowLoadFleetMenu(false);
@@ -1293,7 +1281,7 @@ const Lobbies: React.FC = () => {
     lastFleetCreationLobbyRef.current = null;
 
     toast.success("Fleet created successfully!");
-    setShowFleetView(false);
+    closeFleetViewParam({ replace: true });
     setShowFleetConfirmation(false);
 
     void (async () => {
@@ -1815,7 +1803,7 @@ const Lobbies: React.FC = () => {
         canCreateLobby={canCreateLobby}
         disabledLabel={paused ? "LOBBIES PAUSED" : null}
         showCreateForm={showCreateForm}
-        onToggleCreateForm={() => setShowCreateForm(true)}
+        onToggleCreateForm={() => setCreateFormParam(true)}
         createButtonHint={
           needsPaymentForLobby && additionalLobbyFee ? (
             <p className="text-center text-xs text-amber font-mono">
@@ -1834,7 +1822,7 @@ const Lobbies: React.FC = () => {
             mapIdLabel={createForm.selectedMapId}
             maps={pvpMapPickerMaps}
             onMapIdChange={(id) => setCreateForm((prev) => ({ ...prev, selectedMapId: id }))}
-            onClose={() => setShowCreateForm(false)}
+            onClose={() => setCreateFormParam(false)}
             extraFields={
               <>
                 <div>
@@ -1950,7 +1938,7 @@ const Lobbies: React.FC = () => {
                         (lobby) => !idsBefore.has(lobby.basic.id.toString()),
                       );
                     });
-                    setShowCreateForm(false);
+                    setCreateFormParam(false);
                     setCreateForm({
                       threatScale: "skirmish",
                       turnPace: "immediate",
@@ -1978,7 +1966,7 @@ const Lobbies: React.FC = () => {
                   CREATE
                 </LobbyCreateButton>
                 <button
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={() => setCreateFormParam(false)}
                   className="w-full px-4 py-2 border border-warning-red text-warning-red hover:bg-warning-red/20 sm:w-auto"
                   style={{
                     borderRadius: 0, // Square corners for industrial theme
@@ -2091,9 +2079,7 @@ const Lobbies: React.FC = () => {
                 lobby.players.creatorFleetId > 0n ? (
                   <button
                     onClick={() => {
-                      setViewingFleetId(lobby.players.creatorFleetId);
-                      setViewingFleetOwner(lobby.basic.creator);
-                      setShowFleetView(true);
+                      openFleetViewParam(lobby.players.creatorFleetId, lobby.basic.creator);
                     }}
                     className={`px-2.5 py-0.5 text-xs border font-mono tracking-wider transition-colors ${
                       isCreatorMe
@@ -2110,9 +2096,7 @@ const Lobbies: React.FC = () => {
                 lobby.players.joinerFleetId > 0n ? (
                   <button
                     onClick={() => {
-                      setViewingFleetId(lobby.players.joinerFleetId);
-                      setViewingFleetOwner(lobby.players.joiner);
-                      setShowFleetView(true);
+                      openFleetViewParam(lobby.players.joinerFleetId, lobby.players.joiner);
                     }}
                     className={`px-2.5 py-0.5 text-xs border font-mono tracking-wider transition-colors ${
                       isJoinerMe
@@ -2153,7 +2137,7 @@ const Lobbies: React.FC = () => {
                     void goToGameForLobby(lobby.basic.id);
                   }}
                   goToGamesBusy={isLobbyGoToGamesBusy(lobby.basic.id)}
-                  onSelectFleet={() => setSelectedLobby(lobby.basic.id)}
+                  onSelectFleet={() => setSelectedLobbyParam(lobby.basic.id)}
                   joinButton={
                     <LobbyJoinButton
                       lobbyId={lobby.basic.id}
@@ -2537,9 +2521,7 @@ const Lobbies: React.FC = () => {
           ownerLabel={`${viewingFleetOwner.slice(0, 6)}…${viewingFleetOwner.slice(-4)}`}
           isOwnerMe={!!address && viewingFleetOwner.toLowerCase() === address.toLowerCase()}
           onClose={() => {
-            setShowFleetView(false);
-            setViewingFleetId(null);
-            setViewingFleetOwner(null);
+            closeFleetViewParam();
           }}
           isLoading={fleetShipIdsLoading || fleetShipsLoading}
           shipCards={

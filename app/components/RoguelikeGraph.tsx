@@ -45,6 +45,8 @@ import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useRunRosterHullWeb3 } from "../hooks/useRunRosterHull";
 import { getRunMapAction } from "../utils/runMapAction";
 import type { Ship } from "../types/types";
+import { useUrlSelectedNode } from "../hooks/useUrlSelectedNode";
+import { CLIENT_TAB_SLUGS } from "../utils/clientNavigation";
 
 const NO_SHIP_IDS: bigint[] = [];
 const OPS_TOOLBAR_BUTTON =
@@ -243,13 +245,24 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
   // on the player's own selection, or picking the next mission would snap
   // straight back to the current one.
   const currentRunNodeId = run ? Number(run.currentNodeId) : null;
+  // The first snap after a load takes the node the URL names instead (a
+  // refresh keeps the player's selection; see useUrlSelectedNode).
+  const takeInitialUrlNode = useUrlSelectedNode(selectedNodeId, CLIENT_TAB_SLUGS.Mission);
   React.useEffect(() => {
     if (currentRunNodeId != null) {
-      setSelectedNodeId(currentRunNodeId);
+      setSelectedNodeId(takeInitialUrlNode() ?? currentRunNodeId);
       return;
     }
-    if (!editMode && rootNodeId != null) setSelectedNodeId(rootNodeId);
-  }, [currentRunNodeId, editMode, rootNodeId]);
+    if (!editMode && rootNodeId != null) setSelectedNodeId(takeInitialUrlNode() ?? rootNodeId);
+  }, [currentRunNodeId, editMode, rootNodeId, takeInitialUrlNode]);
+  // A URL node that isn't on this map (stale link, a different campaign):
+  // fall back to the snap target.
+  React.useEffect(() => {
+    if (editMode || campaignNodes.length === 0 || selectedNodeId == null) return;
+    if (byNumberId.has(selectedNodeId)) return;
+    const fallback = currentRunNodeId ?? rootNodeId;
+    if (fallback != null && fallback !== selectedNodeId) setSelectedNodeId(fallback);
+  }, [editMode, campaignNodes, selectedNodeId, byNumberId, currentRunNodeId, rootNodeId]);
 
   // Edit Mode without a run restores the last selected node so leaving
   // Mission and coming back keeps the panel (only fills an empty selection).

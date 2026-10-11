@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
@@ -10,6 +10,7 @@ import { MapPreviewCard } from "./MapPreviewCard";
 import { MapsListShell } from "./MapsListShell";
 import { MapPosition, ScoringPosition, MapMode } from "../types/types";
 import { parseZoneTiles } from "../utils/deploymentZone";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 export interface Web2Map {
   id: number;
@@ -35,10 +36,11 @@ export default function MapsWeb2() {
     queryKey: ["maps", "web2"],
     queryFn: () => apiFetch<Web2Map[]>("/api/maps"),
   });
-  const [showEditor, setShowEditor] = useState(false);
-  const [editingMapId, setEditingMapId] = useState<number | undefined>(
-    undefined,
-  );
+  // The editor is in the URL (`map=<id>` or `map=new`, see urlState.ts):
+  // refresh keeps it open, Back closes it.
+  const mapParam = useUrlParam("map");
+  const showEditor = mapParam != null;
+  const editingMapId = mapParam && /^\d+$/.test(mapParam) ? Number(mapParam) : undefined;
 
   const editingMap = useMemo(
     () => maps.find((m) => m.id === editingMapId),
@@ -46,8 +48,7 @@ export default function MapsWeb2() {
   );
 
   const handleCreateMap = () => {
-    setEditingMapId(undefined);
-    setShowEditor(true);
+    setUrlParams({ map: "new" });
   };
 
   const handleEditMap = (map: Web2Map) => {
@@ -55,19 +56,16 @@ export default function MapsWeb2() {
       toast.error("You are not authorized to edit maps.");
       return;
     }
-    setEditingMapId(map.id);
-    setShowEditor(true);
+    setUrlParams({ map: map.id });
   };
 
   const handleEditorSave = () => {
-    setShowEditor(false);
-    setEditingMapId(undefined);
+    setUrlParams({ map: null }, { back: true });
     refetch();
   };
 
   const handleEditorCancel = () => {
-    setShowEditor(false);
-    setEditingMapId(undefined);
+    setUrlParams({ map: null }, { back: true });
   };
 
   if (showEditor) {

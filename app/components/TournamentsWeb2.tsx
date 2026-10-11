@@ -30,6 +30,7 @@ import type {
   TurnPaceOption,
   GameLengthOption,
 } from "../utils/tournamentCreateFormOptions";
+import { setUrlParams, type SetUrlParamsOptions, useUrlParam } from "../utils/urlState";
 
 // Web2-mode counterpart to `Tournaments.tsx`. Same single-elimination
 // lifecycle (create → register → start/bracket-generate → play each match
@@ -353,15 +354,33 @@ type View = { type: "list" } | { type: "detail"; tournamentId: number } | { type
 
 export function TournamentsWeb2() {
   const { userId } = useCurrentUser();
-  const [view, setView] = useState<View>({ type: "list" });
+  // In the URL (`tournament=<id>` / `create=1`, see urlState.ts): refresh
+  // keeps the screen, Back returns to the list.
+  const tournamentParam = useUrlParam("tournament");
+  const isCreateOpen = useUrlParam("create") === "1";
+  const detailId = tournamentParam && /^\d+$/.test(tournamentParam) ? Number(tournamentParam) : null;
+  const view: View =
+    detailId != null
+      ? { type: "detail", tournamentId: detailId }
+      : isCreateOpen
+        ? { type: "create" }
+        : { type: "list" };
+  const setView = (next: View, options?: SetUrlParamsOptions) =>
+    setUrlParams(
+      {
+        tournament: next.type === "detail" ? next.tournamentId.toString() : null,
+        create: next.type === "create" ? "1" : null,
+      },
+      options,
+    );
   const { tournaments, isLoading, refetch } = useTournamentListWeb2();
 
   if (view.type === "detail") {
-    return <TournamentDetail tournamentId={view.tournamentId} onBack={() => setView({ type: "list" })} />;
+    return <TournamentDetail tournamentId={view.tournamentId} onBack={() => setView({ type: "list" }, { back: true })} />;
   }
 
   if (view.type === "create") {
-    return <CreateTournament onBack={() => setView({ type: "list" })} onSuccess={refetch} />;
+    return <CreateTournament onBack={() => setView({ type: "list" }, { back: true })} onSuccess={refetch} />;
   }
 
   return (

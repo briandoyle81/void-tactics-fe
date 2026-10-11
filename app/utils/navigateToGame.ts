@@ -1,34 +1,34 @@
-// Switches to the Games tab with a specific game pre-selected — shared by
-// NodeMatchModal.tsx (after launching a new mission) and
-// CampaignNodePreview.tsx ("Enter Combat", resuming one already running).
-// Mirrors Lobbies.tsx's navigateToGamesTab, plus pre-seeding the exact
-// localStorage keys Games.tsx's own restore-on-mount effect reads
-// (storageKey/viewModeKey there) so it opens straight into this game
-// instead of landing on the list.
-export function navigateToGame(address: string | undefined, gameId: bigint): void {
-  if (typeof window === "undefined") return;
-  if (address) {
-    localStorage.setItem(`selectedGameId-${address}`, gameId.toString());
-    localStorage.setItem(`gamesViewMode-${address}`, "detail");
-  }
-  localStorage.setItem("void-tactics-active-tab", "Games");
-  localStorage.setItem("void-tactics-force-games-tab", "true");
+import { openClientTab } from "./clientNavigation";
+
+// Opens Battles, or a specific match in it (`?tab=battles&game=<id>`, see
+// urlState.ts), as a new history entry. Shared by every "go to the game"
+// action: NodeMatchModal / CampaignNodePreview (launching or resuming a
+// mission), the Operations run map, Lobbies once a match exists, Profile.
+// The event tells the client to refetch its games list, which a new match
+// may not be in yet (Games waits for it rather than dropping the id).
+
+function notifyGamesOpened(): void {
   window.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games"));
   document.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games"));
 }
 
-/**
- * Web2 counterpart: same tab switch, pre-seeding the keys GamesWeb2.tsx's
- * restore-on-mount effect reads (selectedGameIdWeb2-/gamesViewModeWeb2-).
- */
-export function navigateToGameWeb2(userId: string | null | undefined, gameId: number | string): void {
+/** Battles list (no match open). */
+export function navigateToGamesTab(): void {
   if (typeof window === "undefined") return;
-  if (userId) {
-    localStorage.setItem(`selectedGameIdWeb2-${userId}`, String(gameId));
-    localStorage.setItem(`gamesViewModeWeb2-${userId}`, "detail");
-  }
-  localStorage.setItem("void-tactics-active-tab", "Games");
-  localStorage.setItem("void-tactics-force-games-tab", "true");
-  window.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games"));
-  document.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games"));
+  openClientTab("Games", { params: { game: null, replay: null } });
+  notifyGamesOpened();
+}
+
+/** A web3 match. `address` is unused now (kept for existing callers). */
+export function navigateToGame(_address: string | undefined, gameId: bigint): void {
+  if (typeof window === "undefined") return;
+  openClientTab("Games", { params: { game: gameId.toString(), replay: null } });
+  notifyGamesOpened();
+}
+
+/** A web2 match. `userId` is unused now (kept for existing callers). */
+export function navigateToGameWeb2(_userId: string | null | undefined, gameId: number | string): void {
+  if (typeof window === "undefined") return;
+  openClientTab("Games", { params: { game: String(gameId), replay: null } });
+  notifyGamesOpened();
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { navigateToGame as openGame } from "../utils/navigateToGame";
 import React, { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { usePlayerGames } from "../hooks/usePlayerGames";
@@ -89,10 +90,7 @@ const Profile: React.FC = () => {
   }, [sortedGames, address]);
 
   const navigateToGame = (gameId: string) => {
-    if (!address) return;
-    localStorage.setItem(`selectedGameId-${address}`, gameId);
-    localStorage.setItem(`gamesViewMode-${address}`, "detail");
-    window.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games"));
+    openGame(address, BigInt(gameId));
   };
 
   return (

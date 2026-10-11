@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getUrlParam, setUrlParams, useUrlParam } from "../utils/urlState";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import Header from "../components/Header";
@@ -33,6 +34,20 @@ const panelBorderStyle = {
 } as const;
 
 const panelStyle = { ...panelBorderStyle, backgroundColor: "var(--color-slate)" } as const;
+
+const OPS_TAB_SLUGS: Record<OpsConsoleTab, string> = {
+  Maps: "maps",
+  Admin: "admin",
+  "Ship Attributes": "ship-attributes",
+  "Purchase Prices": "purchase-prices",
+};
+/** Params a tab's screen adds (Maps: the map being edited). */
+const OPS_CHILD_PARAMS = ["map"] as const;
+
+function opsTabFromSlug(slug: string | null): OpsConsoleTab | null {
+  const entry = (Object.entries(OPS_TAB_SLUGS) as [OpsConsoleTab, string][]).find(([, s]) => s === slug);
+  return entry ? entry[0] : null;
+}
 
 function ConsoleMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -68,19 +83,22 @@ export default function OpsConsolePage() {
   const [isRestoringSession, setIsRestoringSession] = useState(false);
   const { isLoggedIn, isLoading: isUserLoading } = useCurrentUser();
   const { tabs, hasAccess, isLoading: isAccessLoading } = useOpsConsoleAccess();
-  const [savedTab, setSavedTab] = useState<OpsConsoleTab | null>(null);
-
+  // The tab is in the URL (`?tab=maps`, see urlState.ts): refresh keeps it,
+  // Back/Forward step through tabs. A plain /admin load reopens the last one.
+  const urlTab = opsTabFromSlug(useUrlParam("tab"));
   useEffect(() => {
+    if (getUrlParam("tab")) return;
     const saved = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
     if (saved && OPS_CONSOLE_TABS.includes(saved as OpsConsoleTab)) {
-      setSavedTab(saved as OpsConsoleTab);
+      setUrlParams({ tab: OPS_TAB_SLUGS[saved as OpsConsoleTab] }, { replace: true });
     }
   }, []);
 
-  const activeTab = savedTab && tabs.includes(savedTab) ? savedTab : tabs[0];
+  const activeTab = urlTab && tabs.includes(urlTab) ? urlTab : tabs[0];
 
   const selectTab = (tab: OpsConsoleTab) => {
-    setSavedTab(tab);
+    if (tab === activeTab) return;
+    setUrlParams({ tab: OPS_TAB_SLUGS[tab] }, { clear: OPS_CHILD_PARAMS });
     localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, tab);
     posthog.capture("tab_navigated", { tab_name: tab, surface: "ops_console" });
   };

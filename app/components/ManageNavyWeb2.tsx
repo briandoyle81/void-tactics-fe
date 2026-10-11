@@ -59,6 +59,7 @@ import {
   persistDroneFactoryTutorialPermanentlyDismissedWeb2,
   persistFreeShipClaimClickedWeb2,
 } from "../utils/freeShipClaimTutorialStorageWeb2";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 // Web2's fleet-composition export/import compatibility tag — there's no
 // "chain" concept in web2, so this is a fixed constant (any web2 export can
@@ -85,12 +86,14 @@ const ManageNavyWeb2: React.FC = () => {
   // Matches web3 ManageNavy.tsx's `fleetStats.unconstructedShips === 0` gate.
   const hasUnconstructedShips = ships.some((s) => !s.shipData.constructed);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [customizeShipId, setCustomizeShipId] = useState<number | null>(null);
+  // In the URL, same as ManageNavy.tsx (`ship=<id>`).
+  const shipParam = useUrlParam("ship");
+  const customizeShipId = shipParam && /^\d+$/.test(shipParam) ? Number(shipParam) : null;
 
   useEffect(() => {
     if (customizeShipId == null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setCustomizeShipId(null);
+      if (e.key === "Escape") setUrlParams({ ship: null }, { back: true });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -765,7 +768,7 @@ const ManageNavyWeb2: React.FC = () => {
             isSelected={selected.has(ship.id)}
             onToggleSelection={() => toggleSelect(ship.id)}
             onRecycleClick={() => handleRecycleClick(ship)}
-            onCustomizeClick={() => setCustomizeShipId(ship.id)}
+            onCustomizeClick={() => setUrlParams({ ship: ship.id.toString() })}
             showInGameProperties={showInGameProperties}
             inGameAttributes={attributesByShipId.get(ship.id)}
             attributesLoading={attributesLoading}
@@ -808,7 +811,7 @@ const ManageNavyWeb2: React.FC = () => {
       {customizeShipId != null && (
         <div
           className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 p-3"
-          onClick={() => setCustomizeShipId(null)}
+          onClick={() => setUrlParams({ ship: null }, { back: true })}
         >
           <div
             className="max-h-[92vh] w-[95%] overflow-y-auto"
@@ -816,7 +819,7 @@ const ManageNavyWeb2: React.FC = () => {
           >
             <ShipConstructorWeb2
               initialShipId={customizeShipId}
-              onClose={() => setCustomizeShipId(null)}
+              onClose={() => setUrlParams({ ship: null }, { back: true })}
             />
           </div>
         </div>

@@ -9,6 +9,7 @@ import GameDisplayWeb2 from "./GameDisplayWeb2";
 import { BattlesInbox, type BattleInboxItem } from "./BattlesInbox";
 import { AI_USER_ID } from "../config/aiUser";
 import { useShowPveGames } from "../hooks/useShowPveGames";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 // Web2-mode counterpart to `Games.tsx` — same list/detail navigation pattern
 // and card layout, backed by `usePlayerGamesWeb2`/session user id instead of
@@ -18,9 +19,11 @@ import { useShowPveGames } from "../hooks/useShowPveGames";
 // logic belongs in its own file.
 const GamesWeb2: React.FC = () => {
   const { userId, isLoggedIn } = useCurrentUser();
+  // The open match is in the URL, same as Games.tsx (`?game=<id>`,
+  // `&replay=1`; see urlState.ts).
+  const urlGameId = useUrlParam("game");
+  const startInReplay = useUrlParam("replay") === "1";
   const [selectedGame, setSelectedGame] = useState<Web2GameDataView | null>(null);
-  // Opened via the inbox's Replay button.
-  const [startInReplay, setStartInReplay] = useState(false);
   const { games, isLoading, error, refetch } = usePlayerGamesWeb2({
     pausePolling: Boolean(selectedGame),
   });
@@ -63,54 +66,57 @@ const GamesWeb2: React.FC = () => {
     [sortedGames, showPve],
   );
 
-  const storageKey = useMemo(() => `selectedGameIdWeb2-${userId || "anonymous"}`, [userId]);
-  const viewModeKey = useMemo(() => `gamesViewModeWeb2-${userId || "anonymous"}`, [userId]);
-
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Follow the URL (same as Games.tsx): open the match once the list has
+  // it, close it when the id goes.
   useEffect(() => {
-    if (isMounted && typeof window !== "undefined" && isLoggedIn && userId && !isLoading && !selectedGame && games.length > 0) {
-      const viewMode = localStorage.getItem(viewModeKey);
-      if (viewMode !== "detail") return;
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const gameToRestore = games.find((g) => g.metadata.gameId.toString() === saved);
-        // Not found yet: keep the saved id. The first list can be a cached
-        // one that predates the game, and deleting here made a refresh
-        // intermittently fall back to the list (same as Games.tsx).
-        if (gameToRestore) setSelectedGame(gameToRestore);
-      }
+    if (!urlGameId) {
+      if (selectedGame) setSelectedGame(null);
+      return;
     }
-  }, [isMounted, games, isLoading, selectedGame, userId, storageKey, viewModeKey, isLoggedIn]);
+    if (String(selectedGame?.metadata.gameId) === urlGameId) return;
+    if (!isLoggedIn || !userId) return;
+    const game = games.find((g) => String(g.metadata.gameId) === urlGameId);
+    setSelectedGame(game ?? null);
+  }, [urlGameId, selectedGame, games, isLoggedIn, userId]);
 
+  // A match in the URL that the list doesn't have yet (just created): show
+  // loading until a fresh list is in, rather than the list without it.
+  const [mountRefetchDone, setMountRefetchDone] = useState(false);
   useEffect(() => {
-    if (userId && selectedGame && games.length > 0) {
-      const stillExists = games.some(
-        (g) => String(g.metadata.gameId) === String(selectedGame.metadata.gameId),
-      );
-      if (!stillExists) {
-        setSelectedGame(null);
-        localStorage.removeItem(storageKey);
-      }
-    }
-  }, [selectedGame, userId, storageKey, games]);
+    if (!isMounted || !isLoggedIn) return;
+    let cancelled = false;
+    void Promise.resolve(refetchRef.current()).finally(() => {
+      if (!cancelled) setMountRefetchDone(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isMounted, isLoggedIn]);
+  const waitingForUrlGame =
+    !selectedGame &&
+    urlGameId != null &&
+    !games.some((g) => String(g.metadata.gameId) === urlGameId) &&
+    !mountRefetchDone;
 
+  // The open match left this player's list: close it.
+  useEffect(() => {
+    if (!userId || !selectedGame || games.length === 0) return;
+    const stillExists = games.some(
+      (g) => String(g.metadata.gameId) === String(selectedGame.metadata.gameId),
+    );
+    if (!stillExists) setUrlParams({ game: null, replay: null }, { replace: true });
+  }, [selectedGame, userId, games]);
+
+  // Back on the list: refresh it.
   const prevSelectedGameRef = useRef<Web2GameDataView | null>(null);
   useEffect(() => {
-    if (isMounted && typeof window !== "undefined" && userId) {
-      if (selectedGame) {
-        localStorage.setItem(storageKey, selectedGame.metadata.gameId.toString());
-        localStorage.setItem(viewModeKey, "detail");
-      } else if (prevSelectedGameRef.current) {
-        localStorage.removeItem(storageKey);
-        localStorage.setItem(viewModeKey, "list");
-        void refetchRef.current();
-      }
-      prevSelectedGameRef.current = selectedGame;
-    }
-  }, [isMounted, selectedGame, userId, storageKey, viewModeKey]);
+    if (prevSelectedGameRef.current && !selectedGame) void refetchRef.current();
+    prevSelectedGameRef.current = selectedGame;
+  }, [selectedGame]);
 
   // Notify Home layout when a game detail is open so global chrome (header/tabs) hides consistently.
   useEffect(() => {
@@ -126,13 +132,8 @@ const GamesWeb2: React.FC = () => {
   }, []);
 
   const handleBackToList = useCallback(() => {
-    setSelectedGame(null);
-    setStartInReplay(false);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(storageKey);
-      localStorage.setItem(viewModeKey, "list");
-    }
-  }, [storageKey, viewModeKey]);
+    setUrlParams({ game: null, replay: null }, { back: true });
+  }, []);
 
   const stableListRefetch = useCallback(() => {
     void refetchRef.current();
@@ -171,13 +172,11 @@ const GamesWeb2: React.FC = () => {
       secondsRemaining: isFinished || !turnTime ? null : calculateTimeRemaining(game),
       startedAtMs: game.metadata.startedAt,
       onOpen: () => {
-        setStartInReplay(false);
-        setSelectedGame(game);
+        setUrlParams({ game: String(game.metadata.gameId), replay: null });
       },
       onReplay: isFinished
         ? () => {
-            setStartInReplay(true);
-            setSelectedGame(game);
+            setUrlParams({ game: String(game.metadata.gameId), replay: "1" });
           }
         : undefined,
     };
@@ -187,7 +186,7 @@ const GamesWeb2: React.FC = () => {
     <BattlesInbox
       isAuthenticated={isLoggedIn}
       authRequiredMessage="Sign in to see your battles."
-      isLoading={isLoading}
+      isLoading={isLoading || waitingForUrlGame}
       error={error}
       items={inboxItems}
       showPve={showPve}

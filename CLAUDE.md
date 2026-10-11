@@ -67,6 +67,10 @@ Four testnets are supported: **Flow Testnet** (id: 747, default), **Ronin Saigon
 - **Aggregate reads:** prefer `GameLens` views (`app/hooks/useGameLens.ts`) over chains of dependent reads. Admin-edited data uses `ADMIN_DATA_STALE_MS`.
 - `window.__vtRpcUsage` (and the dev console's `[rpc]` summary) shows requests by method.
 
+## Navigation state lives in the URL
+
+Screens in `/play` and `/admin` keep their state in the query string (`app/utils/urlState.ts`): `?tab=` (slugs in `clientNavigation.ts`) plus each screen's params (`section`, `game`/`replay`, `lobby`/`create`/`fleet`, `tournament`, `ship`, `node`, `/admin`'s `map`). Opening a screen pushes a history entry, so a refresh reopens it and Back/Forward work. Automatic changes (closing something that no longer exists, map selection) use `{ replace: true }`. In-app back/close buttons use `{ back: true }` (history.back() when the previous entry is the screen they return to, else replace), so they match the browser's Back. New navigable UI (a detail view, an editor, a sub-tab) goes in the URL the same way, never in React state or localStorage alone. Open games with `navigateToGame` / tabs with `openClientTab`.
+
 ## Critical: RPC Call Memoization
 
 Excessive RPC calls will spam the node provider and cause rate limiting. Every wagmi hook config and every callback passed to wagmi hooks **must** be memoized:

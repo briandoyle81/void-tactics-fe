@@ -27,7 +27,13 @@ import { useCommandDeckLayout } from "../hooks/useCommandDeckLayout";
 import { TUTORIAL_COMPLETED_STEPS_KEY, TUTORIAL_STEP_STORAGE_KEY } from "../types/onboarding";
 import { useAppMode } from "../hooks/useAppMode";
 import { OPS_CONSOLE_TABS, type OpsConsoleTab } from "../hooks/useOpsConsoleAccess";
-import { PENDING_CLIENT_DETAIL_STORAGE_KEY, setGameClientMounted } from "../utils/clientNavigation";
+import {
+  clientTabFromSlug,
+  openClientTab,
+  setGameClientMounted,
+  type ClientTab,
+} from "../utils/clientNavigation";
+import { getUrlParam, setUrlParams, useUrlParam, useUrlSearch } from "../utils/urlState";
 import posthog from "posthog-js";
 import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import { TOURNAMENTS_ENABLED } from "../config/alpha";
@@ -69,16 +75,6 @@ const TournamentsWeb2 = dynamic(
   () => import("../components/TournamentsWeb2").then((m) => m.TournamentsWeb2),
   { loading: ScreenLoading },
 );
-
-type ClientTab =
-  | "Command Deck"
-  | "Mission"
-  | "Lobbies"
-  | "Tournaments"
-  | "Games"
-  | "Manage Navy"
-  | "Store"
-  | "Profile";
 
 const CLIENT_TABS = new Set<string>([
   "Command Deck",
@@ -125,6 +121,9 @@ const MODE_TITLES: Partial<Record<ClientTab, string>> = {
   Lobbies: "Skirmish",
   Tournaments: "Tournaments",
 };
+
+/** The last client URL query, reopened when /play is loaded without one. */
+const LAST_CLIENT_SEARCH_KEY = "vt-last-client-search";
 
 /** Tabs saved by older versions of the client. */
 function migrateSavedTab(saved: string | null): ClientTab {
@@ -236,22 +235,43 @@ export default function GameClient() {
     setHasRestoreProbeReported(true);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<ClientTab>("Command Deck");
+  // The screen lives in the URL (?tab=…&section=…, see urlState.ts), so a
+  // refresh reopens it and Back/Forward step through screens.
   const [isHydrated, setIsHydrated] = useState(false);
+  const tabParam = useUrlParam("tab");
+  const sectionParam = useUrlParam("section");
+  const urlTab = clientTabFromSlug(tabParam);
+  const activeTab: ClientTab =
+    !isHydrated || !urlTab || (urlTab === "Tournaments" && !TOURNAMENTS_ENABLED)
+      ? "Command Deck"
+      : urlTab;
+  const setActiveTab = useCallback(
+    (tab: ClientTab, options?: { section?: string; replace?: boolean }) =>
+      openClientTab(tab, {
+        replace: options?.replace,
+        params: options?.section ? { section: options.section } : undefined,
+      }),
+    [],
+  );
   // Keep the Mission graph mounted after the first visit so leaving the tab
   // (e.g. Games) and coming back restores edit mode, selection, and drafts.
   const [missionKeepAlive, setMissionKeepAlive] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [firstBattleCompleted, setFirstBattleCompleted] = useState(false);
   const [isManageNavyPurchaseActive, setIsManageNavyPurchaseActive] = useState(false);
-  const [storeSection, setStoreSection] = useState<StoreSection>("packs");
-  const [fleetSection, setFleetSection] = useState<FleetSection>("ships");
+  const storeSection: StoreSection = STORE_SECTIONS.includes(sectionParam as StoreSection)
+    ? (sectionParam as StoreSection)
+    : "packs";
+  const fleetSection: FleetSection = FLEET_SECTIONS.includes(sectionParam as FleetSection)
+    ? (sectionParam as FleetSection)
+    : "ships";
+  const setSection = useCallback((section: string) => setUrlParams({ section }), []);
 
   const openTab = useCallback((tab: ClientTab) => {
     if (tab === "Tournaments" && !TOURNAMENTS_ENABLED) return;
     setActiveTab(tab);
     posthog.capture("tab_navigated", { tab_name: tab });
-  }, []);
+  }, [setActiveTab]);
 
   // Lets shared chrome (Header) switch tabs with events while the client is
   // on screen, and navigate here from other pages (see clientNavigation.ts).
@@ -260,34 +280,40 @@ export default function GameClient() {
     return () => setGameClientMounted(false);
   }, []);
 
-  // Restore the tab once on mount; resume a first battle left in progress.
+  // On a load without a screen in the URL (plain /play, an old bookmark),
+  // reopen the last one, without adding a history entry. Resume a first
+  // battle left in progress.
   useLayoutEffect(() => {
     setIsHydrated(true);
-    const forceGamesTab = localStorage.getItem("void-tactics-force-games-tab") === "true";
-    let nextTab: ClientTab;
-    if (forceGamesTab) {
-      nextTab = "Games";
-      localStorage.removeItem("void-tactics-force-games-tab");
-    } else if (localStorage.getItem("selectedGameId")) {
-      nextTab = "Games";
-    } else {
-      nextTab = migrateSavedTab(localStorage.getItem("void-tactics-active-tab"));
-    }
-    setActiveTab(nextTab);
-    if (nextTab === "Mission") setMissionKeepAlive(true);
-    // A sub-tab requested from another page (clientNavigation.ts).
-    try {
-      const pending = JSON.parse(localStorage.getItem(PENDING_CLIENT_DETAIL_STORAGE_KEY) ?? "null");
-      localStorage.removeItem(PENDING_CLIENT_DETAIL_STORAGE_KEY);
-      const section = typeof pending?.section === "string" ? pending.section : null;
-      if (nextTab === "Store" && STORE_SECTIONS.includes(section)) setStoreSection(section);
-      if (nextTab === "Manage Navy" && FLEET_SECTIONS.includes(section)) setFleetSection(section);
-    } catch {
-      // ignore a malformed request
+    if (!getUrlParam("tab")) {
+      let lastSearch: string | null = null;
+      try {
+        lastSearch = localStorage.getItem(LAST_CLIENT_SEARCH_KEY);
+      } catch {
+        // storage unavailable: fall through to the Command Deck
+      }
+      const last = new URLSearchParams(lastSearch ?? "");
+      if (clientTabFromSlug(last.get("tab"))) {
+        setUrlParams(Object.fromEntries(last.entries()), { replace: true });
+      } else {
+        // Builds before URL state saved only the tab name.
+        setActiveTab(migrateSavedTab(localStorage.getItem("void-tactics-active-tab")), { replace: true });
+      }
     }
     setIsTutorialOpen(localStorage.getItem(TUTORIAL_STEP_STORAGE_KEY) !== null);
     setFirstBattleCompleted(hasCompletedFirstBattle());
-  }, []);
+  }, [setActiveTab]);
+
+  // Remember the screen for the next plain /play load.
+  const searchSnapshot = useUrlSearch();
+  useEffect(() => {
+    if (!isHydrated || !getUrlParam("tab")) return;
+    try {
+      localStorage.setItem(LAST_CLIENT_SEARCH_KEY, searchSnapshot);
+    } catch {
+      // storage unavailable: a plain /play load opens the Command Deck
+    }
+  }, [isHydrated, searchSnapshot]);
 
   useLayoutEffect(() => {
     if (activeTab === "Mission") setMissionKeepAlive(true);
@@ -310,13 +336,11 @@ export default function GameClient() {
       "void-tactics-navigate-to-roguelike": () => setActiveTab("Mission"),
       "void-tactics-navigate-to-lobbies": () => setActiveTab("Lobbies"),
       "void-tactics-navigate-to-manage-navy": (event) => {
-        setFleetSection(sectionFromEvent(event, FLEET_SECTIONS) ?? "ships");
-        setActiveTab("Manage Navy");
+        setActiveTab("Manage Navy", { section: sectionFromEvent(event, FLEET_SECTIONS) ?? "ships" });
       },
       // The HUD's + buttons pass the Store sub-tab to open.
       "void-tactics-navigate-to-store": (event) => {
-        setStoreSection(sectionFromEvent(event, STORE_SECTIONS) ?? "packs");
-        setActiveTab("Store");
+        setActiveTab("Store", { section: sectionFromEvent(event, STORE_SECTIONS) ?? "packs" });
       },
       "void-tactics-navigate-to-info": () => setActiveTab("Command Deck"),
       "void-tactics-navigate-to-profile": () => openTab("Profile"),
@@ -333,7 +357,7 @@ export default function GameClient() {
         document.removeEventListener(name, handler);
       }
     };
-  }, [openTab]);
+  }, [openTab, setActiveTab]);
 
   // Games detail view (a match on screen) hides the HUD and nav.
   useEffect(() => {
@@ -374,19 +398,15 @@ export default function GameClient() {
     if (status === "connecting" || status === "reconnecting" || isUserLoading) return;
     if (!hasRestoreProbeReported || isRestoringSession) return;
     if (!isConnected && !isLoggedIn && activeTab !== "Command Deck") {
-      setActiveTab("Command Deck");
+      setActiveTab("Command Deck", { replace: true });
     }
-  }, [status, isConnected, isLoggedIn, isUserLoading, activeTab, hasRestoreProbeReported, isRestoringSession]);
-
-  useEffect(() => {
-    if (isHydrated) localStorage.setItem("void-tactics-active-tab", activeTab);
-  }, [activeTab, isHydrated]);
+  }, [status, isConnected, isLoggedIn, isUserLoading, activeTab, hasRestoreProbeReported, isRestoringSession, setActiveTab]);
 
   const closeTutorial = useCallback(() => {
     setIsTutorialOpen(false);
     setFirstBattleCompleted(hasCompletedFirstBattle());
     setActiveTab("Command Deck");
-  }, []);
+  }, [setActiveTab]);
 
   const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
   const yourTurnGames =
@@ -475,12 +495,12 @@ export default function GameClient() {
         )}
         {activeTab === "Manage Navy" && (
           <ScreenPanel>
-            <FleetHangar section={fleetSection} onSection={setFleetSection} />
+            <FleetHangar section={fleetSection} onSection={setSection} />
           </ScreenPanel>
         )}
         {activeTab === "Store" && (
           <ScreenPanel>
-            <StoreScreen section={storeSection} onSection={setStoreSection} />
+            <StoreScreen section={storeSection} onSection={setSection} />
           </ScreenPanel>
         )}
         {activeTab === "Lobbies" && <ScreenPanel>{appMode === "web2" ? <LobbiesWeb2 /> : <Lobbies />}</ScreenPanel>}

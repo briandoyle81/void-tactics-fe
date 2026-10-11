@@ -57,18 +57,19 @@ import {
   formatScoreShort,
 } from "../utils/lobbyFormattersWeb2";
 import { WinLossBadge } from "./WinLossBadge";
+import { navigateToGamesTab } from "../utils/navigateToGame";
+import { useUrlParam } from "../utils/urlState";
+import {
+  closeFleetViewParam,
+  openLobbyFleetViewParam,
+  setCreateFormParam,
+  setSelectedLobbyParam,
+} from "../utils/lobbyUrlState";
 import { LobbyCardActions } from "./LobbyCardActions";
 import { lobbyStatusColor, lobbyStatusLabel } from "../utils/lobbyStatusDisplay";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { GRID_DIMENSIONS } from "../types/types";
 
-/** Same tab-navigation mechanism as `Lobbies.tsx`'s `navigateToGamesTab` — mode-agnostic, just switches the active tab. */
-function navigateToGamesTab() {
-  localStorage.setItem("void-tactics-active-tab", "Games");
-  localStorage.setItem("void-tactics-force-games-tab", "true");
-  window.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games", { bubbles: true }));
-  document.dispatchEvent(new CustomEvent("void-tactics-navigate-to-games", { bubbles: true }));
-}
 
 /** Web2 user ids (NextAuth subs / cuids) aren't addresses, but truncating them the same way keeps the card's identity row visually consistent with web3's. */
 function truncateId(id: string): string {
@@ -141,14 +142,25 @@ const LobbiesWeb2: React.FC = () => {
   useEffect(() => {
     if (pvpMapId === null && pvpEligibleMapIds.length > 0) setPvpMapId(pvpEligibleMapIds[0]);
   }, [pvpMapId, pvpEligibleMapIds]);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  // Screen state in the URL (lobbyUrlState.ts): refresh keeps it, Back
+  // closes it.
+  const showCreateForm = useUrlParam("create") === "1";
   const [costLimit, setCostLimit] = useState(SKIRMISH_THREAT_LIMIT);
   const [turnTimeSeconds, setTurnTimeSeconds] = useState(IMMEDIATE_GAME_TURN_SECONDS);
   // Matches web3 Lobbies.tsx's create-form default (scoreLength: "medium").
   const [maxScore, setMaxScore] = useState(MEDIUM_MAX_SCORE);
   const [busy, setBusy] = useState(false);
-  const [selectedLobbyId, setSelectedLobbyId] = useState<number | null>(null);
-  const [viewingFleet, setViewingFleet] = useState<{ lobbyId: number; fleetId: number } | null>(null);
+  const lobbyParam = useUrlParam("lobby");
+  const selectedLobbyId = lobbyParam && /^\d+$/.test(lobbyParam) ? Number(lobbyParam) : null;
+  const fleetParam = useUrlParam("fleet");
+  const fleetLobbyParam = useUrlParam("fleetLobby");
+  const viewingFleet = React.useMemo(
+    () =>
+      fleetParam && fleetLobbyParam && /^\d+$/.test(fleetParam) && /^\d+$/.test(fleetLobbyParam)
+        ? { lobbyId: Number(fleetLobbyParam), fleetId: Number(fleetParam) }
+        : null,
+    [fleetParam, fleetLobbyParam],
+  );
   const fleetView = useFleetViewWeb2(viewingFleet?.lobbyId ?? null, viewingFleet?.fleetId ?? null);
 
   const selectedLobby = useMemo(
@@ -296,7 +308,7 @@ const LobbiesWeb2: React.FC = () => {
       if (opponentMode === "ai") {
         if (aiMapId === null) return;
         await createAILobby({ costLimit, turnTimeSeconds, maxScore, mapId: aiMapId });
-        setShowCreateForm(false);
+        setCreateFormParam(false);
         toast.success("Match against AI created");
         return;
       }
@@ -309,7 +321,7 @@ const LobbiesWeb2: React.FC = () => {
         reservedJoinerEmail: reservedJoinerEmail.trim() || undefined,
       });
       setReservedJoinerEmail("");
-      setShowCreateForm(false);
+      setCreateFormParam(false);
       toast.success("Lobby created");
     });
 
@@ -451,7 +463,7 @@ const LobbiesWeb2: React.FC = () => {
   // the same lobby's picker (or reloading the page) restores it via the
   // hydrate effect above.
   const closeFleetModalOnly = () => {
-    setSelectedLobbyId(null);
+    setSelectedLobbyParam(null);
     setFiltersExpanded(false);
     setShowLoadFleetMenu(false);
     setShowFleetConfirmation(false);
@@ -462,7 +474,9 @@ const LobbiesWeb2: React.FC = () => {
   // draft), not for a plain modal close.
   const resetFleetSelectionModalState = () => {
     if (selectedLobbyId != null && userId) removeFleetDraftWeb2(userId, selectedLobbyId);
-    setSelectedLobbyId(null);
+    // Replace, not back: callers make more URL changes right after, and
+    // history.back() is async.
+    setSelectedLobbyParam(null, { replace: true });
     clearFleetSelectionState();
     setTapPendingShipId(null);
     setDraggedShipId(null);
@@ -637,7 +651,7 @@ const LobbiesWeb2: React.FC = () => {
         canCreateLobby={!!userId && !paused}
         disabledLabel={paused ? "LOBBIES PAUSED" : null}
         showCreateForm={showCreateForm}
-        onToggleCreateForm={() => setShowCreateForm(true)}
+        onToggleCreateForm={() => setCreateFormParam(true)}
         createFormElement={
           <LobbyCreateForm
             threatScale={threatScale}
@@ -653,7 +667,7 @@ const LobbiesWeb2: React.FC = () => {
             mapIdLabel={opponentMode === "ai" ? String(aiMapId ?? "") : String(pvpMapId ?? "")}
             maps={opponentMode === "pvp" ? pvpMapPickerMaps : undefined}
             onMapIdChange={opponentMode === "pvp" ? (id) => setPvpMapId(Number(id)) : undefined}
-            onClose={() => setShowCreateForm(false)}
+            onClose={() => setCreateFormParam(false)}
             extraFields={
               <>
                 <div>
@@ -796,7 +810,7 @@ const LobbiesWeb2: React.FC = () => {
                   CREATE
                 </button>
                 <button
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={() => setCreateFormParam(false)}
                   className="w-full px-4 py-2 border border-warning-red text-warning-red hover:bg-warning-red/20 sm:w-auto"
                   style={{ borderRadius: 0 }}
                 >
@@ -875,7 +889,7 @@ const LobbiesWeb2: React.FC = () => {
                 creatorFleetButton={
                   lobby.players.creatorFleetId > 0 ? (
                     <button
-                      onClick={() => setViewingFleet({ lobbyId: lobby.basic.id, fleetId: lobby.players.creatorFleetId })}
+                      onClick={() => openLobbyFleetViewParam(lobby.basic.id, lobby.players.creatorFleetId)}
                       className={`px-2.5 py-0.5 text-xs border font-mono tracking-wider transition-colors ${
                         isCreatorMe
                           ? "border-amber text-amber hover:bg-amber/10"
@@ -890,7 +904,7 @@ const LobbiesWeb2: React.FC = () => {
                 joinerFleetButton={
                   lobby.players.joinerFleetId > 0 ? (
                     <button
-                      onClick={() => setViewingFleet({ lobbyId: lobby.basic.id, fleetId: lobby.players.joinerFleetId })}
+                      onClick={() => openLobbyFleetViewParam(lobby.basic.id, lobby.players.joinerFleetId)}
                       className={`px-2.5 py-0.5 text-xs border font-mono tracking-wider transition-colors ${
                         isJoinerMe
                           ? "border-cyan text-cyan hover:bg-cyan/10"
@@ -915,7 +929,7 @@ const LobbiesWeb2: React.FC = () => {
                     myFleetId={myFleetId}
                     opponentFleetId={opponentFleetId}
                     onGoToGames={navigateToGamesTab}
-                    onSelectFleet={() => setSelectedLobbyId(lobby.basic.id)}
+                    onSelectFleet={() => setSelectedLobbyParam(lobby.basic.id)}
                     joinButton={
                       <button
                         onClick={() => handleJoin(lobby.basic.id)}
@@ -1190,7 +1204,7 @@ const LobbiesWeb2: React.FC = () => {
           fleetIdLabel={String(viewingFleet.fleetId)}
           ownerLabel={fleetView.ownerId ? truncateId(fleetView.ownerId) : ""}
           isOwnerMe={!!fleetView.ownerId && fleetView.ownerId === userId}
-          onClose={() => setViewingFleet(null)}
+          onClose={() => closeFleetViewParam()}
           isLoading={fleetView.isLoading}
           shipCards={fleetView.ships.map((ship) => (
             <ShipCard
