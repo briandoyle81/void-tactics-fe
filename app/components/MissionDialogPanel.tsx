@@ -8,6 +8,7 @@ import type { DialogLogEntry } from "../hooks/useMissionDialog";
 import { DialogPortrait } from "./DialogPortrait";
 import { HighlightedText } from "./HighlightedText";
 import { playSoundEffect } from "../hooks/useSoundEffects";
+import { getHiddenDialogLineIds, setDialogLineHidden } from "../utils/hiddenDialogLines";
 
 interface MissionDialogPanelProps {
   /** The line being shown now, if any. */
@@ -264,7 +265,8 @@ export function DialogLineCard({
         >
           {line.isError ? line.text : <HighlightedText text={line.text} />}
         </p>
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex items-center justify-end gap-3">
+          {line.hideableLineId && <DontShowAgain lineId={line.hideableLineId} color={color} compact={compact} />}
           <button
             type="button"
             className={`border border-solid px-2 py-0.5 ${
@@ -281,5 +283,32 @@ export function DialogLineCard({
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * "Don't show again" for a generic line with canHide (genericDialog.ts):
+ * stops it playing in later games on this device. Clicks don't advance the
+ * card.
+ */
+function DontShowAgain({ lineId, color, compact }: { lineId: string; color: string; compact: boolean }) {
+  const [hidden, setHidden] = React.useState(() => getHiddenDialogLineIds().has(lineId));
+  return (
+    <label
+      className={`flex cursor-pointer items-center gap-1.5 ${compact ? "text-[10px]" : "text-xs"} text-text-secondary`}
+      style={STYLE_MONO}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={hidden}
+        style={{ accentColor: color }}
+        onChange={(e) => {
+          setHidden(e.target.checked);
+          setDialogLineHidden(lineId, e.target.checked);
+        }}
+      />
+      Don&apos;t show again
+    </label>
   );
 }

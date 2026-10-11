@@ -163,6 +163,12 @@ export interface GenericDialogLine<C extends string = string> {
    * tutorial.
    */
   missionKinds?: Exclude<DialogMissionKind, "tutorial">[];
+  /**
+   * Show a "Don't show again" checkbox on this line. Ticking it stops the
+   * line playing again in any game on this device (hiddenDialogLines.ts).
+   * For explanations a player only needs once.
+   */
+  canHide?: boolean;
 }
 
 /** A mission node's title and description (the briefing). */

@@ -12,6 +12,7 @@ import {
   type DialogSnapshot,
   type EverDisabledShips,
 } from "../utils/missionDialog";
+import { getHiddenDialogLineIds } from "../utils/hiddenDialogLines";
 
 /** A comms message that was shown (or dismissed unread), with the round it arrived in. */
 export interface DialogLogEntry extends DialogQueueItem {
@@ -261,6 +262,7 @@ export function useMissionDialog({
         prev: null,
         next,
         firedKeys: new Set(),
+        hiddenGenericLineIds: getHiddenDialogLineIds(),
       })
         .filter((item) => item.event === "missionStart")
         .map((item) => ({ ...item, round: next.round }));
@@ -280,6 +282,7 @@ export function useMissionDialog({
       prev: stored?.last ?? null,
       next,
       firedKeys: fired,
+      hiddenGenericLineIds: getHiddenDialogLineIds(),
     }).map((item) => ({ ...item, round: next.round }));
     items.forEach((item) => fired.add(item.key));
     save({

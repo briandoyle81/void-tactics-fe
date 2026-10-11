@@ -28,6 +28,10 @@ import type { DialogCharacterId } from "./characters";
 //                     },
 //   missionKinds  — optional: ["campaign"] or ["roguelike"] to limit where
 //                   the line can fire. Omit for both.
+//   canHide       — optional: true adds a "Don't show again" checkbox to the
+//                   line. Ticking it stops the line playing again, in any
+//                   game, on that device. Use it for explanations a player
+//                   only needs once.
 //
 // Rules:
 // - If a mission has its own line for an event (missionDialog.ts), generic
@@ -66,6 +70,24 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
       "Target down.",
       "Splash one.",
       "Confirmed kill. Keep the pressure on.",
+    ],
+  },
+  {
+    id: "generic-ship-disabled-player",
+    characterId: "adjutant",
+    trigger: { type: "shipsDisabled", side: "player", count: 1 },
+    canHide: true,
+    variants: [
+      "One of our ships is disabled, Admiral. It's dead in space: no engines, no weapons. Its reactor is failing, and unless we repair it or order it to retreat, we'll lose it in a few rounds.",
+    ],
+  },
+  {
+    id: "generic-ship-disabled-enemy",
+    characterId: "adjutant",
+    trigger: { type: "shipsDisabled", side: "enemy", count: 1 },
+    canHide: true,
+    variants: [
+      "Enemy ship disabled. It can't move or fire, and its failing reactor will finish it in a few rounds. It's still holding its position, though. If it's sitting somewhere we need, finish it off.  Or ram it and take it's spot!",
     ],
   },
   {

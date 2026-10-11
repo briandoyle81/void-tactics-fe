@@ -332,6 +332,8 @@ export interface DialogQueueItem {
   text: string;
   /** Shown in place of a required line that hasn't been written. */
   isError?: boolean;
+  /** Set on a generic line with canHide: its id, for "Don't show again". */
+  hideableLineId?: string;
 }
 
 /**
@@ -383,6 +385,7 @@ export function selectDialogLines({
   firedKeys,
   missionLines = MISSION_DIALOG_LINES,
   genericLines = GENERIC_DIALOG_LINES,
+  hiddenGenericLineIds = new Set<string>(),
 }: {
   mission: DialogMission;
   gameId: string;
@@ -391,6 +394,8 @@ export function selectDialogLines({
   firedKeys: ReadonlySet<string>;
   missionLines?: readonly MissionDialogLine[];
   genericLines?: readonly GenericDialogLine[];
+  /** Generic lines the player chose not to see again (hiddenDialogLines.ts). */
+  hiddenGenericLineIds?: ReadonlySet<string>;
 }): DialogQueueItem[] {
   type Bucket = {
     occurrence: DialogOccurrence;
@@ -416,6 +421,7 @@ export function selectDialogLines({
   }
   for (const line of genericLines) {
     if (!genericAppliesTo(line, mission) || line.variants.length === 0) continue;
+    if (line.canHide && hiddenGenericLineIds.has(line.id)) continue;
     for (const o of triggerOccurrences(line.trigger, prev, next)) {
       bucketFor(o).genericLines.push(line);
     }
@@ -457,7 +463,10 @@ export function selectDialogLines({
     if (firedKeys.has(key)) continue;
     const variant = pick(line.variants, `${gameId}|${line.id}|${occKey}`);
     const { text, responses } = typeof variant === "string" ? { text: variant, responses: undefined } : variant;
-    items.push(...withResponses(key, occKey, line.characterId, text, responses));
+    const lineItems = withResponses(key, occKey, line.characterId, text, responses);
+    // The checkbox goes on the line itself, not its replies.
+    if (line.canHide) lineItems[0] = { ...lineItems[0], hideableLineId: line.id };
+    items.push(...lineItems);
   }
   return items;
 }
