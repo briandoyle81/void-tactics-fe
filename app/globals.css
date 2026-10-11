@@ -1660,3 +1660,62 @@ select:focus {
     animation: none !important;
   }
 }
+
+/* Ram last-move effect (weapon-animations/RamAnimation.tsx). One looping
+   cycle: charge streak 0-25%, impact flash + sparks ~28%, victim tumbles
+   off 28-70%, then rest. Duration is set inline (CYCLE_MS). */
+.ram-streak,
+.ram-flash,
+.ram-spark,
+.ram-knockoff {
+  opacity: 0;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-out;
+}
+.ram-streak { animation-name: ram-streak; }
+.ram-flash { animation-name: ram-flash; }
+.ram-spark { animation-name: ram-spark; }
+.ram-knockoff { animation-name: ram-knockoff; }
+
+@keyframes ram-streak {
+  0% { opacity: 0; clip-path: inset(0 100% 0 0); }
+  5% { opacity: 1; }
+  25% { opacity: 1; clip-path: inset(0 0 0 0); }
+  42% { opacity: 0; clip-path: inset(0 0 0 85%); }
+  100% { opacity: 0; clip-path: inset(0 0 0 85%); }
+}
+
+@keyframes ram-flash {
+  0%, 24% { opacity: 0; transform: scale(0.3); }
+  28% { opacity: 1; transform: scale(1); }
+  46% { opacity: 0; transform: scale(1.7); }
+  100% { opacity: 0; transform: scale(1.7); }
+}
+
+@keyframes ram-spark {
+  0%, 25% { opacity: 0; transform: rotate(var(--ram-a)) translateX(0); }
+  29% { opacity: 1; }
+  52% { opacity: 0; transform: rotate(var(--ram-a)) translateX(var(--ram-d)); }
+  100% { opacity: 0; transform: rotate(var(--ram-a)) translateX(var(--ram-d)); }
+}
+
+@keyframes ram-knockoff {
+  0%, 26% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(1); }
+  28% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+  70% { opacity: 0; transform: translate(var(--ram-kx), var(--ram-ky)) rotate(var(--ram-spin)) scale(0.3); }
+  100% { opacity: 0; transform: translate(var(--ram-kx), var(--ram-ky)) rotate(var(--ram-spin)) scale(0.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ram-streak,
+  .ram-spark,
+  .ram-knockoff {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+  .ram-flash {
+    animation: none !important;
+    opacity: 0.55;
+    transform: none;
+  }
+}

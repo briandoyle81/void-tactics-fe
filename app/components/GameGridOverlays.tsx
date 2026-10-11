@@ -20,6 +20,7 @@ import { AttackDroneAnimation } from "./weapon-animations/AttackDroneAnimation";
 import { EmpWaveAnimation } from "./weapon-animations/EmpWaveAnimation";
 import { LightningFieldAnimation } from "./weapon-animations/LightningFieldAnimation";
 import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
+import { RamAnimation } from "./weapon-animations/RamAnimation";
 import { collectDamageLabelTargets } from "../utils/gameGridRanges";
 import { useGridDestHoveredTile, useGridHoveredCell } from "./GridHover";
 
@@ -517,6 +518,33 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                 />
               )}
 
+
+            {/* Ram last move: charge, impact, victim knocked off (see RamAnimation). */}
+            {lastMoveShipId != null &&
+              lastMoveOldPosition != null &&
+              lastMoveNewPosition != null &&
+              lastMoveTargetShipId != null &&
+              lastMoveTargetShipId !== 0 &&
+              lastMoveIsRam(Number(lastMoveActionType), lastMoveShipId, shipMap) &&
+              (() => {
+                // A rammer its own ram destroyed never reached the victim's
+                // tile (and the victim's tile isn't known), so no tumble.
+                const rammerOnBoard = findShipPositionById(lastMoveShipId) != null;
+                const rammerIsCreator =
+                  grid[lastMoveNewPosition.row]?.[lastMoveNewPosition.col]?.isCreator ?? null;
+                return (
+                  <RamAnimation
+                    gridContainerRef={gridContainerRef}
+                    fromRow={lastMoveOldPosition.row}
+                    fromCol={lastMoveOldPosition.col}
+                    toRow={lastMoveNewPosition.row}
+                    toCol={lastMoveNewPosition.col}
+                    victim={rammerOnBoard ? (shipMap.get(lastMoveTargetShipId) ?? null) : null}
+                    victimIsCreator={rammerIsCreator === null ? false : !rammerIsCreator}
+                    playKey={`${lastMoveShipId}:${lastMoveTargetShipId}:${lastMoveOldPosition.row},${lastMoveOldPosition.col}`}
+                  />
+                );
+              })()}
 
             {/* Laser Shooting Animation */}
             {(selectedShipId || lastMoveShipId) &&

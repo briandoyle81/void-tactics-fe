@@ -77,6 +77,7 @@ import {
 import { useFactionAbilityConfig } from "../hooks/useFactionAbilityConfig";
 import { usePendingMove } from "../hooks/usePendingMove";
 import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
+import { lastMoveEndPosition } from "../utils/ramLastMove";
 import { requireShipValue } from "../utils/requireShipValue";
 import { FleeSafetySwitch } from "./FleeSafetySwitch";
 import { FleeConfirmButtonWeb3 } from "./FleeConfirmButtonWeb3";
@@ -1462,37 +1463,36 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     return { row: displayedLastMove.oldRow, col: displayedLastMove.oldCol };
   }, [shouldShowLastMoveOnGrid, displayedLastMove, proposalHidesLastMove]);
 
+  // Where the last mover ended up (a Ram ends on the victim's tile, not the
+  // recorded one — see ramLastMove.ts).
+  const displayedShipPositions = isReplaying ? replaySnapshotGame?.shipPositions : game.shipPositions;
+  const displayedLastMoveEnd = React.useMemo(() => {
+    if (!displayedLastMove || displayedLastMove.newRow < 0 || displayedLastMove.newCol < 0) return null;
+    return lastMoveEndPosition({
+      lastMove: displayedLastMove,
+      moverVariant: shipMap.get(displayedLastMove.shipId)?.traits.variant,
+      shipPositions: displayedShipPositions ?? [],
+    });
+  }, [displayedLastMove, shipMap, displayedShipPositions]);
+
   const lastMoveNewPosition = React.useMemo(() => {
-    if (
-      !shouldShowLastMoveOnGrid ||
-      !displayedLastMove ||
-      proposalHidesLastMove ||
-      displayedLastMove.newRow < 0 ||
-      displayedLastMove.newCol < 0
-    ) {
-      return null;
-    }
-    return { row: displayedLastMove.newRow, col: displayedLastMove.newCol };
-  }, [shouldShowLastMoveOnGrid, displayedLastMove, proposalHidesLastMove]);
+    if (!shouldShowLastMoveOnGrid || proposalHidesLastMove) return null;
+    return displayedLastMoveEnd;
+  }, [shouldShowLastMoveOnGrid, proposalHidesLastMove, displayedLastMoveEnd]);
 
   // Keep the last mover's to-tile for weapon aiming after last-move chrome
   // is hidden (player selected a ship). Otherwise beams lock onto the
   // from-tile ghost when that enemy was the last to move.
   const lastMoveResolvedTo = React.useMemo(() => {
-    if (
-      !displayedLastMove ||
-      displayedLastMove.shipId === 0n ||
-      displayedLastMove.newRow < 0 ||
-      displayedLastMove.newCol < 0
-    ) {
+    if (!displayedLastMove || displayedLastMove.shipId === 0n || !displayedLastMoveEnd) {
       return null;
     }
     return {
       shipId: Number(displayedLastMove.shipId),
-      row: displayedLastMove.newRow,
-      col: displayedLastMove.newCol,
+      row: displayedLastMoveEnd.row,
+      col: displayedLastMoveEnd.col,
     };
-  }, [displayedLastMove]);
+  }, [displayedLastMove, displayedLastMoveEnd]);
 
   const lastMoveActionType =
     shouldShowLastMoveOnGrid && displayedLastMove && !proposalHidesLastMove

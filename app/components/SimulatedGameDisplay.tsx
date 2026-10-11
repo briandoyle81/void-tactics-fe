@@ -50,6 +50,7 @@ import { GameBoardLayout } from "./GameBoardLayout";
 import { MissionDialogPanel } from "./MissionDialogPanel";
 import { useMissionDialog } from "../hooks/useMissionDialog";
 import { buildDialogSnapshot } from "../utils/missionDialog";
+import { lastMoveEndPosition } from "../utils/ramLastMove";
 import type { DialogMission } from "../types/dialog";
 import {
   GameEvents,
@@ -1660,6 +1661,18 @@ export function SimulatedGameDisplay({
     useSideLayout,
   ]);
 
+  // Where the last mover ended up (a Ram ends on the victim's tile, not the
+  // recorded one — see ramLastMove.ts). Same as the live views.
+  const tutorialLastMoveEnd = useMemo(() => {
+    const lm = tutorialDisplayLastMove;
+    if (!lm || lm.newRow < 0 || lm.newCol < 0) return null;
+    return lastMoveEndPosition({
+      lastMove: lm,
+      moverVariant: shipMap.get(BigInt(lm.shipId))?.traits.variant,
+      shipPositions: gameState.shipPositions,
+    });
+  }, [tutorialDisplayLastMove, shipMap, gameState.shipPositions]);
+
   // Last move UI props for GameGrid (same as in-game: ghost at old position, pulse at new)
   const lastMoveProps = useMemo(() => {
     if (selectedShipId !== null) {
@@ -1688,11 +1701,13 @@ export function SimulatedGameDisplay({
     return {
       lastMoveShipId: BigInt(lm.shipId),
       lastMoveOldPosition: { row: lm.oldRow, col: lm.oldCol },
-      lastMoveNewPosition: { row: lm.newRow, col: lm.newCol },
+      lastMoveNewPosition: tutorialLastMoveEnd ?? { row: lm.newRow, col: lm.newCol },
       // Coerce so GameGrid strict checks (e.g. EMP) match after JSON or mixed types
       lastMoveActionType: lmAction as ActionType,
       lastMoveTargetShipId:
-        (lmAction === ActionType.Shoot || lmAction === ActionType.Special) &&
+        (lmAction === ActionType.Shoot ||
+          lmAction === ActionType.Special ||
+          lmAction === ActionType.FactionAbility) &&
         lm.targetShipId &&
         lm.targetShipId !== "0"
           ? BigInt(lm.targetShipId)
@@ -1701,13 +1716,13 @@ export function SimulatedGameDisplay({
         ? ship.owner === TUTORIAL_PLAYER_ADDRESS
         : undefined,
     };
-  }, [tutorialDisplayLastMove, shipMap, selectedShipId]);
+  }, [tutorialDisplayLastMove, shipMap, selectedShipId, tutorialLastMoveEnd]);
 
   const lastMoveResolvedTo = useMemo(() => {
     const lm = tutorialDisplayLastMove;
-    if (!lm || lm.newRow < 0 || lm.newCol < 0) return null;
-    return { shipId: Number(lm.shipId), row: lm.newRow, col: lm.newCol };
-  }, [tutorialDisplayLastMove]);
+    if (!lm || !tutorialLastMoveEnd) return null;
+    return { shipId: Number(lm.shipId), row: tutorialLastMoveEnd.row, col: tutorialLastMoveEnd.col };
+  }, [tutorialDisplayLastMove, tutorialLastMoveEnd]);
 
   // Last move object for GameEvents panel (adapt tutorial lastMove to onchain LastMove shape).
   // Hidden while any ship is selected (matches live game); proposed moves use the submit panel.

@@ -22,6 +22,7 @@ import { useDamageCalculationWeb2 } from "../hooks/useDamageCalculationWeb2";
 import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
 import { usePendingMove } from "../hooks/usePendingMove";
 import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
+import { lastMoveEndPosition } from "../utils/ramLastMove";
 import { RoundStartModal } from "./RoundStartModal";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { GameResultModal, type MissionLossReason } from "./GameResultModal";
@@ -887,16 +888,28 @@ function GameDisplayWeb2({
     () => (lastMove ? { row: lastMove.oldRow, col: lastMove.oldCol } : null),
     [lastMove],
   );
+  // Where the last mover ended up (a Ram ends on the victim's tile, not the
+  // recorded one — see ramLastMove.ts).
+  const lastMoveShipPositions = isReplaying ? replaySnapshotGame?.shipPositions : game.shipPositions;
   const lastMoveNewPosition = useMemo(
-    () => (lastMove ? { row: lastMove.newRow, col: lastMove.newCol } : null),
-    [lastMove],
+    () =>
+      lastMove
+        ? lastMove.newRow < 0 || lastMove.newCol < 0
+          ? { row: lastMove.newRow, col: lastMove.newCol }
+          : lastMoveEndPosition({
+              lastMove,
+              moverVariant: shipMap.get(lastMove.shipId)?.traits.variant,
+              shipPositions: lastMoveShipPositions ?? [],
+            })
+        : null,
+    [lastMove, shipMap, lastMoveShipPositions],
   );
   const lastMoveResolvedTo = useMemo(
     () =>
-      lastMove && lastMove.newRow >= 0 && lastMove.newCol >= 0
-        ? { shipId: lastMove.shipId, row: lastMove.newRow, col: lastMove.newCol }
+      lastMove && lastMoveNewPosition && lastMoveNewPosition.row >= 0 && lastMoveNewPosition.col >= 0
+        ? { shipId: lastMove.shipId, row: lastMoveNewPosition.row, col: lastMoveNewPosition.col }
         : null,
-    [lastMove],
+    [lastMove, lastMoveNewPosition],
   );
   const lastMoveActionType = lastMove?.actionType ?? null;
   const lastMoveTargetShipId = lastMove?.targetShipId ?? null;
