@@ -20,7 +20,6 @@ import {
   type NavyFilterCategory,
 } from "../utils/navyFilters";
 import { FleetShipListPanel } from "./FleetShipListPanel";
-import { NoShipsClaimPanel } from "./NoShipsClaimPanel";
 import { NavyFilterToolbar } from "./NavyFilterToolbar";
 import { ManageNavyShipsCountHeading } from "./ManageNavyShipsCountHeading";
 import { NavyPagination } from "./NavyPagination";
@@ -30,10 +29,15 @@ import {
   getRoguelikeRunRequirements,
   isRunEligibleConstructedShip,
 } from "../utils/roguelikeRunRequirements";
-import { RoguelikeRunRequirementsPanel } from "./RoguelikeRunRequirementsPanel";
 import { ConstructShipsButton } from "./ConstructShipsButton";
-import { manageNavyActionButtonClassName } from "./ManageNavyActionButton";
-import { AdjutantFleetGuide, fleetGuideStep } from "./AdjutantFleetGuide";
+import {
+  BuyPremiumPacksButton,
+  EmptyHangar,
+  FLEET_HEADER_ACTION_CLASS,
+  FleetBriefing,
+  fleetBriefingStep,
+} from "./FleetBriefing";
+import { FreeShipsClaimAction, useFreeShipsClaim } from "./FreeShipsClaimAction";
 
 const SHIPS_PER_PAGE = 100;
 
@@ -61,6 +65,8 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
   const [isStarting, setIsStarting] = React.useState(false);
 
   const { ships, isLoading: shipsLoading, refetch: refetchShips } = useOwnedShips(baseSepolia.id);
+  // One claim-status instance for the header's claim action.
+  const claim = useFreeShipsClaim();
 
   const { data: requiredVariant } = useRoguelikeCampaignRequiredVariant(
     DEFAULT_ROGUELIKE_CAMPAIGN_ID,
@@ -216,77 +222,70 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
     }
   };
 
-  const constructButton =
-    unconstructedShips.length > 0 ? (
-      <ConstructShipsButton
-        unconstructedShips={unconstructedShips}
-        className={manageNavyActionButtonClassName("green")}
-        onConstructed={refetchShips}
-      />
-    ) : undefined;
-  const guideStep = fleetGuideStep({
-    shipsLoading,
-    shipCount: ships.length,
-    hasEnoughConstructed: requirements.hasEnoughConstructed,
-    unconstructedCount: unconstructedShips.length,
-  });
+  const rosterValid =
+    fleet.selectedShips.length > 0 &&
+    !isOverCap &&
+    requirements.hasEnoughConstructed &&
+    requirements.meetsMinRosterCost;
+  const step = shipsLoading
+    ? null
+    : fleetBriefingStep({
+        shipCount: ships.length,
+        unconstructedCount: unconstructedShips.length,
+        requirements,
+        rosterValid,
+      });
 
   return (
     <div className="flex flex-col gap-4 border-2 border-cyan p-6 font-mono" style={{ borderRadius: 0 }}>
-      <AdjutantFleetGuide
-        step={guideStep}
-        minConstructed={MIN_CONSTRUCTED_SHIPS_FOR_RUN}
-        constructButton={constructButton}
-      />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h3 className="text-xl font-bold text-cyan">[SELECT YOUR FLEET]</h3>
-          <p className="mt-2 text-sm text-text-secondary">
-            Commit a roster once — it persists (with accumulated hull damage)
-            across every mission until the run ends. Branching paths lock out
-            their siblings once you commit to one, so choose carefully.
-          </p>
-          {!!requiredVariant && (
-            <div className="mt-2 inline-flex w-fit items-center gap-1.5 border border-amber/40 bg-amber/10 px-2 py-1 text-[10px] uppercase tracking-wider text-amber">
-              Requires Faction {requiredVariant} fleet
-            </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h3 className="text-xl font-bold text-cyan">[SELECT YOUR FLEET]</h3>
+        {/* The step's one action, in the Start run spot. */}
+        <div className="flex flex-wrap gap-2.5 sm:justify-end">
+          {step === "claim" ? (
+            <>
+              <BuyPremiumPacksButton />
+              <FreeShipsClaimAction
+                status={claim.status}
+                refetch={claim.refetch}
+                className={FLEET_HEADER_ACTION_CLASS}
+                showCountdown
+                analyticsSurface="fleet_select"
+                onClaimed={refetchShips}
+              />
+            </>
+          ) : step === "construct" ? (
+            <ConstructShipsButton
+              unconstructedShips={unconstructedShips}
+              className={FLEET_HEADER_ACTION_CLASS}
+              onConstructed={refetchShips}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleStartRun()}
+              disabled={isStarting || !rosterValid}
+              className={FLEET_HEADER_ACTION_CLASS}
+              style={{ borderRadius: 0 }}
+            >
+              {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
+            </button>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={() => void handleStartRun()}
-          disabled={
-            isStarting ||
-            fleet.selectedShips.length === 0 ||
-            isOverCap ||
-            !requirements.hasEnoughConstructed ||
-            !requirements.meetsMinRosterCost
-          }
-          className="shrink-0 self-start border-2 border-phosphor-green px-6 py-3 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ borderRadius: 0 }}
-        >
-          {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
-        </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
-        <span>
-          Roster cost:{" "}
-          <span className={isOverCap ? "text-warning-red" : "text-cyan"}>
-            {fleet.totalCost}
-          </span>
-          {costLimit > 0 && <span> / {costLimit}</span>}
-        </span>
-        <span>Selected: {fleet.selectedShips.length}</span>
-      </div>
-
-      <RoguelikeRunRequirementsPanel
-        requirements={requirements}
-        rosterCost={fleet.totalCost}
-        costLimit={costLimit}
-        constructButton={constructButton}
-      />
+      {step != null && (
+        <FleetBriefing
+          step={step}
+          requirements={requirements}
+          minConstructed={MIN_CONSTRUCTED_SHIPS_FOR_RUN}
+          rosterCost={fleet.totalCost}
+          costLimit={costLimit}
+          requiredVariant={requiredVariant ?? 0}
+          hasFactionShips={constructedCount > 0}
+          selectedCount={fleet.selectedShips.length}
+        />
+      )}
 
       <div
         className="border border-solid p-3 sm:p-4"
@@ -349,7 +348,7 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
       {shipsLoading ? (
         <p className="text-sm text-text-muted">Loading your ships…</p>
       ) : ships.length === 0 ? (
-        <NoShipsClaimPanel />
+        <EmptyHangar />
       ) : (
         <FleetShipListPanel
           widthClass="w-full"

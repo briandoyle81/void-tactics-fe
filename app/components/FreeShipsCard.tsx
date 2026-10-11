@@ -1,11 +1,6 @@
 "use client";
 
-import { useFreeShipClaimStatus } from "../hooks/useFreeShipClaimStatus";
-import { useOwnedShips } from "../hooks/useOwnedShips";
-import { useOwnedShipsWeb2 } from "../hooks/useOwnedShipsWeb2";
-import { FreeShipClaimButton } from "./FreeShipClaimButton";
-import { ClaimFreeButtonWeb2 } from "./ClaimFreeButtonWeb2";
-import { SelfieCheckVerifyButton } from "./SelfieCheckVerifyButton";
+import { FreeShipsClaimAction, useFreeShipsClaim } from "./FreeShipsClaimAction";
 
 const ACTION_CLASS =
   "w-full border-2 px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50";
@@ -15,10 +10,7 @@ const ACTION_CLASS =
  * the claim action when it's ready (gated on Selfie Check for web3).
  */
 export function FreeShipsCard() {
-  const status = useFreeShipClaimStatus();
-  const { refetch: refetchShips } = useOwnedShips();
-  const { refetch: refetchShipsWeb2 } = useOwnedShipsWeb2();
-  const refetch = status.appMode === "web2" ? refetchShipsWeb2 : refetchShips;
+  const { status, refetch } = useFreeShipsClaim();
   const ready = status.isEligible && !status.isLoading && !status.hasError;
 
   return (
@@ -51,38 +43,13 @@ export function FreeShipsCard() {
           style={{ width: `${status.cooldownProgress * 100}%` }}
         />
       </div>
-      {status.isSelfieCheckBlocking && status.address ? (
-        <SelfieCheckVerifyButton
-          address={status.address}
-          onVerified={() => void status.refetchSelfieCheck()}
-          className={`${ACTION_CLASS} border-amber text-amber hover:bg-amber/10`}
-        >
-          [VERIFY TO CLAIM]
-        </SelfieCheckVerifyButton>
-      ) : ready ? (
-        status.appMode === "web2" ? (
-          <ClaimFreeButtonWeb2
-            onSuccess={async () => {
-              await refetch();
-            }}
-            analyticsSurface="command_deck"
-          />
-        ) : (
-          <FreeShipClaimButton
-            isEligible={status.isEligible}
-            isPending={status.web3Claim.isPending}
-            isConfirmed={status.web3Claim.isConfirmed}
-            claimFreeShips={status.web3Claim.claimFreeShips}
-            analyticsSurface="command_deck"
-            className={`${ACTION_CLASS} border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10`}
-            onSuccess={async () => {
-              await refetch();
-            }}
-          >
-            [CLAIM FREE SHIPS]
-          </FreeShipClaimButton>
-        )
-      ) : null}
+      <FreeShipsClaimAction
+        status={status}
+        refetch={refetch}
+        className={`${ACTION_CLASS} border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10`}
+        verifyClassName={`${ACTION_CLASS} border-amber text-amber hover:bg-amber/10`}
+        analyticsSurface="command_deck"
+      />
     </div>
   );
 }

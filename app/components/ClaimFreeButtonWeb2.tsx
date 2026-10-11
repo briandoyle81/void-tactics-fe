@@ -15,13 +15,16 @@ interface ClaimFreeButtonWeb2Props {
   /** Fired on click, before the request resolves — mirrors web3's FreeShipClaimButton onPress (used there to dismiss the drone-factory tutorial step). */
   onPress?: () => void;
   /** Where the button was shown (for PostHog funnels) — mirrors FreeShipClaimButton's analyticsSurface. */
-  analyticsSurface?: "info" | "manage_navy" | "command_deck" | "unknown";
+  analyticsSurface?: "info" | "manage_navy" | "command_deck" | "fleet_select" | "unknown";
+  /** Defaults to Manage Navy's green action button. */
+  className?: string;
 }
 
 export function ClaimFreeButtonWeb2({
   onSuccess,
   onPress,
   analyticsSurface = "unknown",
+  className = manageNavyActionButtonClassName("green"),
 }: ClaimFreeButtonWeb2Props) {
   const [isClaiming, setIsClaiming] = useState(false);
   const { userId } = useCurrentUser();
@@ -56,7 +59,7 @@ export function ClaimFreeButtonWeb2({
       type="button"
       onClick={handleClick}
       disabled={isClaiming}
-      className={manageNavyActionButtonClassName("green")}
+      className={className}
     >
       {isClaiming ? "[CLAIMING...]" : "[CLAIM FREE SHIPS]"}
     </button>
