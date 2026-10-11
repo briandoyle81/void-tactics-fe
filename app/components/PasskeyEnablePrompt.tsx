@@ -10,7 +10,9 @@ import { TokenScope, WalletProviderEnum } from "@dynamic-labs/sdk-api-core";
 import { registerPasskey, NoWebAuthNSupportError } from "@dynamic-labs-sdk/client";
 import { toast } from "react-hot-toast";
 import {
+  isPasskeyMarkedOnDevice,
   isPasskeyPromptPermanentlyDismissed,
+  markPasskeyOnDevice,
   persistPasskeyPromptPermanentlyDismissed,
 } from "../utils/passkeyPromptStorage";
 
@@ -46,11 +48,13 @@ function isWebAuthnSupported(): boolean {
 // avoid stacking two overlays.
 //
 // Evaluated once per mount (Header.tsx renders this once, high in the tree);
-// skipped entirely if the user already has a passkey, just signed in with
-// one or with a browser extension wallet, the browser doesn't support
-// WebAuthn, or they previously checked
-// "don't show this again" (persisted per Dynamic userId via
-// passkeyPromptStorage.ts).
+// skipped entirely if this device already has a passkey for the user (they
+// signed in with one here or registered one here, marked per device via
+// passkeyPromptStorage.ts), they signed in with a browser extension wallet,
+// the browser doesn't support WebAuthn, or they previously checked "don't
+// show this again" (persisted per Dynamic userId). An account can hold one
+// passkey per device, so a user whose passkey lives on another device is
+// offered one for this device ("Add a passkey for this device").
 export function PasskeyEnablePrompt() {
   const { user } = useDynamicContext();
   const refreshUser = useRefreshUser();
@@ -58,6 +62,7 @@ export function PasskeyEnablePrompt() {
   const [isOpen, setIsOpen] = React.useState(false);
   const [dontShowAgain, setDontShowAgain] = React.useState(false);
   const [isRegistering, setIsRegistering] = React.useState(false);
+  const [hasPasskeyElsewhere, setHasPasskeyElsewhere] = React.useState(false);
   const hasEvaluatedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -71,15 +76,16 @@ export function PasskeyEnablePrompt() {
     const lastCredential = user.verifiedCredentials?.find(
       (vc) => vc.id === user.lastVerifiedCredentialId,
     );
-    const justUsedPasskey = lastCredential?.format === "passkey";
-    const alreadyHasPasskey = user.verifiedCredentials?.some(
-      (vc) => vc.format === "passkey",
-    );
-    if (justUsedPasskey || alreadyHasPasskey) return;
+    if (lastCredential?.format === "passkey") {
+      markPasskeyOnDevice(user.userId);
+      return;
+    }
+    if (isPasskeyMarkedOnDevice(user.userId)) return;
     // A browser extension wallet (MetaMask etc.) already is the user's fast
     // sign-in; a passkey adds nothing for them.
     if (lastCredential?.walletProvider === WalletProviderEnum.BrowserExtension) return;
 
+    setHasPasskeyElsewhere(user.verifiedCredentials?.some((vc) => vc.format === "passkey") ?? false);
     setIsOpen(true);
   }, [user]);
 
@@ -110,6 +116,7 @@ export function PasskeyEnablePrompt() {
       }
 
       await registerPasskey();
+      if (user?.userId) markPasskeyOnDevice(user.userId);
       try {
         await refreshUser();
       } catch (refreshError) {
@@ -148,7 +155,7 @@ export function PasskeyEnablePrompt() {
       >
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-lg font-bold text-cyan tracking-wider">
-            [ENABLE FASTER SIGN-IN?]
+            {hasPasskeyElsewhere ? "[ADD A PASSKEY FOR THIS DEVICE?]" : "[ENABLE FASTER SIGN-IN?]"}
           </h2>
           <button
             type="button"
@@ -162,8 +169,9 @@ export function PasskeyEnablePrompt() {
         </div>
 
         <p className="text-sm text-text-secondary leading-relaxed">
-          Set up a passkey to sign in next time with Face ID, a fingerprint,
-          or your device PIN — no code to type or wait for.
+          {hasPasskeyElsewhere
+            ? "Your passkey is on another device. Add one here to sign in on this device with Face ID, a fingerprint, or your device PIN."
+            : "Set up a passkey to sign in next time with Face ID, a fingerprint, or your device PIN — no code to type or wait for."}
         </p>
 
         <label className="mt-4 flex items-center gap-2 text-xs text-text-muted cursor-pointer">
