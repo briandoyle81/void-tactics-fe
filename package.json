@@ -29,6 +29,7 @@
     "@tanstack/react-query": "^5.85.3",
     "@worldcoin/idkit": "^4.1.8",
     "clsx": "^2.1.1",
+    "jose": "^6.2.12",
     "next": "16.1.4",
     "next-auth": "^4.24.14",
     "pg": "^8.22.0",

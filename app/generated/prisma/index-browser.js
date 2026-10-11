@@ -396,6 +396,19 @@ exports.Prisma.NodeContentScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.GasGrantScalarFieldEnum = {
+  id: 'id',
+  address: 'address',
+  dynamicUserId: 'dynamicUserId',
+  chainId: 'chainId',
+  amountWei: 'amountWei',
+  status: 'status',
+  txHash: 'txHash',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -458,6 +471,12 @@ exports.NodeGraphType = exports.$Enums.NodeGraphType = {
   ROGUELIKE: 'ROGUELIKE'
 };
 
+exports.GasGrantStatus = exports.$Enums.GasGrantStatus = {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  FAILED: 'FAILED'
+};
+
 exports.Prisma.ModelName = {
   User: 'User',
   Ship: 'Ship',
@@ -483,7 +502,8 @@ exports.Prisma.ModelName = {
   Tournament: 'Tournament',
   TournamentRegistrant: 'TournamentRegistrant',
   TournamentMatch: 'TournamentMatch',
-  NodeContent: 'NodeContent'
+  NodeContent: 'NodeContent',
+  GasGrant: 'GasGrant'
 };
 
 /**

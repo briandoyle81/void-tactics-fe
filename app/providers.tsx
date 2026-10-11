@@ -15,6 +15,7 @@ import { VOID_TACTICS_CHAIN_CHANGED_EVENT, xaiTestnet } from "./config/networks"
 import MobileAlphaNoticeModal from "./components/MobileAlphaNoticeModal";
 import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
 import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
+import { GasGrantClaimer } from "./components/GasGrantClaimer";
 import { useRankConfigSync } from "./hooks/useRankConfigSync";
 import { useRankConfigSyncWeb2 } from "./hooks/useRankConfigSyncWeb2";
 import { recordRpcRequest } from "./utils/rpcUsage";
@@ -112,6 +113,7 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
       <ContractEventsHost />
       <PosthogAppChainSync />
       <RestoreWalletConnection />
+      <GasGrantClaimer />
       <TransactionProvider>
         {children}
         <MobileAlphaNoticeModal />

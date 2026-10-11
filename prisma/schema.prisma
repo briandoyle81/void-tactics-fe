@@ -575,3 +575,35 @@ model NodeContent {
   @@index([graphType])
   @@index([graphType, dirtyAt])
 }
+
+// ── Gas grants (testnet) ──────────────────────────────────────────────────────
+// One-time test ETH sent by the backend faucet wallet (/api/faucet/gas) to a
+// new player's Dynamic embedded wallet so they can pay for their first
+// transactions. Temporary until an onramp replaces it. Both `address`
+// (lowercased) and `dynamicUserId` are unique: a wallet, and a Dynamic
+// account, can each be granted exactly once — the row is inserted before
+// anything is sent, so the unique constraint is what enforces it.
+// PENDING: claimed, send in progress (or interrupted — never retried
+// automatically, since it may have gone out). SENT: broadcast, `txHash` set.
+// FAILED: nothing was sent (e.g. the faucet wallet was empty); the same
+// account may retry.
+enum GasGrantStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model GasGrant {
+  id            Int            @id @default(autoincrement())
+  address       String         @unique
+  dynamicUserId String         @unique
+  chainId       Int
+  amountWei     String
+  status        GasGrantStatus @default(PENDING)
+  txHash        String?
+  error         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([createdAt])
+}

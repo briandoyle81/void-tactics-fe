@@ -138,6 +138,11 @@ export type TournamentMatch = $Result.DefaultSelection<Prisma.$TournamentMatchPa
  * 
  */
 export type NodeContent = $Result.DefaultSelection<Prisma.$NodeContentPayload>
+/**
+ * Model GasGrant
+ * 
+ */
+export type GasGrant = $Result.DefaultSelection<Prisma.$GasGrantPayload>
 
 /**
  * Enums
@@ -190,6 +195,15 @@ export const NodeGraphType: {
 
 export type NodeGraphType = (typeof NodeGraphType)[keyof typeof NodeGraphType]
 
+
+export const GasGrantStatus: {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  FAILED: 'FAILED'
+};
+
+export type GasGrantStatus = (typeof GasGrantStatus)[keyof typeof GasGrantStatus]
+
 }
 
 export type LobbyStatus = $Enums.LobbyStatus
@@ -211,6 +225,10 @@ export const TournamentState: typeof $Enums.TournamentState
 export type NodeGraphType = $Enums.NodeGraphType
 
 export const NodeGraphType: typeof $Enums.NodeGraphType
+
+export type GasGrantStatus = $Enums.GasGrantStatus
+
+export const GasGrantStatus: typeof $Enums.GasGrantStatus
 
 /**
  * ##  Prisma Client ʲˢ
@@ -582,6 +600,16 @@ export class PrismaClient<
     * ```
     */
   get nodeContent(): Prisma.NodeContentDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.gasGrant`: Exposes CRUD operations for the **GasGrant** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more GasGrants
+    * const gasGrants = await prisma.gasGrant.findMany()
+    * ```
+    */
+  get gasGrant(): Prisma.GasGrantDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1040,7 +1068,8 @@ export namespace Prisma {
     Tournament: 'Tournament',
     TournamentRegistrant: 'TournamentRegistrant',
     TournamentMatch: 'TournamentMatch',
-    NodeContent: 'NodeContent'
+    NodeContent: 'NodeContent',
+    GasGrant: 'GasGrant'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1056,7 +1085,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "ship" | "fleet" | "lobby" | "game" | "gameTurn" | "map" | "aIShipConfig" | "aIMapPlacement" | "aIFleetShip" | "campaign" | "campaignNode" | "campaignNodeCompletion" | "roguelikeCampaign" | "roguelikeNode" | "roguelikeEdge" | "roguelikeRun" | "roguelikeRosterShip" | "roguelikeNodeDefeat" | "config" | "playerStats" | "tournament" | "tournamentRegistrant" | "tournamentMatch" | "nodeContent"
+      modelProps: "user" | "ship" | "fleet" | "lobby" | "game" | "gameTurn" | "map" | "aIShipConfig" | "aIMapPlacement" | "aIFleetShip" | "campaign" | "campaignNode" | "campaignNodeCompletion" | "roguelikeCampaign" | "roguelikeNode" | "roguelikeEdge" | "roguelikeRun" | "roguelikeRosterShip" | "roguelikeNodeDefeat" | "config" | "playerStats" | "tournament" | "tournamentRegistrant" | "tournamentMatch" | "nodeContent" | "gasGrant"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2910,6 +2939,80 @@ export namespace Prisma {
           }
         }
       }
+      GasGrant: {
+        payload: Prisma.$GasGrantPayload<ExtArgs>
+        fields: Prisma.GasGrantFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.GasGrantFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.GasGrantFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>
+          }
+          findFirst: {
+            args: Prisma.GasGrantFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.GasGrantFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>
+          }
+          findMany: {
+            args: Prisma.GasGrantFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>[]
+          }
+          create: {
+            args: Prisma.GasGrantCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>
+          }
+          createMany: {
+            args: Prisma.GasGrantCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.GasGrantCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>[]
+          }
+          delete: {
+            args: Prisma.GasGrantDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>
+          }
+          update: {
+            args: Prisma.GasGrantUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>
+          }
+          deleteMany: {
+            args: Prisma.GasGrantDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.GasGrantUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.GasGrantUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>[]
+          }
+          upsert: {
+            args: Prisma.GasGrantUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$GasGrantPayload>
+          }
+          aggregate: {
+            args: Prisma.GasGrantAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateGasGrant>
+          }
+          groupBy: {
+            args: Prisma.GasGrantGroupByArgs<ExtArgs>
+            result: $Utils.Optional<GasGrantGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.GasGrantCountArgs<ExtArgs>
+            result: $Utils.Optional<GasGrantCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -3043,6 +3146,7 @@ export namespace Prisma {
     tournamentRegistrant?: TournamentRegistrantOmit
     tournamentMatch?: TournamentMatchOmit
     nodeContent?: NodeContentOmit
+    gasGrant?: GasGrantOmit
   }
 
   /* Types for Logging */
@@ -33417,6 +33521,1109 @@ export namespace Prisma {
 
 
   /**
+   * Model GasGrant
+   */
+
+  export type AggregateGasGrant = {
+    _count: GasGrantCountAggregateOutputType | null
+    _avg: GasGrantAvgAggregateOutputType | null
+    _sum: GasGrantSumAggregateOutputType | null
+    _min: GasGrantMinAggregateOutputType | null
+    _max: GasGrantMaxAggregateOutputType | null
+  }
+
+  export type GasGrantAvgAggregateOutputType = {
+    id: number | null
+    chainId: number | null
+  }
+
+  export type GasGrantSumAggregateOutputType = {
+    id: number | null
+    chainId: number | null
+  }
+
+  export type GasGrantMinAggregateOutputType = {
+    id: number | null
+    address: string | null
+    dynamicUserId: string | null
+    chainId: number | null
+    amountWei: string | null
+    status: $Enums.GasGrantStatus | null
+    txHash: string | null
+    error: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type GasGrantMaxAggregateOutputType = {
+    id: number | null
+    address: string | null
+    dynamicUserId: string | null
+    chainId: number | null
+    amountWei: string | null
+    status: $Enums.GasGrantStatus | null
+    txHash: string | null
+    error: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type GasGrantCountAggregateOutputType = {
+    id: number
+    address: number
+    dynamicUserId: number
+    chainId: number
+    amountWei: number
+    status: number
+    txHash: number
+    error: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type GasGrantAvgAggregateInputType = {
+    id?: true
+    chainId?: true
+  }
+
+  export type GasGrantSumAggregateInputType = {
+    id?: true
+    chainId?: true
+  }
+
+  export type GasGrantMinAggregateInputType = {
+    id?: true
+    address?: true
+    dynamicUserId?: true
+    chainId?: true
+    amountWei?: true
+    status?: true
+    txHash?: true
+    error?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type GasGrantMaxAggregateInputType = {
+    id?: true
+    address?: true
+    dynamicUserId?: true
+    chainId?: true
+    amountWei?: true
+    status?: true
+    txHash?: true
+    error?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type GasGrantCountAggregateInputType = {
+    id?: true
+    address?: true
+    dynamicUserId?: true
+    chainId?: true
+    amountWei?: true
+    status?: true
+    txHash?: true
+    error?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type GasGrantAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GasGrant to aggregate.
+     */
+    where?: GasGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GasGrants to fetch.
+     */
+    orderBy?: GasGrantOrderByWithRelationInput | GasGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: GasGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GasGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GasGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned GasGrants
+    **/
+    _count?: true | GasGrantCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: GasGrantAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: GasGrantSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: GasGrantMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: GasGrantMaxAggregateInputType
+  }
+
+  export type GetGasGrantAggregateType<T extends GasGrantAggregateArgs> = {
+        [P in keyof T & keyof AggregateGasGrant]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateGasGrant[P]>
+      : GetScalarType<T[P], AggregateGasGrant[P]>
+  }
+
+
+
+
+  export type GasGrantGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: GasGrantWhereInput
+    orderBy?: GasGrantOrderByWithAggregationInput | GasGrantOrderByWithAggregationInput[]
+    by: GasGrantScalarFieldEnum[] | GasGrantScalarFieldEnum
+    having?: GasGrantScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: GasGrantCountAggregateInputType | true
+    _avg?: GasGrantAvgAggregateInputType
+    _sum?: GasGrantSumAggregateInputType
+    _min?: GasGrantMinAggregateInputType
+    _max?: GasGrantMaxAggregateInputType
+  }
+
+  export type GasGrantGroupByOutputType = {
+    id: number
+    address: string
+    dynamicUserId: string
+    chainId: number
+    amountWei: string
+    status: $Enums.GasGrantStatus
+    txHash: string | null
+    error: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: GasGrantCountAggregateOutputType | null
+    _avg: GasGrantAvgAggregateOutputType | null
+    _sum: GasGrantSumAggregateOutputType | null
+    _min: GasGrantMinAggregateOutputType | null
+    _max: GasGrantMaxAggregateOutputType | null
+  }
+
+  type GetGasGrantGroupByPayload<T extends GasGrantGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<GasGrantGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof GasGrantGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], GasGrantGroupByOutputType[P]>
+            : GetScalarType<T[P], GasGrantGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type GasGrantSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    address?: boolean
+    dynamicUserId?: boolean
+    chainId?: boolean
+    amountWei?: boolean
+    status?: boolean
+    txHash?: boolean
+    error?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["gasGrant"]>
+
+  export type GasGrantSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    address?: boolean
+    dynamicUserId?: boolean
+    chainId?: boolean
+    amountWei?: boolean
+    status?: boolean
+    txHash?: boolean
+    error?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["gasGrant"]>
+
+  export type GasGrantSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    address?: boolean
+    dynamicUserId?: boolean
+    chainId?: boolean
+    amountWei?: boolean
+    status?: boolean
+    txHash?: boolean
+    error?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["gasGrant"]>
+
+  export type GasGrantSelectScalar = {
+    id?: boolean
+    address?: boolean
+    dynamicUserId?: boolean
+    chainId?: boolean
+    amountWei?: boolean
+    status?: boolean
+    txHash?: boolean
+    error?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type GasGrantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "address" | "dynamicUserId" | "chainId" | "amountWei" | "status" | "txHash" | "error" | "createdAt" | "updatedAt", ExtArgs["result"]["gasGrant"]>
+
+  export type $GasGrantPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "GasGrant"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      address: string
+      dynamicUserId: string
+      chainId: number
+      amountWei: string
+      status: $Enums.GasGrantStatus
+      txHash: string | null
+      error: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["gasGrant"]>
+    composites: {}
+  }
+
+  type GasGrantGetPayload<S extends boolean | null | undefined | GasGrantDefaultArgs> = $Result.GetResult<Prisma.$GasGrantPayload, S>
+
+  type GasGrantCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<GasGrantFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: GasGrantCountAggregateInputType | true
+    }
+
+  export interface GasGrantDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['GasGrant'], meta: { name: 'GasGrant' } }
+    /**
+     * Find zero or one GasGrant that matches the filter.
+     * @param {GasGrantFindUniqueArgs} args - Arguments to find a GasGrant
+     * @example
+     * // Get one GasGrant
+     * const gasGrant = await prisma.gasGrant.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends GasGrantFindUniqueArgs>(args: SelectSubset<T, GasGrantFindUniqueArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one GasGrant that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {GasGrantFindUniqueOrThrowArgs} args - Arguments to find a GasGrant
+     * @example
+     * // Get one GasGrant
+     * const gasGrant = await prisma.gasGrant.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends GasGrantFindUniqueOrThrowArgs>(args: SelectSubset<T, GasGrantFindUniqueOrThrowArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GasGrant that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantFindFirstArgs} args - Arguments to find a GasGrant
+     * @example
+     * // Get one GasGrant
+     * const gasGrant = await prisma.gasGrant.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends GasGrantFindFirstArgs>(args?: SelectSubset<T, GasGrantFindFirstArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first GasGrant that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantFindFirstOrThrowArgs} args - Arguments to find a GasGrant
+     * @example
+     * // Get one GasGrant
+     * const gasGrant = await prisma.gasGrant.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends GasGrantFindFirstOrThrowArgs>(args?: SelectSubset<T, GasGrantFindFirstOrThrowArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more GasGrants that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all GasGrants
+     * const gasGrants = await prisma.gasGrant.findMany()
+     * 
+     * // Get first 10 GasGrants
+     * const gasGrants = await prisma.gasGrant.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const gasGrantWithIdOnly = await prisma.gasGrant.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends GasGrantFindManyArgs>(args?: SelectSubset<T, GasGrantFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a GasGrant.
+     * @param {GasGrantCreateArgs} args - Arguments to create a GasGrant.
+     * @example
+     * // Create one GasGrant
+     * const GasGrant = await prisma.gasGrant.create({
+     *   data: {
+     *     // ... data to create a GasGrant
+     *   }
+     * })
+     * 
+     */
+    create<T extends GasGrantCreateArgs>(args: SelectSubset<T, GasGrantCreateArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many GasGrants.
+     * @param {GasGrantCreateManyArgs} args - Arguments to create many GasGrants.
+     * @example
+     * // Create many GasGrants
+     * const gasGrant = await prisma.gasGrant.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends GasGrantCreateManyArgs>(args?: SelectSubset<T, GasGrantCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many GasGrants and returns the data saved in the database.
+     * @param {GasGrantCreateManyAndReturnArgs} args - Arguments to create many GasGrants.
+     * @example
+     * // Create many GasGrants
+     * const gasGrant = await prisma.gasGrant.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many GasGrants and only return the `id`
+     * const gasGrantWithIdOnly = await prisma.gasGrant.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends GasGrantCreateManyAndReturnArgs>(args?: SelectSubset<T, GasGrantCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a GasGrant.
+     * @param {GasGrantDeleteArgs} args - Arguments to delete one GasGrant.
+     * @example
+     * // Delete one GasGrant
+     * const GasGrant = await prisma.gasGrant.delete({
+     *   where: {
+     *     // ... filter to delete one GasGrant
+     *   }
+     * })
+     * 
+     */
+    delete<T extends GasGrantDeleteArgs>(args: SelectSubset<T, GasGrantDeleteArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one GasGrant.
+     * @param {GasGrantUpdateArgs} args - Arguments to update one GasGrant.
+     * @example
+     * // Update one GasGrant
+     * const gasGrant = await prisma.gasGrant.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends GasGrantUpdateArgs>(args: SelectSubset<T, GasGrantUpdateArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more GasGrants.
+     * @param {GasGrantDeleteManyArgs} args - Arguments to filter GasGrants to delete.
+     * @example
+     * // Delete a few GasGrants
+     * const { count } = await prisma.gasGrant.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends GasGrantDeleteManyArgs>(args?: SelectSubset<T, GasGrantDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GasGrants.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many GasGrants
+     * const gasGrant = await prisma.gasGrant.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends GasGrantUpdateManyArgs>(args: SelectSubset<T, GasGrantUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more GasGrants and returns the data updated in the database.
+     * @param {GasGrantUpdateManyAndReturnArgs} args - Arguments to update many GasGrants.
+     * @example
+     * // Update many GasGrants
+     * const gasGrant = await prisma.gasGrant.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more GasGrants and only return the `id`
+     * const gasGrantWithIdOnly = await prisma.gasGrant.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends GasGrantUpdateManyAndReturnArgs>(args: SelectSubset<T, GasGrantUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one GasGrant.
+     * @param {GasGrantUpsertArgs} args - Arguments to update or create a GasGrant.
+     * @example
+     * // Update or create a GasGrant
+     * const gasGrant = await prisma.gasGrant.upsert({
+     *   create: {
+     *     // ... data to create a GasGrant
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the GasGrant we want to update
+     *   }
+     * })
+     */
+    upsert<T extends GasGrantUpsertArgs>(args: SelectSubset<T, GasGrantUpsertArgs<ExtArgs>>): Prisma__GasGrantClient<$Result.GetResult<Prisma.$GasGrantPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of GasGrants.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantCountArgs} args - Arguments to filter GasGrants to count.
+     * @example
+     * // Count the number of GasGrants
+     * const count = await prisma.gasGrant.count({
+     *   where: {
+     *     // ... the filter for the GasGrants we want to count
+     *   }
+     * })
+    **/
+    count<T extends GasGrantCountArgs>(
+      args?: Subset<T, GasGrantCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], GasGrantCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a GasGrant.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends GasGrantAggregateArgs>(args: Subset<T, GasGrantAggregateArgs>): Prisma.PrismaPromise<GetGasGrantAggregateType<T>>
+
+    /**
+     * Group by GasGrant.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {GasGrantGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends GasGrantGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: GasGrantGroupByArgs['orderBy'] }
+        : { orderBy?: GasGrantGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, GasGrantGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetGasGrantGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the GasGrant model
+   */
+  readonly fields: GasGrantFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for GasGrant.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__GasGrantClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the GasGrant model
+   */
+  interface GasGrantFieldRefs {
+    readonly id: FieldRef<"GasGrant", 'Int'>
+    readonly address: FieldRef<"GasGrant", 'String'>
+    readonly dynamicUserId: FieldRef<"GasGrant", 'String'>
+    readonly chainId: FieldRef<"GasGrant", 'Int'>
+    readonly amountWei: FieldRef<"GasGrant", 'String'>
+    readonly status: FieldRef<"GasGrant", 'GasGrantStatus'>
+    readonly txHash: FieldRef<"GasGrant", 'String'>
+    readonly error: FieldRef<"GasGrant", 'String'>
+    readonly createdAt: FieldRef<"GasGrant", 'DateTime'>
+    readonly updatedAt: FieldRef<"GasGrant", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * GasGrant findUnique
+   */
+  export type GasGrantFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * Filter, which GasGrant to fetch.
+     */
+    where: GasGrantWhereUniqueInput
+  }
+
+  /**
+   * GasGrant findUniqueOrThrow
+   */
+  export type GasGrantFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * Filter, which GasGrant to fetch.
+     */
+    where: GasGrantWhereUniqueInput
+  }
+
+  /**
+   * GasGrant findFirst
+   */
+  export type GasGrantFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * Filter, which GasGrant to fetch.
+     */
+    where?: GasGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GasGrants to fetch.
+     */
+    orderBy?: GasGrantOrderByWithRelationInput | GasGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GasGrants.
+     */
+    cursor?: GasGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GasGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GasGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GasGrants.
+     */
+    distinct?: GasGrantScalarFieldEnum | GasGrantScalarFieldEnum[]
+  }
+
+  /**
+   * GasGrant findFirstOrThrow
+   */
+  export type GasGrantFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * Filter, which GasGrant to fetch.
+     */
+    where?: GasGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GasGrants to fetch.
+     */
+    orderBy?: GasGrantOrderByWithRelationInput | GasGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for GasGrants.
+     */
+    cursor?: GasGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GasGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GasGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GasGrants.
+     */
+    distinct?: GasGrantScalarFieldEnum | GasGrantScalarFieldEnum[]
+  }
+
+  /**
+   * GasGrant findMany
+   */
+  export type GasGrantFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * Filter, which GasGrants to fetch.
+     */
+    where?: GasGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of GasGrants to fetch.
+     */
+    orderBy?: GasGrantOrderByWithRelationInput | GasGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing GasGrants.
+     */
+    cursor?: GasGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` GasGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` GasGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of GasGrants.
+     */
+    distinct?: GasGrantScalarFieldEnum | GasGrantScalarFieldEnum[]
+  }
+
+  /**
+   * GasGrant create
+   */
+  export type GasGrantCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * The data needed to create a GasGrant.
+     */
+    data: XOR<GasGrantCreateInput, GasGrantUncheckedCreateInput>
+  }
+
+  /**
+   * GasGrant createMany
+   */
+  export type GasGrantCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many GasGrants.
+     */
+    data: GasGrantCreateManyInput | GasGrantCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GasGrant createManyAndReturn
+   */
+  export type GasGrantCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * The data used to create many GasGrants.
+     */
+    data: GasGrantCreateManyInput | GasGrantCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * GasGrant update
+   */
+  export type GasGrantUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * The data needed to update a GasGrant.
+     */
+    data: XOR<GasGrantUpdateInput, GasGrantUncheckedUpdateInput>
+    /**
+     * Choose, which GasGrant to update.
+     */
+    where: GasGrantWhereUniqueInput
+  }
+
+  /**
+   * GasGrant updateMany
+   */
+  export type GasGrantUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update GasGrants.
+     */
+    data: XOR<GasGrantUpdateManyMutationInput, GasGrantUncheckedUpdateManyInput>
+    /**
+     * Filter which GasGrants to update
+     */
+    where?: GasGrantWhereInput
+    /**
+     * Limit how many GasGrants to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GasGrant updateManyAndReturn
+   */
+  export type GasGrantUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * The data used to update GasGrants.
+     */
+    data: XOR<GasGrantUpdateManyMutationInput, GasGrantUncheckedUpdateManyInput>
+    /**
+     * Filter which GasGrants to update
+     */
+    where?: GasGrantWhereInput
+    /**
+     * Limit how many GasGrants to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * GasGrant upsert
+   */
+  export type GasGrantUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * The filter to search for the GasGrant to update in case it exists.
+     */
+    where: GasGrantWhereUniqueInput
+    /**
+     * In case the GasGrant found by the `where` argument doesn't exist, create a new GasGrant with this data.
+     */
+    create: XOR<GasGrantCreateInput, GasGrantUncheckedCreateInput>
+    /**
+     * In case the GasGrant was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<GasGrantUpdateInput, GasGrantUncheckedUpdateInput>
+  }
+
+  /**
+   * GasGrant delete
+   */
+  export type GasGrantDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+    /**
+     * Filter which GasGrant to delete.
+     */
+    where: GasGrantWhereUniqueInput
+  }
+
+  /**
+   * GasGrant deleteMany
+   */
+  export type GasGrantDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which GasGrants to delete
+     */
+    where?: GasGrantWhereInput
+    /**
+     * Limit how many GasGrants to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * GasGrant without action
+   */
+  export type GasGrantDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the GasGrant
+     */
+    select?: GasGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the GasGrant
+     */
+    omit?: GasGrantOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -33781,6 +34988,22 @@ export namespace Prisma {
   export type NodeContentScalarFieldEnum = (typeof NodeContentScalarFieldEnum)[keyof typeof NodeContentScalarFieldEnum]
 
 
+  export const GasGrantScalarFieldEnum: {
+    id: 'id',
+    address: 'address',
+    dynamicUserId: 'dynamicUserId',
+    chainId: 'chainId',
+    amountWei: 'amountWei',
+    status: 'status',
+    txHash: 'txHash',
+    error: 'error',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type GasGrantScalarFieldEnum = (typeof GasGrantScalarFieldEnum)[keyof typeof GasGrantScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -33964,6 +35187,20 @@ export namespace Prisma {
    * Reference to a field of type 'NodeGraphType[]'
    */
   export type ListEnumNodeGraphTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NodeGraphType[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'GasGrantStatus'
+   */
+  export type EnumGasGrantStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GasGrantStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'GasGrantStatus[]'
+   */
+  export type ListEnumGasGrantStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'GasGrantStatus[]'>
     
 
 
@@ -35939,6 +37176,85 @@ export namespace Prisma {
     publishedDescription?: StringNullableWithAggregatesFilter<"NodeContent"> | string | null
     dirtyAt?: DateTimeNullableWithAggregatesFilter<"NodeContent"> | Date | string | null
     updatedAt?: DateTimeWithAggregatesFilter<"NodeContent"> | Date | string
+  }
+
+  export type GasGrantWhereInput = {
+    AND?: GasGrantWhereInput | GasGrantWhereInput[]
+    OR?: GasGrantWhereInput[]
+    NOT?: GasGrantWhereInput | GasGrantWhereInput[]
+    id?: IntFilter<"GasGrant"> | number
+    address?: StringFilter<"GasGrant"> | string
+    dynamicUserId?: StringFilter<"GasGrant"> | string
+    chainId?: IntFilter<"GasGrant"> | number
+    amountWei?: StringFilter<"GasGrant"> | string
+    status?: EnumGasGrantStatusFilter<"GasGrant"> | $Enums.GasGrantStatus
+    txHash?: StringNullableFilter<"GasGrant"> | string | null
+    error?: StringNullableFilter<"GasGrant"> | string | null
+    createdAt?: DateTimeFilter<"GasGrant"> | Date | string
+    updatedAt?: DateTimeFilter<"GasGrant"> | Date | string
+  }
+
+  export type GasGrantOrderByWithRelationInput = {
+    id?: SortOrder
+    address?: SortOrder
+    dynamicUserId?: SortOrder
+    chainId?: SortOrder
+    amountWei?: SortOrder
+    status?: SortOrder
+    txHash?: SortOrderInput | SortOrder
+    error?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GasGrantWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    address?: string
+    dynamicUserId?: string
+    AND?: GasGrantWhereInput | GasGrantWhereInput[]
+    OR?: GasGrantWhereInput[]
+    NOT?: GasGrantWhereInput | GasGrantWhereInput[]
+    chainId?: IntFilter<"GasGrant"> | number
+    amountWei?: StringFilter<"GasGrant"> | string
+    status?: EnumGasGrantStatusFilter<"GasGrant"> | $Enums.GasGrantStatus
+    txHash?: StringNullableFilter<"GasGrant"> | string | null
+    error?: StringNullableFilter<"GasGrant"> | string | null
+    createdAt?: DateTimeFilter<"GasGrant"> | Date | string
+    updatedAt?: DateTimeFilter<"GasGrant"> | Date | string
+  }, "id" | "address" | "dynamicUserId">
+
+  export type GasGrantOrderByWithAggregationInput = {
+    id?: SortOrder
+    address?: SortOrder
+    dynamicUserId?: SortOrder
+    chainId?: SortOrder
+    amountWei?: SortOrder
+    status?: SortOrder
+    txHash?: SortOrderInput | SortOrder
+    error?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: GasGrantCountOrderByAggregateInput
+    _avg?: GasGrantAvgOrderByAggregateInput
+    _max?: GasGrantMaxOrderByAggregateInput
+    _min?: GasGrantMinOrderByAggregateInput
+    _sum?: GasGrantSumOrderByAggregateInput
+  }
+
+  export type GasGrantScalarWhereWithAggregatesInput = {
+    AND?: GasGrantScalarWhereWithAggregatesInput | GasGrantScalarWhereWithAggregatesInput[]
+    OR?: GasGrantScalarWhereWithAggregatesInput[]
+    NOT?: GasGrantScalarWhereWithAggregatesInput | GasGrantScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"GasGrant"> | number
+    address?: StringWithAggregatesFilter<"GasGrant"> | string
+    dynamicUserId?: StringWithAggregatesFilter<"GasGrant"> | string
+    chainId?: IntWithAggregatesFilter<"GasGrant"> | number
+    amountWei?: StringWithAggregatesFilter<"GasGrant"> | string
+    status?: EnumGasGrantStatusWithAggregatesFilter<"GasGrant"> | $Enums.GasGrantStatus
+    txHash?: StringNullableWithAggregatesFilter<"GasGrant"> | string | null
+    error?: StringNullableWithAggregatesFilter<"GasGrant"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"GasGrant"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"GasGrant"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -37922,6 +39238,94 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type GasGrantCreateInput = {
+    address: string
+    dynamicUserId: string
+    chainId: number
+    amountWei: string
+    status?: $Enums.GasGrantStatus
+    txHash?: string | null
+    error?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type GasGrantUncheckedCreateInput = {
+    id?: number
+    address: string
+    dynamicUserId: string
+    chainId: number
+    amountWei: string
+    status?: $Enums.GasGrantStatus
+    txHash?: string | null
+    error?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type GasGrantUpdateInput = {
+    address?: StringFieldUpdateOperationsInput | string
+    dynamicUserId?: StringFieldUpdateOperationsInput | string
+    chainId?: IntFieldUpdateOperationsInput | number
+    amountWei?: StringFieldUpdateOperationsInput | string
+    status?: EnumGasGrantStatusFieldUpdateOperationsInput | $Enums.GasGrantStatus
+    txHash?: NullableStringFieldUpdateOperationsInput | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GasGrantUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    address?: StringFieldUpdateOperationsInput | string
+    dynamicUserId?: StringFieldUpdateOperationsInput | string
+    chainId?: IntFieldUpdateOperationsInput | number
+    amountWei?: StringFieldUpdateOperationsInput | string
+    status?: EnumGasGrantStatusFieldUpdateOperationsInput | $Enums.GasGrantStatus
+    txHash?: NullableStringFieldUpdateOperationsInput | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GasGrantCreateManyInput = {
+    id?: number
+    address: string
+    dynamicUserId: string
+    chainId: number
+    amountWei: string
+    status?: $Enums.GasGrantStatus
+    txHash?: string | null
+    error?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type GasGrantUpdateManyMutationInput = {
+    address?: StringFieldUpdateOperationsInput | string
+    dynamicUserId?: StringFieldUpdateOperationsInput | string
+    chainId?: IntFieldUpdateOperationsInput | number
+    amountWei?: StringFieldUpdateOperationsInput | string
+    status?: EnumGasGrantStatusFieldUpdateOperationsInput | $Enums.GasGrantStatus
+    txHash?: NullableStringFieldUpdateOperationsInput | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type GasGrantUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    address?: StringFieldUpdateOperationsInput | string
+    dynamicUserId?: StringFieldUpdateOperationsInput | string
+    chainId?: IntFieldUpdateOperationsInput | number
+    amountWei?: StringFieldUpdateOperationsInput | string
+    status?: EnumGasGrantStatusFieldUpdateOperationsInput | $Enums.GasGrantStatus
+    txHash?: NullableStringFieldUpdateOperationsInput | string | null
+    error?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -39760,6 +41164,72 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumNodeGraphTypeFilter<$PrismaModel>
     _max?: NestedEnumNodeGraphTypeFilter<$PrismaModel>
+  }
+
+  export type EnumGasGrantStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.GasGrantStatus | EnumGasGrantStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumGasGrantStatusFilter<$PrismaModel> | $Enums.GasGrantStatus
+  }
+
+  export type GasGrantCountOrderByAggregateInput = {
+    id?: SortOrder
+    address?: SortOrder
+    dynamicUserId?: SortOrder
+    chainId?: SortOrder
+    amountWei?: SortOrder
+    status?: SortOrder
+    txHash?: SortOrder
+    error?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GasGrantAvgOrderByAggregateInput = {
+    id?: SortOrder
+    chainId?: SortOrder
+  }
+
+  export type GasGrantMaxOrderByAggregateInput = {
+    id?: SortOrder
+    address?: SortOrder
+    dynamicUserId?: SortOrder
+    chainId?: SortOrder
+    amountWei?: SortOrder
+    status?: SortOrder
+    txHash?: SortOrder
+    error?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GasGrantMinOrderByAggregateInput = {
+    id?: SortOrder
+    address?: SortOrder
+    dynamicUserId?: SortOrder
+    chainId?: SortOrder
+    amountWei?: SortOrder
+    status?: SortOrder
+    txHash?: SortOrder
+    error?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type GasGrantSumOrderByAggregateInput = {
+    id?: SortOrder
+    chainId?: SortOrder
+  }
+
+  export type EnumGasGrantStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.GasGrantStatus | EnumGasGrantStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumGasGrantStatusWithAggregatesFilter<$PrismaModel> | $Enums.GasGrantStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumGasGrantStatusFilter<$PrismaModel>
+    _max?: NestedEnumGasGrantStatusFilter<$PrismaModel>
   }
 
   export type ShipCreateNestedManyWithoutOwnerInput = {
@@ -41909,6 +43379,10 @@ export namespace Prisma {
     set?: $Enums.NodeGraphType
   }
 
+  export type EnumGasGrantStatusFieldUpdateOperationsInput = {
+    set?: $Enums.GasGrantStatus
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -42252,6 +43726,23 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumNodeGraphTypeFilter<$PrismaModel>
     _max?: NestedEnumNodeGraphTypeFilter<$PrismaModel>
+  }
+
+  export type NestedEnumGasGrantStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.GasGrantStatus | EnumGasGrantStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumGasGrantStatusFilter<$PrismaModel> | $Enums.GasGrantStatus
+  }
+
+  export type NestedEnumGasGrantStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.GasGrantStatus | EnumGasGrantStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.GasGrantStatus[] | ListEnumGasGrantStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumGasGrantStatusWithAggregatesFilter<$PrismaModel> | $Enums.GasGrantStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumGasGrantStatusFilter<$PrismaModel>
+    _max?: NestedEnumGasGrantStatusFilter<$PrismaModel>
   }
 
   export type ShipCreateWithoutOwnerInput = {
