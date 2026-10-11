@@ -69,11 +69,19 @@ function RecoveryCodesModal({
   const [error, setError] = React.useState<string | null>(null);
   const [isBusy, setIsBusy] = React.useState(true);
   const [saved, setSaved] = React.useState(false);
+  // Dynamic's hook returns a new promptMfa every render; read it through a
+  // ref so loading isn't re-triggered by a re-render (that loop opened
+  // passkey prompt after passkey prompt).
+  const promptMfaRef = React.useRef(promptMfa);
+  promptMfaRef.current = promptMfa;
+  const isLoadingRef = React.useRef(false);
 
   // Runs `load`; if Dynamic refuses, verifies with the player's passkey
-  // (its MFA prompt) and tries once more.
+  // (its MFA prompt) and tries once more. One at a time.
   const withVerification = React.useCallback(
     async (load: () => Promise<{ recoveryCodes: string[] }>) => {
+      if (isLoadingRef.current) return;
+      isLoadingRef.current = true;
       setIsBusy(true);
       setError(null);
       try {
@@ -81,7 +89,7 @@ function RecoveryCodesModal({
           setCodes((await load()).recoveryCodes);
         } catch (firstError) {
           console.warn("Recovery codes need verification:", firstError);
-          await promptMfa();
+          await promptMfaRef.current();
           setCodes((await load()).recoveryCodes);
         }
         setSaved(false);
@@ -89,12 +97,14 @@ function RecoveryCodesModal({
         console.error("Failed to load recovery codes:", loadError);
         setError("Couldn't load your recovery codes. Try again from Settings (gear icon) › Recovery codes on a device with your passkey.");
       } finally {
+        isLoadingRef.current = false;
         setIsBusy(false);
       }
     },
-    [promptMfa],
+    [],
   );
 
+  // Load once when the window opens.
   React.useEffect(() => {
     void withVerification(() => getMfaRecoveryCodes());
   }, [withVerification]);
