@@ -6,7 +6,11 @@ import {
   useRefreshUser,
   useStepUpAuthentication,
 } from "@dynamic-labs/sdk-react-core";
-import { TokenScope, WalletProviderEnum } from "@dynamic-labs/sdk-api-core";
+import {
+  JwtVerifiedCredentialFormatEnum,
+  TokenScope,
+  WalletProviderEnum,
+} from "@dynamic-labs/sdk-api-core";
 import { registerPasskey, NoWebAuthNSupportError } from "@dynamic-labs-sdk/client";
 import { toast } from "react-hot-toast";
 import {
@@ -55,6 +59,15 @@ function isWebAuthnSupported(): boolean {
 // show this again" (persisted per Dynamic userId). An account can hold one
 // passkey per device, so a user whose passkey lives on another device is
 // offered one for this device ("Add a passkey for this device").
+// Verification methods that don't need a device-bound factor (re-auth:
+// an email/SMS code, social, or an external wallet signature).
+const REAUTH_FORMATS = new Set<JwtVerifiedCredentialFormatEnum>([
+  JwtVerifiedCredentialFormatEnum.Email,
+  JwtVerifiedCredentialFormatEnum.PhoneNumber,
+  JwtVerifiedCredentialFormatEnum.Oauth,
+  JwtVerifiedCredentialFormatEnum.Blockchain,
+]);
+
 export function PasskeyEnablePrompt() {
   const { user } = useDynamicContext();
   const refreshUser = useRefreshUser();
@@ -63,6 +76,10 @@ export function PasskeyEnablePrompt() {
   const [dontShowAgain, setDontShowAgain] = React.useState(false);
   const [isRegistering, setIsRegistering] = React.useState(false);
   const [hasPasskeyElsewhere, setHasPasskeyElsewhere] = React.useState(false);
+  // Dynamic will only accept an existing MFA factor (passkey, authenticator
+  // app or recovery code) to add this passkey, not an email code. Shown as
+  // an explanation first, so the browser's passkey picker isn't a surprise.
+  const [needsExistingFactor, setNeedsExistingFactor] = React.useState(false);
   const hasEvaluatedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -99,9 +116,22 @@ export function PasskeyEnablePrompt() {
   const handleEnable = async () => {
     setIsRegistering(true);
     try {
-      const { isRequired } = await checkStepUpAuth({
+      // Adding a passkey links a credential, which needs a fresh
+      // verification. Dynamic picks the method: re-auth (the email code)
+      // when allowed, otherwise an existing MFA factor — it blocks re-auth
+      // once the account has MFA devices and MFA is enabled for the
+      // environment (docs: /auth/step-up-auth).
+      const { isRequired, credentials } = await checkStepUpAuth({
         scope: TokenScope.Credentiallink,
       });
+      if (
+        isRequired &&
+        !needsExistingFactor &&
+        !credentials.some((c) => REAUTH_FORMATS.has(c.format))
+      ) {
+        setNeedsExistingFactor(true);
+        return;
+      }
       if (isRequired) {
         setIsOpen(false);
         // Resolves with undefined on a *successful* verification (see
@@ -155,7 +185,11 @@ export function PasskeyEnablePrompt() {
       >
         <div className="flex justify-between items-start gap-4 mb-3">
           <h2 className="text-lg font-bold text-cyan tracking-wider">
-            {hasPasskeyElsewhere ? "[ADD A PASSKEY FOR THIS DEVICE?]" : "[ENABLE FASTER SIGN-IN?]"}
+            {needsExistingFactor
+              ? "[CONFIRM WITH YOUR PASSKEY]"
+              : hasPasskeyElsewhere
+                ? "[ADD A PASSKEY FOR THIS DEVICE?]"
+                : "[ENABLE FASTER SIGN-IN?]"}
           </h2>
           <button
             type="button"
@@ -168,11 +202,20 @@ export function PasskeyEnablePrompt() {
           </button>
         </div>
 
-        <p className="text-sm text-text-secondary leading-relaxed">
-          {hasPasskeyElsewhere
-            ? "Your passkey is on another device. Add one here to sign in on this device with Face ID, a fingerprint, or your device PIN."
-            : "Set up a passkey to sign in next time with Face ID, a fingerprint, or your device PIN — no code to type or wait for."}
-        </p>
+        {needsExistingFactor ? (
+          <p className="text-sm text-text-secondary leading-relaxed">
+            Before adding a passkey here, confirm it&apos;s you with the passkey you already
+            have. If it&apos;s on your phone, choose &ldquo;Use a phone or tablet&rdquo; in the
+            next window and scan the code. If it&apos;s only on another computer, it can&apos;t
+            be used from here; keep signing in on this device with your email code.
+          </p>
+        ) : (
+          <p className="text-sm text-text-secondary leading-relaxed">
+            {hasPasskeyElsewhere
+              ? "Your passkey is on another device. Add one here to sign in on this device with Face ID, a fingerprint, or your device PIN."
+              : "Set up a passkey to sign in next time with Face ID, a fingerprint, or your device PIN — no code to type or wait for."}
+          </p>
+        )}
 
         <label className="mt-4 flex items-center gap-2 text-xs text-text-muted cursor-pointer">
           <input
@@ -208,7 +251,11 @@ export function PasskeyEnablePrompt() {
               backgroundColor: "var(--color-steel)",
             }}
           >
-            {isRegistering ? "[FOLLOW THE PROMPT...]" : "[ENABLE PASSKEY]"}
+            {isRegistering
+              ? "[FOLLOW THE PROMPT...]"
+              : needsExistingFactor
+                ? "[CONTINUE]"
+                : "[ENABLE PASSKEY]"}
           </button>
         </div>
       </div>
