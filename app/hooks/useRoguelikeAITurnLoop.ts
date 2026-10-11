@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import { useRoguelikeMatch } from "./useRoguelikeMatch";
+import { refetchUntilChanged } from "../utils/refetchUntilChanged";
 
 // Parallel to useAITurnLoop.ts (SinglePlayerMatch), calling
 // RoguelikeMatch.takeAITurn instead — kept as a separate hook rather than a
@@ -39,6 +40,10 @@ export function useRoguelikeAITurnLoop({
   const [isWaitingToAct, setIsWaitingToAct] = useState(false);
   const inFlightRef = useRef(false);
   const iterationRef = useRef(0);
+  // Latest lastMoveSignal, for refetchUntilChanged to see when the
+  // AI's move has reached the data.
+  const lastMoveSignalRef = useRef(lastMoveSignal);
+  lastMoveSignalRef.current = lastMoveSignal;
 
   useEffect(() => {
     if (!isAITurn || isGameOver) {
@@ -60,13 +65,19 @@ export function useRoguelikeAITurnLoop({
     const pacingTimeout = setTimeout(() => {
       didFire = true;
       iterationRef.current += 1;
+      const signalAtSend = lastMoveSignalRef.current;
       (batchMoves > 1 ? takeAITurns(gameId, batchMoves) : takeAITurn(gameId))
         .then(async (hash) => {
           if (publicClient) {
             await publicClient.waitForTransactionReceipt({ hash });
           }
           setMoveCount((c) => c + 1);
-          refetchGame();
+          // Not awaited: the loop moves on as soon as fresh state lands
+          // (lastMoveSignal changes and re-runs this effect).
+          void refetchUntilChanged({
+            refetch: refetchGame,
+            hasChanged: () => lastMoveSignalRef.current !== signalAtSend,
+          });
         })
         .catch((err) => {
           console.error("Roguelike takeAITurn failed:", err);

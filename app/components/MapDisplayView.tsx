@@ -202,7 +202,28 @@ export function MapDisplayView({
     return () => clearTimeout(timer);
   }, [hoveredShipId]);
 
+  // No ship card while a ship is being dragged (from the board or the ship
+  // list): the browser stops sending mouse events during a drag, so the card
+  // would otherwise stay stuck where the drag began.
+  const [isDragging, setIsDragging] = useState(false);
+  useEffect(() => {
+    const start = () => {
+      setIsDragging(true);
+      setHoveredCell(null);
+    };
+    const end = () => setIsDragging(false);
+    document.addEventListener("dragstart", start);
+    document.addEventListener("dragend", end);
+    document.addEventListener("drop", end);
+    return () => {
+      document.removeEventListener("dragstart", start);
+      document.removeEventListener("dragend", end);
+      document.removeEventListener("drop", end);
+    };
+  }, []);
+
   const handleCellEnter = (row: number, col: number, e: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging) return;
     const shipId = getShipIdAtPosition(row, col);
     // Only show tooltip for ships we have full card data for
     if (shipId && shipCardDataMap.has(shipId)) {
@@ -525,6 +546,7 @@ export function MapDisplayView({
           {/* Ship tooltip: absolute in map grid so it tracks aspect / resize */}
           {hoveredCell &&
             isTooltipDelayElapsed &&
+            !isDragging &&
             (() => {
               const shipCardData = shipCardDataMap.get(hoveredCell.shipId);
               if (!shipCardData) return null;

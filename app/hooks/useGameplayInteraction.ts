@@ -941,7 +941,10 @@ export function useGameplayInteraction({
       const lastMoveShipPosition = aliveShipPositions.find((pos) => pos.shipId === lastMove.shipId);
       if (lastMoveShipPosition) {
         const oldPos = { row: lastMove.oldRow, col: lastMove.oldCol };
-        const newPos = { row: lastMove.newRow, col: lastMove.newCol };
+        // Where the ship is now, not lastMove's recorded tile: a Ram ends on
+        // the victim's tile (see ramLastMove.ts), even when it rammed
+        // without moving first.
+        const newPos = lastMoveShipPosition.position;
         if (oldPos.row !== newPos.row || oldPos.col !== newPos.col) {
           if (oldPos.row >= 0 && oldPos.row < gridHeight && oldPos.col >= 0 && oldPos.col < gridWidth && !newGrid[oldPos.row][oldPos.col]) {
             newGrid[oldPos.row][oldPos.col] = { ...lastMoveShipPosition, position: oldPos, isPreview: true };

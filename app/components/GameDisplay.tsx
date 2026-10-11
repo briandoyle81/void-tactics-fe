@@ -155,8 +155,10 @@ function computeShouldShowLastMove(params: {
   shipMap: Map<bigint, Ship>;
   optimisticLastMove: LastMove | null;
   shipPositions: readonly { shipId: bigint; position: { row: number; col: number } }[];
+  /** Where the move ended (lastMoveEndPosition: a Ram ends on the victim's tile). */
+  endPosition: { row: number; col: number } | null;
 }): boolean {
-  const { winner, displayedLastMove, selectedShipId, shipMap, optimisticLastMove, shipPositions } = params;
+  const { winner, displayedLastMove, selectedShipId, shipMap, optimisticLastMove, shipPositions, endPosition } = params;
   if (winner !== ZERO_ADDR) return false;
   if (!displayedLastMove || displayedLastMove.shipId === 0n) return false;
   if (selectedShipId !== null) return false;
@@ -171,10 +173,8 @@ function computeShouldShowLastMove(params: {
     // Ship is present in current state — either it confirms the move (trust
     // it) or it's been superseded by something since (never trust a stale
     // square, no matter how recent the timestamp).
-    return (
-      currentPosition.position.row === displayedLastMove.newRow &&
-      currentPosition.position.col === displayedLastMove.newCol
-    );
+    const end = endPosition ?? { row: displayedLastMove.newRow, col: displayedLastMove.newCol };
+    return currentPosition.position.row === end.row && currentPosition.position.col === end.col;
   }
 
   // Ship not found in current positions at all — genuinely still catching
@@ -1238,6 +1238,18 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // A submitted Retreat plays as the last move straight away (warp-out at
   // its tile) instead of the ship just vanishing while the locked proposal
   // waits on the tx: last-move chrome ignores the selection for it.
+  // Where the last mover ended up (a Ram ends on the victim's tile, not the
+  // recorded one — see ramLastMove.ts).
+  const displayedShipPositions = isReplaying ? replaySnapshotGame?.shipPositions : game.shipPositions;
+  const displayedLastMoveEnd = React.useMemo(() => {
+    if (!displayedLastMove || displayedLastMove.newRow < 0 || displayedLastMove.newCol < 0) return null;
+    return lastMoveEndPosition({
+      lastMove: displayedLastMove,
+      moverVariant: shipMap.get(displayedLastMove.shipId)?.traits.variant,
+      shipPositions: displayedShipPositions ?? [],
+    });
+  }, [displayedLastMove, shipMap, displayedShipPositions]);
+
   const isSubmittedRetreatShowing =
     isProposalLocked && pendingMove.pendingMove?.actionType === ActionType.Retreat;
   const lastMoveSelectedShipId = isSubmittedRetreatShowing ? null : selectedShipId;
@@ -1256,6 +1268,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         shipMap,
         optimisticLastMove,
         shipPositions: game.shipPositions,
+        endPosition: displayedLastMoveEnd,
       }),
     [
       game.metadata.winner,
@@ -1264,6 +1277,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       game.shipPositions,
       lastMoveSelectedShipId,
       shipMap,
+      displayedLastMoveEnd,
     ],
   );
 
@@ -1278,6 +1292,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         shipMap,
         optimisticLastMove,
         shipPositions: game.shipPositions,
+        endPosition: displayedLastMoveEnd,
       }),
     [
       game.metadata.winner,
@@ -1286,6 +1301,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       game.shipPositions,
       shipMap,
       lastMoveSelectedShipId,
+      displayedLastMoveEnd,
     ],
   );
 
@@ -1367,14 +1383,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         // leftover dest for whichever ship is selected next (yellow arrow
         // from the new ship to this tile). Last-move hold has no path, so
         // there is nothing for previewPosition to show here.
-        const isHold =
-          displayedLastMove.oldRow === displayedLastMove.newRow &&
-          displayedLastMove.oldCol === displayedLastMove.newCol;
+        const end = displayedLastMoveEnd ?? { row: displayedLastMove.newRow, col: displayedLastMove.newCol };
+        const isHold = displayedLastMove.oldRow === end.row && displayedLastMove.oldCol === end.col;
         if (!isHold) {
-          interaction.setPreviewPosition({
-            row: displayedLastMove.newRow,
-            col: displayedLastMove.newCol,
-          });
+          interaction.setPreviewPosition(end);
         } else {
           interaction.setPreviewPosition(null);
         }
@@ -1409,6 +1421,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     interaction.setPreviewPosition,
     setTargetShipId,
     setWeaponTypeFromGrid,
+    displayedLastMoveEnd,
   ]);
 
   // Track previous turn state — shared with useTurnChangeAlertSound below
@@ -1443,13 +1456,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       !displayedLastMove ||
       proposalHidesLastMove ||
       (displayedLastMove.actionType as ActionType) === ActionType.Retreat ||
-      displayedLastMove.newRow < 0 ||
-      displayedLastMove.newCol < 0
+      !displayedLastMoveEnd
     ) {
       return null;
     }
-    return { row: displayedLastMove.newRow, col: displayedLastMove.newCol };
-  }, [shouldShowLastMove, displayedLastMove, proposalHidesLastMove]);
+    return displayedLastMoveEnd;
+  }, [shouldShowLastMove, displayedLastMove, proposalHidesLastMove, displayedLastMoveEnd]);
 
   // Last move props for GameGrid
   const lastMoveShipId =
@@ -1462,18 +1474,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     }
     return { row: displayedLastMove.oldRow, col: displayedLastMove.oldCol };
   }, [shouldShowLastMoveOnGrid, displayedLastMove, proposalHidesLastMove]);
-
-  // Where the last mover ended up (a Ram ends on the victim's tile, not the
-  // recorded one — see ramLastMove.ts).
-  const displayedShipPositions = isReplaying ? replaySnapshotGame?.shipPositions : game.shipPositions;
-  const displayedLastMoveEnd = React.useMemo(() => {
-    if (!displayedLastMove || displayedLastMove.newRow < 0 || displayedLastMove.newCol < 0) return null;
-    return lastMoveEndPosition({
-      lastMove: displayedLastMove,
-      moverVariant: shipMap.get(displayedLastMove.shipId)?.traits.variant,
-      shipPositions: displayedShipPositions ?? [],
-    });
-  }, [displayedLastMove, shipMap, displayedShipPositions]);
 
   const lastMoveNewPosition = React.useMemo(() => {
     if (!shouldShowLastMoveOnGrid || proposalHidesLastMove) return null;
