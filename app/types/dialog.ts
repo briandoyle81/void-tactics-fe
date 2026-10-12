@@ -50,7 +50,8 @@ export type DialogSide = "player" | "enemy";
 
 /**
  * When a line plays. Each trigger fires once per game (except the
- * every-round forms of roundStart/roundEnd, which fire once per round).
+ * every-round forms of roundStart/roundEnd, which fire once per round, and
+ * reactorDamaged/shipsRetreated without `count`, which fire every time).
  *
  * - `{ type: "missionStart" }` — when the mission opens.
  * - `{ type: "roundStart", round: 3 }` — at the start of round 3. Omit
@@ -65,6 +66,10 @@ export type DialogSide = "player" | "enemy";
  *   of that side's ships have been destroyed (removed from the game). A ship
  *   that's disabled and later destroyed fires both. Retreats count as
  *   neither.
+ * - `{ type: "shipsRetreated", side: "player" }` — every time a ship of
+ *   that side leaves the board without being destroyed: it retreated or
+ *   was rammed off. Add `count: 2` to fire once instead, when that many
+ *   have left.
  * - `{ type: "pointsScored", side: "player", points: 10 }` — when that
  *   side's total score reaches `points`.
  * - `{ type: "missionVictory" }` — when the player wins the mission.
@@ -73,8 +78,9 @@ export type DialogSide = "player" | "enemy";
  *   Victory/defeat lines play as a debrief inside the result screen.
  *
  * When several events happen at once they play in this order: mission
- * start, round end, round start, ships disabled, ships destroyed, points
- * scored, victory/defeat.
+ * start, round end, round start, ships disabled, reactor damage, ships
+ * destroyed or retreated, resource tiles taken, points scored,
+ * victory/defeat.
  */
 export type DialogTrigger =
   | { type: "missionStart" }
@@ -86,6 +92,12 @@ export type DialogTrigger =
   | { type: "shipsDisabled"; side: DialogSide; count: number }
   /** Fires once when `count` of `side`'s ships have been destroyed (removed from the game). */
   | { type: "shipsDestroyed"; side: DialogSide; count: number }
+  /**
+   * A ship on `side` leaves the board without being destroyed (retreated
+   * or rammed off). Without `count`: every time. With `count`: once, when
+   * that many of `side`'s ships have left.
+   */
+  | { type: "shipsRetreated"; side: DialogSide; count?: number }
   /** Fires once when `side`'s total score reaches `points`. */
   | { type: "pointsScored"; side: DialogSide; points: number }
   /**

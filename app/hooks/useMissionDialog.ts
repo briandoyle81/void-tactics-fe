@@ -221,6 +221,8 @@ export function useMissionDialog({
   const enemyScore = snapshot?.enemyScore;
   const myShipsDestroyed = snapshot?.myShipsDestroyed;
   const enemyShipsDestroyed = snapshot?.enemyShipsDestroyed;
+  const myShipsRetreated = snapshot?.myShipsRetreated;
+  const enemyShipsRetreated = snapshot?.enemyShipsRetreated;
   const outcome = snapshot?.outcome ?? null;
   // Joined so the effect depends on primitives, not fresh arrays.
   const myDisabledKey = snapshot?.myDisabledShipIds.join(",") ?? "";
@@ -240,6 +242,8 @@ export function useMissionDialog({
       enemyScore: enemyScore!,
       myShipsDestroyed: myShipsDestroyed!,
       enemyShipsDestroyed: enemyShipsDestroyed!,
+      myShipsRetreated: myShipsRetreated!,
+      enemyShipsRetreated: enemyShipsRetreated!,
       myDisabledShipIds: myDisabledKey ? myDisabledKey.split(",") : [],
       enemyDisabledShipIds: enemyDisabledKey ? enemyDisabledKey.split(",") : [],
       myReactorLevels: decodeLevels(myReactorKey),
@@ -284,6 +288,8 @@ export function useMissionDialog({
       if (last.enemyShipsDisabled === undefined) last.enemyShipsDisabled = next.enemyShipsDisabled;
       if (last.myReactorDamage === undefined) last.myReactorDamage = next.myReactorDamage;
       if (last.enemyReactorDamage === undefined) last.enemyReactorDamage = next.enemyReactorDamage;
+      if (last.myShipsRetreated === undefined) last.myShipsRetreated = next.myShipsRetreated;
+      if (last.enemyShipsRetreated === undefined) last.enemyShipsRetreated = next.enemyShipsRetreated;
       if (last.myResourceTilesTaken === undefined) last.myResourceTilesTaken = next.myResourceTilesTaken;
       if (last.enemyResourceTilesTaken === undefined) last.enemyResourceTilesTaken = next.enemyResourceTilesTaken;
       stored = { ...stored, last };
@@ -349,6 +355,8 @@ export function useMissionDialog({
     enemyScore,
     myShipsDestroyed,
     enemyShipsDestroyed,
+    myShipsRetreated,
+    enemyShipsRetreated,
     myDisabledKey,
     enemyDisabledKey,
     myReactorKey,

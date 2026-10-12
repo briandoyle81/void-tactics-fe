@@ -13,6 +13,9 @@ import type { DialogCharacterId } from "./characters";
 //                     { type: "roundEnd", round: 2 }     omit round = every round
 //                     { type: "shipsDisabled", side: "enemy", count: 1 }
 //                     { type: "shipsDestroyed", side: "enemy", count: 1 }
+//                     { type: "shipsRetreated", side: "player" }   every time a
+//                       ship leaves the board alive (retreated or rammed
+//                       off); add count: 2 to fire once, at 2 ships
 //                     { type: "resourceTileTaken", side: "enemy", count: 1 }
 //                       when that side's ships have landed on that many
 //                       different resource tiles (1 = the first landing)
@@ -138,6 +141,30 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
       "They've claimed a resource site, Admiral. Every round they hold it, they pull further ahead. Knock them off it.",
       "Enemy ships are working one of the sites. We can't let them sit there uncontested.",
       "The enemy's moved onto a resource site. Push them off before it pays out, or they'll win this on points.",
+    ],
+  },
+  {
+    // Each time one of ours leaves the board alive: retreated or rammed off.
+    id: "generic-ship-retreated-player",
+    characterId: "adjutant",
+    trigger: { type: "shipsRetreated", side: "player" },
+    canHide: true,
+    variants: [
+      "That ship's out of this fight, Admiral, but it's not lost. Our crews will run combat repairs so it's ready for the next one.",
+      "We've lost one from the line, but only for now. The repair teams will patch it up, and it'll be flying again next battle.",
+      "That ship's no longer in the fight. We'll get combat repairs done on it so it's ready when we need it next.",
+    ],
+  },
+  {
+    // Each time one of theirs leaves the board alive: retreated or rammed off.
+    id: "generic-ship-retreated-enemy",
+    characterId: "adjutant",
+    trigger: { type: "shipsRetreated", side: "enemy" },
+    canHide: true,
+    variants: [
+      "One of theirs is out of the fight, Admiral. It'll live to fly again, but it's one less gun on the board today.",
+      "Enemy ship's left the field. Not a kill, but it can't hurt us or hold ground for the rest of this one.",
+      "That's one of theirs off the board. They'll patch it up for another day, but this fight just got easier.",
     ],
   },
   {

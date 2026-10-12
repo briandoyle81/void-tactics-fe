@@ -23,6 +23,12 @@ export interface DialogSnapshot {
   myShipsDestroyed: number;
   enemyShipsDestroyed: number;
   /**
+   * Ships that left the board without being destroyed (status fled): they
+   * retreated or were rammed off. Fled is final, so this only goes up.
+   */
+  myShipsRetreated: number;
+  enemyShipsRetreated: number;
+  /**
    * Distinct ships that have been disabled (0 hull, still on the board) at
    * any point this game — a repaired-then-disabled-again ship counts once,
    * and a disabled ship that's later destroyed still counts. Built from
@@ -105,6 +111,7 @@ export interface DialogShip extends VictoryReasonEnemyShip {
 /** Ship status values (ShipPosition.status). */
 const STATUS_ACTIVE = 0;
 const STATUS_DESTROYED = 1;
+const STATUS_FLED = 2;
 
 export function buildDialogSnapshot({
   round,
@@ -124,6 +131,8 @@ export function buildDialogSnapshot({
 }): DialogObservation {
   let myShipsDestroyed = 0;
   let enemyShipsDestroyed = 0;
+  let myShipsRetreated = 0;
+  let enemyShipsRetreated = 0;
   const myDisabledShipIds: string[] = [];
   const enemyDisabledShipIds: string[] = [];
   const myReactorLevels: Record<string, number> = {};
@@ -145,10 +154,12 @@ export function buildDialogSnapshot({
     if (status === STATUS_DESTROYED) {
       if (ship.isMine) myShipsDestroyed++;
       else enemyShipsDestroyed++;
+    } else if (status === STATUS_FLED) {
+      if (ship.isMine) myShipsRetreated++;
+      else enemyShipsRetreated++;
     } else if (status === STATUS_ACTIVE && ship.hullPoints != null && ship.hullPoints <= 0) {
       // Disabled: 0 hull but still on the board. Unknown attributes (null)
-      // are treated as flying, same as victoryReason.ts. Retreated ships
-      // (status 2) are neither.
+      // are treated as flying, same as victoryReason.ts.
       (ship.isMine ? myDisabledShipIds : enemyDisabledShipIds).push(ship.id);
     }
   }
@@ -158,6 +169,8 @@ export function buildDialogSnapshot({
     enemyScore,
     myShipsDestroyed,
     enemyShipsDestroyed,
+    myShipsRetreated,
+    enemyShipsRetreated,
     myDisabledShipIds,
     enemyDisabledShipIds,
     myReactorLevels,
@@ -216,6 +229,8 @@ export function mergeDisabledShips(
       enemyScore: observation.enemyScore,
       myShipsDestroyed: observation.myShipsDestroyed,
       enemyShipsDestroyed: observation.enemyShipsDestroyed,
+      myShipsRetreated: observation.myShipsRetreated,
+      enemyShipsRetreated: observation.enemyShipsRetreated,
       myShipsDisabled: player.length,
       enemyShipsDisabled: enemy.length,
       myReactorDamage: sumValues(highs.player),
@@ -238,6 +253,8 @@ export function isOpeningSnapshot(s: DialogSnapshot): boolean {
     s.enemyScore === 0 &&
     s.myShipsDestroyed === 0 &&
     s.enemyShipsDestroyed === 0 &&
+    (s.myShipsRetreated ?? 0) === 0 &&
+    (s.enemyShipsRetreated ?? 0) === 0 &&
     s.myShipsDisabled === 0 &&
     s.enemyShipsDisabled === 0 &&
     (s.myReactorDamage ?? 0) === 0 &&
@@ -259,6 +276,8 @@ export function snapshotsEqual(a: DialogSnapshot, b: DialogSnapshot): boolean {
     a.enemyShipsDisabled === b.enemyShipsDisabled &&
     a.myReactorDamage === b.myReactorDamage &&
     a.enemyReactorDamage === b.enemyReactorDamage &&
+    a.myShipsRetreated === b.myShipsRetreated &&
+    a.enemyShipsRetreated === b.enemyShipsRetreated &&
     a.myResourceTilesTaken === b.myResourceTilesTaken &&
     a.enemyResourceTilesTaken === b.enemyResourceTilesTaken &&
     a.outcome === b.outcome
@@ -272,6 +291,8 @@ export type DialogOccurrence =
   | { type: "roundStart"; round: number }
   | { type: "shipsDisabled"; side: DialogSide; count: number }
   | { type: "shipsDestroyed"; side: DialogSide; count: number }
+  /** `total`: the side's retreated ships after this rise. */
+  | { type: "shipsRetreated"; side: DialogSide; total: number }
   | { type: "pointsScored"; side: DialogSide; points: number }
   /** `total`: the side's reactor damage after this rise. */
   | { type: "reactorDamaged"; side: DialogSide; total: number }
@@ -294,7 +315,8 @@ export function occurrenceKey(o: DialogOccurrence): string {
     case "pointsScored":
       return `pointsScored:${o.side}:${o.points}`;
     case "reactorDamaged":
-      return `reactorDamaged:${o.side}:${o.total}`;
+    case "shipsRetreated":
+      return `${o.type}:${o.side}:${o.total}`;
     case "resourceTileTaken":
       return `resourceTileTaken:${o.side}:${o.count}`;
   }
@@ -307,6 +329,7 @@ const OCCURRENCE_ORDER: Record<DialogOccurrence["type"], number> = {
   shipsDisabled: 3,
   reactorDamaged: 4,
   shipsDestroyed: 5,
+  shipsRetreated: 5,
   resourceTileTaken: 6,
   pointsScored: 7,
   // Last, so the final kill/score lines play before the debrief.
@@ -329,6 +352,7 @@ function occurrenceSortValue(o: DialogOccurrence): number {
     case "pointsScored":
       return o.points;
     case "reactorDamaged":
+    case "shipsRetreated":
       return o.total;
     case "resourceTileTaken":
       return o.count;
@@ -360,6 +384,10 @@ function range(fromInclusive: number, toInclusive: number): number[] {
 
 function shipsDestroyedFor(s: DialogSnapshot, side: DialogSide): number {
   return side === "player" ? s.myShipsDestroyed : s.enemyShipsDestroyed;
+}
+
+function shipsRetreatedFor(s: DialogSnapshot, side: DialogSide): number {
+  return (side === "player" ? s.myShipsRetreated : s.enemyShipsRetreated) ?? 0;
 }
 
 function shipsDisabledFor(s: DialogSnapshot, side: DialogSide): number {
@@ -418,6 +446,19 @@ export function triggerOccurrences(
       return before < trigger.count && trigger.count <= after
         ? [{ type: "resourceTileTaken", side: trigger.side, count: trigger.count }]
         : [];
+    }
+    case "shipsRetreated": {
+      const before = prev ? shipsRetreatedFor(prev, trigger.side) : 0;
+      const after = shipsRetreatedFor(next, trigger.side);
+      if (after <= before) return [];
+      // With `count`: once, when the total reaches it. Without: every time
+      // (one occurrence per update, however many ships left in it).
+      if (trigger.count != null) {
+        return before < trigger.count && trigger.count <= after
+          ? [{ type: "shipsRetreated", side: trigger.side, total: trigger.count }]
+          : [];
+      }
+      return [{ type: "shipsRetreated", side: trigger.side, total: after }];
     }
     case "reactorDamaged": {
       const before = prev ? reactorDamageFor(prev, trigger.side) : 0;

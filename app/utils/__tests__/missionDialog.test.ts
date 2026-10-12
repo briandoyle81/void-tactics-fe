@@ -15,6 +15,8 @@ const START: DialogSnapshot = {
   enemyScore: 0,
   myShipsDestroyed: 0,
   enemyShipsDestroyed: 0,
+  myShipsRetreated: 0,
+  enemyShipsRetreated: 0,
   myShipsDisabled: 0,
   enemyShipsDisabled: 0,
   myReactorDamage: 0,
@@ -352,5 +354,45 @@ describe("resourceTileTaken", () => {
     expect(select(START, snap({ enemyResourceTilesTaken: 1 }), [], [line])).toHaveLength(1);
     expect(select(snap({ enemyResourceTilesTaken: 1 }), snap({ enemyResourceTilesTaken: 2 }), [], [line])).toHaveLength(0);
     expect(select(START, snap({ myResourceTilesTaken: 1 }), [], [line])).toHaveLength(0);
+  });
+});
+
+describe("shipsRetreated", () => {
+  it("counts fled ships (retreated or rammed off) apart from destroyed and disabled", () => {
+    const obs = buildDialogSnapshot({
+      round: 2,
+      myScore: 0,
+      enemyScore: 0,
+      ships: [
+        { id: "a", isMine: true, status: 2, hullPoints: 0 },
+        { id: "b", isMine: true, status: 1, hullPoints: 0 },
+        { id: "c", isMine: false, status: 2, hullPoints: 7 },
+      ],
+    });
+    expect(obs.myShipsRetreated).toBe(1);
+    expect(obs.enemyShipsRetreated).toBe(1);
+    expect(obs.myShipsDestroyed).toBe(1);
+    expect(obs.myDisabledShipIds).toEqual([]);
+  });
+
+  it("fires every time without count, once with it", () => {
+    const every: GenericDialogLine = {
+      id: "retreat",
+      characterId: "adjutant",
+      trigger: { type: "shipsRetreated", side: "player" },
+      variants: ["Out of the fight."],
+    };
+    const fired = new Set<string>();
+    const first = select(START, snap({ myShipsRetreated: 1 }), [], [every]);
+    expect(first).toHaveLength(1);
+    first.forEach((item) => fired.add(item.key));
+    const second = select(snap({ myShipsRetreated: 1 }), snap({ myShipsRetreated: 2 }), [], [every], CAMPAIGN_1, fired);
+    expect(second).toHaveLength(1);
+    expect(select(START, snap({ enemyShipsRetreated: 1 }), [], [every])).toHaveLength(0);
+
+    const once: GenericDialogLine = { ...every, trigger: { type: "shipsRetreated", side: "player", count: 2 } };
+    expect(select(START, snap({ myShipsRetreated: 1 }), [], [once])).toHaveLength(0);
+    expect(select(snap({ myShipsRetreated: 1 }), snap({ myShipsRetreated: 3 }), [], [once])).toHaveLength(1);
+    expect(select(snap({ myShipsRetreated: 2 }), snap({ myShipsRetreated: 3 }), [], [once])).toHaveLength(0);
   });
 });
