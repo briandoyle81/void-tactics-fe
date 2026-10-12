@@ -241,4 +241,64 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
       },
     ],
   },
+  {
+    id: "roguelike-5-enemy-resources-1",
+    characterId: "hive",
+    text: "A moment! Pardon! ’tis now that — in the mines, they seemed abating their speed; gradually the ship holding the flesh fled the bottom forthwith from the drones. These temporary apprehensions, and even so, after concluding his contributory work for that accursed ore",
+    mission: { kind: "roguelike", nodeId: 5 },
+    trigger: { type: "resourceTileTaken", side: "enemy", count: 1 },
+    responses: [
+      {
+        characterId: "adjutant",
+        text: "I think they're telling us they've claimed the site? There are a lot of resources here.  It's time we teach whoever they are a lesson about Space Law!",
+      },
+    ],
+  },
+  {
+    id: "roguelike-5-player-resources-1",
+    characterId: "hive",
+    text: "That head this substance, organics digging would be a long experience what had gone down a peep through the footpath. I had hurried across the expanse - crackers, pitch, and fences, loud little genial, now, and give the metal, and aft the life.",
+    mission: { kind: "roguelike", nodeId: 5 },
+    trigger: { type: "resourceTileTaken", side: "player", count: 1 },
+    responses: [
+      {
+        characterId: "adjutant",
+        text: "I don't think they liked that!",
+      },
+    ],
+  },
+  {
+    id: "roguelike-5-victory",
+    characterId: "adjutant",
+    text: "They're backing off!  Is it just more, or do they seem to be learning more about us and about how things work every encounter. Sending out scouts now to explore the area.  I'll report back with what we find.",
+    mission: { kind: "roguelike", nodeId: 5 },
+    trigger: { type: "missionVictory" },
+    responses: [
+      {
+        characterId: "hive",
+        text: "Is, then, how could I withstand them, drawing still further and more inconsiderable and scattered bones of the mass, curiously carved from the northwest. It was the strange life - like fin stands up and returned to them by Ahab — his living foot advanced upon him in the ceiling, lined, or to spread.",
+      },
+      {
+        characterId: "adjutant",
+        text: "Preliminary reports suggest we've got a couple of options to move forward.  We can either try to sneak through a gas cloud to approach an enemy base, or we can fight them head-on and capture a repair station that will allow us to bring our ships back to full strength.",
+      },
+      {
+        characterId: "adjutant",
+        text: "I'll prepare a briefing for each option.",
+      },
+    ],
+  },
+  {
+    id: "roguelike-5-defeat",
+    characterId: "adjutant",
+    text: "They beat us.  Whatever those ships are, they're stronger than ours and we couldn't figure out how to fight them.",
+    mission: { kind: "roguelike", nodeId: 5 },
+    trigger: { type: "missionDefeat" },
+    responses: [
+      {
+        characterId: "hive",
+        text: "Whatsoever, my motion and nothing all the commonweal of that you are, he had gathered in my nerve and everlasting terra firma, while in the captain was a telegram, Senor; he were worn and the attention, ring! It is combustible flashes into the quiet lane were used to the air! ",
+      },
+    ],
+  },
 ];
