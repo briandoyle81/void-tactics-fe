@@ -13,6 +13,11 @@ import type { DialogCharacterId } from "./characters";
 //                     { type: "roundEnd", round: 2 }     omit round = every round
 //                     { type: "shipsDisabled", side: "enemy", count: 1 }
 //                     { type: "shipsDestroyed", side: "enemy", count: 1 }
+//                     { type: "resourceTileTaken", side: "enemy", count: 1 }
+//                       when that side's ships have landed on that many
+//                       different resource tiles (1 = the first landing)
+//                     { type: "reactorDamaged", side: "player" }   every time;
+//                       add count: 3 to fire once, at 3 reactor damage total
 //                     { type: "pointsScored", side: "player", points: 10 }
 //                     { type: "missionVictory" }   when the player wins
 //                     { type: "missionDefeat" }    when the player loses (incl. retreat)
@@ -87,7 +92,52 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     trigger: { type: "shipsDisabled", side: "enemy", count: 1 },
     canHide: true,
     variants: [
-      "Enemy ship disabled. It can't move or fire, and its failing reactor will finish it in a few rounds. It's still holding its position, though. If it's sitting somewhere we need, finish it off.  Or ram it and take it's spot!",
+      "Enemy ship disabled. It can't move or fire, and its failing reactor will finish it in a few rounds. It's still holding its position, though. If it's sitting somewhere we need, ram it and take its spot!",
+    ],
+  },
+  {
+    id: "generic-reactor-damage-player",
+    characterId: "adjutant",
+    trigger: { type: "reactorDamaged", side: "player", count: 1 },
+    canHide: true,
+    variants: [
+      "Reactor damage on one of ours, Admiral. That kind of damage doesn't heal, and enough of it will take the ship with it. Keep it out of harm's way.",
+      "One of our reactors just took damage. It won't recover, and it's one step closer to going critical. Watch that ship.",
+      "Reactor warning on one of our ships. It's holding for now, but there's only so much it can take before it goes critical.",
+    ],
+  },
+  {
+    id: "generic-reactor-damage-enemy",
+    characterId: "adjutant",
+    trigger: { type: "reactorDamaged", side: "enemy", count: 1 },
+    canHide: true,
+    variants: [
+      "We've damaged an enemy reactor, and that damage is permanent. Keep the pressure on and it'll tear itself apart.",
+      "Enemy reactor damaged. It won't recover, and it's one step closer to going critical.",
+      "Their reactor's failing, Admiral. That ship is living on borrowed time.",
+    ],
+  },
+  {
+    // The first time a ship lands on a resource tile.
+    id: "generic-first-resource-player",
+    characterId: "adjutant",
+    trigger: { type: "resourceTileTaken", side: "player", count: 1 },
+    canHide: true,
+    variants: [
+      "We're holding our first resource site, Admiral. Every round we keep a ship on it pays out, so hold that position.",
+      "First claim secured. The extraction crews are already moving in. Keep that site covered and the points keep coming.",
+      "That's our first site. Resources win this fight as much as firepower does, so let's keep it and take more.",
+    ],
+  },
+  {
+    id: "generic-first-resource-enemy",
+    characterId: "adjutant",
+    trigger: { type: "resourceTileTaken", side: "enemy", count: 1 },
+    canHide: true,
+    variants: [
+      "They've claimed a resource site, Admiral. Every round they hold it, they pull further ahead. Knock them off it.",
+      "Enemy ships are working one of the sites. We can't let them sit there uncontested.",
+      "The enemy's moved onto a resource site. Push them off before it pays out, or they'll win this on points.",
     ],
   },
   {

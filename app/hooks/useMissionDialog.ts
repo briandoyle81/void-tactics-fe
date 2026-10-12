@@ -11,6 +11,8 @@ import {
   type DialogObservation,
   type DialogSnapshot,
   type EverDisabledShips,
+  type ReactorHighs,
+  type EverHeldTiles,
 } from "../utils/missionDialog";
 import { getHiddenDialogLineIds } from "../utils/hiddenDialogLines";
 
@@ -31,6 +33,28 @@ interface StoredDialogState {
   pending?: DialogLogEntry[];
   /** Ids of every ship disabled so far this game (see mergeDisabledShips). */
   everDisabled?: EverDisabledShips;
+  /** Each ship's highest reactor level so far this game (see mergeDisabledShips). */
+  reactorHighs?: ReactorHighs;
+  /** Resource tiles each side has stood on so far this game (see mergeDisabledShips). */
+  everHeldTiles?: EverHeldTiles;
+}
+
+/** Reactor levels as a stable string ("id:level,..."), so the effect depends on a primitive. */
+function encodeLevels(levels: Record<string, number> | undefined): string {
+  return Object.entries(levels ?? {})
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, level]) => `${id}:${level}`)
+    .join(",");
+}
+
+function decodeLevels(key: string): Record<string, number> {
+  const levels: Record<string, number> = {};
+  if (!key) return levels;
+  for (const pair of key.split(",")) {
+    const [id, level] = pair.split(":");
+    levels[id] = Number(level);
+  }
+  return levels;
 }
 
 function storageKey(gameId: string): string {
@@ -201,6 +225,10 @@ export function useMissionDialog({
   // Joined so the effect depends on primitives, not fresh arrays.
   const myDisabledKey = snapshot?.myDisabledShipIds.join(",") ?? "";
   const enemyDisabledKey = snapshot?.enemyDisabledShipIds.join(",") ?? "";
+  const myReactorKey = encodeLevels(snapshot?.myReactorLevels);
+  const enemyReactorKey = encodeLevels(snapshot?.enemyReactorLevels);
+  const myTilesKey = snapshot?.myResourceTiles.join(";") ?? "";
+  const enemyTilesKey = snapshot?.enemyResourceTiles.join(";") ?? "";
   const hasSnapshot = snapshot != null;
 
   useEffect(() => {
@@ -214,6 +242,10 @@ export function useMissionDialog({
       enemyShipsDestroyed: enemyShipsDestroyed!,
       myDisabledShipIds: myDisabledKey ? myDisabledKey.split(",") : [],
       enemyDisabledShipIds: enemyDisabledKey ? enemyDisabledKey.split(",") : [],
+      myReactorLevels: decodeLevels(myReactorKey),
+      enemyReactorLevels: decodeLevels(enemyReactorKey),
+      myResourceTiles: myTilesKey ? myTilesKey.split(";") : [],
+      enemyResourceTiles: enemyTilesKey ? enemyTilesKey.split(";") : [],
       outcome,
     };
 
@@ -232,9 +264,16 @@ export function useMissionDialog({
         setUnreadCount(0);
       }
     }
-    const merged = mergeDisabledShips(observation, stored?.everDisabled);
+    const merged = mergeDisabledShips(
+      observation,
+      stored?.everDisabled,
+      stored?.reactorHighs,
+      stored?.everHeldTiles,
+    );
     const next: DialogSnapshot = merged.snapshot;
     const everDisabled = merged.everDisabled;
+    const reactorHighs = merged.reactorHighs;
+    const everHeldTiles = merged.everHeldTiles;
     // Records saved before some triggers existed lack their fields; treat
     // them as already at the current values so opening an old game doesn't
     // suddenly play a debrief or disabled-ship lines for past events.
@@ -243,12 +282,16 @@ export function useMissionDialog({
       if (last.outcome === undefined) last.outcome = next.outcome;
       if (last.myShipsDisabled === undefined) last.myShipsDisabled = next.myShipsDisabled;
       if (last.enemyShipsDisabled === undefined) last.enemyShipsDisabled = next.enemyShipsDisabled;
+      if (last.myReactorDamage === undefined) last.myReactorDamage = next.myReactorDamage;
+      if (last.enemyReactorDamage === undefined) last.enemyReactorDamage = next.enemyReactorDamage;
+      if (last.myResourceTilesTaken === undefined) last.myResourceTilesTaken = next.myResourceTilesTaken;
+      if (last.enemyResourceTilesTaken === undefined) last.enemyResourceTilesTaken = next.enemyResourceTilesTaken;
       stored = { ...stored, last };
     }
     if (!stored && next.outcome !== null) {
       // First seen after it already ended (e.g. opening a finished game from
       // the list): nothing to play.
-      save({ last: next, fired: [], pending: [], everDisabled });
+      save({ last: next, fired: [], pending: [], everDisabled, reactorHighs, everHeldTiles });
       return;
     }
     if (!stored && !isOpeningSnapshot(next)) {
@@ -266,7 +309,7 @@ export function useMissionDialog({
       })
         .filter((item) => item.event === "missionStart")
         .map((item) => ({ ...item, round: next.round }));
-      save({ last: next, fired: entryItems.map((item) => item.key), pending: entryItems, everDisabled });
+      save({ last: next, fired: entryItems.map((item) => item.key), pending: entryItems, everDisabled, reactorHighs, everHeldTiles });
       if (entryItems.length > 0) {
         enqueue(entryItems);
       }
@@ -290,6 +333,8 @@ export function useMissionDialog({
       fired: [...fired],
       pending: [...(stored?.pending ?? []), ...items],
       everDisabled,
+      reactorHighs,
+      everHeldTiles,
     });
     if (items.length > 0) enqueue(items);
   }, [
@@ -306,6 +351,10 @@ export function useMissionDialog({
     enemyShipsDestroyed,
     myDisabledKey,
     enemyDisabledKey,
+    myReactorKey,
+    enemyReactorKey,
+    myTilesKey,
+    enemyTilesKey,
     outcome,
   ]);
 

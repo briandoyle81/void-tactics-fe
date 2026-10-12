@@ -464,8 +464,11 @@ function GameDisplayWeb2({
           isMine: p.isCreator === isCreatorNow,
           status: p.status,
           hullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.hullPoints ?? null) : null,
+          reactorLevel: index >= 0 ? (chainGame.shipAttributes?.[index]?.reactorCriticalTimer ?? null) : null,
+          position: p.position,
         };
       }),
+      scoringGrid,
       // Victory/defeat triggers; a draw is neither.
       outcome:
         gameWinnerResult === "me" ? "victory" : gameWinnerResult === "opponent" ? "defeat" : null,
@@ -480,6 +483,7 @@ function GameDisplayWeb2({
     chainGame.shipIds,
     chainGame.shipAttributes,
     gameWinnerResult,
+    scoringGrid,
   ]);
   const missionDialog = useMissionDialog({
     gameId: String(gameId),

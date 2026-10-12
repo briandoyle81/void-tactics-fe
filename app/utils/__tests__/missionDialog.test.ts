@@ -17,6 +17,10 @@ const START: DialogSnapshot = {
   enemyShipsDestroyed: 0,
   myShipsDisabled: 0,
   enemyShipsDisabled: 0,
+  myReactorDamage: 0,
+  enemyReactorDamage: 0,
+  myResourceTilesTaken: 0,
+  enemyResourceTilesTaken: 0,
   outcome: null,
 };
 const snap = (over: Partial<DialogSnapshot>): DialogSnapshot => ({ ...START, ...over });
@@ -257,5 +261,96 @@ describe("selectDialogLines", () => {
   it("matches tutorial mission lines", () => {
     const lines = [missionLine("t", { type: "missionStart" }, { kind: "tutorial" })];
     expect(select(null, START, lines, [], { kind: "tutorial" }).map((i) => i.text)).toEqual(["t"]);
+  });
+});
+
+describe("reactorDamaged", () => {
+  const line = (count?: number): GenericDialogLine => ({
+    id: "reactor-player",
+    characterId: "adjutant",
+    trigger: { type: "reactorDamaged", side: "player", ...(count != null ? { count } : {}) },
+    canHide: true,
+    variants: ["Reactor hit."],
+  });
+
+  it("fires on every rise without a count, once per update", () => {
+    expect(select(START, snap({ myReactorDamage: 1 }), [], [line()])).toHaveLength(1);
+    expect(select(snap({ myReactorDamage: 1 }), snap({ myReactorDamage: 3 }), [], [line()])).toHaveLength(1);
+    expect(select(snap({ myReactorDamage: 3 }), snap({ myReactorDamage: 3 }), [], [line()])).toHaveLength(0);
+    expect(select(START, snap({ enemyReactorDamage: 2 }), [], [line()])).toHaveLength(0);
+  });
+
+  it("fires once at the count with a count", () => {
+    expect(select(START, snap({ myReactorDamage: 1 }), [], [line(2)])).toHaveLength(0);
+    expect(select(snap({ myReactorDamage: 1 }), snap({ myReactorDamage: 2 }), [], [line(2)])).toHaveLength(1);
+    expect(select(snap({ myReactorDamage: 2 }), snap({ myReactorDamage: 4 }), [], [line(2)])).toHaveLength(0);
+  });
+
+  it("counts each ship's highest level, so levels never count twice", () => {
+    const observe = (levels: Record<string, number>) =>
+      buildDialogSnapshot({
+        round: 1,
+        myScore: 0,
+        enemyScore: 0,
+        ships: Object.entries(levels).map(([id, reactorLevel]) => ({
+          id,
+          isMine: true,
+          status: 0 as const,
+          hullPoints: 10,
+          reactorLevel,
+        })),
+      });
+    const first = mergeDisabledShips(observe({ a: 1 }), null);
+    expect(first.snapshot.myReactorDamage).toBe(1);
+    const second = mergeDisabledShips(observe({ a: 2, b: 1 }), first.everDisabled, first.reactorHighs);
+    expect(second.snapshot.myReactorDamage).toBe(3);
+    // Ship a gone from the observation (destroyed or fled): its high stays.
+    const third = mergeDisabledShips(observe({ b: 1 }), second.everDisabled, second.reactorHighs);
+    expect(third.snapshot.myReactorDamage).toBe(3);
+  });
+});
+
+describe("resourceTileTaken", () => {
+  const scoringGrid = [
+    [0, 5, 0],
+    [0, 0, 5],
+  ];
+  const observe = (ships: { id: string; isMine: boolean; row: number; col: number; hull?: number }[]) =>
+    buildDialogSnapshot({
+      round: 1,
+      myScore: 0,
+      enemyScore: 0,
+      scoringGrid,
+      ships: ships.map((s) => ({
+        id: s.id,
+        isMine: s.isMine,
+        status: 0 as const,
+        hullPoints: s.hull ?? 10,
+        position: { row: s.row, col: s.col },
+      })),
+    });
+
+  it("counts a working ship landing on a resource tile, once per tile", () => {
+    const first = mergeDisabledShips(observe([{ id: "a", isMine: true, row: 0, col: 1 }]), null);
+    expect(first.snapshot.myResourceTilesTaken).toBe(1);
+    expect(first.snapshot.enemyResourceTilesTaken).toBe(0);
+    // Still holding it, then leaving: no new tile.
+    const held = mergeDisabledShips(observe([{ id: "a", isMine: true, row: 0, col: 0 }]), first.everDisabled, first.reactorHighs, first.everHeldTiles);
+    expect(held.snapshot.myResourceTilesTaken).toBe(1);
+    // A disabled ship sitting on a tile didn't land there.
+    const disabled = mergeDisabledShips(observe([{ id: "b", isMine: false, row: 1, col: 2, hull: 0 }]), null);
+    expect(disabled.snapshot.enemyResourceTilesTaken).toBe(0);
+  });
+
+  it("fires once on the first landing", () => {
+    const line: GenericDialogLine = {
+      id: "first-tile",
+      characterId: "adjutant",
+      trigger: { type: "resourceTileTaken", side: "enemy", count: 1 },
+      variants: ["They've landed on a site."],
+    };
+    expect(select(START, snap({ enemyResourceTilesTaken: 1 }), [], [line])).toHaveLength(1);
+    expect(select(snap({ enemyResourceTilesTaken: 1 }), snap({ enemyResourceTilesTaken: 2 }), [], [line])).toHaveLength(0);
+    expect(select(START, snap({ myResourceTilesTaken: 1 }), [], [line])).toHaveLength(0);
   });
 });

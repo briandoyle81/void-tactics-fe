@@ -88,6 +88,17 @@ export type DialogTrigger =
   | { type: "shipsDestroyed"; side: DialogSide; count: number }
   /** Fires once when `side`'s total score reaches `points`. */
   | { type: "pointsScored"; side: DialogSide; points: number }
+  /**
+   * A ship on `side` takes reactor damage (hit, EMP, ram, or a disabled
+   * ship's reactor ticking down). Without `count`: every time. With
+   * `count`: once, when `side`'s total reactor damage this game reaches it.
+   */
+  | { type: "reactorDamaged"; side: DialogSide; count?: number }
+  /**
+   * Fires once when ships of `side` have landed on `count` different
+   * resource (scoring) tiles this game. count: 1 = the first landing.
+   */
+  | { type: "resourceTileTaken"; side: DialogSide; count: number }
   /** Fires once when the player wins the mission. Plays in the result screen. */
   | { type: "missionVictory" }
   /** Fires once when the player loses (incl. retreat). Plays in the result screen. */

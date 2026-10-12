@@ -30,6 +30,20 @@ export interface DialogSnapshot {
    */
   myShipsDisabled: number;
   enemyShipsDisabled: number;
+  /**
+   * Reactor damage taken so far this game: the sum of each ship's highest
+   * reactor level (it only goes up), so every hit, EMP, ram or end-of-round
+   * tick on a disabled ship adds one. Built by mergeDisabledShips.
+   */
+  myReactorDamage: number;
+  enemyReactorDamage: number;
+  /**
+   * Distinct resource (scoring) tiles a working ship of each side has stood
+   * on so far this game: landing on one counts, holding it doesn't add
+   * more. Built by mergeDisabledShips.
+   */
+  myResourceTilesTaken: number;
+  enemyResourceTilesTaken: number;
   /** How the game ended for the local player; null while it's still running (or a draw). */
   outcome: DialogOutcome;
 }
@@ -41,10 +55,36 @@ export type DialogOutcome = "victory" | "defeat" | null;
  * ones disabled at this moment); the hook folds them into the per-game
  * "ever disabled" set to get DialogSnapshot's cumulative counts.
  */
-export type DialogObservation = Omit<DialogSnapshot, "myShipsDisabled" | "enemyShipsDisabled"> & {
+export type DialogObservation = Omit<
+  DialogSnapshot,
+  | "myShipsDisabled"
+  | "enemyShipsDisabled"
+  | "myReactorDamage"
+  | "enemyReactorDamage"
+  | "myResourceTilesTaken"
+  | "enemyResourceTilesTaken"
+> & {
   myDisabledShipIds: string[];
   enemyDisabledShipIds: string[];
+  /** Each ship's reactor level right now, by ship id. */
+  myReactorLevels: Record<string, number>;
+  enemyReactorLevels: Record<string, number>;
+  /** Resource tiles ("row,col") a working ship of each side stands on right now. */
+  myResourceTiles: string[];
+  enemyResourceTiles: string[];
 };
+
+/** Resource tiles ("row,col") each side has stood on so far this game. */
+export interface EverHeldTiles {
+  player: string[];
+  enemy: string[];
+}
+
+/** Each ship's highest reactor level so far this game, per side. */
+export interface ReactorHighs {
+  player: Record<string, number>;
+  enemy: Record<string, number>;
+}
 
 /** Ids of every ship disabled so far this game, per side. */
 export interface EverDisabledShips {
@@ -56,6 +96,10 @@ export interface DialogShip extends VictoryReasonEnemyShip {
   /** Ship id, as a string (bigint/number ids converted by the view). */
   id: string;
   isMine: boolean;
+  /** Reactor damage level (reactorCriticalTimer); null when unknown. */
+  reactorLevel?: number | null;
+  /** Board position, for resource tiles (row/col < 0 or missing: off the board). */
+  position?: { row: number; col: number };
 }
 
 /** Ship status values (ShipPosition.status). */
@@ -67,19 +111,36 @@ export function buildDialogSnapshot({
   myScore,
   enemyScore,
   ships,
+  scoringGrid,
   outcome = null,
 }: {
   round: number;
   myScore: number;
   enemyScore: number;
   ships: readonly DialogShip[];
+  /** The map's scoring grid (points per tile, 0 = none), for resource tiles. */
+  scoringGrid?: readonly (readonly number[])[];
   outcome?: DialogOutcome;
 }): DialogObservation {
   let myShipsDestroyed = 0;
   let enemyShipsDestroyed = 0;
   const myDisabledShipIds: string[] = [];
   const enemyDisabledShipIds: string[] = [];
+  const myReactorLevels: Record<string, number> = {};
+  const enemyReactorLevels: Record<string, number> = {};
+  const myResourceTiles: string[] = [];
+  const enemyResourceTiles: string[] = [];
   for (const ship of ships) {
+    // A working ship (active, not at 0 hull) on a resource tile has taken it.
+    const pos = ship.position;
+    const isWorking =
+      (ship.status ?? STATUS_ACTIVE) === STATUS_ACTIVE && (ship.hullPoints == null || ship.hullPoints > 0);
+    if (isWorking && pos && pos.row >= 0 && pos.col >= 0 && (scoringGrid?.[pos.row]?.[pos.col] ?? 0) > 0) {
+      (ship.isMine ? myResourceTiles : enemyResourceTiles).push(`${pos.row},${pos.col}`);
+    }
+    if (ship.reactorLevel != null && ship.reactorLevel > 0) {
+      (ship.isMine ? myReactorLevels : enemyReactorLevels)[ship.id] = ship.reactorLevel;
+    }
     const status = ship.status ?? STATUS_ACTIVE;
     if (status === STATUS_DESTROYED) {
       if (ship.isMine) myShipsDestroyed++;
@@ -99,21 +160,55 @@ export function buildDialogSnapshot({
     enemyShipsDestroyed,
     myDisabledShipIds,
     enemyDisabledShipIds,
+    myReactorLevels,
+    enemyReactorLevels,
+    myResourceTiles,
+    enemyResourceTiles,
     outcome,
   };
 }
 
+function mergeHighs(
+  highs: Record<string, number> | undefined,
+  levels: Record<string, number>,
+): Record<string, number> {
+  const merged = { ...(highs ?? {}) };
+  for (const [id, level] of Object.entries(levels)) {
+    if (level > (merged[id] ?? 0)) merged[id] = level;
+  }
+  return merged;
+}
+
+const sumValues = (record: Record<string, number>) =>
+  Object.values(record).reduce((total, value) => total + value, 0);
+
 /**
  * Folds the ships disabled right now into the game's running "ever
- * disabled" set and returns the snapshot (with cumulative disabled counts)
- * plus the updated set to persist.
+ * disabled" set, and each ship's reactor level into its running high, and
+ * returns the snapshot (with cumulative counts) plus the updated state to
+ * persist.
  */
 export function mergeDisabledShips(
   observation: DialogObservation,
   everDisabled: EverDisabledShips | null | undefined,
-): { snapshot: DialogSnapshot; everDisabled: EverDisabledShips } {
+  reactorHighs?: ReactorHighs | null,
+  everHeldTiles?: EverHeldTiles | null,
+): {
+  snapshot: DialogSnapshot;
+  everDisabled: EverDisabledShips;
+  reactorHighs: ReactorHighs;
+  everHeldTiles: EverHeldTiles;
+} {
   const player = [...new Set([...(everDisabled?.player ?? []), ...observation.myDisabledShipIds])];
   const enemy = [...new Set([...(everDisabled?.enemy ?? []), ...observation.enemyDisabledShipIds])];
+  const highs: ReactorHighs = {
+    player: mergeHighs(reactorHighs?.player, observation.myReactorLevels ?? {}),
+    enemy: mergeHighs(reactorHighs?.enemy, observation.enemyReactorLevels ?? {}),
+  };
+  const tiles: EverHeldTiles = {
+    player: [...new Set([...(everHeldTiles?.player ?? []), ...(observation.myResourceTiles ?? [])])],
+    enemy: [...new Set([...(everHeldTiles?.enemy ?? []), ...(observation.enemyResourceTiles ?? [])])],
+  };
   return {
     snapshot: {
       round: observation.round,
@@ -123,9 +218,15 @@ export function mergeDisabledShips(
       enemyShipsDestroyed: observation.enemyShipsDestroyed,
       myShipsDisabled: player.length,
       enemyShipsDisabled: enemy.length,
+      myReactorDamage: sumValues(highs.player),
+      enemyReactorDamage: sumValues(highs.enemy),
+      myResourceTilesTaken: tiles.player.length,
+      enemyResourceTilesTaken: tiles.enemy.length,
       outcome: observation.outcome,
     },
     everDisabled: { player, enemy },
+    reactorHighs: highs,
+    everHeldTiles: tiles,
   };
 }
 
@@ -139,6 +240,10 @@ export function isOpeningSnapshot(s: DialogSnapshot): boolean {
     s.enemyShipsDestroyed === 0 &&
     s.myShipsDisabled === 0 &&
     s.enemyShipsDisabled === 0 &&
+    (s.myReactorDamage ?? 0) === 0 &&
+    (s.enemyReactorDamage ?? 0) === 0 &&
+    (s.myResourceTilesTaken ?? 0) === 0 &&
+    (s.enemyResourceTilesTaken ?? 0) === 0 &&
     s.outcome === null
   );
 }
@@ -152,6 +257,10 @@ export function snapshotsEqual(a: DialogSnapshot, b: DialogSnapshot): boolean {
     a.enemyShipsDestroyed === b.enemyShipsDestroyed &&
     a.myShipsDisabled === b.myShipsDisabled &&
     a.enemyShipsDisabled === b.enemyShipsDisabled &&
+    a.myReactorDamage === b.myReactorDamage &&
+    a.enemyReactorDamage === b.enemyReactorDamage &&
+    a.myResourceTilesTaken === b.myResourceTilesTaken &&
+    a.enemyResourceTilesTaken === b.enemyResourceTilesTaken &&
     a.outcome === b.outcome
   );
 }
@@ -164,6 +273,9 @@ export type DialogOccurrence =
   | { type: "shipsDisabled"; side: DialogSide; count: number }
   | { type: "shipsDestroyed"; side: DialogSide; count: number }
   | { type: "pointsScored"; side: DialogSide; points: number }
+  /** `total`: the side's reactor damage after this rise. */
+  | { type: "reactorDamaged"; side: DialogSide; total: number }
+  | { type: "resourceTileTaken"; side: DialogSide; count: number }
   | { type: "missionVictory" }
   | { type: "missionDefeat" };
 
@@ -181,6 +293,10 @@ export function occurrenceKey(o: DialogOccurrence): string {
       return `${o.type}:${o.side}:${o.count}`;
     case "pointsScored":
       return `pointsScored:${o.side}:${o.points}`;
+    case "reactorDamaged":
+      return `reactorDamaged:${o.side}:${o.total}`;
+    case "resourceTileTaken":
+      return `resourceTileTaken:${o.side}:${o.count}`;
   }
 }
 
@@ -189,11 +305,13 @@ const OCCURRENCE_ORDER: Record<DialogOccurrence["type"], number> = {
   roundEnd: 1,
   roundStart: 2,
   shipsDisabled: 3,
-  shipsDestroyed: 4,
-  pointsScored: 5,
+  reactorDamaged: 4,
+  shipsDestroyed: 5,
+  resourceTileTaken: 6,
+  pointsScored: 7,
   // Last, so the final kill/score lines play before the debrief.
-  missionVictory: 6,
-  missionDefeat: 6,
+  missionVictory: 8,
+  missionDefeat: 8,
 };
 
 function occurrenceSortValue(o: DialogOccurrence): number {
@@ -210,6 +328,10 @@ function occurrenceSortValue(o: DialogOccurrence): number {
       return o.count;
     case "pointsScored":
       return o.points;
+    case "reactorDamaged":
+      return o.total;
+    case "resourceTileTaken":
+      return o.count;
   }
 }
 
@@ -242,6 +364,14 @@ function shipsDestroyedFor(s: DialogSnapshot, side: DialogSide): number {
 
 function shipsDisabledFor(s: DialogSnapshot, side: DialogSide): number {
   return side === "player" ? s.myShipsDisabled : s.enemyShipsDisabled;
+}
+
+function reactorDamageFor(s: DialogSnapshot, side: DialogSide): number {
+  return (side === "player" ? s.myReactorDamage : s.enemyReactorDamage) ?? 0;
+}
+
+function resourceTilesTakenFor(s: DialogSnapshot, side: DialogSide): number {
+  return (side === "player" ? s.myResourceTilesTaken : s.enemyResourceTilesTaken) ?? 0;
 }
 
 function scoreFor(s: DialogSnapshot, side: DialogSide): number {
@@ -281,6 +411,26 @@ export function triggerOccurrences(
       return before < trigger.count && trigger.count <= after
         ? [{ type: trigger.type, side: trigger.side, count: trigger.count }]
         : [];
+    }
+    case "resourceTileTaken": {
+      const before = prev ? resourceTilesTakenFor(prev, trigger.side) : 0;
+      const after = resourceTilesTakenFor(next, trigger.side);
+      return before < trigger.count && trigger.count <= after
+        ? [{ type: "resourceTileTaken", side: trigger.side, count: trigger.count }]
+        : [];
+    }
+    case "reactorDamaged": {
+      const before = prev ? reactorDamageFor(prev, trigger.side) : 0;
+      const after = reactorDamageFor(next, trigger.side);
+      if (after <= before) return [];
+      // With `count`: once, when the total reaches it. Without: every rise
+      // (one occurrence per update, however many levels it added).
+      if (trigger.count != null) {
+        return before < trigger.count && trigger.count <= after
+          ? [{ type: "reactorDamaged", side: trigger.side, total: trigger.count }]
+          : [];
+      }
+      return [{ type: "reactorDamaged", side: trigger.side, total: after }];
     }
     case "missionVictory":
     case "missionDefeat": {

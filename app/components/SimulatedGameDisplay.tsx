@@ -3047,7 +3047,10 @@ export function SimulatedGameDisplay({
         isMine: p.isCreator === isCreatorNow,
         status: p.status,
         hullPoints: getShipAttributes(p.shipId)?.hullPoints ?? null,
+        reactorLevel: getShipAttributes(p.shipId)?.reactorCriticalTimer ?? null,
+        position: p.position,
       })),
+      scoringGrid,
     });
   }, [
     gameState.metadata.creator,
@@ -3056,6 +3059,7 @@ export function SimulatedGameDisplay({
     gameState.joinerScore,
     gameState.shipPositions,
     getShipAttributes,
+    scoringGrid,
   ]);
   const missionDialog = useMissionDialog({
     gameId: "tutorial",

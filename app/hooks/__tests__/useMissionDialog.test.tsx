@@ -34,6 +34,10 @@ const OPENING: DialogObservation = {
   enemyShipsDestroyed: 0,
   myDisabledShipIds: [],
   enemyDisabledShipIds: [],
+  myReactorLevels: {},
+  enemyReactorLevels: {},
+  myResourceTiles: [],
+  enemyResourceTiles: [],
   outcome: null,
 };
 
