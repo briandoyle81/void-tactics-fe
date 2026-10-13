@@ -41,7 +41,9 @@ export const TUTORIAL_PRELUDE = {
 export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
   welcome: {
     title: "Welcome aboard",
-    brief: [
+    brief: [],
+    // In the round 1 report instead of a panel.
+    roundReport: [
       "{cyan!|Admiral}, welcome aboard. You're arriving mid-fight. We're {amber|behind on the board}, but with {cyan!|you on station} we can turn this around.",
       "We're fighting in the {dust|outer dust belts} over {amber|sparse resources}. Under {amber|Space Law}, whoever exploits a site first keeps it. Out here, that's the rule that matters.",
     ],

@@ -21,7 +21,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "goals",
     title: "How we win",
     description: "Victory conditions and scoring",
-    allowedActions: {},
+    // Free look (the welcome step is just the round 1 report now).
+    allowedActions: {
+      selectShip: ["1001", "1002", "1003", "2001", "2002", "2003"],
+    },
     highlightElements: {
       uiElements: ["score-display"],
     },
