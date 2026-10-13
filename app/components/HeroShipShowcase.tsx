@@ -8,17 +8,12 @@ import { toShipVisual } from "../utils/toShipVisual";
 import { generateRandomShip } from "../utils/generateRandomShip";
 import { calculateAttributesFromContracts } from "../utils/shipAttributesCalculator";
 import { SHIP_IMAGE_RANK_STAR_BOX } from "./ShipImage";
-import { WeaponIcon, DefenseIcon, SpecialIcon } from "./EquipmentTypeIcons";
 import {
   getMainWeaponName,
   getArmorName,
   getShieldName,
   getSpecialName,
 } from "../types/types";
-
-// Equipment row labels are icon-only (category glyph + title tooltip)
-// instead of "Weapon:"/"Armor:"/"Shields:"/"Special:" text — the value
-// itself (e.g. "Plasma Cannon") stays full text.
 
 type HeroShipShowcaseAlign = "start" | "center" | "end";
 
@@ -93,28 +88,76 @@ export const HeroShipShowcase: React.FC<{
     }
   }, [heroShip]);
 
-  const gridPlacementClass =
-    align === "center"
-      ? "mx-auto max-w-3xl"
-      : align === "end"
-        ? "ml-auto max-w-3xl"
-        : "";
-
   const accent = side === "enemy" ? "var(--color-warning-red)" : "var(--color-cyan)";
-  const accentBorderClass = side === "enemy" ? "border-warning-red" : "border-cyan";
-  const accentTextClass = side === "enemy" ? "text-warning-red" : "text-cyan";
-  const accentSoftBorderClass =
-    side === "enemy" ? "border-warning-red/30" : "border-cyan/30";
-  const accentDividerClass =
-    side === "enemy" ? "border-warning-red/20" : "border-cyan/20";
   const accentGlow = side === "enemy" ? "rgba(255, 77, 77, 0.4)" : "rgba(86, 214, 255, 0.4)";
-  const accentInset = side === "enemy" ? "rgba(255, 77, 77, 0.1)" : "rgba(86, 214, 255, 0.1)";
   const flipSprite = side === "allied";
+  // The enemy side mirrors the layout: text and stats line up on the right.
+  const alignEnd = flipLayout || align === "end";
 
-  /** Narrow stats column, wider art (~36% / ~64%). Flip column fr order when art is on the left. */
-  const intelGridCols = flipLayout
-    ? "grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)]"
-    : "grid-cols-[minmax(0,2fr)_minmax(0,3.5fr)]";
+  const gear = heroShip
+    ? [
+        getMainWeaponName(heroShip.equipment.mainWeapon, heroShip.traits.variant),
+        heroShip.equipment.armor > 0
+          ? getArmorName(heroShip.equipment.armor)
+          : heroShip.equipment.shields > 0
+            ? getShieldName(heroShip.equipment.shields)
+            : null,
+        heroShip.equipment.special > 0
+          ? getSpecialName(heroShip.equipment.special, heroShip.traits.variant)
+          : null,
+      ].filter(Boolean)
+    : [];
+
+  // A non-breaking space keeps an empty line its height while a ship loads.
+  const EMPTY = "\u00a0";
+  const stats: { label: string; value: string }[] = [
+    { label: "Range", value: shipAttributes ? String(shipAttributes.range) : EMPTY },
+    { label: "Damage", value: shipAttributes ? String(shipAttributes.gunDamage) : EMPTY },
+    {
+      label: "Hull",
+      value: shipAttributes ? `${shipAttributes.hullPoints}/${shipAttributes.maxHullPoints}` : EMPTY,
+    },
+    { label: "Move", value: shipAttributes ? String(shipAttributes.movement) : EMPTY },
+    { label: "Defense", value: shipAttributes ? `${shipAttributes.damageReduction}%` : EMPTY },
+  ];
+
+  // Open, frameless presentation (the website's Intel section): the stats
+  // column on the outer side, the ship art beside it, facing the middle.
+  // Click to cycle. Every line has a fixed height (two-line name, three
+  // gear lines), so nothing moves as the ships rotate.
+  const statsColumn = (
+    <div className={`flex min-w-0 flex-col gap-4 ${alignEnd ? "items-end text-right" : "items-start text-left"}`}>
+      <h3
+        className="line-clamp-2 min-h-[2lh] w-full text-2xl font-bold leading-tight md:text-3xl"
+        style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif", color: accent }}
+      >
+        {heroShip?.name ?? EMPTY}
+      </h3>
+      <ul
+        className="min-h-[3lh] w-full text-sm leading-snug text-text-secondary"
+        style={{ fontFamily: "var(--font-mono), monospace" }}
+      >
+        {gear.length > 0
+          ? gear.map((item) => (
+              <li key={item} className="truncate">
+                {item}
+              </li>
+            ))
+          : <li>{EMPTY}</li>}
+      </ul>
+      <dl className="w-full" style={{ fontFamily: "var(--font-mono), monospace" }}>
+        {stats.map(({ label, value }) => (
+          <div
+            key={label}
+            className="flex items-baseline justify-between gap-3 border-t border-white/10 py-1.5"
+          >
+            <dt className="text-[10px] uppercase tracking-[0.16em] text-text-muted">{label}</dt>
+            <dd className="truncate text-base font-bold text-text-primary">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 
   return (
     <div
@@ -128,210 +171,56 @@ export const HeroShipShowcase: React.FC<{
         }
       }}
       aria-label="Switch to next ship"
-      className={`grid w-full min-w-0 cursor-pointer items-stretch gap-2 sm:gap-3 ${intelGridCols} ${gridPlacementClass}`}
+      className={`grid w-full min-w-0 cursor-pointer items-center gap-4 md:gap-6 ${alignEnd ? "grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"}`}
     >
-      {/* Stats panel (left when not flipLayout; right when enemy flipLayout) */}
-      <div
-        className={`flex min-w-0 max-w-full flex-col ${flipLayout ? "order-2" : "order-1"}`}
-      >
-        <div
-          className={`corner-bracket flex h-full min-w-0 flex-col gap-2 border-2 ${accentBorderClass} bg-black/60 p-2 sm:gap-3 sm:p-3 md:p-4`}
-          style={{
-            borderRadius: 0,
-            "--bracket-color": accent,
-          } as React.CSSProperties}
-        >
-          {/* Ship name — wraps to two lines instead of truncating; minHeight
-              reserves that two-line slot unconditionally (in em, so it
-              tracks the responsive text-size classes below) so a short
-              one-line name on one side of the Intel showcase doesn't leave
-              this card shorter than a sibling whose name wrapped. */}
-          <div className="mb-1.5 md:mb-2">
-            <h3
-              className="break-words text-lg font-bold sm:text-xl md:text-2xl lg:text-3xl"
-              style={{
-                fontFamily:
-                  "var(--font-rajdhani), 'Arial Black', sans-serif",
-                color: accent,
-                lineHeight: 1.2,
-                minHeight: "2.4em",
-              }}
-            >
-              {heroShip?.name ?? " "}
-            </h3>
-          </div>
-
-          {/* Equipment — icon labels (Weapon/Armor-Shields/Special), full
-              text values. */}
-          <div
-            className={`mb-1.5 border-b pb-1.5 md:mb-2 md:pb-2 ${accentDividerClass}`}
-            style={{
-              fontFamily: "var(--font-mono), monospace",
-            }}
-          >
-            <div className="space-y-0.5 text-xs leading-tight sm:text-sm md:text-base">
-              {/* Row labels are icon-only (title tooltip carries the word);
-                  values stay full text and wrap to a second line instead of
-                  truncating. */}
-              <div className="flex min-w-0 items-start justify-between gap-2">
-                <span className="shrink-0 opacity-60" title="Weapon" aria-label="Weapon">
-                  <WeaponIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                </span>
-                <span className={`min-w-0 text-right ${accentTextClass}`}>
-                  {heroShip ? getMainWeaponName(heroShip.equipment.mainWeapon, heroShip.traits.variant) : " "}
-                </span>
-              </div>
-              <div className="flex min-w-0 items-start justify-between gap-2">
-                <span
-                  className="shrink-0 opacity-60"
-                  title={heroShip && heroShip.equipment.shields > 0 ? "Shields" : "Armor"}
-                  aria-label={heroShip && heroShip.equipment.shields > 0 ? "Shields" : "Armor"}
-                >
-                  <DefenseIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                </span>
-                <span className={`min-w-0 text-right ${accentTextClass}`}>
-                  {!heroShip
-                    ? " "
-                    : heroShip.equipment.armor > 0
-                      ? getArmorName(heroShip.equipment.armor)
-                      : heroShip.equipment.shields > 0
-                        ? getShieldName(heroShip.equipment.shields)
-                        : "None"}
-                </span>
-              </div>
-              <div className="flex min-w-0 items-start justify-between gap-2">
-                <span className="shrink-0 opacity-60" title="Special" aria-label="Special">
-                  <SpecialIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                </span>
-                <span className={`min-w-0 text-right ${accentTextClass}`}>
-                  {!heroShip
-                    ? " "
-                    : heroShip.equipment.special > 0
-                      ? getSpecialName(heroShip.equipment.special, heroShip.traits.variant)
-                      : "None"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Combat stats */}
-          <div className="space-y-0">
-            <div className="data-readout">
-              <span className="data-readout-label">Range</span>
-              <span className="font-bold text-phosphor-green font-mono text-xs">
-                {shipAttributes?.range ?? " "}
-              </span>
-            </div>
-            <div className="data-readout">
-              <span className="data-readout-label">Damage</span>
-              <span className="font-bold text-warning-red font-mono text-xs">
-                {shipAttributes?.gunDamage ?? " "}
-              </span>
-            </div>
-            <div className="data-readout">
-              <span className="data-readout-label">Hull</span>
-              <span className="font-bold text-amber font-mono text-xs">
-                {shipAttributes
-                  ? `${shipAttributes.hullPoints}/${shipAttributes.maxHullPoints}`
-                  : " "}
-              </span>
-            </div>
-            <div className="data-readout">
-              <span className="data-readout-label">Move</span>
-              <span className={`font-bold font-mono text-xs ${side === "enemy" ? "text-warning-red" : "text-cyan"}`}>
-                {shipAttributes?.movement ?? " "}
-              </span>
-            </div>
-            <div className="data-readout">
-              <span className="data-readout-label">Defense</span>
-              <span className="font-bold text-amber font-mono text-xs">
-                {shipAttributes ? `${shipAttributes.damageReduction}%` : " "}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Ship art: wider column; square uses full column width (taller than stats when art is large) */}
-      <div
-        className={`flex min-h-0 min-w-0 flex-col items-start justify-center ${flipLayout ? "order-1" : "order-2"}`}
-      >
+      {!alignEnd && statsColumn}
+      <div className="relative aspect-square w-full">
         {heroShipImage && heroShip && shipRank ? (
-          <div
-            className={`corner-bracket relative flex aspect-square w-full max-w-full items-center justify-center border-2 bg-black/40 p-1.5 sm:p-2 md:p-4 ${accentSoftBorderClass}`}
-            style={{
-              borderRadius: 0,
-              "--bracket-color": accent,
-            } as React.CSSProperties}
-          >
-            {/* Only the art + glow overlay flip (scaleX(-1)) — the rank
-                star lives as a sibling outside that transform, matching
-                ShipImageView.tsx's own star-is-a-sibling-of-<img> pattern.
-                Nesting the star INSIDE the flipped wrapper made its
-                cqmin-based SHIP_IMAGE_RANK_STAR_BOX size compute near-zero
-                on flipped (allied-side) ships, even though container-type:size
-                lived on this outer, untransformed div — an intervening
-                transformed ancestor still threw off cqmin resolution. */}
-            <div className="relative h-full w-full min-h-0 flex-1 [container-type:size]">
-              <div
-                className="relative h-full w-full"
-                style={flipSprite ? { transform: "scaleX(-1)" } : undefined}
-              >
-                <img
-                  src={heroShipImage}
-                  alt={heroShip.name}
-                  className="h-full w-full object-contain"
-                  style={{
-                    imageRendering: "pixelated",
-                    filter: `drop-shadow(0 0 20px ${accentGlow})`,
-                  }}
-                />
-                <div
-                  className="pointer-events-none absolute inset-0 z-[1]"
-                  style={{
-                    boxShadow: `inset 0 0 60px ${accentInset}`,
-                  }}
-                />
-              </div>
-              {heroShip.shipData.constructed && (
-                <div
-                  className="pointer-events-none absolute right-[2.5%] top-[5%] z-10 leading-none text-amber"
-                  style={{
-                    fontSize: SHIP_IMAGE_RANK_STAR_BOX,
-                  }}
-                  role="img"
-                  aria-label={`Combat rank ${shipRank.rank} of 6`}
-                >
-                  {Array.from({ length: shipRank.rank }, (_, i) => (
-                    <span key={i} aria-hidden>
-                      ⭐
-                    </span>
-                  ))}
-                </div>
-              )}
+          // Same art structure as the old framed card: a size container
+          // (which the rank star's cqmin size resolves against, and which
+          // keeps the image swap's repaint inside this box), the flip as a
+          // transform on the art only, and the star as a sibling outside it.
+          <div className="relative h-full w-full [container-type:size]">
+            <div
+              className="relative h-full w-full"
+              style={flipSprite ? { transform: "scaleX(-1)" } : undefined}
+            >
+              <img
+                src={heroShipImage}
+                alt={heroShip.name}
+                className="h-full w-full object-contain"
+                style={{
+                  imageRendering: "pixelated",
+                  filter: `drop-shadow(0 0 20px ${accentGlow})`,
+                }}
+              />
             </div>
+            {heroShip.shipData.constructed && (
+              <div
+                className="pointer-events-none absolute right-[2.5%] top-[5%] z-10 leading-none text-amber"
+                style={{ fontSize: SHIP_IMAGE_RANK_STAR_BOX }}
+                role="img"
+                aria-label={`Combat rank ${shipRank.rank} of 6`}
+              >
+                {Array.from({ length: shipRank.rank }, (_, i) => (
+                  <span key={i} aria-hidden>
+                    ⭐
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          <div
-            className={`corner-bracket flex aspect-square w-full max-w-full items-center justify-center border-2 bg-black/40 ${accentSoftBorderClass}`}
-            style={{
-              borderRadius: 0,
-              "--bracket-color": accent,
-            } as React.CSSProperties}
+          <p
+            className="flex h-full w-full items-center justify-center text-sm opacity-50"
+            style={{ fontFamily: "var(--font-mono), monospace", color: "var(--color-text-muted)" }}
           >
-            <p
-              className="text-sm opacity-50 sm:text-base md:text-lg"
-              style={{
-                fontFamily: "var(--font-mono), monospace",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              Loading ship...
-            </p>
-          </div>
+            Loading ship...
+          </p>
         )}
       </div>
+
+      {alignEnd && statsColumn}
     </div>
   );
 };
-

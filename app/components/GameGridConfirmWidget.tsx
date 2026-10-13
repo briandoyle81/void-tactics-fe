@@ -126,14 +126,23 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
         : nextFits,
     );
 
+    // Only clamp along an axis the visible area can actually hold the widget
+    // on. When it can't (the board is scrolled off screen, e.g. the website's
+    // hero preview), both edges pull against each other and the result rides
+    // on sub-pixel layout, so it never settles: an update loop that React
+    // aborts by remounting the page. Whole pixels, for the same reason.
     let dx = 0;
     let dy = 0;
-    if (unclamped.left < view.left) dx += view.left - unclamped.left;
-    if (unclamped.right + dx > view.right) dx -= unclamped.right + dx - view.right;
-    if (unclamped.top < view.top) dy += view.top - unclamped.top;
-    if (unclamped.bottom + dy > view.bottom) dy -= unclamped.bottom + dy - view.bottom;
-    const localX = dx / scale;
-    const localY = dy / scale;
+    if (view.right - view.left >= unclamped.width) {
+      if (unclamped.left < view.left) dx += view.left - unclamped.left;
+      if (unclamped.right + dx > view.right) dx -= unclamped.right + dx - view.right;
+    }
+    if (view.bottom - view.top >= unclamped.height) {
+      if (unclamped.top < view.top) dy += view.top - unclamped.top;
+      if (unclamped.bottom + dy > view.bottom) dy -= unclamped.bottom + dy - view.bottom;
+    }
+    const localX = Math.round(dx / scale);
+    const localY = Math.round(dy / scale);
     setClamp((prev) =>
       prev.x === localX && prev.y === localY ? prev : { x: localX, y: localY },
     );
