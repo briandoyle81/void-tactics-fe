@@ -121,6 +121,8 @@ const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 import { buildMapGridsFromContractMap, readGameMapState } from "../utils/mapGridUtils";
 import { useSelectedChainId } from "../hooks/useSelectedChainId";
+import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
+import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
 
 // AI moves (takeAITurn) never set optimisticLastMove — only the human's own
 // submit does — so without this they rely entirely on an exact shipPositions
@@ -848,6 +850,17 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     game.metadata.orchestrator?.toLowerCase() ===
     ROGUELIKE_MATCH_ADDRESS.toLowerCase();
   const isVsAIGame = isSinglePlayerGame || isRoguelikeGame;
+  // Analytics: game_ended once when this match finishes while watched.
+  const analyticsGameMode = gameModeOf({ isRoguelikeGame, isSinglePlayerGame, isVsAIGame });
+  useTrackGameEnded({
+    appMode: "web3",
+    gameMode: analyticsGameMode,
+    gameId: game.metadata.gameId,
+    result: gameResultOf(gameWinnerResult),
+    retreated: didFlee,
+    round: Number(game.turnState.currentRound),
+    enabled: !readOnly,
+  });
   // Fleeing: PvP via PvPMatch.flee; roguelike via RoguelikeMatch.retreatRun,
   // which ends the whole run. The original campaign has no flee.
   const canFlee = !isVsAIGame || isRoguelikeGame;
@@ -2141,6 +2154,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     }
                     posthog.capture("game_move_submitted", {
                       game_id: String(game.metadata.gameId),
+                      game_mode: analyticsGameMode,
                       ship_id: analyticsShipId.toString(),
                       move_type: moveTypeLabel,
                       ...(targetShipIdForAnalytics != null

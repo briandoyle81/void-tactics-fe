@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
 import { apiMutate } from "../lib/apiMutate";
 import { useNodeContentWeb2, mergeNodeContent, type ResolvedNodeContent } from "./useNodeContent";
+import { trackMissionStarted } from "../utils/analytics/gameEvents";
 
 // Web2-mode counterpart to useNodeMap.ts's useCampaignGraph — fetches the
 // Prisma-backed campaign graph via /api/campaign/nodes instead of an
@@ -75,6 +76,13 @@ export function useStartCampaignNodeWeb2() {
       { shipIds, startingPositions },
     );
     await queryClient.invalidateQueries({ queryKey: ["campaign", "nodes", "web2"] });
+    trackMissionStarted({
+      appMode: "web2",
+      gameMode: "campaign",
+      nodeId,
+      gameId: result.gameId,
+      fleetSize: shipIds.length,
+    });
     return result;
   };
 

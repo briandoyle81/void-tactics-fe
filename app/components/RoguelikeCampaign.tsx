@@ -10,6 +10,7 @@ import { RoguelikeGraph } from "./RoguelikeGraph";
 import { useTutorialCompleted } from "../hooks/useTutorialCompleted";
 import { setUrlParams, useUrlParam } from "../utils/urlState";
 import { startTutorialFromOperations } from "../utils/tutorialCompletion";
+import { useTrackRunEnded } from "../hooks/useTrackRunEnded";
 
 // Top-level Roguelike tab container — branches on whether the connected
 // player has an active run (docs/update/Frontend_Update_Guide_Roguelike_Campaign.md).
@@ -46,6 +47,15 @@ export function RoguelikeCampaign() {
     await refetchUntilRunActive();
     closeFleetSelection({ replace: true });
   }, [refetchUntilRunActive]);
+
+  useTrackRunEnded({
+    appMode: "web3",
+    isActive:
+      hasActiveRunLoading || runLoading
+        ? null
+        : Boolean(hasActiveRun && run && run.status === RunStatus.Active),
+    campaignId: run?.campaignId,
+  });
 
   if (!isConnected) {
     return (

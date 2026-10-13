@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import { useSinglePlayerMatch } from "./useSinglePlayerMatch";
 import { refetchUntilChanged } from "../utils/refetchUntilChanged";
+import { trackAITurnFailed } from "../utils/analytics/gameEvents";
 
 // Defensive cap on consecutive takeAITurn calls for a single AI turn.
 // `maxPlacementsPerMap` is a live, owner-tunable value (default raised from
@@ -74,6 +75,7 @@ export function useAITurnLoop({
     if (inFlightRef.current || error) return;
     if (iterationRef.current >= MAX_ITERATIONS) {
       setError("AI turn did not resolve — please refresh.");
+      trackAITurnFailed({ appMode: "web3", gameMode: "campaign", gameId, reason: "stalled" });
       return;
     }
 
@@ -111,6 +113,7 @@ export function useAITurnLoop({
         .catch((err) => {
           console.error("takeAITurn failed:", err);
           setError("AI turn failed — please refresh.");
+          trackAITurnFailed({ appMode: "web3", gameMode: "campaign", gameId, reason: "failed" });
         })
         .finally(() => {
           inFlightRef.current = false;

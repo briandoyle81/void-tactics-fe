@@ -23,6 +23,7 @@ import { CONTRACT_ABIS } from "../config/contracts";
 import { useCampaignRequiredVariant, type CampaignGraphNode } from "../hooks/useNodeMap";
 import { navigateToGame } from "../utils/navigateToGame";
 import { DUPLICATE_SHIP_ID_TOAST, hasDuplicateShipIds } from "../utils/fleetShipIds";
+import { trackMissionStarted } from "../utils/analytics/gameEvents";
 
 // AIShipConfig ids and the player's own owned-ship ids are separate
 // namespaces on-chain and can collide (e.g. both could have id 3) — this
@@ -124,6 +125,13 @@ export function NodeMatchModal({ node, onClose, onLaunched }: NodeMatchModalProp
         if (!gameId) {
           console.error("NodeMatchStarted event not found in receipt", receipt);
         } else {
+          trackMissionStarted({
+            appMode: "web3",
+            gameMode: "campaign",
+            nodeId: node.id,
+            gameId,
+            fleetSize: fleet.selectedShips.length,
+          });
           setIsWarping(true);
           const found = address
             ? await waitForPlayerGame({ config: wagmiConfig, queryClient, playerAddress: address, gameId })

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiMutate } from "../lib/apiMutate";
+import { trackAITurnFailed, type GameMode } from "../utils/analytics/gameEvents";
 
 // Web2 counterpart to useAITurnLoop.ts (web3) — same pacing/cap/re-fire
 // design, calling POST /api/games/[id]/ai-turn (wraps aiTurnWeb2.ts) instead
@@ -18,6 +19,8 @@ interface UseAITurnLoopWeb2Params {
   // ahead of confirmed data.
   lastMoveSignal: string;
   refetchGame: () => void;
+  /** For the ai_turn_failed analytics event. */
+  gameMode: GameMode;
 }
 
 export function useAITurnLoopWeb2({
@@ -26,6 +29,7 @@ export function useAITurnLoopWeb2({
   isGameOver,
   lastMoveSignal,
   refetchGame,
+  gameMode,
 }: UseAITurnLoopWeb2Params) {
   const [moveCount, setMoveCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +48,7 @@ export function useAITurnLoopWeb2({
     if (inFlightRef.current || error) return;
     if (iterationRef.current >= MAX_ITERATIONS) {
       setError("AI turn did not resolve — please refresh.");
+      trackAITurnFailed({ appMode: "web2", gameMode: gameMode, gameId, reason: "stalled" });
       return;
     }
 
@@ -66,6 +71,7 @@ export function useAITurnLoopWeb2({
         .catch((err) => {
           console.error("AI turn failed:", err);
           setError("AI turn failed — please refresh.");
+          trackAITurnFailed({ appMode: "web2", gameMode: gameMode, gameId, reason: "failed" });
         })
         .finally(() => {
           inFlightRef.current = false;

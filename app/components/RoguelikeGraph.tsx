@@ -53,6 +53,7 @@ import {
   withTutorialPrelude,
 } from "../utils/tutorialPrelude";
 import { TutorialPreludeDrawer } from "./operations/TutorialPreludeDrawer";
+import { trackRunRetreated } from "../utils/analytics/gameEvents";
 
 const NO_SHIP_IDS: bigint[] = [];
 const OPS_TOOLBAR_BUTTON =
@@ -425,6 +426,7 @@ export function RoguelikeGraph({
         const message = error instanceof Error ? error.message : String(error);
         if (!message.includes("NoActiveRun")) throw error;
       }
+      trackRunRetreated({ appMode: "web3", midCombat: run.activeGameId !== 0n });
       toast.success("Run retreated.");
       onRunEnded();
     } catch (error) {

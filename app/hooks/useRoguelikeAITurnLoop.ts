@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import { useRoguelikeMatch } from "./useRoguelikeMatch";
 import { refetchUntilChanged } from "../utils/refetchUntilChanged";
+import { trackAITurnFailed } from "../utils/analytics/gameEvents";
 
 // Parallel to useAITurnLoop.ts (SinglePlayerMatch), calling
 // RoguelikeMatch.takeAITurn instead — kept as a separate hook rather than a
@@ -56,6 +57,7 @@ export function useRoguelikeAITurnLoop({
     if (inFlightRef.current || error) return;
     if (iterationRef.current >= MAX_ITERATIONS) {
       setError("AI turn did not resolve — please refresh.");
+      trackAITurnFailed({ appMode: "web3", gameMode: "roguelike", gameId, reason: "stalled" });
       return;
     }
 
@@ -82,6 +84,7 @@ export function useRoguelikeAITurnLoop({
         .catch((err) => {
           console.error("Roguelike takeAITurn failed:", err);
           setError("AI turn failed — please refresh.");
+          trackAITurnFailed({ appMode: "web3", gameMode: "roguelike", gameId, reason: "failed" });
         })
         .finally(() => {
           inFlightRef.current = false;

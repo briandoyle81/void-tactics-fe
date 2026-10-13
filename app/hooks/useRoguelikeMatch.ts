@@ -9,6 +9,11 @@ import { baseSepolia } from "viem/chains";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 import { RoguelikePosition } from "../types/roguelike";
+import {
+  trackMissionStarted,
+  trackResupplyEntered,
+  trackRunStarted,
+} from "../utils/analytics/gameEvents";
 
 const CHAIN_ID = baseSepolia.id;
 const ROGUELIKE_MATCH_ABI = CONTRACT_ABIS.ROGUELIKE_MATCH as Abi;
@@ -68,25 +73,37 @@ export function useRoguelikeMatch() {
     [writeContractAsync, config, queryClient],
   );
 
+  // Each sends its analytics event once the transaction has succeeded.
   const startRun = useCallback(
-    (campaignId: bigint, shipIds: bigint[]) =>
-      writeAndWait("startRun", [campaignId, shipIds]),
+    async (campaignId: bigint, shipIds: bigint[]) => {
+      const hash = await writeAndWait("startRun", [campaignId, shipIds]);
+      trackRunStarted({ appMode: "web3", campaignId, fleetSize: shipIds.length });
+      return hash;
+    },
     [writeAndWait],
   );
 
   const enterCombatNode = useCallback(
-    (targetNodeId: bigint, positions: RoguelikePosition[]) =>
-      writeAndWait("enterCombatNode", [targetNodeId, positions], ENTER_COMBAT_NODE_GAS_LIMIT),
+    async (targetNodeId: bigint, positions: RoguelikePosition[]) => {
+      const hash = await writeAndWait("enterCombatNode", [targetNodeId, positions], ENTER_COMBAT_NODE_GAS_LIMIT);
+      trackMissionStarted({ appMode: "web3", gameMode: "roguelike", nodeId: targetNodeId });
+      return hash;
+    },
     [writeAndWait],
   );
 
   const enterResupplyNode = useCallback(
-    (targetNodeId: bigint) => writeAndWait("enterResupplyNode", [targetNodeId]),
+    async (targetNodeId: bigint) => {
+      const hash = await writeAndWait("enterResupplyNode", [targetNodeId]);
+      trackResupplyEntered({ appMode: "web3", nodeId: targetNodeId });
+      return hash;
+    },
     [writeAndWait],
   );
 
   // gameId = 0 if no match is currently active (between nodes); the active
-  // gameId if retreating mid-combat.
+  // gameId if retreating mid-combat. Mid-combat is two calls (forfeit, then
+  // end the run), so run_retreated is sent by the caller, RoguelikeGraph.
   const retreatRun = useCallback(
     (gameId: bigint) => writeAndWait("retreatRun", [gameId]),
     [writeAndWait],

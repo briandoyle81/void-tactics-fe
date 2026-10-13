@@ -48,6 +48,7 @@ import {
   withTutorialPrelude,
 } from "../utils/tutorialPrelude";
 import { TutorialPreludeDrawer } from "./operations/TutorialPreludeDrawer";
+import { trackRunRetreated } from "../utils/analytics/gameEvents";
 
 const DEFAULT_ROGUELIKE_CAMPAIGN_ID = 1;
 const ADD_NODE_SENTINEL_ID = Number.MAX_SAFE_INTEGER;
@@ -300,7 +301,10 @@ export function RoguelikeGraphWeb2({
     if (isBrowseMode) return;
     setIsRetreating(true);
     try {
+      // Read before the call: retreating clears the run's open match.
+      const midCombat = run.activeLobbyId != null;
       await retreatRun();
+      trackRunRetreated({ appMode: "web2", midCombat });
       toast.success("Run retreated.");
       onRunEnded();
     } catch (e) {

@@ -84,6 +84,8 @@ import {
 import { DialogLineCard, MissionDialogPanel } from "./MissionDialogPanel";
 import { buildDialogSnapshot } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
+import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
+import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
 
 // Web2-mode counterpart to `GameDisplay.tsx`. Genuinely playable (grid
 // interaction via the shared <GameGrid> and useGameplayInteraction hook,
@@ -339,6 +341,17 @@ function GameDisplayWeb2({
   // used to route GameResultModal's "Return to X" CTA and mission copy.
   const isSinglePlayerGame = isVsAIGame && game.metadata.campaignNodeId != null;
   const isRoguelikeGame = isVsAIGame && game.metadata.roguelikeRunId != null;
+  // Analytics: game_ended once when this match finishes while watched.
+  const analyticsGameMode = gameModeOf({ isRoguelikeGame, isSinglePlayerGame, isVsAIGame });
+  useTrackGameEnded({
+    appMode: "web2",
+    gameMode: analyticsGameMode,
+    gameId: game.metadata.gameId,
+    result: gameResultOf(gameWinnerResult),
+    retreated: didFlee,
+    round: Number(game.turnState.currentRound),
+    enabled: !readOnly,
+  });
   // Mirrors GameDisplay.tsx: PvP and roguelike can flee (a roguelike flee
   // ends the whole run); the campaign has no flee.
   const canFlee = !isVsAIGame || isRoguelikeGame;
@@ -357,6 +370,7 @@ function GameDisplayWeb2({
     isGameOver,
     lastMoveSignal: game.lastMove ? `${game.lastMove.shipId}-${game.lastMove.timestamp}` : "",
     refetchGame: () => refetchGame(),
+    gameMode: analyticsGameMode,
   });
 
   // "AI is taking its turn..." as a toast rather than a sticky banner over
@@ -821,6 +835,7 @@ function GameDisplayWeb2({
       clearProposal();
       posthog.capture("game_move_submitted", {
         game_id: String(gameId),
+        game_mode: analyticsGameMode,
         ship_id: String(payload.shipId),
         move_type: ActionType[payload.actionType] ?? String(payload.actionType),
         ...(payload.targetShipId ? { target_ship_id: String(payload.targetShipId) } : {}),
@@ -845,6 +860,7 @@ function GameDisplayWeb2({
       setIsSubmitting(false);
     }
   }, [
+    analyticsGameMode,
     interaction.ramActionError,
     buildActionPayload,
     aliveShipPositions,

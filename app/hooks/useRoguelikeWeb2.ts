@@ -6,6 +6,11 @@ import { apiFetch } from "../lib/apiFetch";
 import { apiMutate } from "../lib/apiMutate";
 import type { Web2Ship } from "../types/web2Ship";
 import { useNodeContentWeb2, mergeNodeContent, type ResolvedNodeContent } from "./useNodeContent";
+import {
+  trackMissionStarted,
+  trackResupplyEntered,
+  trackRunStarted,
+} from "../utils/analytics/gameEvents";
 
 // Web2-mode counterpart to useRoguelikeRun.ts/useRoguelikeMatch.ts —
 // Prisma-backed run/roster reads and mutations instead of on-chain
@@ -152,6 +157,7 @@ export function useRoguelikeMatchWeb2() {
       shipIds,
     });
     await invalidate();
+    trackRunStarted({ appMode: "web2", campaignId, fleetSize: shipIds.length });
     return result.run;
   };
 
@@ -165,6 +171,7 @@ export function useRoguelikeMatchWeb2() {
       { startingPositions },
     );
     await invalidate();
+    trackMissionStarted({ appMode: "web2", gameMode: "roguelike", nodeId, gameId: result.gameId });
     return result;
   };
 
@@ -174,6 +181,7 @@ export function useRoguelikeMatchWeb2() {
       "POST",
     );
     await invalidate();
+    trackResupplyEntered({ appMode: "web2", nodeId });
     return result.run;
   };
 
