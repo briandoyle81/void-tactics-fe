@@ -9,9 +9,9 @@ npm run dev      # Start dev server (Next.js + Turbopack)
 npm run build    # Production build
 npm run start    # Start production server
 npm run lint     # ESLint (v9 flat config)
+npx vitest run   # Unit tests (Vitest): app/**/__tests__, mostly pure utils and hooks
+npx tsc --noEmit -p .  # Type check
 ```
-
-There are no test commands — this project has no test suite.
 
 ## Architecture
 
@@ -28,7 +28,7 @@ There are no test commands — this project has no test suite.
 
 ### Multi-Chain Support
 
-Four testnets are supported: **Flow Testnet** (id: 747, default), **Ronin Saigon** (2020), **Base Sepolia** (84532), **Xai Testnet v2** (37714555429). Chain selection is persisted to `localStorage` and triggers a custom event that invalidates React Query state. Chain config lives in `app/config/networks.ts`; deployed contract addresses per chain are in `app/contracts/<chain-name>/deployed_addresses.json`.
+Four testnets are configured: **Base Sepolia** (84532, the default), **Flow Testnet** (747), **Ronin Saigon** (2020), **Xai Testnet v2** (37714555429). Only Base Sepolia is enabled right now (`SUPPORTED_CHAINS` in `app/config/networks.ts`); the others are commented out and their deployments are stale. Chain selection is persisted to `localStorage` and triggers a custom event that invalidates React Query state. Chain config lives in `app/config/networks.ts`; deployed contract addresses per chain are in `app/contracts/<chain-name>/deployed_addresses.json`.
 
 ### Contract ABIs
 
@@ -41,12 +41,12 @@ Four testnets are supported: **Flow Testnet** (id: 747, default), **Ronin Saigon
 | `app/components/` | UI components. `GameDisplay.tsx`, `GameGrid.tsx`, and `SimulatedGameDisplay.tsx` are the main game views (each 150–210 KB). `Lobbies.tsx` and `ManageNavy.tsx` handle pre-game flows. |
 | `app/hooks/` | 34 custom hooks. `useContractEvents.ts` manages a global refetch registry for real-time blockchain events. `useShipImageCache.ts` pre-loads/caches canvas-rendered ship images. `useOnboardingTutorial.ts` is a step-driven state machine for the onboarding flow. |
 | `app/config/` | `networks.ts` (chain definitions + selection logic), `contracts.ts` (ABI imports + address maps), `alpha.ts` (feature flags). |
-| `app/utils/` | 23 utility modules. `shipRenderer/` handles canvas-based ship image generation. `shipAttributesCalculator.ts` computes derived ship stats. `tutorialStepScripts.ts` defines tutorial dialogue. |
+| `app/utils/` | 23 utility modules. `shipRenderer/` handles canvas-based ship image generation. `shipAttributesCalculator.ts` computes derived ship stats. `tutorialStepScripts.ts` scripts the tutorial's simulated moves; the tutorial's text lives in `app/data/dialog/tutorial.ts`. |
 | `app/types/` | `types.ts` (Ship, ShipEquipment, ShipTraits, etc.), `onboarding.ts`. |
 | `app/providers/` | `TransactionContext` — wraps wagmi write calls with loading/error UI state. |
 | `app/providers.tsx` | Root providers: wagmi, QueryClient, RainbowKit, TransactionProvider. |
 | `app/page.tsx` | The website (marketing): `components/Website.tsx` with the hero and feature sections from `components/InfoSections.tsx`. |
-| `app/play/` | The game client. Signed out: `BootScreen` (sign-in fork, first battle). Signed in: the HUD (`Header.tsx`: resource pills, your-turn bell, settings menu), `GameNav` (Play · Fleet · Store · Battles · Profile; Q/E on desktop, bottom bar on phones) and the Command Deck hub (`components/commandDeck/`, layout A or B via `useCommandDeckLayout` / PostHog flag `command-deck-layout`). Art slots are configured in `app/config/art.ts`. Store (`StoreScreen`: Ship packs · Credits · Drone Cores · Lottery; ship packs pay at `CheckoutSheet`) and Fleet (`components/fleet/FleetHangar`: Ships · Loadouts · Progression) have sub-tabs; the HUD's + buttons open Store sub-tabs via the `void-tactics-navigate-to-store` event's `section` detail. The Operations run map (`RoguelikeGraph` / `RoguelikeGraphWeb2`) is laid out by `components/operations/` (`OperationsMap`: star chart + right-side mission drawer + `RunActionBar` with the primary action from `utils/runMapAction.ts` at the bottom right). Battles is an inbox (`BattlesInbox`: your turn · waiting · finished with replay) fed by `Games` / `GamesWeb2`. Settings › Audio toggles background music (`useGameMusic`) and sound effects (`useSoundEffects`: every effect plays through `playSoundEffect`). |
+| `app/play/` | The game client. Signed out: a new visitor gets the Operations map with the First Contact tutorial as the first mission (`components/operations/SignedOutOperations`); a returning player, a deep link or `?signin=1` gets `BootScreen` (the sign-in screen). See `signedOutLanding` in `utils/tutorialCompletion.ts`. Google (web2) sign-in is hidden behind `WEB2_SIGN_IN_ENABLED` in `app/config/alpha.ts`. Signed in: the HUD (`Header.tsx`: resource pills, your-turn bell, settings menu), `GameNav` (Play · Fleet · Store · Battles · Profile; Q/E on desktop, bottom bar on phones) and the Command Deck hub (`components/commandDeck/`, layout A or B via `useCommandDeckLayout` / PostHog flag `command-deck-layout`). Art slots are configured in `app/config/art.ts`. Store (`StoreScreen`: Ship packs · Credits · Drone Cores · Lottery; ship packs pay at `CheckoutSheet`) and Fleet (`components/fleet/FleetHangar`: Ships · Loadouts · Progression) have sub-tabs; the HUD's + buttons open Store sub-tabs via the `void-tactics-navigate-to-store` event's `section` detail. The Operations run map (`RoguelikeGraph` / `RoguelikeGraphWeb2`) is laid out by `components/operations/` (`OperationsMap`: star chart + right-side mission drawer + `RunActionBar` with the primary action from `utils/runMapAction.ts` at the bottom right). Battles is an inbox (`BattlesInbox`: your turn · waiting · finished with replay) fed by `Games` / `GamesWeb2`. Settings › Audio toggles background music (`useGameMusic`) and sound effects (`useSoundEffects`: every effect plays through `playSoundEffect`). |
 | `app/admin/` | Ops Console: Maps, Admin, Ship Attributes, Purchase Prices — gated by `useOpsConsoleAccess`, linked from the header [MENU]. |
 | `proxy.ts` | Host routing. With `NEXT_PUBLIC_PLAY_URL` set, the play host serves the client at `/` and the site host redirects client paths there (`app/utils/hostRouting.ts`). |
 | `app/[gameId]/` | Dynamic route for an active game session. |
