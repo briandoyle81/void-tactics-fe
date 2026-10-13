@@ -22,7 +22,7 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://voidtactics.xyz";
 
 const defaultPageTitle =
-  "Void Tactics | Fully Onchain Turn-Based PvP Fleet Game";
+  "Void Tactics | Fully Onchain Turn-Based Fleet Tactics";
 
 export const viewport: Viewport = {
   colorScheme: "dark",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
     template: "%s | Void Tactics",
   },
   description:
-    "A fully onchain strategic PvP fleet game: turn-based battles on a tactical grid where positioning, weapons range, and target priority decide the fight. Build and mint ships, draft fleets, join lobbies, and settle matches onchain. Don't play to earn, play to win.",
+    "A fully onchain turn-based fleet tactics game. Lead one fleet through Shattered Hive, a branching campaign against the Hive, where positioning, weapons range, and target priority decide every fight. Ships carry their damage and rank from battle to battle, and every rule, ship and match lives onchain. Then take your fleet into PvP. Your first mission needs no account.",
   applicationName: "Void Tactics",
   keywords: [
     "Void Tactics",
@@ -61,6 +61,8 @@ export const metadata: Metadata = {
     "Web3",
     "onchain game",
     "fully onchain",
+    "campaign",
+    "roguelike",
     "PvP",
     "turn-based",
     "tactical grid",
@@ -71,7 +73,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: defaultPageTitle,
     description:
-      "Fully onchain turn-based PvP fleet tactics on a grid. Maneuver ships, control range, and fight for resources. Don't play to earn, play to win.",
+      "Fully onchain turn-based fleet tactics. Lead your ships through a branching campaign against the Hive, then take on other admirals in PvP. Your first mission needs no account.",
     url: siteUrl,
     siteName: "Void Tactics",
     locale: "en_US",
@@ -89,7 +91,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: defaultPageTitle,
     description:
-      "Fully onchain turn-based PvP fleet tactics on a grid. Maneuver ships, control range, and fight for resources. Don't play to earn, play to win.",
+      "Fully onchain turn-based fleet tactics. Lead your ships through a branching campaign against the Hive, then take on other admirals in PvP. Your first mission needs no account.",
     creator: "@voidtacticsxyz",
     site: "@voidtacticsxyz",
     images: ["/img/og-image.png"],

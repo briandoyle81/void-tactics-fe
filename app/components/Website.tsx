@@ -98,18 +98,21 @@ export default function Website() {
               <div className="flex flex-col items-stretch gap-3 md:items-start">
                 <PlayLink
                   surface="hero"
+                  label="[PLAY NOW]"
                   className="w-full px-6 py-3.5 text-sm sm:px-8 sm:text-base md:w-auto md:px-10 md:py-4"
                 />
-                <p
-                  className="text-xs leading-snug text-phosphor-green/70"
-                  style={{ fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace" }}
-                >
-                  &gt; No account needed to play.
-                </p>
               </div>
             }
           />
-          <InfoFeatureSections />
+          <InfoFeatureSections
+            cta={
+              <PlayLink
+                surface="closing"
+                label="[PLAY NOW]"
+                className="px-6 py-3.5 text-sm sm:px-8 sm:text-base md:px-10 md:py-4"
+              />
+            }
+          />
         </div>
       </main>
       <div className="shrink-0 pb-6">
