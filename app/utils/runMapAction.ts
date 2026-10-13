@@ -21,7 +21,7 @@ export interface RunMapActionInput {
    * mission (tutorialPrelude.ts), ahead of Start run.
    */
   tutorialPending?: boolean;
-  /** The selected node is the tutorial prelude. */
+  /** The selected node is the tutorial prelude (pending, or cleared once done). */
   isTutorialPrelude?: boolean;
   selectedKind: "combat" | "resupply" | null;
   isCurrentNode: boolean;
@@ -37,10 +37,12 @@ const none = (label: string): RunMapAction => ({ type: "none", label, disabled: 
 export function getRunMapAction(input: RunMapActionInput): RunMapAction {
   if (input.isBrowseMode && input.tutorialPending) {
     return input.isTutorialPrelude
-      ? { type: "tutorial", label: "Begin First Contact", disabled: false, secondary: { label: "Skip briefing" } }
+      ? { type: "tutorial", label: "Begin First Contact", disabled: false, secondary: { label: "Skip Tutorial" } }
       : none("Select a mission");
   }
   if (input.isBrowseMode && input.canStartRun) return { type: "start", label: "Start run", disabled: false };
+  // The tutorial prelude once played or skipped: nothing to launch there.
+  if (input.isTutorialPrelude) return none("Completed");
   if (input.selectedKind === null) return none("Select a mission");
   if (input.isBrowseMode) return none("Start a run to enter");
 

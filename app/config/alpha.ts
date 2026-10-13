@@ -23,3 +23,11 @@ export const WEB2_ADMIN_EMAILS = ["briandoyle81@gmail.com"];
  * and the tournament list isn't fetched. Flip to true to bring them back.
  */
 export const TOURNAMENTS_ENABLED = false;
+
+/**
+ * Google (web2) sign-in is temporarily hidden: the boot screen offers only
+ * the wallet, and the header's sign-in drops the "or Web2 // Email" choice.
+ * Players already signed in with Google keep their session. Flip to true to
+ * bring it back.
+ */
+export const WEB2_SIGN_IN_ENABLED = false;

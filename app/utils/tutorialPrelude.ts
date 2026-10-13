@@ -32,25 +32,39 @@ interface PreludeMapNode {
   unlocked: boolean;
   selectable: boolean;
   isCurrent: boolean;
+  completed: boolean;
 }
 
 /**
- * `nodes` with the prelude added ahead of `rootNodeId`: the root lists it as
- * a prerequisite (so the depth-tiered layout puts the prelude first) and is
- * locked until the prelude is done.
+ * `nodes` with the prelude added ahead of `rootNodeId` (the root lists it as
+ * a prerequisite, so the depth-tiered layout puts the prelude first).
+ * Pending: the prelude is the current mission and the root stays locked
+ * until it's done. Done (finished or skipped): it stays on the map, cleared,
+ * and the root keeps its own state.
  */
 export function withTutorialPrelude<T extends PreludeMapNode>(
   nodes: readonly T[],
   rootNodeId: number | null,
   prelude: T,
+  { done = false }: { done?: boolean } = {},
 ): T[] {
   if (rootNodeId == null || !nodes.some((n) => n.id === rootNodeId)) return [...nodes];
   return [
-    { ...prelude, id: TUTORIAL_PRELUDE_NODE_ID, prerequisites: [], unlocked: true, selectable: true, isCurrent: true },
+    {
+      ...prelude,
+      id: TUTORIAL_PRELUDE_NODE_ID,
+      prerequisites: [],
+      unlocked: true,
+      selectable: true,
+      isCurrent: !done,
+      completed: done,
+    },
     ...nodes.map((n) =>
-      n.id === rootNodeId
-        ? { ...n, prerequisites: [...n.prerequisites, TUTORIAL_PRELUDE_NODE_ID], unlocked: false, selectable: false }
-        : n,
+      n.id !== rootNodeId
+        ? n
+        : done
+          ? { ...n, prerequisites: [...n.prerequisites, TUTORIAL_PRELUDE_NODE_ID] }
+          : { ...n, prerequisites: [...n.prerequisites, TUTORIAL_PRELUDE_NODE_ID], unlocked: false, selectable: false },
     ),
   ];
 }

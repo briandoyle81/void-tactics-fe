@@ -6,6 +6,7 @@ import posthog from "posthog-js";
 import { useOpenWalletSignIn } from "../hooks/useOpenWalletSignIn";
 import { ArtSlot } from "./ArtSlot";
 import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink } from "./BrandLinks";
+import { WEB2_SIGN_IN_ENABLED } from "../config/alpha";
 
 const DISPLAY_FONT = { fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" } as const;
 
@@ -80,16 +81,18 @@ export function BootScreen({
             color="var(--color-cyan)"
             onClick={() => void openWalletSignIn()}
           />
-          <SignInOption
-            title="Google"
-            body="Play instantly. No wallet needed."
-            action="Sign in"
-            color="var(--color-amber)"
-            onClick={() => {
-              posthog.capture("web2_sign_in_clicked", { surface: "boot" });
-              void signIn("google");
-            }}
-          />
+          {WEB2_SIGN_IN_ENABLED && (
+            <SignInOption
+              title="Google"
+              body="Play instantly. No wallet needed."
+              action="Sign in"
+              color="var(--color-amber)"
+              onClick={() => {
+                posthog.capture("web2_sign_in_clicked", { surface: "boot" });
+                void signIn("google");
+              }}
+            />
+          )}
         </div>
 
         <div className="grid justify-items-center gap-1 text-center">

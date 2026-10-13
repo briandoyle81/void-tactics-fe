@@ -94,6 +94,8 @@ interface RoguelikeGraphProps {
    * from the action bar.
    */
   tutorial?: { onStart: () => void; onSkip: () => void };
+  /** The player has played or skipped the tutorial: First Contact stays on the map, cleared. */
+  tutorialDone?: boolean;
 }
 
 interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
@@ -114,7 +116,14 @@ interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
 // surfaced as a play action here (a real contract-level option that was
 // never wired up). Edit Mode (gated on isRoguelikeNodeEditor) layers node/
 // edge/map/fleet editing onto this same screen — see RoguelikeNodeEditPanel.
-export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun, tutorial }: RoguelikeGraphProps) {
+export function RoguelikeGraph({
+  run,
+  onRunEnded,
+  onRunAdvanced,
+  onStartRun,
+  tutorial,
+  tutorialDone = false,
+}: RoguelikeGraphProps) {
   const { address } = useAccount();
   const { retreatRun, enterResupplyNode } = useRoguelikeMatch();
   const { data: isEditor = false } = useIsRoguelikeNodeEditor(address);
@@ -158,7 +167,8 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun, tut
     // Players only see nodes reachable from the root (one GameLens call);
     // the editor needs every node, linked or not.
     useRoguelikeGraphWithContent(campaignId, true, { reachableOnly: !editMode });
-  const { data: rootNodeIdRaw } = useRoguelikeCampaignRootNode(isBrowseMode ? campaignId : undefined);
+  // Also during a run: First Contact sits ahead of the root on the map.
+  const { data: rootNodeIdRaw } = useRoguelikeCampaignRootNode(campaignId);
   const rootNodeId = rootNodeIdRaw != null ? Number(rootNodeIdRaw) : null;
   const { data: autoHealPercent, refetch: refetchAutoHeal } = useCampaignAutoHealPercent(campaignId);
 
@@ -236,7 +246,10 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun, tut
       connectMode,
     ],
   );
+  // First Contact on the map: the pending first mission (no run yet), or
+  // cleared once played or skipped. Not in Edit Mode (the real graph only).
   const showTutorialPrelude = isBrowseMode && !editMode && !!tutorial;
+  const showClearedPrelude = !editMode && !showTutorialPrelude && tutorialDone;
   const mapNodes: RoguelikeCanvasNode[] = editMode
     ? [
         ...canvasNodes,
@@ -254,10 +267,13 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun, tut
           connectHighlight: connectMode ? "invalid" : undefined,
         },
       ]
-    : showTutorialPrelude
-      ? withTutorialPrelude<RoguelikeCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE)
+    : showTutorialPrelude || showClearedPrelude
+      ? withTutorialPrelude<RoguelikeCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE, {
+          done: showClearedPrelude,
+        })
       : canvasNodes;
-  const isTutorialPreludeSelected = showTutorialPrelude && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
+  const isTutorialPreludeSelected =
+    (showTutorialPrelude || showClearedPrelude) && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
 
   // Play mode snaps to the current run node, and the run-less preview to
   // the root node — only when that position (or the mode) changes, never
@@ -532,7 +548,7 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun, tut
   );
 
   const drawer = editMode ? null : isTutorialPreludeSelected ? (
-    <TutorialPreludeDrawer />
+    <TutorialPreludeDrawer completed={showClearedPrelude} />
   ) : selectedNode ? (
     <MissionDrawerContent
       title={selectedNode.title}

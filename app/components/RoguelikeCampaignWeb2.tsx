@@ -39,6 +39,7 @@ export function RoguelikeCampaignWeb2() {
           run={null}
           onRunEnded={() => {}}
           onStartRun={tutorial.isLoading ? undefined : openFleetSelection}
+          tutorialDone={tutorial.isCompleted}
           tutorial={
             tutorial.isLoading || tutorial.isCompleted
               ? undefined
@@ -60,5 +61,5 @@ export function RoguelikeCampaignWeb2() {
     );
   }
 
-  return <RoguelikeGraphWeb2 run={run} onRunEnded={() => void refetch()} />;
+  return <RoguelikeGraphWeb2 run={run} onRunEnded={() => void refetch()} tutorialDone={tutorial.isCompleted} />;
 }

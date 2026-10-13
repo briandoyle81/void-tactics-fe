@@ -22,7 +22,7 @@ import {
 import { switchWalletToAppChain } from "../utils/switchWalletChain";
 import { readRpcErrorCode } from "../utils/ensureUiChainsInWallet";
 import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink, VOID_TACTICS_X_URL } from "./BrandLinks";
-import { ALPHA_DISCORD_INVITE_URL } from "../config/alpha";
+import { ALPHA_DISCORD_INVITE_URL, WEB2_SIGN_IN_ENABLED } from "../config/alpha";
 import { useFreeShipClaimStatus } from "../hooks/useFreeShipClaimStatus";
 import type { StoreSection } from "./storeSections";
 import { useGameMusic } from "../hooks/useGameMusic";
@@ -186,6 +186,15 @@ function AuthModeChooser({
   connectButtonClassName: string;
 }) {
   const [showComparison, setShowComparison] = useState(false);
+
+  // Google sign-in hidden (WEB2_SIGN_IN_ENABLED): just the wallet.
+  if (!WEB2_SIGN_IN_ENABLED) {
+    return (
+      <div className="relative flex flex-col gap-2 md:ml-auto w-full md:w-auto pt-1 md:pt-0">
+        <HeaderDisconnectedConnect connectButtonClassName={connectButtonClassName} />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex flex-col gap-2 md:ml-auto w-full md:w-auto pt-1 md:pt-0">

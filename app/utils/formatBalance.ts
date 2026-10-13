@@ -1,8 +1,8 @@
 // Token balances for display, at a fixed number of decimals: ETH (native)
-// to 3, UTC to 2. Rounded down, so a balance never reads higher than it is
-// (0.0009 ETH shows 0.000, not 0.001).
+// to 4, UTC to 2. Rounded down, so a balance never reads higher than it is
+// (0.00009 ETH shows 0.0000, not 0.0001).
 
-export const ETH_DISPLAY_DECIMALS = 3;
+export const ETH_DISPLAY_DECIMALS = 4;
 export const UTC_DISPLAY_DECIMALS = 2;
 
 export function formatBalance(value: number, decimals: number): string {

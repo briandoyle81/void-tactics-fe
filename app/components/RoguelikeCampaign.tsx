@@ -71,6 +71,7 @@ export function RoguelikeCampaign() {
           onRunEnded={() => {}}
           onRunAdvanced={() => {}}
           onStartRun={tutorial.isLoading ? undefined : openFleetSelection}
+          tutorialDone={tutorial.isCompleted}
           tutorial={
             tutorial.isLoading || tutorial.isCompleted
               ? undefined
@@ -87,7 +88,14 @@ export function RoguelikeCampaign() {
     );
   }
 
-  return <RoguelikeGraph run={run} onRunEnded={refetchAll} onRunAdvanced={refetchAll} />;
+  return (
+    <RoguelikeGraph
+      run={run}
+      onRunEnded={refetchAll}
+      onRunAdvanced={refetchAll}
+      tutorialDone={tutorial.isCompleted}
+    />
+  );
 }
 
 /** Fleet selection is open (`?fleet=select` on the Mission tab). Shared with RoguelikeCampaignWeb2. */

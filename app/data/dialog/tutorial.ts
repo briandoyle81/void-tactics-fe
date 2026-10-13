@@ -34,7 +34,7 @@ export interface TutorialPanelText {
 export const TUTORIAL_PRELUDE = {
   title: "First Contact",
   briefing:
-    "Admiral, welcome aboard. I'm Adjutant Bosch, your second in command. Im glad Headquarters sent you to help us out.. There's an engagement already underway in the outer dust belts. I'll be on comms the whole way and walk you through it.",
+    "Admiral, welcome aboard. I'm Adjutant Bosch, your second in command. Im glad Headquarters sent you to help us out. There's an engagement already underway in the outer dust belts. I'll be on comms the whole way and walk you through it.",
 };
 
 /** Each step's panel, by step id (app/data/tutorialSteps.ts). */
@@ -178,7 +178,11 @@ export const TUTORIAL_NOT_ALLOWED = {
 export function isReportOnlyStep(stepId: string | undefined): boolean {
   if (!stepId || !Object.hasOwn(TUTORIAL_PANELS, stepId)) return false;
   const panel = TUTORIAL_PANELS[stepId];
-  return !!panel.roundReport?.length && panel.brief.length === 0 && !panel.tasks?.length;
+  return (
+    !!panel.roundReport?.length &&
+    panel.brief.length === 0 &&
+    !panel.tasks?.length
+  );
 }
 
 /** The orders heading on the "Hard choice" step (shown pulsing red). */

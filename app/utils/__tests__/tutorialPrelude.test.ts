@@ -7,6 +7,7 @@ const node = (id: number, prerequisites: number[] = []) => ({
   unlocked: id === 1,
   selectable: id === 1,
   isCurrent: false,
+  completed: false,
   title: `Node ${id}`,
 });
 
@@ -23,6 +24,16 @@ describe("withTutorialPrelude", () => {
       selectable: false,
     });
     expect(out.find((n) => n.id === 2)).toEqual(nodes[1]);
+  });
+
+  it("keeps a done prelude on the map, cleared, without locking the root", () => {
+    const out = withTutorialPrelude(nodes, 1, prelude, { done: true });
+    expect(out[0]).toMatchObject({ id: TUTORIAL_PRELUDE_NODE_ID, completed: true, isCurrent: false, selectable: true });
+    expect(out.find((n) => n.id === 1)).toMatchObject({
+      prerequisites: [TUTORIAL_PRELUDE_NODE_ID],
+      unlocked: true,
+      selectable: true,
+    });
   });
 
   it("leaves the map alone without a known root", () => {

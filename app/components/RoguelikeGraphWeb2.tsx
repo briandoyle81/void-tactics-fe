@@ -65,6 +65,8 @@ interface RoguelikeGraphWeb2Props {
   onStartRun?: () => void;
   /** See RoguelikeGraph.tsx's matching prop. */
   tutorial?: { onStart: () => void; onSkip: () => void };
+  /** The player has played or skipped the tutorial: First Contact stays on the map, cleared. */
+  tutorialDone?: boolean;
 }
 
 interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
@@ -82,7 +84,13 @@ interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
 // RoguelikeRun.isNodeLocked), so "unlocked" here means "adjacent to your
 // current position" rather than "not locked out for this run" — see the
 // original doc-comment this file carried before Edit Mode was added.
-export function RoguelikeGraphWeb2({ run, onRunEnded, onStartRun, tutorial }: RoguelikeGraphWeb2Props) {
+export function RoguelikeGraphWeb2({
+  run,
+  onRunEnded,
+  onStartRun,
+  tutorial,
+  tutorialDone = false,
+}: RoguelikeGraphWeb2Props) {
   const { retreatRun, enterResupplyNode } = useRoguelikeMatchWeb2();
   const isEditor = useWeb2Admin();
   const admin = useRoguelikeAdminWeb2();
@@ -173,7 +181,10 @@ export function RoguelikeGraphWeb2({ run, onRunEnded, onStartRun, tutorial }: Ro
       }),
     [campaignNodes, isBrowseMode, run, currentNode, rootNodeId, defeatedSet, prerequisitesById, editMode, connectMode],
   );
+  // First Contact on the map: the pending first mission (no run yet), or
+  // cleared once played or skipped. Not in Edit Mode (the real graph only).
   const showTutorialPrelude = isBrowseMode && !editMode && !!tutorial;
+  const showClearedPrelude = !editMode && !showTutorialPrelude && tutorialDone;
   const mapNodes: RoguelikeCanvasNode[] = editMode
     ? [
         ...canvasNodes,
@@ -191,10 +202,13 @@ export function RoguelikeGraphWeb2({ run, onRunEnded, onStartRun, tutorial }: Ro
           connectHighlight: connectMode ? "invalid" : undefined,
         },
       ]
-    : showTutorialPrelude
-      ? withTutorialPrelude<RoguelikeCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE)
+    : showTutorialPrelude || showClearedPrelude
+      ? withTutorialPrelude<RoguelikeCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE, {
+          done: showClearedPrelude,
+        })
       : canvasNodes;
-  const isTutorialPreludeSelected = showTutorialPrelude && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
+  const isTutorialPreludeSelected =
+    (showTutorialPrelude || showClearedPrelude) && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
 
   // Same as RoguelikeGraph.tsx: snap to the run's current node (or the
   // root, with no run) only when that position or the mode changes, never on
@@ -399,7 +413,7 @@ export function RoguelikeGraphWeb2({ run, onRunEnded, onStartRun, tutorial }: Ro
   );
 
   const drawer = editMode ? null : isTutorialPreludeSelected ? (
-    <TutorialPreludeDrawer />
+    <TutorialPreludeDrawer completed={showClearedPrelude} />
   ) : selectedNode ? (
     <MissionDrawerContent
       title={selectedNode.title}

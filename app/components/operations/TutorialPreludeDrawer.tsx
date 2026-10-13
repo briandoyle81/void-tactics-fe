@@ -6,8 +6,9 @@ import { MissionDrawerContent } from "./MissionDrawerContent";
 import { TUTORIAL_PRELUDE } from "../../data/dialog/tutorial";
 
 // The run map drawer for the tutorial prelude node (see tutorialPrelude.ts).
-// Shared by RoguelikeGraph and RoguelikeGraphWeb2.
-export function TutorialPreludeDrawer() {
+// Shared by RoguelikeGraph and RoguelikeGraphWeb2. `completed`: played or
+// skipped, shown cleared.
+export function TutorialPreludeDrawer({ completed = false }: { completed?: boolean }) {
   return (
     <MissionDrawerContent
       title={TUTORIAL_PRELUDE.title}
@@ -19,6 +20,7 @@ export function TutorialPreludeDrawer() {
       dossier={
         <MissionDossier
           rows={[
+            ...(completed ? [{ label: "Status", value: "Cleared", tone: "good" as const }] : []),
             { label: "Your fleet", value: "Assigned by Headquarters" },
             { label: "Reward", value: "Ships for your own fleet", tone: "good" },
             { label: "After", value: "Pick your fleet and start the operation" },

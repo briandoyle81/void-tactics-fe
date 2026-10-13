@@ -27,12 +27,17 @@ describe("getRunMapAction", () => {
       type: "tutorial",
       label: "Begin First Contact",
       disabled: false,
-      secondary: { label: "Skip briefing" },
+      secondary: { label: "Skip Tutorial" },
     });
     // Start run waits until the tutorial is done or skipped.
     expect(getRunMapAction({ ...browse, isTutorialPrelude: false }).type).toBe("none");
-    // A run already underway ignores it.
-    expect(getRunMapAction({ ...base, tutorialPending: true, isTutorialPrelude: true }).type).toBe("warp");
+    // Once done, the prelude stays on the map but has nothing to launch.
+    expect(getRunMapAction({ ...base, isTutorialPrelude: true })).toEqual({
+      type: "none",
+      label: "Completed",
+      disabled: true,
+    });
+    expect(getRunMapAction({ ...base, isBrowseMode: true, canStartRun: true, isTutorialPrelude: true }).type).toBe("start");
   });
 
   it("warps to a reachable combat node", () => {
