@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { TOOLTIP_Z_CLASS } from "./tooltipPanel";
 
 // Ship stats/actions shouldn't pop up just because the cursor passed over a
 // ship on the way somewhere else — require the cursor to rest first, same
@@ -23,7 +25,7 @@ interface HoverShipCardTooltipProps {
   hoverKey: string | null;
   /** Which side to prefer flipping toward when the tooltip would cover the anchor (e.g. "this belongs to the current player, so favor the left"). */
   preferLeftPlacement: boolean;
-  /** Positioning container — must establish a positioning context (e.g. `position: relative`) so the tooltip's `absolute` placement resolves against it, and clamps to its bounds. */
+  /** The element `anchor` is measured against; the tooltip itself is placed against the viewport. */
   containerRef: React.RefObject<HTMLDivElement | null>;
   disableTooltips?: boolean;
   hoverDelayMs?: number;
@@ -56,24 +58,40 @@ export function HoverShipCardTooltip({
     }
     setShowTooltip(false);
     const timer = setTimeout(() => setShowTooltip(true), hoverDelayMs);
-    return () => clearTimeout(timer);
+    // Fixed to the viewport (see below), so a scroll or zoom would leave it
+    // behind; hide until the next hover.
+    const hide = () => setShowTooltip(false);
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("wheel", hide, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", hide, true);
+      window.removeEventListener("wheel", hide);
+    };
   }, [hoverKey, hoverDelayMs]);
 
-  if (!anchor || disableTooltips || !showTooltip) return null;
+  if (!anchor || disableTooltips || !showTooltip || typeof document === "undefined") return null;
 
   const cardContent = renderCard();
   if (!cardContent) return null;
 
   const containerEl = containerRef.current;
   if (!containerEl) return null;
-  const cr = containerEl.getBoundingClientRect();
+  // Placed against the viewport and drawn in a page-level portal, like the
+  // board's tile tooltip, so overlays on the board (tutorial briefing, comms)
+  // can't cover it and it isn't clipped to the board's edges.
+  const box = containerEl.getBoundingClientRect();
+  const cr = { width: window.innerWidth, height: window.innerHeight };
 
   const tooltipWidth = 384;
   const tooltipHeight = 400;
   const offset = 15;
   const leftPlacementOffset = 28;
 
-  const { left: shipLeft, top: shipTop, right: shipRight, bottom: shipBottom } = anchor;
+  const shipLeft = anchor.left + box.left;
+  const shipTop = anchor.top + box.top;
+  const shipRight = anchor.right + box.left;
+  const shipBottom = anchor.bottom + box.top;
   const mouseX = (shipLeft + shipRight) / 2;
   const mouseY = (shipTop + shipBottom) / 2;
 
@@ -140,12 +158,13 @@ export function HoverShipCardTooltip({
   tooltipLeft = Math.max(0, Math.min(tooltipLeft, maxLeft));
   tooltipTop = Math.max(0, Math.min(tooltipTop, maxTop));
 
-  return (
+  return createPortal(
     <div
-      className="absolute z-[10000] pointer-events-none opacity-100"
+      className={`fixed ${TOOLTIP_Z_CLASS} pointer-events-none opacity-100`}
       style={{ left: `${tooltipLeft}px`, top: `${tooltipTop}px` }}
     >
       <div className="min-w-[22rem] w-[24rem] opacity-100">{cardContent}</div>
-    </div>
+    </div>,
+    document.body,
   );
 }

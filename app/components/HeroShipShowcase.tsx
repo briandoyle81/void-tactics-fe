@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { usePublicClient } from "wagmi";
-import type { Abi } from "viem";
 import { renderShip } from "../utils/shipRenderer";
 import { Ship, Attributes } from "../types/types";
 import { calculateShipRank } from "../utils/shipLevel";
@@ -10,8 +8,6 @@ import { toShipVisual } from "../utils/toShipVisual";
 import { generateRandomShip } from "../utils/generateRandomShip";
 import { calculateAttributesFromContracts } from "../utils/shipAttributesCalculator";
 import { SHIP_IMAGE_RANK_STAR_BOX } from "./ShipImage";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import { WeaponIcon, DefenseIcon, SpecialIcon } from "./EquipmentTypeIcons";
 import {
   getMainWeaponName,
@@ -20,23 +16,11 @@ import {
   getSpecialName,
 } from "../types/types";
 
-const DRONE_NAMES_ABI = CONTRACT_ABIS.DRONE_NAMES as Abi;
-
 // Equipment row labels are icon-only (category glyph + title tooltip)
 // instead of "Weapon:"/"Armor:"/"Shields:"/"Special:" text — the value
 // itself (e.g. "Plasma Cannon") stays full text.
 
 type HeroShipShowcaseAlign = "start" | "center" | "end";
-
-// Non-cryptographic 32-byte hex, just to vary DroneNames' deterministic
-// output between rotations — no on-chain identity backs these mock ships.
-function randomBytes32(): `0x${string}` {
-  let hex = "0x";
-  for (let i = 0; i < 64; i++) {
-    hex += Math.floor(Math.random() * 16).toString(16);
-  }
-  return hex as `0x${string}`;
-}
 
 export const HeroShipShowcase: React.FC<{
   seedOffset?: number;
@@ -80,46 +64,11 @@ export const HeroShipShowcase: React.FC<{
   // placeholder below; the real ship appears once this effect runs.
   const [heroShip, setHeroShip] = useState<Ship | null>(null);
 
-  const activeChainId = useSelectedChainId();
-  const contractAddresses = getContractAddresses(activeChainId);
-  const publicClient = usePublicClient({ chainId: activeChainId });
-
   useEffect(() => {
     const variant = forcedVariant ?? Math.floor(Math.random() * 10);
     const ship = generateRandomShip(shipIndex, variant);
     setHeroShip(ship);
-
-    // Variant 2 ("Drone" faction) names come from DroneNames.getRandomDroneName
-    // on-chain instead of the variant-1-style SHIP_NAMES mock — pure/no gas,
-    // called once per rotation. Patched in once resolved rather than
-    // blocking the initial render, so art/stats appear immediately.
-    if (variant !== 2 || !publicClient) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const droneName = await publicClient.readContract({
-          address: contractAddresses.DRONE_NAMES as `0x${string}`,
-          abi: DRONE_NAMES_ABI,
-          functionName: "getRandomDroneName",
-          args: [randomBytes32(), ship.equipment.mainWeapon],
-        });
-        if (!cancelled) {
-          setHeroShip((prev) =>
-            prev && prev.id === ship.id
-              ? { ...prev, name: droneName as string }
-              : prev,
-          );
-        }
-      } catch (error) {
-        console.error("Failed to fetch drone name:", error);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [shipIndex, forcedVariant, publicClient, contractAddresses]);
+  }, [shipIndex, forcedVariant]);
 
   // Calculate attributes for the ship
   const shipAttributes = useMemo<Attributes | null>(

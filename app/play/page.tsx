@@ -24,7 +24,17 @@ import { usePlayerGames } from "../hooks/usePlayerGames";
 import { usePlayerGamesWeb2 } from "../hooks/usePlayerGamesWeb2";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useCommandDeckLayout } from "../hooks/useCommandDeckLayout";
-import { TUTORIAL_COMPLETED_STEPS_KEY, TUTORIAL_STEP_STORAGE_KEY } from "../types/onboarding";
+import { TUTORIAL_STEP_STORAGE_KEY } from "../types/onboarding";
+import {
+  getTutorialReturnTo,
+  hasCompletedFirstBattle,
+  isKnownPlayer,
+  markKnownPlayer,
+  notifyTutorialCompletionChanged,
+  setTutorialReturnTo,
+  signedOutLanding,
+  START_TUTORIAL_EVENT,
+} from "../utils/tutorialCompletion";
 import { useAppMode } from "../hooks/useAppMode";
 import { OPS_CONSOLE_TABS, type OpsConsoleTab } from "../hooks/useOpsConsoleAccess";
 import {
@@ -136,15 +146,6 @@ function migrateSavedTab(saved: string | null): ClientTab {
   }
   if (saved === "Tournaments" && !TOURNAMENTS_ENABLED) return "Command Deck";
   return CLIENT_TABS.has(saved) ? (saved as ClientTab) : "Command Deck";
-}
-
-function hasCompletedFirstBattle(): boolean {
-  try {
-    const ids: string[] = JSON.parse(localStorage.getItem(TUTORIAL_COMPLETED_STEPS_KEY) ?? "[]");
-    return ids.includes("completion-retreat") || ids.includes("completion-sniper");
-  } catch {
-    return false;
-  }
 }
 
 function sectionFromEvent<T extends string>(event: Event, allowed: readonly T[]): T | null {
@@ -283,6 +284,16 @@ export default function GameClient() {
   // On a load without a screen in the URL (plain /play, an old bookmark),
   // reopen the last one, without adding a history entry. Resume a first
   // battle left in progress.
+  // Whether this load named a screen (?tab=...); a signed-out visitor
+  // following such a link gets sign-in, not the first-visit battle. Read
+  // during the first client render: by any effect, the client (children's
+  // effects run first) or the restore below may already have filled a tab in.
+  const hadDeepLinkRef = useRef<boolean | null>(null);
+  if (hadDeepLinkRef.current === null && typeof window !== "undefined") {
+    hadDeepLinkRef.current = !!getUrlParam("tab");
+  }
+  // Set once the player leaves the battle, so it doesn't reopen this visit.
+  const leftBattleRef = useRef(false);
   useLayoutEffect(() => {
     setIsHydrated(true);
     if (!getUrlParam("tab")) {
@@ -344,7 +355,13 @@ export default function GameClient() {
       },
       "void-tactics-navigate-to-info": () => setActiveTab("Command Deck"),
       "void-tactics-navigate-to-profile": () => openTab("Profile"),
-      "void-tactics-start-tutorial": () => setIsTutorialOpen(true),
+      // From the Operations map (startTutorialFromOperations) closing it
+      // returns there.
+      [START_TUTORIAL_EVENT]: (event) => {
+        const returnTo = (event as CustomEvent<{ returnTo?: string } | undefined>).detail?.returnTo;
+        setTutorialReturnTo(returnTo === "mission" ? "mission" : null);
+        setIsTutorialOpen(true);
+      },
     };
     const entries = Object.entries(routes);
     for (const [name, handler] of entries) {
@@ -402,10 +419,26 @@ export default function GameClient() {
     }
   }, [status, isConnected, isLoggedIn, isUserLoading, activeTab, hasRestoreProbeReported, isRestoringSession, setActiveTab]);
 
+  const openTutorial = useCallback(() => {
+    setTutorialReturnTo(null);
+    setIsTutorialOpen(true);
+  }, []);
+
+  // Opened from the Operations map: back there, on fleet selection once the
+  // battle's finished (the tutorial was the run's first mission).
   const closeTutorial = useCallback(() => {
+    leftBattleRef.current = true;
+    const returnTo = getTutorialReturnTo();
+    setTutorialReturnTo(null);
     setIsTutorialOpen(false);
-    setFirstBattleCompleted(hasCompletedFirstBattle());
-    setActiveTab("Command Deck");
+    const finished = hasCompletedFirstBattle();
+    setFirstBattleCompleted(finished);
+    notifyTutorialCompletionChanged();
+    if (returnTo === "mission") {
+      openClientTab("Mission", { params: finished ? { fleet: "select" } : undefined });
+    } else {
+      setActiveTab("Command Deck");
+    }
   }, [setActiveTab]);
 
   const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
@@ -432,6 +465,28 @@ export default function GameClient() {
     isUserLoading ||
     (appMode !== "web2" && !isLoggedIn && isRestoringSession);
 
+  // This browser has a player now: signed out later, /play offers sign-in
+  // instead of the first-visit battle.
+  useEffect(() => {
+    if (isSignedIn) markKnownPlayer();
+  }, [isSignedIn]);
+
+  // A new player arriving signed out goes straight into the battle (sign-in
+  // is offered from it). Waits for any session restore to settle, like the
+  // Command Deck reset above, so a returning session doesn't flash into it.
+  const sessionSettled = hasRestoreProbeReported && !isRestoringSession && !isCheckingSignIn;
+  useEffect(() => {
+    if (!isHydrated || !sessionSettled || isSignedIn || isTutorialOpen) return;
+    const landing = signedOutLanding({
+      knownPlayer: isKnownPlayer(),
+      hasDeepLink: hadDeepLinkRef.current === true,
+      leftBattleThisVisit: leftBattleRef.current,
+    });
+    if (landing !== "battle") return;
+    posthog.capture("first_visit_battle_started");
+    openTutorial();
+  }, [isHydrated, sessionSettled, isSignedIn, isTutorialOpen, openTutorial]);
+
   const hideGlobalChrome = isTutorialOpen || isGamesDetailActive || isManageNavyPurchaseActive;
   const showNav = isHydrated && isSignedIn && !hideGlobalChrome;
   const isFullWidth = isTutorialOpen || activeTab === "Games";
@@ -451,11 +506,11 @@ export default function GameClient() {
     // one frame rather than flashing the wrong screen.
     content = null;
   } else if (isTutorialOpen) {
-    content = <OnboardingTutorial onComplete={closeTutorial} onSkip={closeTutorial} />;
+    content = <OnboardingTutorial onComplete={closeTutorial} onSkip={closeTutorial} isSignedIn={isSignedIn} />;
   } else if (isCheckingSignIn) {
     content = <CenteredMessage>Connecting...</CenteredMessage>;
   } else if (!isSignedIn) {
-    content = <BootScreen onStartFirstBattle={() => setIsTutorialOpen(true)} />;
+    content = <BootScreen onStartFirstBattle={openTutorial} firstBattleCompleted={firstBattleCompleted} />;
   } else {
     content = (
       <>
@@ -514,12 +569,12 @@ export default function GameClient() {
                 type="button"
                 onClick={() => {
                   posthog.capture("profile_first_battle_clicked", { replay: firstBattleCompleted });
-                  setIsTutorialOpen(true);
+                  openTutorial();
                 }}
                 className="border-2 border-solid border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors duration-150 hover:bg-phosphor-green/10"
                 style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" }}
               >
-                {firstBattleCompleted ? "Replay first battle" : "Play first battle"}
+                {firstBattleCompleted ? "Replay First Contact" : "Play First Contact"}
               </button>
             </div>
             {appMode === "web2" ? <ProfileWeb2 /> : <Profile />}

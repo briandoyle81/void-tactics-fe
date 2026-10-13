@@ -4,13 +4,22 @@ import React from "react";
 import { useRoguelikeRunWeb2 } from "../hooks/useRoguelikeWeb2";
 import { RoguelikeRunStartWeb2 } from "./RoguelikeRunStartWeb2";
 import { RoguelikeGraphWeb2 } from "./RoguelikeGraphWeb2";
-import { BackToCampaignMapButton } from "./RoguelikeCampaign";
+import {
+  BackToCampaignMapButton,
+  closeFleetSelection,
+  openFleetSelection,
+  useFleetSelectionParam,
+} from "./RoguelikeCampaign";
+import { useTutorialCompletedWeb2 } from "../hooks/useTutorialCompletedWeb2";
+import { startTutorialFromOperations } from "../utils/tutorialCompletion";
 
 // Web2 counterpart to RoguelikeCampaign.tsx — branches on active-run same
-// as web3, with the same run-less map preview and fleet selection.
+// as web3, with the same run-less map preview, tutorial prelude and fleet
+// selection.
 export function RoguelikeCampaignWeb2() {
   const { run, isLoading, error, refetch } = useRoguelikeRunWeb2();
-  const [choosingFleet, setChoosingFleet] = React.useState(false);
+  const choosingFleet = useFleetSelectionParam();
+  const tutorial = useTutorialCompletedWeb2();
 
   if (isLoading) {
     return <div className="text-center font-mono text-sm text-text-muted">Loading run…</div>;
@@ -25,14 +34,25 @@ export function RoguelikeCampaignWeb2() {
 
   if (!run) {
     if (!choosingFleet) {
-      return <RoguelikeGraphWeb2 run={null} onRunEnded={() => {}} onStartRun={() => setChoosingFleet(true)} />;
+      return (
+        <RoguelikeGraphWeb2
+          run={null}
+          onRunEnded={() => {}}
+          onStartRun={tutorial.isLoading ? undefined : openFleetSelection}
+          tutorial={
+            tutorial.isLoading || tutorial.isCompleted
+              ? undefined
+              : { onStart: startTutorialFromOperations, onSkip: tutorial.markSkipped }
+          }
+        />
+      );
     }
     return (
       <div className="flex flex-col gap-4">
-        <BackToCampaignMapButton onClick={() => setChoosingFleet(false)} />
+        <BackToCampaignMapButton onClick={() => closeFleetSelection({ back: true })} />
         <RoguelikeRunStartWeb2
           onRunStarted={() => {
-            setChoosingFleet(false);
+            closeFleetSelection({ replace: true });
             void refetch();
           }}
         />

@@ -30,6 +30,9 @@ interface RoundStartModalProps {
   maxScore?: number;
   /** Who files the report (a dialog character). Defaults to the adjutant. */
   reporterId?: DialogCharacterId;
+  /** The reporter's own words, above the signature (e.g. the tutorial's
+   * end-of-round briefing). */
+  note?: React.ReactNode;
 }
 
 // Shared between GameDisplay.tsx, GameDisplayWeb2.tsx and
@@ -53,6 +56,7 @@ export function RoundStartModal({
   opponentScore,
   maxScore,
   reporterId = DEFAULT_REPORTER,
+  note,
 }: RoundStartModalProps) {
   const hasRoundScore = myRoundScore != null && opponentRoundScore != null;
   const hasCurrentScore = myScore != null && opponentScore != null;
@@ -175,6 +179,15 @@ export function RoundStartModal({
                 )}
               </tbody>
             </table>
+          )}
+
+          {note && (
+            <div
+              className="mt-5 space-y-2 border-l-2 pl-3 text-left text-sm leading-relaxed text-text-primary"
+              style={{ ...STYLE_MONO, borderColor: reporter.color }}
+            >
+              {note}
+            </div>
           )}
 
           <div className="mt-4">

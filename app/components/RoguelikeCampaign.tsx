@@ -7,17 +7,23 @@ import { toast } from "react-hot-toast";
 import { RunStatus, type RoguelikeRun } from "../types/roguelike";
 import { RoguelikeRunStart } from "./RoguelikeRunStart";
 import { RoguelikeGraph } from "./RoguelikeGraph";
+import { useTutorialCompleted } from "../hooks/useTutorialCompleted";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
+import { startTutorialFromOperations } from "../utils/tutorialCompletion";
 
 // Top-level Roguelike tab container — branches on whether the connected
 // player has an active run (docs/update/Frontend_Update_Guide_Roguelike_Campaign.md).
 // With no run it shows the campaign map as a preview (editors can turn on
-// Edit Mode there); its Start run action opens fleet selection.
+// Edit Mode there); its Start run action opens fleet selection
+// (`?fleet=select`). Players who haven't done the tutorial get it as the
+// first mission on that map (tutorialPrelude.ts), before Start run.
 export function RoguelikeCampaign() {
   const { address, isConnected } = useAccount();
   const { data: hasActiveRun, isLoading: hasActiveRunLoading, refetch: refetchHasActiveRun } =
     useHasActiveRoguelikeRun(address);
   const { data: run, isLoading: runLoading, refetch: refetchRun } = useGetRoguelikeRun(address);
-  const [choosingFleet, setChoosingFleet] = React.useState(false);
+  const choosingFleet = useFleetSelectionParam();
+  const tutorial = useTutorialCompleted();
 
   const refetchAll = React.useCallback(async () => {
     await Promise.all([refetchHasActiveRun(), refetchRun()]);
@@ -38,7 +44,7 @@ export function RoguelikeCampaign() {
 
   const handleRunStarted = React.useCallback(async () => {
     await refetchUntilRunActive();
-    setChoosingFleet(false);
+    closeFleetSelection({ replace: true });
   }, [refetchUntilRunActive]);
 
   if (!isConnected) {
@@ -64,19 +70,37 @@ export function RoguelikeCampaign() {
           run={null}
           onRunEnded={() => {}}
           onRunAdvanced={() => {}}
-          onStartRun={() => setChoosingFleet(true)}
+          onStartRun={tutorial.isLoading ? undefined : openFleetSelection}
+          tutorial={
+            tutorial.isLoading || tutorial.isCompleted
+              ? undefined
+              : { onStart: startTutorialFromOperations, onSkip: tutorial.markSkipped }
+          }
         />
       );
     }
     return (
       <div className="flex flex-col gap-4">
-        <BackToCampaignMapButton onClick={() => setChoosingFleet(false)} />
+        <BackToCampaignMapButton onClick={() => closeFleetSelection({ back: true })} />
         <RoguelikeRunStart onRunStarted={handleRunStarted} />
       </div>
     );
   }
 
   return <RoguelikeGraph run={run} onRunEnded={refetchAll} onRunAdvanced={refetchAll} />;
+}
+
+/** Fleet selection is open (`?fleet=select` on the Mission tab). Shared with RoguelikeCampaignWeb2. */
+export function useFleetSelectionParam(): boolean {
+  return useUrlParam("fleet") === "select";
+}
+
+export function openFleetSelection() {
+  setUrlParams({ fleet: "select" });
+}
+
+export function closeFleetSelection(options: { back?: boolean; replace?: boolean }) {
+  setUrlParams({ fleet: null }, options);
 }
 
 /** Fleet selection's way back to the run-less campaign map. Shared with RoguelikeCampaignWeb2. */

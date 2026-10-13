@@ -21,6 +21,20 @@ describe("getRunMapAction", () => {
     expect(getRunMapAction({ ...base, isBrowseMode: true, selectedKind: null, canStartRun: true }).type).toBe("start");
   });
 
+  it("offers the tutorial first when the player hasn't done it", () => {
+    const browse = { ...base, isBrowseMode: true, canStartRun: true, tutorialPending: true };
+    expect(getRunMapAction({ ...browse, isTutorialPrelude: true })).toEqual({
+      type: "tutorial",
+      label: "Begin First Contact",
+      disabled: false,
+      secondary: { label: "Skip briefing" },
+    });
+    // Start run waits until the tutorial is done or skipped.
+    expect(getRunMapAction({ ...browse, isTutorialPrelude: false }).type).toBe("none");
+    // A run already underway ignores it.
+    expect(getRunMapAction({ ...base, tutorialPending: true, isTutorialPrelude: true }).type).toBe("warp");
+  });
+
   it("warps to a reachable combat node", () => {
     expect(getRunMapAction(base)).toEqual({ type: "warp", label: "Warp to mission", disabled: false });
   });

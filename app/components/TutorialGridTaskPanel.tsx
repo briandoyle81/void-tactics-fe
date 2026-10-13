@@ -8,6 +8,8 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
+import { DialogPortrait } from "./DialogPortrait";
+import { useCrewReporter } from "./CrewReport";
 
 export interface TutorialGridTaskPanelProps {
   /** Step title shown in the panel header */
@@ -27,6 +29,8 @@ export interface TutorialGridTaskPanelProps {
   onPrevious: () => void;
   onReset: () => void;
   onQuit?: () => void;
+  /** The quit button's label (default "Quit"; "Sign in" when signed out). */
+  quitLabel?: string;
   /** Optional conversion-style CTA (full-width button below supporting copy). */
   primaryCta?: {
     eyebrow: string;
@@ -113,6 +117,7 @@ export function TutorialGridTaskPanel({
   onPrevious,
   onReset,
   onQuit,
+  quitLabel = "Quit",
   primaryCta,
   panelBottomRowExclusive: panelBottomRowExclusiveProp,
   panelFitToContent = false,
@@ -122,6 +127,7 @@ export function TutorialGridTaskPanel({
   compactPreset,
 }: TutorialGridTaskPanelProps) {
   const isCompactWelcome = compactPreset === "welcome";
+  const speaker = useCrewReporter("adjutant");
   const [debugEnabled, setDebugEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentMeasureRef = useRef<HTMLDivElement>(null);
@@ -292,7 +298,20 @@ export function TutorialGridTaskPanel({
           isCompactWelcome ? "mb-1.5 gap-1.5" : "mb-2 gap-2"
         }`}
       >
+        {/* Adjutant Bosch gives the tutorial's instructions. */}
+        <DialogPortrait
+          character={speaker.character}
+          name={speaker.name}
+          color={speaker.color}
+          sizeClass={isCompactWelcome ? "h-10 w-10" : "h-12 w-12"}
+        />
         <div className="min-w-0 flex-1">
+          <p
+            className="text-[10px] font-bold uppercase tracking-[0.2em] leading-tight"
+            style={{ ...mono, color: speaker.color }}
+          >
+            {speaker.name}
+          </p>
           <h3
             className={`font-bold uppercase tracking-wide text-cyan leading-tight ${
               isCompactWelcome ? "text-base" : "text-lg"
@@ -322,7 +341,7 @@ export function TutorialGridTaskPanel({
                 isCompactWelcome ? "px-1.5 py-0.5 text-xs" : "px-2 py-0.5 text-sm"
               }`}
             >
-              Quit
+              {quitLabel}
             </button>
           )}
         </div>

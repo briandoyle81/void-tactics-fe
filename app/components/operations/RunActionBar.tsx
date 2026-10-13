@@ -5,7 +5,7 @@ import type { RunMapAction } from "../../utils/runMapAction";
 
 // The run map's bottom bar: the run roster as ship chips with hull bars,
 // fleet cost against the cost cap, and the primary action — always at the
-// bottom right.
+// bottom right, with its secondary choice (if any) as a small link beside it.
 
 export interface RosterShipChip {
   key: string;
@@ -29,12 +29,14 @@ export function RunActionBar({
   costCap,
   action,
   onAction,
+  onSecondaryAction,
 }: {
   roster: RosterShipChip[];
   fleetCost: number | null;
   costCap: number | null;
   action: RunMapAction | null;
   onAction: () => void;
+  onSecondaryAction?: () => void;
 }) {
   const capPercent =
     fleetCost != null && costCap ? Math.min(100, (fleetCost / costCap) * 100) : 0;
@@ -71,12 +73,22 @@ export function RunActionBar({
         </div>
       )}
 
+      {action?.secondary && onSecondaryAction && (
+        <button
+          type="button"
+          onClick={onSecondaryAction}
+          className="self-center font-mono text-xs uppercase tracking-wider text-text-muted underline-offset-4 hover:text-text-primary hover:underline md:ml-auto"
+        >
+          {action.secondary.label}
+        </button>
+      )}
+
       {action && (
         <button
           type="button"
           onClick={onAction}
           disabled={action.disabled}
-          className={`w-full border-2 border-solid px-6 py-3 text-base font-bold uppercase tracking-wider transition-colors duration-150 md:ml-auto md:w-auto ${
+          className={`w-full border-2 border-solid px-6 py-3 text-base font-bold uppercase tracking-wider transition-colors duration-150 md:w-auto ${action.secondary ? "" : "md:ml-auto"} ${
             action.disabled
               ? "cursor-not-allowed border-gunmetal text-text-muted"
               : "border-cyan bg-cyan text-near-black hover:bg-cyan/85"

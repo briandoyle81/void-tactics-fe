@@ -10,6 +10,7 @@ import { computeConfirmWidgetAnchor, selectedShipHasEffectLabel } from "../utils
 import { GameGridCell } from "./GameGridCell";
 import { GameGridOverlays, GameGridMoveArrow } from "./GameGridOverlays";
 import { GameGridTooltip, GameGridTooltipHoveredCell } from "./GameGridTooltip";
+import { GameGridTileTooltip } from "./GameGridTileTooltip";
 import { GameGridWeaponSelector } from "./GameGridWeaponSelector";
 import { GameGridConfirmWidget } from "./GameGridConfirmWidget";
 import { DestHoverProvider, useGridHoveredCell, useSetGridDestHoveredTile, useSetGridHoveredCell } from "./GridHover";
@@ -170,6 +171,12 @@ interface GameGridProps {
     hideLabel?: boolean;
   }[];
   tutorialDefaultLabel?: string;
+  /**
+   * **Tutorial highlight** on a weapon choice in the confirm widget: that
+   * button pulses with the "Click here" badge above it (e.g. EMP once the
+   * EMP step's target is chosen).
+   */
+  tutorialWeaponOption?: "weapon" | "special" | "ram";
   /** Extra clears (e.g. retreat override) after right-click deselect on the grid. */
   onGridRightClickDeselect?: () => void;
   setSelectedShipId: (shipId: number | null) => void;
@@ -749,6 +756,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         findShipPositionById={findShipPositionById}
         useCompactMobileDamageLabels={useCompactMobileDamageLabels}
       />
+      <GameGridTileTooltip gridContainerRef={gridContainerRef} disabled={disableTooltips || !!draggedShipId} />
       <GameGridTooltip
         hoveredCell={hoveredCell}
         disableTooltips={disableTooltips}
@@ -812,6 +820,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
   retreatPrepIsCreator,
   tutorialHighlightCells,
   tutorialDefaultLabel = "Click here",
+  tutorialWeaponOption,
   onGridRightClickDeselect,
   setSelectedShipId,
   setPreviewPosition,
@@ -1220,6 +1229,8 @@ const GameGridBoard = React.memo(function GameGridBoard({
                 clipRootRef={outerWrapperRef}
                 zoomScale={zoom.scale}
                 onMoveVertical={setConfirmWidgetVertical}
+                tutorialWeaponOption={tutorialWeaponOption}
+                tutorialLabel={tutorialDefaultLabel}
               />
             )}
         </div>

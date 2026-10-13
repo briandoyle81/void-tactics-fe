@@ -39,6 +39,9 @@ interface GameGridConfirmWidgetProps {
   clipRootRef?: React.RefObject<HTMLDivElement | null>;
   zoomScale?: number;
   onMoveVertical: (side: "above" | "below") => void;
+  /** Tutorial: pulse this weapon choice with a "Click here" badge above it. */
+  tutorialWeaponOption?: "weapon" | "special" | "ram";
+  tutorialLabel?: string;
 }
 
 export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
@@ -67,6 +70,8 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
   clipRootRef,
   zoomScale = 1,
   onMoveVertical,
+  tutorialWeaponOption,
+  tutorialLabel = "Click here",
 }: GameGridConfirmWidgetProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [clamp, setClamp] = useState({ x: 0, y: 0 });
@@ -150,6 +155,17 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
     currentShip?.traits.variant,
   );
 
+  // Tutorial badge: centered over the highlighted weapon choice, measured
+  // because the badge lives outside the panel's clip-path.
+  const tutorialOptionRef = useRef<HTMLButtonElement>(null);
+  const [tutorialOptionCenterX, setTutorialOptionCenterX] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = tutorialOptionRef.current;
+    setTutorialOptionCenterX(
+      tutorialWeaponOption && el ? el.offsetLeft + el.offsetWidth / 2 : null,
+    );
+  }, [tutorialWeaponOption, selectedWeaponType, selectedShipId]);
+
   const embeddedWeaponSelector = (() => {
     if (isRammingMovePreview || isSubmitting) return null;
     const ship = selectedShipId ? shipMap.get(selectedShipId) : null;
@@ -193,6 +209,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
           return (
             <button
               key={value}
+              ref={tutorialWeaponOption === value ? tutorialOptionRef : undefined}
               type="button"
               onClick={() => {
                 setSelectedWeaponType(value);
@@ -202,7 +219,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
                   setTargetShipId(null);
                 }
               }}
-              className="flex-1 px-2 py-1.5 text-[10px] uppercase font-bold tracking-wider transition-colors duration-100"
+              className="relative flex-1 px-2 py-1.5 text-[10px] uppercase font-bold tracking-wider transition-colors duration-100"
               style={{
                 ...STYLE_LABEL,
                 color: isActive ? "var(--color-cyan)" : "var(--color-text-muted)",
@@ -217,6 +234,10 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
               }}
             >
               {label}
+              {tutorialWeaponOption === value && (
+                // Same pulse as a highlighted grid cell (GameGridCell).
+                <span className="pointer-events-none absolute inset-0 border border-amber/90 bg-amber/24 animate-pulse" />
+              )}
             </button>
           );
         })}
@@ -273,6 +294,19 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
         >
           {flipTo === "above" ? "▲" : "▼"}
         </button>
+      {/* Positioned wrapper so the tutorial badge can sit outside the
+          panel's clip-path. */}
+      <div className="relative">
+      {tutorialWeaponOption && tutorialOptionCenterX != null && (
+        // Same badge as the grid's tutorial "Click here" (GameGridOverlays),
+        // above the highlighted weapon choice.
+        <span
+          className="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 whitespace-nowrap rounded-none border border-amber bg-amber/60 px-2 py-1 text-center font-mono text-xs text-amber"
+          style={{ left: tutorialOptionCenterX }}
+        >
+          {tutorialLabel}
+        </span>
+      )}
       <div
         style={{
           backgroundColor:
@@ -340,6 +374,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
             ✕
           </button>
         </div>
+      </div>
       </div>
       </div>
     </div>

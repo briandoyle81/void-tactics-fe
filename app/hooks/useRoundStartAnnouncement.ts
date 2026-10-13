@@ -32,6 +32,19 @@ function writeDismissed(gameId: string, round: number): void {
   }
 }
 
+/** Forget dismissed rounds for a game (the tutorial's Reset/replay). */
+export function clearRoundStartDismissed(gameId: string): void {
+  try {
+    const prefix = `vt-round-start-dismissed-${gameId}-`;
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith(prefix)) sessionStorage.removeItem(key);
+    }
+  } catch {
+    // Storage unavailable: nothing was remembered.
+  }
+}
+
 /**
  * Announces who acts first at game start and on each new round.
  *
@@ -77,7 +90,11 @@ export function useRoundStartAnnouncement(
       return;
     }
     if (prevRoundRef.current === round) return;
+    // Only a new round is announced. A round going back (the tutorial's
+    // Prev into an earlier round) isn't; a live game never does that.
+    const isGoingBack = prevRoundRef.current !== undefined && round < prevRoundRef.current;
     prevRoundRef.current = round;
+    if (isGoingBack) return;
     setRoundStartInfo({ round, ...buildInfoRef.current(round) });
   }, [currentRoundNumber, isGameOver, gameIdKey]);
 

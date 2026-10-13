@@ -47,6 +47,12 @@ import { getRunMapAction } from "../utils/runMapAction";
 import type { Ship } from "../types/types";
 import { useUrlSelectedNode } from "../hooks/useUrlSelectedNode";
 import { CLIENT_TAB_SLUGS } from "../utils/clientNavigation";
+import {
+  TUTORIAL_PRELUDE_CANVAS_NODE,
+  TUTORIAL_PRELUDE_NODE_ID,
+  withTutorialPrelude,
+} from "../utils/tutorialPrelude";
+import { TutorialPreludeDrawer } from "./operations/TutorialPreludeDrawer";
 
 const NO_SHIP_IDS: bigint[] = [];
 const OPS_TOOLBAR_BUTTON =
@@ -82,6 +88,12 @@ interface RoguelikeGraphProps {
    * return), resupply keeps the player on this screen, so `run.currentNodeId`
    * needs an explicit refetch to stop pointing at the node just left. */
   onRunAdvanced: () => void;
+  /**
+   * Run-less preview only, when the player hasn't done the tutorial: it's
+   * the first mission on the map (tutorialPrelude.ts), started or skipped
+   * from the action bar.
+   */
+  tutorial?: { onStart: () => void; onSkip: () => void };
 }
 
 interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
@@ -102,7 +114,7 @@ interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
 // surfaced as a play action here (a real contract-level option that was
 // never wired up). Edit Mode (gated on isRoguelikeNodeEditor) layers node/
 // edge/map/fleet editing onto this same screen — see RoguelikeNodeEditPanel.
-export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: RoguelikeGraphProps) {
+export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun, tutorial }: RoguelikeGraphProps) {
   const { address } = useAccount();
   const { retreatRun, enterResupplyNode } = useRoguelikeMatch();
   const { data: isEditor = false } = useIsRoguelikeNodeEditor(address);
@@ -224,21 +236,28 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
       connectMode,
     ],
   );
-  if (editMode) {
-    canvasNodes.push({
-      id: ADD_NODE_SENTINEL_ID,
-      kind: RoguelikeNodeKind.Combat,
-      prerequisites: [],
-      completed: false,
-      unlocked: true,
-      isCurrent: false,
-      selectable: true,
-      title: "+ ADD NODE",
-      titleStatus: "ok",
-      editMode: true,
-      connectHighlight: connectMode ? "invalid" : undefined,
-    });
-  }
+  const showTutorialPrelude = isBrowseMode && !editMode && !!tutorial;
+  const mapNodes: RoguelikeCanvasNode[] = editMode
+    ? [
+        ...canvasNodes,
+        {
+          id: ADD_NODE_SENTINEL_ID,
+          kind: RoguelikeNodeKind.Combat,
+          prerequisites: [],
+          completed: false,
+          unlocked: true,
+          isCurrent: false,
+          selectable: true,
+          title: "+ ADD NODE",
+          titleStatus: "ok",
+          editMode: true,
+          connectHighlight: connectMode ? "invalid" : undefined,
+        },
+      ]
+    : showTutorialPrelude
+      ? withTutorialPrelude<RoguelikeCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE)
+      : canvasNodes;
+  const isTutorialPreludeSelected = showTutorialPrelude && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
 
   // Play mode snaps to the current run node, and the run-less preview to
   // the root node — only when that position (or the mode) changes, never
@@ -247,19 +266,28 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
   const currentRunNodeId = run ? Number(run.currentNodeId) : null;
   // The first snap after a load takes the node the URL names instead (a
   // refresh keeps the player's selection; see useUrlSelectedNode).
-  const takeInitialUrlNode = useUrlSelectedNode(selectedNodeId, CLIENT_TAB_SLUGS.Mission);
+  // (The tutorial prelude isn't a real node, so it stays out of the URL.)
+  const takeInitialUrlNode = useUrlSelectedNode(
+    selectedNodeId === TUTORIAL_PRELUDE_NODE_ID ? null : selectedNodeId,
+    CLIENT_TAB_SLUGS.Mission,
+  );
   React.useEffect(() => {
     if (currentRunNodeId != null) {
       setSelectedNodeId(takeInitialUrlNode() ?? currentRunNodeId);
       return;
     }
+    if (showTutorialPrelude) {
+      takeInitialUrlNode();
+      setSelectedNodeId(TUTORIAL_PRELUDE_NODE_ID);
+      return;
+    }
     if (!editMode && rootNodeId != null) setSelectedNodeId(takeInitialUrlNode() ?? rootNodeId);
-  }, [currentRunNodeId, editMode, rootNodeId, takeInitialUrlNode]);
+  }, [currentRunNodeId, editMode, rootNodeId, takeInitialUrlNode, showTutorialPrelude]);
   // A URL node that isn't on this map (stale link, a different campaign):
   // fall back to the snap target.
   React.useEffect(() => {
     if (editMode || campaignNodes.length === 0 || selectedNodeId == null) return;
-    if (byNumberId.has(selectedNodeId)) return;
+    if (byNumberId.has(selectedNodeId) || selectedNodeId === TUTORIAL_PRELUDE_NODE_ID) return;
     const fallback = currentRunNodeId ?? rootNodeId;
     if (fallback != null && fallback !== selectedNodeId) setSelectedNodeId(fallback);
   }, [editMode, campaignNodes, selectedNodeId, byNumberId, currentRunNodeId, rootNodeId]);
@@ -453,6 +481,8 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
   const mapAction = getRunMapAction({
     isBrowseMode,
     canStartRun: isBrowseMode && !editMode && !!onStartRun,
+    tutorialPending: showTutorialPrelude,
+    isTutorialPrelude: isTutorialPreludeSelected,
     selectedKind: !selectedNode
       ? null
       : selectedNode.kind === RoguelikeNodeKind.Combat
@@ -468,6 +498,10 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
   const handleMapAction = () => {
     if (mapAction.type === "start") {
       onStartRun?.();
+      return;
+    }
+    if (mapAction.type === "tutorial") {
+      tutorial?.onStart();
       return;
     }
     if (!selectedNode || isBrowseMode) return;
@@ -497,7 +531,9 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
     />
   );
 
-  const drawer = editMode ? null : selectedNode ? (
+  const drawer = editMode ? null : isTutorialPreludeSelected ? (
+    <TutorialPreludeDrawer />
+  ) : selectedNode ? (
     <MissionDrawerContent
       title={selectedNode.title}
       titleStatus={selectedNode.titleStatus}
@@ -604,7 +640,7 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
           <CampaignGraphCanvas
             bare
             backdropSrc={ART_SLOTS.runMapBackdrop.src}
-            nodes={canvasNodes}
+            nodes={mapNodes}
             selectedNodeId={selectedNodeId}
             onSelectNode={handleSelectNode}
             renderNode={(node, isSelected, onSelect) => (
@@ -641,6 +677,7 @@ export function RoguelikeGraph({ run, onRunEnded, onRunAdvanced, onStartRun }: R
               costCap={isBrowseMode ? null : Number(run.currentCostCap)}
               action={mapAction}
               onAction={handleMapAction}
+              onSecondaryAction={tutorial?.onSkip}
             />
           )
         }

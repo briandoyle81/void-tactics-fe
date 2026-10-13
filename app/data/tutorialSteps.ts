@@ -6,7 +6,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     id: "welcome",
     title: "Welcome aboard",
     description: "Fleet briefing and map orientation",
-    allowedActions: {},
+    // Free look while reading the briefing: any ship, ours or theirs.
+    allowedActions: {
+      selectShip: ["1001", "1002", "1003", "2001", "2002", "2003"],
+    },
     highlightElements: {
       mapPositions: [
         { row: 3, col: 10 },
@@ -75,7 +78,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
       mapPositions: [{ row: 6, col: 7 }],
     },
     requiresTransaction: true,
-    showTransactionAfter: true,
     onStepComplete: (actionData) => {
       return actionData?.type === "moveShip" && actionData?.shipId === "1003";
     },
@@ -103,7 +105,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
       mapPositions: [{ row: 5, col: 8 }],
     },
     requiresTransaction: true,
-    showTransactionAfter: true,
     onStepComplete: (actionData) => {
       return (
         actionData?.type === "moveShip" &&
@@ -241,7 +242,6 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
       mapPositions: [{ row: 5, col: 8 }],
     },
     requiresTransaction: true,
-    showTransactionAfter: false,
     onStepComplete: (actionData) => {
       const movedToCenter =
         actionData?.type === "moveShip" &&

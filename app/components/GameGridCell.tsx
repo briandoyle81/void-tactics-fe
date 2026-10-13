@@ -11,6 +11,7 @@ import { RetreatPrepAnimation } from "./weapon-animations/RetreatPrepAnimation";
 import { SosHullFires } from "./SosHullFires";
 import { HOLD_HOLOGRAM_CYCLE_MS } from "../constants/animationTiming";
 import { isRepairDronesSpecial } from "../utils/specialConfigWeb2";
+import { describeTile, tileTooltipLabel } from "../utils/tileTooltip";
 
 function isValidActionTargetType(params: {
   selectedWeaponType: "weapon" | "special" | "ram";
@@ -920,35 +921,24 @@ export const GameGridCell = React.memo(function GameGridCell({
                         lastDragOverCellRef.current = null;
                       }
                     }}
-                    {...(!cell && {
-                      title: isMovementTile
-                        ? scoringPoints > 0
-                          ? onlyOnceGrid[rowIndex][colIndex]
-                            ? `Move here, Crystal Deposit: ${scoringPoints} points (only once) (${rowIndex}, ${colIndex})`
-                            : `Move here, Gold Deposit: ${scoringPoints} points (${rowIndex}, ${colIndex})`
-                          : blockedGrid[rowIndex][colIndex]
-                            ? `Move here, Blocked Line of Sight (${rowIndex}, ${colIndex})`
-                            : `Move here (${rowIndex}, ${colIndex})`
-                        : isImpassableTile
-                        ? scoringPoints > 0
-                          ? onlyOnceGrid[rowIndex][colIndex]
-                            ? `Impassable Terrain, Crystal Deposit: ${scoringPoints} points (only once) (${rowIndex}, ${colIndex})`
-                            : `Impassable Terrain, Gold Deposit: ${scoringPoints} points (${rowIndex}, ${colIndex})`
-                          : `Impassable Terrain (${rowIndex}, ${colIndex})`
-                        : onlyOnceGrid[rowIndex][colIndex]
-                        ? `Crystal Deposit: ${scoringPoints} points (only once) (${rowIndex}, ${colIndex})`
-                        : scoringPoints > 0
-                          ? `Gold Deposit: ${scoringPoints} points (${rowIndex}, ${colIndex})`
-                          : blockedGrid[rowIndex][colIndex]
-                            ? `Blocked Line of Sight (${rowIndex}, ${colIndex})`
-                            : isShootingTile
-                              ? `Shooting range (${rowIndex}, ${colIndex})`
-                              : isAssistableTarget
-                                ? `Click to assist this ship (${rowIndex}, ${colIndex})`
-                                : isValidTarget
-                                  ? `Click to target this ship (${rowIndex}, ${colIndex})`
-                                  : `Empty (${rowIndex}, ${colIndex})`,
-                    })}
+                    {...(!cell &&
+                      (() => {
+                        // Read by GameGridTileTooltip (one listener for the
+                        // whole board) instead of a native title tooltip.
+                        const tip = describeTile({
+                          isMovementTile,
+                          isImpassable: isImpassableTile,
+                          scoringPoints,
+                          onlyOnce: onlyOnceGrid[rowIndex][colIndex],
+                          blocksLineOfSight: blockedGrid[rowIndex][colIndex],
+                          isShootingTile,
+                          isAssistableTarget: !!isAssistableTarget,
+                          isValidTarget: !!isValidTarget,
+                        });
+                        return tip
+                          ? { "data-tile-tip": JSON.stringify(tip), "aria-label": tileTooltipLabel(tip) }
+                          : {};
+                      })())}
                   >
                     {/* Crystal / gold under terrain so a scoring tile that is
                         also impassable still reads as a hazard. */}

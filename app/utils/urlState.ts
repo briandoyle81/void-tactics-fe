@@ -14,7 +14,9 @@ import { useCallback, useSyncExternalStore } from "react";
 //   section     Store / Fleet sub-tab
 //   game        open match (Games / GamesWeb2); `replay=1` opened in replay
 //   lobby       open lobby detail; `create=1` the create form; `fleet` (+
-//               `fleetOwner`) the fleet viewer (Lobbies / LobbiesWeb2)
+//               `fleetOwner`) the fleet viewer (Lobbies / LobbiesWeb2); on the
+//               Mission tab, `fleet=select` is run fleet selection
+//               (RoguelikeCampaign / RoguelikeCampaignWeb2)
 //   tournament  open tournament (Tournaments / TournamentsWeb2)
 //   ship        ship being customized (ManageNavy / ManageNavyWeb2)
 //   node        selected node on the Operations map (replace, not push)

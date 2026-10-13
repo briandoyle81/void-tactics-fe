@@ -13,6 +13,7 @@ import { formatDestroyedDate } from "../utils/dateUtils";
 import { Attributes } from "../types/types";
 import type { ShipCardData } from "../types/shipCardData";
 import { SosHullFires } from "./SosHullFires";
+import { tooltipPanelStyle } from "./tooltipPanel";
 
 interface ShipCardProps {
   ship: ShipCardData;
@@ -218,7 +219,12 @@ const ShipCard: React.FC<ShipCardProps> = ({
     };
   };
 
-  const borderStyle = getIndustrialBorderStyle();
+  const industrialBorderStyle = getIndustrialBorderStyle();
+  // Grid hover tooltip: the board's tooltip frame (tooltipPanel.ts), with the
+  // card's status color (ours / theirs / moved / reactor) as its left edge.
+  const borderStyle = tooltipMode
+    ? tooltipPanelStyle(industrialBorderStyle.borderLeftColor)
+    : industrialBorderStyle;
   const rankTooltipLines =
     data.rankNextRank == null
       ? [`Kills: ${data.rankShipsDestroyed}`, "Max rank reached"]
@@ -652,7 +658,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                     {tooltipMode && tooltipGridPosition != null && (
                       <div className="flex justify-between col-span-3 border-b border-gunmetal/80 pb-1 mb-0.5">
                         <span className="opacity-60">Position:</span>
-                        <span className="ml-2 font-mono">
+                        <span className="ml-2 text-right font-mono">
                           ({tooltipGridPosition.row},{" "}
                           {tooltipGridPosition.col})
                         </span>
@@ -660,28 +666,28 @@ const ShipCard: React.FC<ShipCardProps> = ({
                     )}
                     <div className="flex justify-between">
                       <span className="opacity-60">Weapon:</span>
-                      <span className="ml-2">
+                      <span className="ml-2 text-right">
                         {getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-60">Range:</span>
-                      <span className="ml-2">{inGameAttributes.range}</span>
+                      <span className="ml-2 text-right">{inGameAttributes.range}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-60">Damage:</span>
-                      <span className="ml-2">{inGameAttributes.gunDamage}</span>
+                      <span className="ml-2 text-right">{inGameAttributes.gunDamage}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-60">Hull:</span>
-                      <span className="ml-2">
+                      <span className="ml-2 text-right">
                         {inGameAttributes.hullPoints}/
                         {inGameAttributes.maxHullPoints}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-60">Move:</span>
-                      <span className="ml-2">{inGameAttributes.movement}</span>
+                      <span className="ml-2 text-right">{inGameAttributes.movement}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-60">
@@ -689,49 +695,47 @@ const ShipCard: React.FC<ShipCardProps> = ({
                           ? "Shields:"
                           : "Armor:"}
                       </span>
-                      <span className="ml-2">
+                      <span className="ml-2 text-right">
                         {inGameAttributes.damageReduction}%
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="opacity-60">Special:</span>
-                      <span className="ml-2">
+                      <span className="ml-2 text-right">
                         {getSpecialName(data.equipment.special, data.traits.variant)}
                       </span>
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 col-span-full">
-                      <div className="flex items-center">
-                        <span className="opacity-60">Status:</span>
-                        <span
-                          className={`ml-2 ${
-                            data.isDestroyed
-                              ? "text-warning-red"
-                              : hasMoved
-                              ? "text-amber"
-                              : gameViewMode || tooltipMode
-                              ? "text-cyan" // Unmoved in game view
-                              : data.inFleet
-                              ? "text-amber"
-                              : "text-phosphor-green"
-                          }`}
-                        >
-                          {data.isDestroyed
-                            ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
+                    <div className="flex justify-between">
+                      <span className="opacity-60">Status:</span>
+                      <span
+                        className={`ml-2 text-right ${
+                          data.isDestroyed
+                            ? "text-warning-red"
                             : hasMoved
-                            ? "MOVED"
+                            ? "text-amber"
                             : gameViewMode || tooltipMode
-                            ? "READY" // Unmoved in game view
+                            ? "text-cyan" // Unmoved in game view
                             : data.inFleet
-                            ? "IN FLEET"
-                            : "READY"}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="opacity-60">Threat:</span>
-                        <span className="ml-2 font-bold">
-                          {data.cost}
-                        </span>
-                      </div>
+                            ? "text-amber"
+                            : "text-phosphor-green"
+                        }`}
+                      >
+                        {data.isDestroyed
+                          ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
+                          : hasMoved
+                          ? "MOVED"
+                          : gameViewMode || tooltipMode
+                          ? "READY" // Unmoved in game view
+                          : data.inFleet
+                          ? "IN FLEET"
+                          : "READY"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="opacity-60">Threat:</span>
+                      <span className="ml-2 text-right font-bold">
+                        {data.cost}
+                      </span>
                     </div>
                   </>
                 );
@@ -741,19 +745,19 @@ const ShipCard: React.FC<ShipCardProps> = ({
               <>
                 <div className="flex justify-between">
                   <span className="opacity-60">Acc:</span>
-                  <span className="ml-2">{data.traits.accuracy}</span>
+                  <span className="ml-2 text-right">{data.traits.accuracy}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-60">Hull:</span>
-                  <span className="ml-2">{data.traits.hull}</span>
+                  <span className="ml-2 text-right">{data.traits.hull}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-60">Speed:</span>
-                  <span className="ml-2">{data.traits.speed}</span>
+                  <span className="ml-2 text-right">{data.traits.speed}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-60">Wpn:</span>
-                  <span className="ml-2">
+                  <span className="ml-2 text-right">
                     {getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
                   </span>
                 </div>
@@ -761,7 +765,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                   <span className="opacity-60">
                     {data.equipment.shields > 0 ? "Shd:" : "Arm:"}
                   </span>
-                  <span className="ml-2">
+                  <span className="ml-2 text-right">
                     {data.equipment.shields > 0
                       ? getShieldName(data.equipment.shields)
                       : getArmorName(data.equipment.armor)}
@@ -769,41 +773,39 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-60">Spc:</span>
-                  <span className="ml-2">
+                  <span className="ml-2 text-right">
                     {getSpecialName(data.equipment.special, data.traits.variant)}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 col-span-full">
-                  <div className="flex items-center">
-                    <span className="opacity-60">Status:</span>
-                    <span
-                      className={`ml-2 ${
-                        data.isDestroyed
-                          ? "text-warning-red"
-                          : hasMoved
-                          ? "text-amber"
-                          : gameViewMode || tooltipMode
-                          ? "text-cyan" // Unmoved in game view
-                          : data.inFleet
-                          ? "text-amber"
-                          : "text-phosphor-green"
-                      }`}
-                    >
-                      {data.isDestroyed
-                        ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
+                <div className="flex justify-between col-span-2">
+                  <span className="opacity-60">Status:</span>
+                  <span
+                    className={`ml-2 text-right ${
+                      data.isDestroyed
+                        ? "text-warning-red"
                         : hasMoved
-                        ? "MOVED"
+                        ? "text-amber"
                         : gameViewMode || tooltipMode
-                        ? "READY" // Unmoved in game view
+                        ? "text-cyan" // Unmoved in game view
                         : data.inFleet
-                        ? "IN FLEET"
-                        : "READY"}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="opacity-60">Threat:</span>
-                    <span className="ml-2 font-bold">{data.cost}</span>
-                  </div>
+                        ? "text-amber"
+                        : "text-phosphor-green"
+                    }`}
+                  >
+                    {data.isDestroyed
+                      ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
+                      : hasMoved
+                      ? "MOVED"
+                      : gameViewMode || tooltipMode
+                      ? "READY" // Unmoved in game view
+                      : data.inFleet
+                      ? "IN FLEET"
+                      : "READY"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-60">Threat:</span>
+                  <span className="ml-2 text-right font-bold">{data.cost}</span>
                 </div>
               </>
             )}

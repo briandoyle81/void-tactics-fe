@@ -11,11 +11,16 @@ import {
 } from "../types/onboarding";
 import { ActionType } from "../types/types";
 import { TUTORIAL_STEPS } from "../data/tutorialSteps";
+import { isReportOnlyStep, TUTORIAL_NOT_ALLOWED } from "../data/dialog/tutorial";
 import {
   getScriptedStateForStepIndex,
   getScriptedStateForTutorialStepId,
 } from "../data/tutorialScriptedStates";
 import { useSimulatedGameState } from "./useSimulatedGameState";
+import { clearRoundStartDismissed } from "./useRoundStartAnnouncement";
+
+/** How long a submitted tutorial move shows [...] before it lands. */
+const SIMULATED_CONFIRM_MS = 1500;
 
 const TUTORIAL_STEP_SNAPSHOTS_KEY = "void-tactics-tutorial-step-snapshots";
 const TUTORIAL_DATA_VERSION_KEY = "void-tactics-tutorial-data-version";
@@ -41,10 +46,14 @@ export function useOnboardingTutorial() {
           return parsed;
         }
       }
+      // A fresh run (nothing to resume) shows its round reports again. Done
+      // here, during the first render, so it's cleared before the view's
+      // round announcement reads it.
+      clearRoundStartDismissed("tutorial");
     }
     return 0;
   });
-  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [isConfirmingMove, setIsConfirmingMove] = useState(false);
   const [pendingAction, setPendingAction] = useState<TutorialAction | null>(
     null,
   );
@@ -149,7 +158,7 @@ export function useOnboardingTutorial() {
   const validateAction = useCallback(
     (action: TutorialAction): { valid: boolean; message?: string } => {
       if (!currentStep) {
-        return { valid: false, message: "No active tutorial step" };
+        return { valid: false, message: TUTORIAL_NOT_ALLOWED.other };
       }
 
       const { allowedActions } = currentStep;
@@ -159,7 +168,7 @@ export function useOnboardingTutorial() {
           if (!allowedActions.selectShip) {
             return {
               valid: false,
-              message: "Ship selection not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.select,
             };
           }
           if (
@@ -168,7 +177,7 @@ export function useOnboardingTutorial() {
           ) {
             return {
               valid: false,
-              message: "This ship cannot be selected in this step",
+              message: TUTORIAL_NOT_ALLOWED.select,
             };
           }
           return { valid: true };
@@ -177,13 +186,13 @@ export function useOnboardingTutorial() {
           if (!allowedActions.moveShip) {
             return {
               valid: false,
-              message: "Ship movement not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.move,
             };
           }
           if (action.shipId !== allowedActions.moveShip.shipId) {
             return {
               valid: false,
-              message: "This ship cannot be moved in this step",
+              message: TUTORIAL_NOT_ALLOWED.move,
             };
           }
           if (action.position) {
@@ -195,7 +204,7 @@ export function useOnboardingTutorial() {
             if (!isAllowed) {
               return {
                 valid: false,
-                message: "This position is not allowed in this step",
+                message: TUTORIAL_NOT_ALLOWED.move,
               };
             }
           }
@@ -205,13 +214,13 @@ export function useOnboardingTutorial() {
           if (!allowedActions.shoot) {
             return {
               valid: false,
-              message: "Shooting not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.shoot,
             };
           }
           if (action.shipId !== allowedActions.shoot.shipId) {
             return {
               valid: false,
-              message: "This ship cannot shoot in this step",
+              message: TUTORIAL_NOT_ALLOWED.shoot,
             };
           }
           if (
@@ -220,7 +229,7 @@ export function useOnboardingTutorial() {
           ) {
             return {
               valid: false,
-              message: "This target is not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.shoot,
             };
           }
           return { valid: true };
@@ -229,13 +238,13 @@ export function useOnboardingTutorial() {
           if (!allowedActions.useSpecial) {
             return {
               valid: false,
-              message: "Special abilities not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.special,
             };
           }
           if (action.shipId !== allowedActions.useSpecial.shipId) {
             return {
               valid: false,
-              message: "This ship cannot use special in this step",
+              message: TUTORIAL_NOT_ALLOWED.special,
             };
           }
           if (
@@ -246,19 +255,19 @@ export function useOnboardingTutorial() {
           ) {
             return {
               valid: false,
-              message: "This target is not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.special,
             };
           }
           return { valid: true };
 
         case "assist":
           if (!allowedActions.assist) {
-            return { valid: false, message: "Assist not allowed in this step" };
+            return { valid: false, message: TUTORIAL_NOT_ALLOWED.assist };
           }
           if (action.shipId !== allowedActions.assist.shipId) {
             return {
               valid: false,
-              message: "This ship cannot assist in this step",
+              message: TUTORIAL_NOT_ALLOWED.assist,
             };
           }
           if (
@@ -267,7 +276,7 @@ export function useOnboardingTutorial() {
           ) {
             return {
               valid: false,
-              message: "This target is not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.assist,
             };
           }
           return { valid: true };
@@ -276,13 +285,13 @@ export function useOnboardingTutorial() {
           if (!allowedActions.claimPoints) {
             return {
               valid: false,
-              message: "Claiming points not allowed in this step",
+              message: TUTORIAL_NOT_ALLOWED.claim,
             };
           }
           return { valid: true };
 
         default:
-          return { valid: false, message: "Unknown action type" };
+          return { valid: false, message: TUTORIAL_NOT_ALLOWED.other };
       }
     },
     [currentStep],
@@ -295,49 +304,28 @@ export function useOnboardingTutorial() {
         return { success: false, message: validation.message };
       }
 
-      // If step requires transaction and should show after, execute first then show dialog
-      // Only show transaction dialog for moveShip actions, not for selectShip
-      if (
-        currentStep?.requiresTransaction &&
-        currentStep?.showTransactionAfter &&
-        action.type === "moveShip"
-      ) {
-        applyAction(action);
-        setLastAction(action); // Track the last action for step completion checking
-        setPendingAction(action);
-        // Delay showing the transaction dialog to allow the UI to update first
-        // Use requestAnimationFrame to ensure the ship has visually moved
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setIsTransactionDialogOpen(true);
-          });
-        });
-        return { success: true, pending: true };
-      }
-
       // For the "shoot" step, follow the desired sequence:
       // 1) select ship, 2) propose move (staged in UI), 3) select target,
-      // 4) click Submit to execute the composite action (move + shoot) in a
-      // single simulated transaction. The move is applied immediately with no
-      // transaction; only the shoot opens the simulated tx.
+      // 4) click Submit to execute the composite action (move + shoot) as one
+      // confirmed submit. The move is applied immediately; only the shoot
+      // waits on the simulated confirm.
       if (currentStep?.id === "shoot") {
         if (action.type === "moveShip") {
-          // Apply the move immediately without any transaction dialog.
+          // Apply the move at once; only the shot waits on the confirm.
           applyAction(action);
           return { success: true };
         }
         if (action.type === "shoot") {
           setPendingAction(action);
-          setIsTransactionDialogOpen(true);
+          setIsConfirmingMove(true);
           return { success: true, pending: true };
         }
       }
 
-      // If step requires transaction, show dialog first
-      // Only show transaction dialog for actions that require it (not selectShip)
+      // Steps with a transaction confirm after a moment (not selectShip).
       if (currentStep?.requiresTransaction && action.type !== "selectShip") {
         setPendingAction(action);
-        setIsTransactionDialogOpen(true);
+        setIsConfirmingMove(true);
         return { success: true, pending: true };
       }
 
@@ -355,40 +343,36 @@ export function useOnboardingTutorial() {
 
     const action = pendingAction;
 
-    setIsTransactionDialogOpen(false);
+    setIsConfirmingMove(false);
 
-    // If action was already executed (showTransactionAfter), just close the dialog.
-    // Otherwise, execute the action now.
+    // The confirmed action lands now (the move shows [...] until then).
     let stepCompletionAction: TutorialAction = action;
-    if (!currentStep?.showTransactionAfter) {
-      // Standard tx behavior: apply the pending action.
-      applyAction(action);
+    applyAction(action);
 
-      // Special handling for step 13 (rescue-outcome-sniper):
-      // the tx is for the move, and we optionally chain a shot based on
-      // targetShipId embedded on the pending move action.
-      if (
-        currentStep?.id === "rescue-outcome-sniper" &&
-        action.type === "moveShip" &&
-        action.targetShipId
-      ) {
-        const shootAction: TutorialAction = {
-          type: "shoot",
-          shipId: action.shipId,
-          targetShipId: action.targetShipId,
-          actionType: ActionType.Shoot,
-        };
-        applyAction(shootAction);
-        stepCompletionAction = shootAction;
-        setLastAction(shootAction);
-      } else {
-        setLastAction(action);
-      }
+    // Special handling for step 13 (rescue-outcome-sniper):
+    // the tx is for the move, and we optionally chain a shot based on
+    // targetShipId embedded on the pending move action.
+    if (
+      currentStep?.id === "rescue-outcome-sniper" &&
+      action.type === "moveShip" &&
+      action.targetShipId
+    ) {
+      const shootAction: TutorialAction = {
+        type: "shoot",
+        shipId: action.shipId,
+        targetShipId: action.targetShipId,
+        actionType: ActionType.Shoot,
+      };
+      applyAction(shootAction);
+      stepCompletionAction = shootAction;
+      setLastAction(shootAction);
+    } else {
+      setLastAction(action);
     }
 
     setPendingAction(null);
 
-    // After a simulated transaction is approved, automatically advance to the
+    // After a submitted move confirms, automatically advance to the
     // next tutorial step when this step's completion condition is satisfied.
     if (
       currentStep?.requiresTransaction &&
@@ -448,20 +432,16 @@ export function useOnboardingTutorial() {
     persistRescueCompletionBranch,
   ]);
 
-  const rejectTransaction = useCallback(() => {
-    setIsTransactionDialogOpen(false);
-    setPendingAction(null);
-  }, []);
-
-  const openTransactionDialog = useCallback((action: TutorialAction) => {
-    setPendingAction(action);
-    setIsTransactionDialogOpen(true);
-  }, []);
-
-  const closeTransactionDialog = useCallback(() => {
-    setIsTransactionDialogOpen(false);
-    setPendingAction(null);
-  }, []);
+  // A submitted move "confirms" on its own after a moment, with its Submit
+  // button showing [...] meanwhile, the way a live game waits on its
+  // transaction. No wallet step: the tutorial is played without one.
+  const approveRef = useRef(approveTransaction);
+  approveRef.current = approveTransaction;
+  useEffect(() => {
+    if (!isConfirmingMove) return;
+    const timer = setTimeout(() => approveRef.current(), SIMULATED_CONFIRM_MS);
+    return () => clearTimeout(timer);
+  }, [isConfirmingMove]);
 
   const nextStep = useCallback(() => {
     const leaving = TUTORIAL_STEPS[currentStepIndex];
@@ -573,7 +553,11 @@ export function useOnboardingTutorial() {
         const idx = TUTORIAL_STEPS.findIndex((s) => s.id === "rescue");
         if (idx !== -1) return idx;
       }
-      return Math.max(prev - 1, 0);
+      // Report-only steps (End of round) are passed through going back:
+      // their report's Acknowledged would only send the player forward again.
+      let target = Math.max(prev - 1, 0);
+      while (target > 0 && isReportOnlyStep(TUTORIAL_STEPS[target]?.id)) target--;
+      return target;
     });
   }, [currentStep?.id]);
 
@@ -639,7 +623,9 @@ export function useOnboardingTutorial() {
   ]);
 
   const resetTutorial = useCallback(() => {
-    setIsTransactionDialogOpen(false);
+    // A fresh run shows its round reports again.
+    clearRoundStartDismissed("tutorial");
+    setIsConfirmingMove(false);
     setPendingAction(null);
     setLastAction(null);
     resetState();
@@ -733,7 +719,7 @@ export function useOnboardingTutorial() {
       rescueCompletionBranch,
       currentStep,
       gameState,
-      isTransactionDialogOpen,
+      isConfirmingMove,
       pendingAction,
       isStepComplete,
       updateGameState,
@@ -741,10 +727,6 @@ export function useOnboardingTutorial() {
       executeAction,
       nextStep,
       previousStep,
-      openTransactionDialog,
-      closeTransactionDialog,
-      approveTransaction,
-      rejectTransaction,
       resetTutorial,
       // Expose whether the current step state has been fully hydrated
       // so the UI can avoid flickering when switching steps.
@@ -758,7 +740,7 @@ export function useOnboardingTutorial() {
       rescueCompletionBranch,
       currentStep,
       gameState,
-      isTransactionDialogOpen,
+      isConfirmingMove,
       pendingAction,
       isStepComplete,
       updateGameState,
@@ -766,10 +748,6 @@ export function useOnboardingTutorial() {
       executeAction,
       nextStep,
       previousStep,
-      openTransactionDialog,
-      closeTransactionDialog,
-      approveTransaction,
-      rejectTransaction,
       resetTutorial,
       isStepHydrated,
     ],

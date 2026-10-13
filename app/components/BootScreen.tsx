@@ -45,10 +45,18 @@ function SignInOption({
 }
 
 /**
- * The client's title screen for signed-out players: sign in with a wallet
- * or Google, or go straight into a first battle (no sign-in needed).
+ * The client's sign-in screen for signed-out players: a wallet or Google,
+ * with the first battle (First Contact, no sign-in needed) as a smaller
+ * option below. New players skip this and land in the battle directly; see
+ * signedOutLanding in tutorialCompletion.ts.
  */
-export function BootScreen({ onStartFirstBattle }: { onStartFirstBattle: () => void }) {
+export function BootScreen({
+  onStartFirstBattle,
+  firstBattleCompleted,
+}: {
+  onStartFirstBattle: () => void;
+  firstBattleCompleted: boolean;
+}) {
   const openWalletSignIn = useOpenWalletSignIn();
 
   return (
@@ -84,9 +92,9 @@ export function BootScreen({ onStartFirstBattle }: { onStartFirstBattle: () => v
           />
         </div>
 
-        <div className="grid justify-items-center gap-2 text-center">
+        <div className="grid justify-items-center gap-1 text-center">
           <span className="font-mono text-xs uppercase tracking-wider text-text-muted">
-            New commander?
+            {firstBattleCompleted ? "Want another run at it?" : "No account yet?"}
           </span>
           <button
             type="button"
@@ -94,10 +102,9 @@ export function BootScreen({ onStartFirstBattle }: { onStartFirstBattle: () => v
               posthog.capture("boot_first_battle_clicked");
               onStartFirstBattle();
             }}
-            className="border-2 border-solid border-phosphor-green px-8 py-3 text-base font-bold uppercase tracking-wider text-phosphor-green transition-colors duration-150 hover:bg-phosphor-green/10"
-            style={DISPLAY_FONT}
+            className="px-4 py-1 font-mono text-sm font-bold uppercase tracking-wider text-phosphor-green underline-offset-4 hover:underline"
           >
-            Jump into your first battle
+            {firstBattleCompleted ? "Replay First Contact" : "Play First Contact"} ›
           </button>
         </div>
 

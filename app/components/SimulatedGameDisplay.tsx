@@ -46,6 +46,11 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
+import {
+  clearTutorialClaimCompletedCacheEntry,
+  isTutorialClaimCompletedCached,
+  persistTutorialClaimCompleted,
+} from "../utils/tutorialCompletion";
 import { GameBoardLayout } from "./GameBoardLayout";
 import { MissionDialogPanel } from "./MissionDialogPanel";
 import { useMissionDialog } from "../hooks/useMissionDialog";
@@ -57,7 +62,10 @@ import {
   type GameEventsLastMove,
   type GameEventsShipInfo,
 } from "./GameEvents";
-import { getScriptedStateForTutorialStepId } from "../data/tutorialScriptedStates";
+import {
+  getScriptedStateForStepIndex,
+  getScriptedStateForTutorialStepId,
+} from "../data/tutorialScriptedStates";
 import { FleeSafetySwitch } from "./FleeSafetySwitch";
 import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
@@ -104,6 +112,13 @@ import {
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import { useSelectedChainId } from "../hooks/useSelectedChainId";
+import { useAppMode } from "../hooks/useAppMode";
+import {
+  TUTORIAL_COMPLETION_CARD,
+  TUTORIAL_NOT_ALLOWED,
+  TUTORIAL_PANELS,
+  isReportOnlyStep,
+} from "../data/dialog/tutorial";
 import { useSelfieCheckEligibility } from "../hooks/useSelfieCheckEligibility";
 import { useSelfieCheckVerifyFlow } from "./SelfieCheckVerifyButton";
 import { useSwitchToSelectedChainIfNeeded } from "../hooks/useSwitchToSelectedChainIfNeeded";
@@ -111,8 +126,10 @@ import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWr
 import posthog from "posthog-js";
 import {
   getTutorialGridPanelConfig,
+  renderTutorialParagraphs,
   TUTORIAL_COMPLETION_SNIPER_PRIMARY_CTA_SUPPORTING,
   TUTORIAL_COMPLETION_RETREAT_PRIMARY_CTA_SUPPORTING,
+  TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING,
   type TutorialGridPanelConfig,
 } from "./TutorialGridPanelConfigs";
 
@@ -122,6 +139,14 @@ interface SimulatedGameDisplayProps {
   tutorialContext: TutorialContextValue;
   /** Called when user clicks back; exits tutorial and returns to Info tab. */
   onBack?: () => void;
+  /**
+   * Opened as the first mission on the Operations map: after the reward,
+   * the completion button closes the tutorial into fleet selection (via
+   * onBack) instead of the hangar.
+   */
+  continueToFleetSelection?: boolean;
+  /** The exit button's label: "Quit", or "Sign in" for a signed-out player. */
+  exitLabel?: string;
 }
 
 function toMobileTouchCopy(text: string): string {
@@ -166,68 +191,6 @@ const EMPTY_HOVER_TARGETS: Array<{
   shipId: number;
   position: { row: number; col: number };
 }> = [];
-
-/** Once true per chain+wallet, tutorial claim never reverts; cache indefinitely. */
-const TUTORIAL_CLAIM_COMPLETED_CACHE_KEY =
-  "void-tactics-tutorial-claim-completed";
-
-function isTutorialClaimCompletedCached(
-  chainId: number,
-  walletAddress: string,
-): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const raw = window.localStorage.getItem(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw) as Record<string, boolean>;
-    return parsed[`${chainId}:${walletAddress.toLowerCase()}`] === true;
-  } catch {
-    return false;
-  }
-}
-
-function persistTutorialClaimCompleted(
-  chainId: number,
-  walletAddress: string,
-): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = window.localStorage.getItem(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
-    parsed[`${chainId}:${walletAddress.toLowerCase()}`] = true;
-    window.localStorage.setItem(
-      TUTORIAL_CLAIM_COMPLETED_CACHE_KEY,
-      JSON.stringify(parsed),
-    );
-  } catch {
-    // Quota or disabled storage
-  }
-}
-
-/** Dev: clear local "already claimed" cache when tutorial reward contract or rewards change. */
-function clearTutorialClaimCompletedCacheEntry(
-  chainId: number,
-  walletAddress: string,
-): void {
-  if (typeof window === "undefined") return;
-  try {
-    const raw = window.localStorage.getItem(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw) as Record<string, boolean>;
-    const key = `${chainId}:${walletAddress.toLowerCase()}`;
-    delete parsed[key];
-    if (Object.keys(parsed).length === 0) {
-      window.localStorage.removeItem(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY);
-    } else {
-      window.localStorage.setItem(
-        TUTORIAL_CLAIM_COMPLETED_CACHE_KEY,
-        JSON.stringify(parsed),
-      );
-    }
-  } catch {
-    // Corrupt or disabled storage
-  }
-}
 
 /**
  * Player ships whose cells get the **tutorial highlight** on step 3 (select-ship)
@@ -291,7 +254,12 @@ function isTutorialEnemyFleetShipId(shipId: bigint): boolean {
 export function SimulatedGameDisplay({
   tutorialContext,
   onBack,
+  continueToFleetSelection = false,
+  exitLabel = "Quit",
 }: SimulatedGameDisplayProps) {
+  // Web2 has no tutorial reward claim (that's TutorialClaim, web3), so from
+  // the Operations map its completion button just continues.
+  const continuesWithoutClaim = useAppMode() === "web2" && continueToFleetSelection;
   const { address } = useAccount();
   const openWalletSignIn = useOpenWalletSignIn();
   const activeChainId = useSelectedChainId();
@@ -337,7 +305,7 @@ export function SimulatedGameDisplay({
     validateAction,
     executeAction,
     isStepHydrated,
-    isTransactionDialogOpen,
+    isConfirmingMove,
     nextStep,
     previousStep,
     resetTutorial,
@@ -474,11 +442,13 @@ export function SimulatedGameDisplay({
       }
       if (isTutorialRewardAlreadyClaimed) {
         onBack?.();
-        queueMicrotask(() =>
-          window.dispatchEvent(
-            new CustomEvent("void-tactics-navigate-to-manage-navy"),
-          ),
-        );
+        if (!continueToFleetSelection) {
+          queueMicrotask(() =>
+            window.dispatchEvent(
+              new CustomEvent("void-tactics-navigate-to-manage-navy"),
+            ),
+          );
+        }
         return;
       }
       if (
@@ -525,6 +495,7 @@ export function SimulatedGameDisplay({
       address,
       activeChainId,
       contractAddresses.TUTORIAL_CLAIM,
+      continueToFleetSelection,
       currentStep?.id,
       isTutorialClaimPending,
       isTutorialClaimConfirming,
@@ -556,6 +527,18 @@ export function SimulatedGameDisplay({
   const [retreatExplicitByShipId, setRetreatExplicitByShipId] = useState<
     Record<string, true>
   >({});
+
+  // A submitted move just confirmed: clear its staging (the step usually
+  // advances too, which clears it below anyway).
+  const wasConfirmingRef = useRef(false);
+  useEffect(() => {
+    if (wasConfirmingRef.current && !isConfirmingMove) {
+      setPreviewPosition(null);
+      setTargetShipId(null);
+      setSelectedShipId(null);
+    }
+    wasConfirmingRef.current = isConfirmingMove;
+  }, [isConfirmingMove]);
 
   // Deselect all ships when moving between steps. Use layout effect so that
   // selection and previews are cleared before the new step is painted, which
@@ -658,7 +641,9 @@ export function SimulatedGameDisplay({
   const { roundStartInfo, handleCloseRoundStart } = useRoundStartAnnouncement(
     "tutorial",
     gameState.turnState.currentRound,
-    false,
+    // The battle's over on the completion steps: no round report over the
+    // result, same as a finished live game.
+    currentStep?.id === "completion-retreat" || currentStep?.id === "completion-sniper",
     () => {
       const isCreatorNow =
         gameState.metadata.creator.toLowerCase() === TUTORIAL_PLAYER_ADDRESS.toLowerCase();
@@ -677,6 +662,58 @@ export function SimulatedGameDisplay({
       };
     },
   );
+
+  // A step with Bosch's words for the round report (data/dialog/tutorial.ts
+  // roundReport, e.g. End of round) opens the report every time it's
+  // entered, by Next or Prev, built from that step's board. It stands in for
+  // the round-change report above, which only fires once per round per tab.
+  const stepRoundReport =
+    currentStep?.id && Object.hasOwn(TUTORIAL_PANELS, currentStep.id)
+      ? TUTORIAL_PANELS[currentStep.id].roundReport
+      : undefined;
+  const [isStepReportOpen, setIsStepReportOpen] = useState(false);
+  useEffect(() => {
+    setIsStepReportOpen(!!stepRoundReport);
+    // Only on entering a step.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep?.id]);
+  useEffect(() => {
+    if (isStepReportOpen && roundStartInfo) handleCloseRoundStart();
+  }, [isStepReportOpen, roundStartInfo, handleCloseRoundStart]);
+  const stepReportNote = useMemo(
+    () => (stepRoundReport ? renderTutorialParagraphs(stepRoundReport) : undefined),
+    [stepRoundReport],
+  );
+  const stepReportInfo = useMemo(() => {
+    if (!stepRoundReport) return null;
+    const isCreatorNow =
+      gameState.metadata.creator.toLowerCase() === TUTORIAL_PLAYER_ADDRESS.toLowerCase();
+    const scoresOf = (state: { creatorScore: number | bigint; joinerScore: number | bigint }) => ({
+      mine: Number(isCreatorNow ? state.creatorScore : state.joinerScore),
+      theirs: Number(isCreatorNow ? state.joinerScore : state.creatorScore),
+    });
+    const round = Number(gameState.turnState.currentRound);
+    // Scores when the previous round began: the earliest step before this
+    // one that's still in that round.
+    let roundStart: { mine: number; theirs: number } | undefined;
+    for (let i = currentStepIndex - 1; i >= 0; i--) {
+      const earlier = getScriptedStateForStepIndex(i);
+      const earlierRound = Number(earlier.turnState.currentRound);
+      if (earlierRound === round - 1) roundStart = scoresOf(earlier);
+      else if (earlierRound < round - 1) break;
+    }
+    const now = scoresOf(gameState);
+    return {
+      round,
+      isMyTurnFirst:
+        gameState.turnState.currentTurn.toLowerCase() === TUTORIAL_PLAYER_ADDRESS.toLowerCase(),
+      myRoundScore: roundStart ? now.mine - roundStart.mine : undefined,
+      opponentRoundScore: roundStart ? now.theirs - roundStart.theirs : undefined,
+      myScore: now.mine,
+      opponentScore: now.theirs,
+      maxScore: Number(gameState.maxScore),
+    };
+  }, [stepRoundReport, gameState, currentStepIndex]);
 
   // Map of onchain ship ID (bigint) to ship object. Tutorial IDs are strings;
   // when we need a ship we convert TutorialShipId -> bigint for this map only.
@@ -836,8 +873,8 @@ export function SimulatedGameDisplay({
       return false;
     }
     if (!isShipOwnedByCurrentPlayer(selectedShipId)) return false;
-    // Keep the panel visible during the simulated wallet approval flow.
-    if (isTransactionDialogOpen) {
+    // Keep the panel visible while a submitted move confirms ([...]).
+    if (isConfirmingMove) {
       return true;
     }
     if (!isMyTurn) {
@@ -853,7 +890,7 @@ export function SimulatedGameDisplay({
   }, [
     selectedShipId,
     isMyTurn,
-    isTransactionDialogOpen,
+    isConfirmingMove,
     isShipOwnedByCurrentPlayer,
     movedShipIdsSet,
     getShipAttributes,
@@ -926,7 +963,7 @@ export function SimulatedGameDisplay({
     if (
       !currentStep?.requiresTransaction ||
       !isShowingProposedMove ||
-      isTransactionDialogOpen
+      isConfirmingMove
     ) {
       return false;
     }
@@ -971,7 +1008,7 @@ export function SimulatedGameDisplay({
   }, [
     currentStep,
     isShowingProposedMove,
-    isTransactionDialogOpen,
+    isConfirmingMove,
     previewPosition,
     targetShipId,
     selectedWeaponType,
@@ -1347,9 +1384,13 @@ export function SimulatedGameDisplay({
     [actionOverride, isRammingMovePreview, targetShipId, selectedWeaponType, specialType],
   );
 
+  // While a submitted move confirms (isConfirmingMove), its button shows
+  // [...] like the live game's pending move.
   const confirmWidgetLabel = useMemo(
     () =>
-      computedActionType === ActionType.Retreat
+      isConfirmingMove
+        ? "[...]"
+        : computedActionType === ActionType.Retreat
         ? "RETREAT"
         : computedActionType === ActionType.Pass
           ? "HOLD FIRE"
@@ -1363,7 +1404,7 @@ export function SimulatedGameDisplay({
               : targetShipId != null && targetShipId !== 0n
                 ? "FIRE"
                 : "SUBMIT",
-    [computedActionType, selectedWeaponType, specialType, targetShipId, selectedShip],
+    [isConfirmingMove, computedActionType, selectedWeaponType, specialType, targetShipId, selectedShip],
   );
 
   // Last-move new position pulse on the grid when no ship is selected (in-game parity).
@@ -1535,16 +1576,14 @@ export function SimulatedGameDisplay({
       if (selectedShipId.toString() !== "1001") {
         return undefined;
       }
-      // Weapons + Anvil targeted: on the narrow/stacked layout the Proposed
-      // Move panel pulses its own weapon dropdown for this cue (no grid
-      // pulse needed here). The wide layout has no such panel (parity with
-      // GameDisplay.tsx's in-grid confirm widget) — pulse the ship's own
-      // cell instead, drawing the eye to the floating weapon selector above it.
+      // Weapons + Anvil targeted: the cue moves to the EMP choice itself —
+      // the Proposed Move panel's dropdown on the narrow layout, the confirm
+      // widget's EMP button on the wide one (tutorialWeaponOption below).
       if (
         selectedWeaponType === "weapon" &&
         targetShipId?.toString() === "2002"
       ) {
-        return useSideLayout ? cellsForIds([selectedShipId]) : undefined;
+        return undefined;
       }
       // Weapons, not yet targeting Anvil: pulse Anvil so they open with the gun first.
       if (selectedWeaponType === "weapon") {
@@ -2436,7 +2475,7 @@ export function SimulatedGameDisplay({
         shipId: idString,
       });
       if (!validation.valid) {
-        toast.error(validation.message || "Action not allowed");
+        toast.error(validation.message || TUTORIAL_NOT_ALLOWED.select);
         return;
       }
 
@@ -2515,7 +2554,7 @@ export function SimulatedGameDisplay({
         );
 
         if (!isValidMove) {
-          toast.error("Move not allowed in this tutorial step");
+          toast.error(TUTORIAL_NOT_ALLOWED.move);
           return;
         }
 
@@ -2525,7 +2564,7 @@ export function SimulatedGameDisplay({
           position,
         });
         if (!moveValidation.valid) {
-          toast.error(moveValidation.message || "Move not allowed");
+          toast.error(moveValidation.message || TUTORIAL_NOT_ALLOWED.move);
           return;
         }
 
@@ -2640,7 +2679,7 @@ export function SimulatedGameDisplay({
           setPreviewPosition(null);
           return;
         } else {
-          toast.error(shootValidation.message || "Shoot not allowed");
+          toast.error(shootValidation.message || TUTORIAL_NOT_ALLOWED.shoot);
           return;
         }
       }
@@ -2665,7 +2704,7 @@ export function SimulatedGameDisplay({
           return;
         } else {
           toast.error(
-            specialValidation.message || "Special ability not allowed",
+            specialValidation.message || TUTORIAL_NOT_ALLOWED.special,
           );
           return;
         }
@@ -2695,7 +2734,7 @@ export function SimulatedGameDisplay({
           setPreviewPosition(null);
           return;
         } else {
-          toast.error(assistValidation.message || "Assist not allowed");
+          toast.error(assistValidation.message || TUTORIAL_NOT_ALLOWED.assist);
           return;
         }
       }
@@ -2717,7 +2756,7 @@ export function SimulatedGameDisplay({
   // the live game flow where the player first stages a move on the grid, then
   // confirms it via the action panel, which may trigger a (simulated) transaction.
   const handleSubmitMove = useCallback(() => {
-    if (!selectedShipId) {
+    if (!selectedShipId || isConfirmingMove) {
       return;
     }
 
@@ -2744,7 +2783,7 @@ export function SimulatedGameDisplay({
         return;
       }
       if (!currentStep.allowedActions.moveShip) {
-        toast.error("Move not allowed in this tutorial step");
+        toast.error(TUTORIAL_NOT_ALLOWED.move);
         return;
       }
 
@@ -2772,9 +2811,9 @@ export function SimulatedGameDisplay({
 
       executeAction(shootAction);
       // For the shooting step, keep selection and preview/target state while
-      // the simulated transaction dialog is open so the player continues to
+      // a submitted move confirms so the player continues to
       // see the staged move+shoot in the UI. State will be cleared when the
-      // step advances after tx approval.
+      // step advances once it confirms.
       return;
     }
 
@@ -2873,7 +2912,7 @@ export function SimulatedGameDisplay({
         !currentStep?.allowedActions.moveShip ||
         selectedShipId.toString() !== currentStep.allowedActions.moveShip.shipId
       ) {
-        toast.error("Move not allowed in this tutorial step");
+        toast.error(TUTORIAL_NOT_ALLOWED.move);
         return;
       }
 
@@ -2887,18 +2926,10 @@ export function SimulatedGameDisplay({
       executeAction(action);
     }
 
-    // For most steps, clear local staging after submitting.
-    // Keep local staging for steps that rely on pending tx preview state:
-    // - shoot: staged move+target should remain visible until tx decision
-    // - special-emp: staged target should remain visible until tx decision
-    // - rescue: staged branch choice (retreat or sniper shot) should remain
-    //   visible until approve, or until player cancels via top move-selection UI.
-    if (
-      currentStep?.id !== "shoot" &&
-      currentStep?.id !== "special-emp" &&
-      currentStep?.id !== "rescue" &&
-      currentStep?.id !== "rescue-outcome-sniper"
-    ) {
+    // Steps without a transaction land at once, so clear the staging now.
+    // Steps with one keep it on screen, its button showing [...], until the
+    // move confirms (cleared below), like a live game's pending move.
+    if (!currentStep?.requiresTransaction) {
       setPreviewPosition(null);
       setTargetShipId(null);
       setSelectedShipId(null);
@@ -2913,32 +2944,45 @@ export function SimulatedGameDisplay({
     selectedWeaponType,
     executeAction,
     actionOverride,
+    isConfirmingMove,
   ]);
 
   const tutorialGridPanelConfig = useMemo(() => {
     if (!currentStep?.id) return null;
     const base = getTutorialGridPanelConfig(currentStep.id);
     if (!base) return null;
+    // A report-only step (End of round) is just its round report: no panel.
+    if (isReportOnlyStep(currentStep.id)) return null;
     if (currentStep.id === "completion-sniper") {
       return {
         ...base,
         primaryCta: {
-          eyebrow: "Ready for more?",
-          headline: "Take your fleet live",
-          supporting: TUTORIAL_COMPLETION_SNIPER_PRIMARY_CTA_SUPPORTING,
-          buttonLabel: isTutorialRewardAlreadyClaimed
-            ? "Reward Claimed / View Ships"
+          eyebrow: TUTORIAL_COMPLETION_CARD.eyebrow,
+          headline: continuesWithoutClaim
+            ? TUTORIAL_COMPLETION_CARD.continueHeadline
+            : TUTORIAL_COMPLETION_CARD.headline,
+          supporting: continuesWithoutClaim
+            ? TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING
+            : TUTORIAL_COMPLETION_SNIPER_PRIMARY_CTA_SUPPORTING,
+          buttonLabel: continuesWithoutClaim
+            ? TUTORIAL_COMPLETION_CARD.buttons.continueToFleet
+            : isTutorialRewardAlreadyClaimed
+            ? continueToFleetSelection
+              ? TUTORIAL_COMPLETION_CARD.buttons.continueToFleet
+              : TUTORIAL_COMPLETION_CARD.buttons.rewardClaimed
             : !address
-              ? "Log in"
+              ? TUTORIAL_COMPLETION_CARD.buttons.signIn
               : isTutorialSelfieCheckBlocking
                 ? isSelfieCheckVerifying
-                  ? "Verifying…"
-                  : "Verify with Selfie Check to claim"
+                  ? TUTORIAL_COMPLETION_CARD.buttons.verifying
+                  : TUTORIAL_COMPLETION_CARD.buttons.verify
                 : pendingTutorialClaimPath === "win" &&
                     (isTutorialClaimPending || isTutorialClaimConfirming)
-                  ? "Claiming..."
-                  : "Claim 2 ships + win",
-          onClick: isTutorialSelfieCheckBlocking
+                  ? TUTORIAL_COMPLETION_CARD.buttons.claiming
+                  : TUTORIAL_COMPLETION_CARD.buttons.claimWin,
+          onClick: continuesWithoutClaim
+            ? () => onBack?.()
+            : isTutorialSelfieCheckBlocking
             ? openSelfieCheckWidget
             : () => void runTutorialClaimTx("win", "completeTutorialWinPath"),
         },
@@ -2948,22 +2992,32 @@ export function SimulatedGameDisplay({
       return {
         ...base,
         primaryCta: {
-          eyebrow: "Ready for more?",
-          headline: "Take your fleet live",
-          supporting: TUTORIAL_COMPLETION_RETREAT_PRIMARY_CTA_SUPPORTING,
-          buttonLabel: isTutorialRewardAlreadyClaimed
-            ? "Reward Claimed / View Ships"
+          eyebrow: TUTORIAL_COMPLETION_CARD.eyebrow,
+          headline: continuesWithoutClaim
+            ? TUTORIAL_COMPLETION_CARD.continueHeadline
+            : TUTORIAL_COMPLETION_CARD.headline,
+          supporting: continuesWithoutClaim
+            ? TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING
+            : TUTORIAL_COMPLETION_RETREAT_PRIMARY_CTA_SUPPORTING,
+          buttonLabel: continuesWithoutClaim
+            ? TUTORIAL_COMPLETION_CARD.buttons.continueToFleet
+            : isTutorialRewardAlreadyClaimed
+            ? continueToFleetSelection
+              ? TUTORIAL_COMPLETION_CARD.buttons.continueToFleet
+              : TUTORIAL_COMPLETION_CARD.buttons.rewardClaimed
             : !address
-              ? "Log in"
+              ? TUTORIAL_COMPLETION_CARD.buttons.signIn
               : isTutorialSelfieCheckBlocking
                 ? isSelfieCheckVerifying
-                  ? "Verifying…"
-                  : "Verify with Selfie Check to claim"
+                  ? TUTORIAL_COMPLETION_CARD.buttons.verifying
+                  : TUTORIAL_COMPLETION_CARD.buttons.verify
                 : pendingTutorialClaimPath === "loss" &&
                     (isTutorialClaimPending || isTutorialClaimConfirming)
-                  ? "Claiming..."
-                  : "Claim 3 ships + loss record",
-          onClick: isTutorialSelfieCheckBlocking
+                  ? TUTORIAL_COMPLETION_CARD.buttons.claiming
+                  : TUTORIAL_COMPLETION_CARD.buttons.claimLoss,
+          onClick: continuesWithoutClaim
+            ? () => onBack?.()
+            : isTutorialSelfieCheckBlocking
             ? openSelfieCheckWidget
             : () => void runTutorialClaimTx("loss", "completeTutorialLossPath"),
         },
@@ -2972,8 +3026,11 @@ export function SimulatedGameDisplay({
     return base;
   }, [
     address,
+    continueToFleetSelection,
+    continuesWithoutClaim,
     currentStep?.id,
     isTutorialRewardAlreadyClaimed,
+    onBack,
     isTutorialClaimConfirming,
     isTutorialClaimPending,
     isTutorialSelfieCheckBlocking,
@@ -2982,6 +3039,40 @@ export function SimulatedGameDisplay({
     pendingTutorialClaimPath,
     runTutorialClaimTx,
   ]);
+
+  // The round report: a step's own (stepReportInfo, with Bosch's note) or
+  // the round-change one. Mounted in both layouts below.
+  const roundReportModal =
+    isStepReportOpen && stepReportInfo ? (
+      <RoundStartModal
+        key={`step-report-${currentStep?.id}`}
+        round={stepReportInfo.round}
+        isMyTurnFirst={stepReportInfo.isMyTurnFirst}
+        myRoundScore={stepReportInfo.myRoundScore}
+        opponentRoundScore={stepReportInfo.opponentRoundScore}
+        myScore={stepReportInfo.myScore}
+        opponentScore={stepReportInfo.opponentScore}
+        maxScore={stepReportInfo.maxScore}
+        note={stepReportNote}
+        onClose={() => {
+          setIsStepReportOpen(false);
+          // A report-only step has nothing else to show: Acknowledged moves on.
+          if (isReportOnlyStep(currentStep?.id)) nextStep();
+        }}
+      />
+    ) : roundStartInfo ? (
+      <RoundStartModal
+        key={roundStartInfo.round.toString()}
+        round={roundStartInfo.round}
+        isMyTurnFirst={roundStartInfo.isMyTurnFirst}
+        myRoundScore={roundStartInfo.myRoundScore}
+        opponentRoundScore={roundStartInfo.opponentRoundScore}
+        myScore={roundStartInfo.myScore}
+        opponentScore={roundStartInfo.opponentScore}
+        maxScore={roundStartInfo.maxScore}
+        onClose={handleCloseRoundStart}
+      />
+    ) : null;
 
   const isMobileJoiner =
     gameState.metadata.joiner.toLowerCase() ===
@@ -3066,7 +3157,7 @@ export function SimulatedGameDisplay({
     mission: TUTORIAL_DIALOG_MISSION,
     snapshot: dialogSnapshot,
     enabled: true,
-    paused: roundStartInfo != null,
+    paused: roundStartInfo != null || isStepReportOpen,
     // New lines wait for the player's turn, when they're looking at the board.
     holdNewLines: !isMyTurn,
     persist: false,
@@ -3625,11 +3716,11 @@ export function SimulatedGameDisplay({
                             borderRadius: 0,
                           }}
                         >
-                          Quit
+                          {exitLabel}
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : isReportOnlyStep(currentStep?.id) ? null : (
                     <div className="text-sm text-text-secondary">
                       Tutorial briefing unavailable for this step.
                     </div>
@@ -3673,6 +3764,7 @@ export function SimulatedGameDisplay({
                           <button
                             type="button"
                             onClick={handleSubmitMove}
+                            disabled={isConfirmingMove}
                             className={`w-full px-2 py-1 border border-solid text-xs uppercase tracking-wider ${
                               shouldPulseSubmitMoveButton
                                 ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
@@ -3691,7 +3783,7 @@ export function SimulatedGameDisplay({
                               borderRadius: 0,
                             }}
                           >
-                            Submit
+                            {isConfirmingMove ? "[...]" : "Submit"}
                           </button>
                         </div>
                       </div>
@@ -3941,6 +4033,7 @@ export function SimulatedGameDisplay({
                             <button
                               type="button"
                               onClick={handleSubmitMove}
+                              disabled={isConfirmingMove}
                               className={`w-full px-2 py-1 border border-solid text-[10px] uppercase tracking-wider ${
                                 shouldPulseSubmitMoveButton
                                   ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
@@ -3959,7 +4052,7 @@ export function SimulatedGameDisplay({
                                 borderRadius: 0,
                               }}
                             >
-                              Submit
+                              {isConfirmingMove ? "[...]" : "Submit"}
                             </button>
                           </div>
                         </div>
@@ -4045,6 +4138,9 @@ export function SimulatedGameDisplay({
                       retreatPrepShipId={retreatPrepShipIdForDisplay}
                       retreatPrepIsCreator={retreatPrepIsCreator}
                       tutorialHighlightCells={tutorialHighlightCells}
+                      tutorialWeaponOption={
+                        useSideLayout && shouldHighlightSpecialEmpWeaponDropdown ? "special" : undefined
+                      }
                       tutorialDefaultLabel={tutorialDefaultLabel}
                       onGridRightClickDeselect={handleGridRightClickDeselect}
                       setSelectedShipId={setSelectedShipIdForDisplay}
@@ -4205,19 +4301,7 @@ export function SimulatedGameDisplay({
             </div>
           </div>
         ) : null}
-        {roundStartInfo && (
-          <RoundStartModal
-            key={roundStartInfo.round.toString()}
-            round={roundStartInfo.round}
-            isMyTurnFirst={roundStartInfo.isMyTurnFirst}
-            myRoundScore={roundStartInfo.myRoundScore}
-            opponentRoundScore={roundStartInfo.opponentRoundScore}
-            myScore={roundStartInfo.myScore}
-            opponentScore={roundStartInfo.opponentScore}
-            maxScore={roundStartInfo.maxScore}
-            onClose={handleCloseRoundStart}
-          />
-        )}
+        {roundReportModal}
       </div>
       </GridHoverProvider>
     );
@@ -4415,6 +4499,7 @@ export function SimulatedGameDisplay({
                     <button
                       type="button"
                       onClick={handleSubmitMove}
+                      disabled={isConfirmingMove}
                       className={`w-full px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 min-w-0 ${
                         shouldPulseSubmitMoveButton
                           ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
@@ -4432,7 +4517,7 @@ export function SimulatedGameDisplay({
                         borderRadius: 0,
                       }}
                     >
-                      {isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
+                      {isConfirmingMove ? "[...]" : isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
                     </button>
                   </div>
                   <button
@@ -4864,6 +4949,9 @@ export function SimulatedGameDisplay({
                   retreatPrepShipId={retreatPrepShipIdForDisplay}
                   retreatPrepIsCreator={retreatPrepIsCreator}
                   tutorialHighlightCells={tutorialHighlightCells}
+                  tutorialWeaponOption={
+                    useSideLayout && shouldHighlightSpecialEmpWeaponDropdown ? "special" : undefined
+                  }
                   tutorialDefaultLabel={tutorialDefaultLabel}
                   onGridRightClickDeselect={handleGridRightClickDeselect}
                   setSelectedShipId={setSelectedShipIdForDisplay}
@@ -4896,6 +4984,7 @@ export function SimulatedGameDisplay({
                         <button
                           type="button"
                           onClick={handleSubmitMove}
+                          disabled={isConfirmingMove}
                           className={`w-full px-4 py-2 text-xs uppercase font-bold tracking-widest transition-colors duration-100 ${
                             shouldPulseSubmitMoveButton
                               ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
@@ -4942,6 +5031,7 @@ export function SimulatedGameDisplay({
                   onPrevious={() => previousStep()}
                   onReset={() => resetTutorial()}
                   onQuit={onBack}
+                  quitLabel={exitLabel}
                   tutorialRewardCacheDebug={
                     isTutorialCompletionStep
                       ? {
@@ -5014,43 +5104,6 @@ export function SimulatedGameDisplay({
         </div>
       </div>
 
-
-      {selectedShipId && (
-        <div className="mt-4 bg-black/40 border p-4" style={{ borderColor: "var(--color-cyan)" }}>
-          <p className="text-cyan font-mono">
-            Selected Ship:{" "}
-            {shipMap.get(selectedShipId)?.name || selectedShipId.toString()}
-          </p>
-          {currentStep?.allowedActions.moveShip &&
-            selectedShipId.toString() ===
-              currentStep.allowedActions.moveShip.shipId && (
-              <p className="text-amber text-sm mt-2">
-                Click a highlighted grid cell to move.
-              </p>
-            )}
-          {currentStep?.allowedActions.shoot &&
-            selectedShipId.toString() ===
-              currentStep.allowedActions.shoot.shipId && (
-              <p className="text-amber text-sm mt-2">
-                Click a highlighted enemy ship to shoot.
-              </p>
-            )}
-          {currentStep?.allowedActions.useSpecial &&
-            selectedShipId.toString() ===
-              currentStep.allowedActions.useSpecial.shipId && (
-              <p className="text-amber text-sm mt-2">
-                Click a highlighted ship to use your special ability.
-              </p>
-            )}
-          {currentStep?.allowedActions.assist &&
-            selectedShipId.toString() ===
-              currentStep.allowedActions.assist.shipId && (
-              <p className="text-amber text-sm mt-2">
-                Click the highlighted friendly ship to assist it.
-              </p>
-            )}
-        </div>
-      )}
       {/* Fleet Details Modal */}
       {showFleetModal && (() => {
         const buildFleetDetailCards = (
@@ -5087,19 +5140,7 @@ export function SimulatedGameDisplay({
           />
         );
       })()}
-      {roundStartInfo && (
-        <RoundStartModal
-          key={roundStartInfo.round.toString()}
-          round={roundStartInfo.round}
-          isMyTurnFirst={roundStartInfo.isMyTurnFirst}
-          myRoundScore={roundStartInfo.myRoundScore}
-          opponentRoundScore={roundStartInfo.opponentRoundScore}
-          myScore={roundStartInfo.myScore}
-          opponentScore={roundStartInfo.opponentScore}
-          maxScore={roundStartInfo.maxScore}
-          onClose={handleCloseRoundStart}
-        />
-      )}
+      {roundReportModal}
     </div>
     </GridHoverProvider>
   );

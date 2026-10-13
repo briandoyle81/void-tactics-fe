@@ -1,4 +1,5 @@
 import { Ship, validSpecialsForVariant } from "../types/types";
+import { randomMockDroneName } from "../data/mockDroneNames";
 
 // Random ship names for decorative/demo ship displays (no on-chain identity
 // backs these — see callers for how they're used).
@@ -15,15 +16,14 @@ const SHIP_NAMES = [
 
 /**
  * Generate a random, fully-formed decorative Ship — no backend/on-chain data
- * required. `name` is variant-1-style (mock real-world-style name); a
- * variant-2 ship's real DroneNames-generated name must be patched in
- * separately by the caller if desired (that generation lives on-chain — see
- * HeroShipShowcase.tsx for the pattern). Uses Math.random(), so callers that
+ * required. `name` is a mock: SHIP_NAMES for variant 1, a drone-style
+ * call sign (data/mockDroneNames.ts) for variant 2. Uses Math.random(), so callers that
  * render during SSR must only call this client-side, after mount, to avoid a
  * hydration mismatch.
  */
 export function generateRandomShip(index: number, variant: number): Ship {
-  const name = SHIP_NAMES[Math.floor(Math.random() * SHIP_NAMES.length)];
+  const name =
+    variant === 2 ? randomMockDroneName() : SHIP_NAMES[Math.floor(Math.random() * SHIP_NAMES.length)];
 
   // Every 5th ship gets rank 3-5
   let shipsDestroyed = Math.floor(Math.random() * 10); // Default rank 1

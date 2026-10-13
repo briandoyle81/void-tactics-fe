@@ -76,7 +76,6 @@ export interface TutorialStep {
     uiElements?: string[];
   };
   requiresTransaction?: boolean;
-  showTransactionAfter?: boolean; // Show transaction dialog after executing action (instead of before)
   onStepComplete?: (actionData: TutorialAction | null) => boolean; // Return true if step should progress
   nextStepCondition?: (gameState: SimulatedGameState) => boolean;
   autoAdvance?: boolean; // Automatically advance after action
@@ -158,7 +157,8 @@ export interface TutorialContextValue {
   rescueCompletionBranch: TutorialRescueBranch;
   currentStep: TutorialStep | null;
   gameState: SimulatedGameState;
-  isTransactionDialogOpen: boolean;
+  /** A submitted move is "confirming" (its Submit shows [...]) before it lands. */
+  isConfirmingMove: boolean;
   pendingAction: TutorialAction | null;
   isStepComplete: boolean;
   isStepHydrated: boolean;
@@ -171,10 +171,6 @@ export interface TutorialContextValue {
   executeAction: (action: TutorialAction) => void;
   nextStep: () => void;
   previousStep: () => void;
-  openTransactionDialog: (action: TutorialAction) => void;
-  closeTransactionDialog: () => void;
-  approveTransaction: () => void;
-  rejectTransaction: () => void;
   resetTutorial: () => void;
 }
 

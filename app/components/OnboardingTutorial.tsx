@@ -1,15 +1,22 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useOnboardingTutorial } from "../hooks/useOnboardingTutorial";
 import {
   TutorialContextValue,
   TUTORIAL_STEP_STORAGE_KEY,
   getTutorialAnalyticsRewardPath,
 } from "../types/onboarding";
-import { SimulatedTransactionDialog } from "./SimulatedTransactionDialog";
 import { SimulatedGameDisplay } from "./SimulatedGameDisplay";
 import posthog from "posthog-js";
+import { useAppMode } from "../hooks/useAppMode";
+import { useReportTutorialCompletionWeb2 } from "../hooks/useTutorialCompletedWeb2";
+import {
+  getTutorialReturnTo,
+  isTutorialCompletionStep,
+  markKnownPlayer,
+  persistFirstBattleFinished,
+} from "../utils/tutorialCompletion";
 
 // Create context for tutorial
 const TutorialContext = createContext<TutorialContextValue | null>(null);
@@ -27,11 +34,14 @@ export function useTutorialContext() {
 interface OnboardingTutorialProps {
   onComplete?: () => void;
   onSkip?: () => void;
+  /** Signed out, leaving the battle is the way to sign in. */
+  isSignedIn?: boolean;
 }
 
 export function OnboardingTutorial({
   onComplete,
   onSkip,
+  isSignedIn = true,
 }: OnboardingTutorialProps) {
   const tutorialContext = useOnboardingTutorial();
 
@@ -40,11 +50,18 @@ export function OnboardingTutorial({
     currentStepIndex,
     displayStepNumber,
     rescueCompletionBranch,
-    isTransactionDialogOpen,
-    pendingAction,
-    approveTransaction,
-    rejectTransaction,
   } = tutorialContext;
+  const appMode = useAppMode();
+  // Opened as the Operations map's first mission (see app/play/page.tsx).
+  const [fromOperations] = useState(() => getTutorialReturnTo() === "mission");
+
+  // Reaching a completion step finishes the tutorial: on this device, and on
+  // a web2 account (web3 records it on chain with the reward claim).
+  const reachedCompletion = isTutorialCompletionStep(currentStep?.id);
+  useEffect(() => {
+    if (reachedCompletion) persistFirstBattleFinished();
+  }, [reachedCompletion]);
+  useReportTutorialCompletionWeb2(currentStep?.id, appMode === "web2");
 
   const handleSkip = () => {
     const stepId = currentStep?.id ?? "unknown";
@@ -59,6 +76,9 @@ export function OnboardingTutorial({
       rescue_branch: rescueCompletionBranch,
       reward_path: rewardPath,
     });
+    // Leaving signed out means "Sign in": this browser has a player now, so
+    // /play shows sign-in rather than the battle from here on.
+    if (!isSignedIn) markKnownPlayer();
     // Clear saved step index when quitting the tutorial.
     if (typeof window !== "undefined") {
       localStorage.removeItem(TUTORIAL_STEP_STORAGE_KEY);
@@ -78,13 +98,8 @@ export function OnboardingTutorial({
             <SimulatedGameDisplay
               tutorialContext={tutorialContext}
               onBack={handleSkip}
-            />
-
-            <SimulatedTransactionDialog
-              isOpen={isTransactionDialogOpen}
-              action={pendingAction}
-              onApprove={approveTransaction}
-              onReject={rejectTransaction}
+              continueToFleetSelection={fromOperations}
+              exitLabel={isSignedIn ? "Quit" : "Sign in"}
             />
           </>
         )}
