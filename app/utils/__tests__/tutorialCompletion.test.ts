@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { signedOutLanding } from "../tutorialCompletion";
 
 describe("signedOutLanding", () => {
-  const fresh = { knownPlayer: false, hasDeepLink: false, leftBattleThisVisit: false };
+  const fresh = { knownPlayer: false, hasDeepLink: false, wantsSignIn: false };
 
-  it("sends a new player straight into the battle", () => {
-    expect(signedOutLanding(fresh)).toBe("battle");
+  it("shows a new player the map, First Contact first", () => {
+    expect(signedOutLanding(fresh)).toBe("map");
   });
 
   it("shows sign-in to a returning player", () => {
@@ -16,7 +16,7 @@ describe("signedOutLanding", () => {
     expect(signedOutLanding({ ...fresh, hasDeepLink: true })).toBe("signIn");
   });
 
-  it("doesn't reopen the battle after the player left it", () => {
-    expect(signedOutLanding({ ...fresh, leftBattleThisVisit: true })).toBe("signIn");
+  it("shows sign-in when they asked for it (Sign Up/Login, Skip Tutorial)", () => {
+    expect(signedOutLanding({ ...fresh, wantsSignIn: true })).toBe("signIn");
   });
 });

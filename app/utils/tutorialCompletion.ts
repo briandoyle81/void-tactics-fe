@@ -72,17 +72,18 @@ export function markKnownPlayer(): void {
 }
 
 /**
- * What a signed-out visitor sees at /play: a new player goes straight into
- * the battle, unless they followed a link to a particular screen (likely an
- * account holder) or already left the battle this visit; everyone else gets
- * the sign-in screen.
+ * What a signed-out visitor sees at /play: a new player lands on the
+ * Operations map with First Contact as their first mission (no account
+ * needed to play it). The sign-in screen instead for a returning player, a
+ * link to a particular screen or `?signin=1`, or when they asked to sign in
+ * (Sign Up/Login, Skip Tutorial, or leaving the battle via Sign in).
  */
 export function signedOutLanding(params: {
   knownPlayer: boolean;
   hasDeepLink: boolean;
-  leftBattleThisVisit: boolean;
-}): "battle" | "signIn" {
-  return params.knownPlayer || params.hasDeepLink || params.leftBattleThisVisit ? "signIn" : "battle";
+  wantsSignIn: boolean;
+}): "map" | "signIn" {
+  return params.knownPlayer || params.hasDeepLink || params.wantsSignIn ? "signIn" : "map";
 }
 
 // Where to go when the tutorial closes. Kept in storage, like the
@@ -128,9 +129,23 @@ function readFlags(storageKey: string): Record<string, boolean> {
   }
 }
 
+// Skipped before signing in (Skip Tutorial on the signed-out map): counts
+// for whoever signs in on this device.
+const SIGNED_OUT_SKIP = "*";
+
 export function hasSkippedTutorial(playerKey: string): boolean {
   if (typeof window === "undefined") return false;
-  return readFlags(SKIPPED_KEY)[playerKey.toLowerCase()] === true;
+  const flags = readFlags(SKIPPED_KEY);
+  return flags[playerKey.toLowerCase()] === true || flags[SIGNED_OUT_SKIP] === true;
+}
+
+/**
+ * Skip Tutorial while signed out (it then asks them to sign in). Also marks
+ * the browser as a player's, so /play keeps showing sign-in, not the map.
+ */
+export function persistTutorialSkippedSignedOut(): void {
+  persistTutorialSkipped(SIGNED_OUT_SKIP);
+  markKnownPlayer();
 }
 
 export function persistTutorialSkipped(playerKey: string): void {

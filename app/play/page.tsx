@@ -14,6 +14,7 @@ import { SessionRestoreProbe } from "../components/SessionRestoreProbe";
 import Header from "../components/Header";
 import { GameNav, type GameSection } from "../components/GameNav";
 import { BootScreen } from "../components/BootScreen";
+import { SignedOutOperations } from "../components/operations/SignedOutOperations";
 import { CommandDeckWeb3 } from "../components/commandDeck/CommandDeckWeb3";
 import { CommandDeckWeb2 } from "../components/commandDeck/CommandDeckWeb2";
 import type { CommandDeckDestination } from "../components/commandDeck/CommandDeck";
@@ -293,8 +294,9 @@ export default function GameClient() {
     // `?signin=1` (the site's Sign Up/Login) asks for the sign-in screen too.
     hadDeepLinkRef.current = !!getUrlParam("tab") || getUrlParam("signin") === "1";
   }
-  // Set once the player leaves the battle, so it doesn't reopen this visit.
-  const leftBattleRef = useRef(false);
+  // Signed out: the player asked for the sign-in screen (Sign Up/Login or
+  // Skip Tutorial on the map).
+  const [signInRequested, setSignInRequested] = useState(false);
   useLayoutEffect(() => {
     setIsHydrated(true);
     // Read above (hadDeepLinkRef); it has no screen of its own to keep.
@@ -430,7 +432,6 @@ export default function GameClient() {
   // Opened from the Operations map: back there, on fleet selection once the
   // battle's finished (the tutorial was the run's first mission).
   const closeTutorial = useCallback(() => {
-    leftBattleRef.current = true;
     const returnTo = getTutorialReturnTo();
     setTutorialReturnTo(null);
     setIsTutorialOpen(false);
@@ -474,21 +475,23 @@ export default function GameClient() {
     if (isSignedIn) markKnownPlayer();
   }, [isSignedIn]);
 
-  // A new player arriving signed out goes straight into the battle (sign-in
-  // is offered from it). Waits for any session restore to settle, like the
-  // Command Deck reset above, so a returning session doesn't flash into it.
+  // Signed out, a new player gets the Operations map with First Contact
+  // first; others the sign-in screen (signedOutLanding). Waits for any
+  // session restore to settle, like the Command Deck reset above, so a
+  // returning session doesn't flash the signed-out map.
   const sessionSettled = hasRestoreProbeReported && !isRestoringSession && !isCheckingSignIn;
+  const signedOutView =
+    isHydrated && !isSignedIn
+      ? signedOutLanding({
+          knownPlayer: isKnownPlayer(),
+          hasDeepLink: hadDeepLinkRef.current === true,
+          wantsSignIn: signInRequested,
+        })
+      : null;
+  const showSignedOutMap = signedOutView === "map" && sessionSettled;
   useEffect(() => {
-    if (!isHydrated || !sessionSettled || isSignedIn || isTutorialOpen) return;
-    const landing = signedOutLanding({
-      knownPlayer: isKnownPlayer(),
-      hasDeepLink: hadDeepLinkRef.current === true,
-      leftBattleThisVisit: leftBattleRef.current,
-    });
-    if (landing !== "battle") return;
-    posthog.capture("first_visit_battle_started");
-    openTutorial();
-  }, [isHydrated, sessionSettled, isSignedIn, isTutorialOpen, openTutorial]);
+    if (showSignedOutMap) posthog.capture("first_visit_map_shown");
+  }, [showSignedOutMap]);
 
   const hideGlobalChrome = isTutorialOpen || isGamesDetailActive || isManageNavyPurchaseActive;
   const showNav = isHydrated && isSignedIn && !hideGlobalChrome;
@@ -513,7 +516,16 @@ export default function GameClient() {
   } else if (isCheckingSignIn) {
     content = <CenteredMessage>Connecting...</CenteredMessage>;
   } else if (!isSignedIn) {
-    content = <BootScreen onStartFirstBattle={openTutorial} firstBattleCompleted={firstBattleCompleted} />;
+    content =
+      signedOutView === "map" ? (
+        showSignedOutMap ? (
+          <SignedOutOperations onSignIn={() => setSignInRequested(true)} />
+        ) : (
+          <CenteredMessage>Connecting...</CenteredMessage>
+        )
+      ) : (
+        <BootScreen onStartFirstBattle={openTutorial} firstBattleCompleted={firstBattleCompleted} />
+      );
   } else {
     content = (
       <>
