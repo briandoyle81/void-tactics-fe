@@ -81,7 +81,6 @@ export type TutorialGridPanelConfig = {
   tasks?: React.ReactNode[];
   tasksSectionLabel?: React.ReactNode;
   primaryCta?: {
-    eyebrow: string;
     headline: string;
     supporting: React.ReactNode;
     buttonLabel: string;

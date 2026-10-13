@@ -33,7 +33,6 @@ export interface TutorialGridTaskPanelProps {
   quitLabel?: string;
   /** Optional conversion-style CTA (full-width button below supporting copy). */
   primaryCta?: {
-    eyebrow: string;
     headline: string;
     supporting: ReactNode;
     buttonLabel: string;
@@ -225,13 +224,7 @@ export function TutorialGridTaskPanel({
         >
           <div className="space-y-1.5 px-2.5 pb-2 pt-2.5">
             <p
-              className="text-sm uppercase tracking-[0.22em] text-cyan/95"
-              style={mono}
-            >
-              {primaryCta.eyebrow}
-            </p>
-            <p
-              className="text-base font-bold uppercase tracking-wide leading-tight text-white"
+              className="text-base font-bold uppercase tracking-wide leading-tight text-cyan"
               style={{
                 fontFamily:
                   "var(--font-rajdhani), 'Arial Black', sans-serif",

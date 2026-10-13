@@ -290,12 +290,15 @@ export default function GameClient() {
   // effects run first) or the restore below may already have filled a tab in.
   const hadDeepLinkRef = useRef<boolean | null>(null);
   if (hadDeepLinkRef.current === null && typeof window !== "undefined") {
-    hadDeepLinkRef.current = !!getUrlParam("tab");
+    // `?signin=1` (the site's Sign Up/Login) asks for the sign-in screen too.
+    hadDeepLinkRef.current = !!getUrlParam("tab") || getUrlParam("signin") === "1";
   }
   // Set once the player leaves the battle, so it doesn't reopen this visit.
   const leftBattleRef = useRef(false);
   useLayoutEffect(() => {
     setIsHydrated(true);
+    // Read above (hadDeepLinkRef); it has no screen of its own to keep.
+    if (getUrlParam("signin")) setUrlParams({ signin: null }, { replace: true });
     if (!getUrlParam("tab")) {
       let lastSearch: string | null = null;
       try {

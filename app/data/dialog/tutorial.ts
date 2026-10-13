@@ -186,7 +186,6 @@ export const TUTORIAL_DECISION_LABEL = "Make your decision";
 
 /** The completion card under either ending's brief. */
 export const TUTORIAL_COMPLETION_CARD = {
-  eyebrow: "Ready for more?",
   headline: "Take your fleet live",
   /** Opened from the Operations map in web2 (no reward claim). */
   continueHeadline: "On to the operation",

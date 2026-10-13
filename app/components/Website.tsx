@@ -7,10 +7,26 @@ import { INFO_GRID_CLASS, InfoFeatureSections, InfoHero } from "./InfoSections";
 import { PLAY_PATH } from "../config/routes";
 import posthog from "posthog-js";
 
-function PlayLink({ surface, className }: { surface: string; className: string }) {
+// Into the game client. Plain Play takes a new visitor straight into their
+// first battle; `?signin=1` opens the sign-in screen instead (see
+// signedOutLanding in app/utils/tutorialCompletion.ts). That one is a plain
+// page load, not a client-side Link: the client reads the query on its first
+// render, which a Link transition reaches before the URL changes.
+function PlayLink({
+  surface,
+  className,
+  href = PLAY_PATH,
+  label = "[PLAY]",
+}: {
+  surface: string;
+  className: string;
+  href?: string;
+  label?: string;
+}) {
+  const Anchor = href === PLAY_PATH ? Link : "a";
   return (
-    <Link
-      href={PLAY_PATH}
+    <Anchor
+      href={href}
       onClick={() => posthog.capture("website_play_clicked", { surface })}
       className={`inline-flex items-center justify-center border-2 border-solid uppercase font-black tracking-wider transition-colors duration-150 hover:bg-steel ${className}`}
       style={{
@@ -22,8 +38,8 @@ function PlayLink({ surface, className }: { surface: string; className: string }
         boxShadow: "0 0 22px rgba(86, 214, 255, 0.18)",
       }}
     >
-      [PLAY]
-    </Link>
+      {label}
+    </Anchor>
   );
 }
 
@@ -51,7 +67,12 @@ function SiteHeader() {
       <div className="ml-auto flex items-center gap-2">
         <HeaderDiscordLink compact />
         <HeaderXLink compact />
-        <PlayLink surface="header" className="h-8 px-4 text-sm" />
+        <PlayLink
+          surface="header"
+          href={`${PLAY_PATH}?signin=1`}
+          label="[SIGN UP/LOGIN]"
+          className="h-8 px-4 text-sm"
+        />
       </div>
     </header>
   );
@@ -83,7 +104,7 @@ export default function Website() {
                   className="text-xs leading-snug text-phosphor-green/70"
                   style={{ fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace" }}
                 >
-                  &gt; Now in Alpha. Sign in with a wallet or Google.
+                  &gt; No account needed to play.
                 </p>
               </div>
             }

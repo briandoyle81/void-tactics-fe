@@ -2957,7 +2957,6 @@ export function SimulatedGameDisplay({
       return {
         ...base,
         primaryCta: {
-          eyebrow: TUTORIAL_COMPLETION_CARD.eyebrow,
           headline: continuesWithoutClaim
             ? TUTORIAL_COMPLETION_CARD.continueHeadline
             : TUTORIAL_COMPLETION_CARD.headline,
@@ -2992,7 +2991,6 @@ export function SimulatedGameDisplay({
       return {
         ...base,
         primaryCta: {
-          eyebrow: TUTORIAL_COMPLETION_CARD.eyebrow,
           headline: continuesWithoutClaim
             ? TUTORIAL_COMPLETION_CARD.continueHeadline
             : TUTORIAL_COMPLETION_CARD.headline,
@@ -3610,15 +3608,7 @@ export function SimulatedGameDisplay({
                             {tutorialGridPanelConfig.primaryCta ? (
                               <div className="space-y-1.5 border border-solid p-2" style={{ borderColor: "var(--color-cyan)", backgroundColor: "rgba(0, 38, 54, 0.35)" }}>
                                 <p
-                                  className="text-[10px] uppercase tracking-wider text-cyan/95"
-                                  style={{
-                                    ...STYLE_MONO,
-                                  }}
-                                >
-                                  {tutorialGridPanelConfig.primaryCta.eyebrow}
-                                </p>
-                                <p
-                                  className="text-sm font-bold uppercase tracking-wide text-white"
+                                  className="text-sm font-bold uppercase tracking-wide text-cyan"
                                   style={{
                                     ...STYLE_LABEL,
                                   }}
