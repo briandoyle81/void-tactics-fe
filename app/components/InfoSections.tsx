@@ -6,10 +6,11 @@ import { HeroShipShowcase } from "./HeroShipShowcase";
 import { TacticalTargetingPreview } from "./TacticalTargetingPreview";
 
 // The website's hero and the sections below it (app/components/Website.tsx):
-// the ship showcase, then the Shattered Hive campaign. Open, editorial
-// layout: no framed cards, sections separated by space and hairlines, art
-// full width. The hero and the closing section take their Play button as a
-// prop.
+// the ship showcase, the Shattered Hive campaign, the enemy, how battles
+// play, PvP, onchain, getting started and a closing Play. Open, editorial
+// layout: no framed cards, sections separated by space and hairlines, large
+// text left-aligned. The hero and the closing section take their Play
+// button as a prop.
 
 /** The content column every section lines up on. */
 const CONTAINER = "mx-auto w-full max-w-7xl px-5 md:px-12";
@@ -48,42 +49,28 @@ export function InfoHero({ actions }: { actions: React.ReactNode }) {
     >
       {/* Left side - Text + primary CTA */}
       <div className="flex flex-col gap-6 text-left md:col-span-5 md:gap-7">
-        <p
-          className="text-xs uppercase tracking-[0.24em]"
-          style={{
-            fontFamily: "var(--font-mono), monospace",
-            color: "var(--color-phosphor-green)",
-          }}
-        >
+        <SectionLabel color="var(--color-phosphor-green)">
           {"// Turn-based fleet tactics · fully onchain"}
-        </p>
+        </SectionLabel>
         <h1
           id="info-hero-heading"
-          className="text-5xl font-bold uppercase leading-[0.9] tracking-wide md:text-5xl xl:text-6xl 2xl:text-7xl"
-          style={{
-            fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
-            color: "var(--color-text-primary)",
-          }}
+          className="text-5xl font-bold uppercase leading-[0.9] tracking-wide text-text-primary xl:text-6xl 2xl:text-7xl"
+          style={DISPLAY_FONT}
         >
           Outmaneuver.
           <br />
           Outrange.
           <br />
           <span
-            style={{
-              color: "var(--color-cyan)",
-              textShadow: "0 0 20px rgba(86, 214, 255, 0.5)",
-            }}
+            className="text-cyan"
+            style={{ textShadow: "0 0 20px rgba(86, 214, 255, 0.5)" }}
           >
             Outlast.
           </span>
         </h1>
         <p
-          className="max-w-md text-lg font-medium leading-snug opacity-100 md:text-xl"
-          style={{
-            fontFamily: "var(--font-rajdhani), sans-serif",
-            color: "var(--color-text-secondary)",
-          }}
+          className="max-w-md text-lg font-medium leading-snug text-text-secondary md:text-xl"
+          style={BODY_FONT}
         >
           Command a fleet of starships with positioning, range control, and
           ruthless target priority in tactical, turn-based battles.
@@ -171,7 +158,6 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
             <div className="w-full min-w-0 flex-1">
               <HeroShipShowcase
                 seedOffset={0}
-                align="start"
                 side="allied"
                 forcedVariant={1}
               />
@@ -186,7 +172,6 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
             <div className="hidden w-full min-w-0 flex-1 md:block">
               <HeroShipShowcase
                 seedOffset={3}
-                align="start"
                 side="enemy"
                 flipLayout={true}
                 forcedVariant={2}
@@ -218,7 +203,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
               "linear-gradient(to bottom, rgba(12, 17, 23, 0.45) 0%, rgba(12, 17, 23, 0.7) 50%, var(--color-near-black) 100%), linear-gradient(to right, rgba(12, 17, 23, 0.6) 0%, rgba(12, 17, 23, 0) 70%)",
           }}
         />
-        <div className={`${CONTAINER} flex flex-col gap-16 pb-28 pt-28 md:gap-24 md:pb-32 md:pt-48`}>
+        <div className={`${CONTAINER} flex flex-col gap-12 pb-16 pt-20 md:gap-16 md:pb-20 md:pt-32`}>
           <div className="grid grid-cols-1 gap-10 md:grid-cols-12 md:gap-16">
             <div className="flex flex-col gap-4 md:col-span-5">
               <SectionLabel color="var(--color-amber)">
@@ -278,7 +263,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
       {/* The enemy: an intercepted line, the portrait beside it */}
       <section className="bg-[#0d0806]" aria-label="The enemy">
         <div
-          className={`${CONTAINER} flex flex-col items-start gap-8 py-20 md:flex-row md:items-center md:gap-14 md:py-24`}
+          className={`${CONTAINER} flex flex-col items-start gap-8 py-14 md:flex-row md:items-center md:gap-14 md:py-16`}
         >
           <Image
             src="/img/character-art/hive-queen.svg"
@@ -307,10 +292,10 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
 
       {/* How a battle plays */}
       <section aria-labelledby="info-battle-heading">
-        <div className={`${CONTAINER} py-28 md:py-36`}>
+        <div className={`${CONTAINER} py-16 md:py-20`}>
           <h2
             id="info-battle-heading"
-            className={`${SECTION_HEADING} mb-14 max-w-4xl text-5xl md:mb-20 md:text-7xl lg:text-8xl`}
+            className={`${SECTION_HEADING} mb-10 max-w-4xl text-5xl md:mb-12 md:text-7xl lg:text-8xl`}
             style={DISPLAY_FONT}
           >
             Every turn is a decision
@@ -346,7 +331,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
         className="flex flex-col bg-white/[0.02] md:flex-row"
         aria-labelledby="info-pvp-heading"
       >
-        <div className="relative min-h-[320px] md:min-h-[560px] md:flex-1">
+        <div className="relative min-h-[300px] md:min-h-[480px] md:flex-1">
           <Image
             src="/img/site-art/pvp-title.webp"
             alt="Two fleets trade laser fire in an asteroid field as a ship explodes"
@@ -355,7 +340,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
             className="object-cover"
           />
         </div>
-        <div className="flex flex-col justify-center gap-7 px-5 py-20 md:flex-1 md:px-16 md:py-28 lg:px-24">
+        <div className="flex flex-col justify-center gap-7 px-5 py-16 md:flex-1 md:px-16 md:py-20 lg:px-24">
           <h2
             id="info-pvp-heading"
             className={`${SECTION_HEADING} text-5xl md:text-7xl`}
@@ -401,7 +386,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
       {/* Fully onchain */}
       <section aria-labelledby="info-onchain-heading">
         <div
-          className={`${CONTAINER} grid grid-cols-1 gap-14 py-28 md:grid-cols-12 md:gap-16 md:py-36`}
+          className={`${CONTAINER} grid grid-cols-1 gap-12 py-16 md:grid-cols-12 md:gap-16 md:py-20`}
         >
           <div className="flex flex-col gap-7 md:col-span-5">
             <h2
@@ -443,10 +428,10 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
 
       {/* Getting started */}
       <section className={HAIRLINE} aria-labelledby="info-getting-started-heading">
-        <div className={`${CONTAINER} py-28 md:py-36`}>
+        <div className={`${CONTAINER} py-16 md:py-20`}>
           <h2
             id="info-getting-started-heading"
-            className={`${SECTION_HEADING} mb-14 text-5xl md:mb-20 md:text-7xl lg:text-8xl`}
+            className={`${SECTION_HEADING} mb-10 text-5xl md:mb-12 md:text-7xl lg:text-8xl`}
             style={DISPLAY_FONT}
           >
             Three steps to command
@@ -484,7 +469,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
 
       {/* Closing call to action */}
       <section className={HAIRLINE} aria-label="Play">
-        <div className={`${CONTAINER} flex flex-col items-start gap-10 py-24 md:flex-row md:items-center md:justify-between md:gap-16 md:py-32`}>
+        <div className={`${CONTAINER} flex flex-col items-start gap-10 py-16 md:flex-row md:items-center md:justify-between md:gap-16 md:py-20`}>
           <h2
             className={`${SECTION_HEADING} min-w-0 max-w-5xl text-5xl md:text-7xl lg:text-8xl`}
             style={DISPLAY_FONT}

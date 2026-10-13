@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { renderShip } from "../utils/shipRenderer";
 import { Ship, Attributes } from "../types/types";
 import { calculateShipRank } from "../utils/shipLevel";
@@ -8,6 +8,8 @@ import { toShipVisual } from "../utils/toShipVisual";
 import { generateRandomShip } from "../utils/generateRandomShip";
 import { calculateAttributesFromContracts } from "../utils/shipAttributesCalculator";
 import { SHIP_IMAGE_RANK_STAR_BOX } from "./ShipImage";
+import { useInView } from "../hooks/useInView";
+import { usePageVisible } from "../hooks/usePageVisible";
 import {
   getMainWeaponName,
   getArmorName,
@@ -15,13 +17,11 @@ import {
   getSpecialName,
 } from "../types/types";
 
-type HeroShipShowcaseAlign = "start" | "center" | "end";
-
 export const HeroShipShowcase: React.FC<{
   seedOffset?: number;
   intervalMs?: number;
-  align?: HeroShipShowcaseAlign;
   side?: "allied" | "enemy";
+  /** Mirror the layout: art on the left, stats on the right (the enemy). */
   flipLayout?: boolean;
   /** Pin the mock ship to a specific variant (1 or 2) instead of picking one
    * at random — e.g. the Info page's Intel section always shows variant 1
@@ -30,7 +30,6 @@ export const HeroShipShowcase: React.FC<{
 }> = ({
   seedOffset = 0,
   intervalMs = 10000,
-  align = "end",
   side = "allied",
   flipLayout = false,
   forcedVariant,
@@ -47,10 +46,16 @@ export const HeroShipShowcase: React.FC<{
   // manual click via advanceShip below — so clicking to switch ships also
   // resets the auto-rotation timer instead of leaving the old countdown
   // running and immediately re-advancing a moment later.
+  // Rotation pauses while the showcase is off screen or the tab is hidden.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(rootRef);
+  const isPageVisible = usePageVisible();
+  const isRotating = isInView && isPageVisible;
   useEffect(() => {
+    if (!isRotating) return;
     const interval = setInterval(advanceShip, intervalMs);
     return () => clearInterval(interval);
-  }, [intervalMs, shipIndex, advanceShip]);
+  }, [intervalMs, shipIndex, advanceShip, isRotating]);
 
   // Generate current hero ship client-side only, after mount. `generateRandomShip`
   // uses Math.random(), so computing it during render (e.g. via useMemo) would give
@@ -92,7 +97,7 @@ export const HeroShipShowcase: React.FC<{
   const accentGlow = side === "enemy" ? "rgba(255, 77, 77, 0.4)" : "rgba(86, 214, 255, 0.4)";
   const flipSprite = side === "allied";
   // The enemy side mirrors the layout: text and stats line up on the right.
-  const alignEnd = flipLayout || align === "end";
+  const alignEnd = flipLayout;
 
   const gear = heroShip
     ? [
@@ -160,31 +165,32 @@ export const HeroShipShowcase: React.FC<{
   );
 
   return (
+    // A click anywhere on the card cycles; the art is the real button
+    // (keyboard and screen readers), its click bubbling up to this handler.
+    // The name and stats stay plain text, so they're read out.
     <div
-      role="button"
-      tabIndex={0}
+      ref={rootRef}
       onClick={advanceShip}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          advanceShip();
-        }
-      }}
-      aria-label="Switch to next ship"
       className={`grid w-full min-w-0 cursor-pointer items-center gap-4 md:gap-6 ${alignEnd ? "grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"}`}
     >
       {!alignEnd && statsColumn}
-      <div className="relative aspect-square w-full">
+      <button
+        type="button"
+        aria-label="Show next ship"
+        className="relative block aspect-square w-full cursor-pointer"
+      >
         {heroShipImage && heroShip && shipRank ? (
           // Same art structure as the old framed card: a size container
           // (which the rank star's cqmin size resolves against, and which
           // keeps the image swap's repaint inside this box), the flip as a
           // transform on the art only, and the star as a sibling outside it.
-          <div className="relative h-full w-full [container-type:size]">
-            <div
-              className="relative h-full w-full"
+          <span className="relative block h-full w-full [container-type:size]">
+            <span
+              className="relative block h-full w-full"
               style={flipSprite ? { transform: "scaleX(-1)" } : undefined}
             >
+              {/* A generated data: URL, which next/image can't optimize. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={heroShipImage}
                 alt={heroShip.name}
@@ -194,9 +200,9 @@ export const HeroShipShowcase: React.FC<{
                   filter: `drop-shadow(0 0 20px ${accentGlow})`,
                 }}
               />
-            </div>
+            </span>
             {heroShip.shipData.constructed && (
-              <div
+              <span
                 className="pointer-events-none absolute right-[2.5%] top-[5%] z-10 leading-none text-amber"
                 style={{ fontSize: SHIP_IMAGE_RANK_STAR_BOX }}
                 role="img"
@@ -207,18 +213,18 @@ export const HeroShipShowcase: React.FC<{
                     ⭐
                   </span>
                 ))}
-              </div>
+              </span>
             )}
-          </div>
+          </span>
         ) : (
-          <p
+          <span
             className="flex h-full w-full items-center justify-center text-sm opacity-50"
             style={{ fontFamily: "var(--font-mono), monospace", color: "var(--color-text-muted)" }}
           >
             Loading ship...
-          </p>
+          </span>
         )}
-      </div>
+      </button>
 
       {alignEnd && statsColumn}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionType, Attributes, GRID_DIMENSIONS, Ship } from "../types/types";
 import { GridShipPosition } from "../types/gridDisplay";
 import type { Web2LastMove } from "../types/web2Game";
@@ -17,6 +17,8 @@ import {
 import { buildMapGridsFromContractMap } from "../utils/mapGridUtils";
 import { GameGrid } from "./GameGrid";
 import { GameBoardLayout } from "./GameBoardLayout";
+import { useInView } from "../hooks/useInView";
+import { usePageVisible } from "../hooks/usePageVisible";
 
 // Info-page replacement for missile-clip.gif: a small, non-interactive
 // autoplay loop built from the SAME real components/state machine the
@@ -208,6 +210,12 @@ export function TacticalTargetingPreview() {
   const [phase, setPhase] = useState(0);
   const [selectedShipId, setSelectedShipId] = useState<number | null>(null);
   const [draggedShipId, setDraggedShipId] = useState<number | null>(null);
+  // The autoplay re-renders the whole board every phase: pause it while the
+  // preview is scrolled away or the tab is hidden.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(rootRef);
+  const isPageVisible = usePageVisible();
+  const isPlaying = isInView && isPageVisible;
 
   // Ship art/attributes use Math.random() — generate client-side only,
   // after mount, to avoid a hydration mismatch (same pattern as
@@ -338,17 +346,20 @@ export function TacticalTargetingPreview() {
   }, [phase, resetSelection, setPreviewPosition, setTargetShipId]);
 
   useEffect(() => {
+    if (!isPlaying) return;
     const t = setTimeout(
       () => setPhase((p) => (p + 1) % PHASE_DURATIONS.length),
       PHASE_DURATIONS[phase],
     );
     return () => clearTimeout(t);
-  }, [phase]);
+  }, [phase, isPlaying]);
 
   // Wait for the real map terrain too, so it doesn't visibly pop in a beat
   // after the board first renders.
   if (!ships || !Array.isArray(blockedPositions)) {
-    return <div className="h-[320px] w-full bg-near-black md:h-[400px]" />;
+    // Same root element type as the board below, so React keeps this DOM
+    // node and useInView's observer stays attached when the board appears.
+    return <div ref={rootRef} className="h-[320px] w-full bg-near-black md:h-[400px]" />;
   }
 
   return (
@@ -363,7 +374,7 @@ export function TacticalTargetingPreview() {
     // parent is a flex container — default `align-items: stretch` is what
     // gives GameBoardLayout's div (and everything GameGrid computes from it)
     // an actual definite height instead of collapsing after layout settles.
-    <div className="relative h-[320px] w-full overflow-hidden md:h-[400px]">
+    <div ref={rootRef} className="relative h-[320px] w-full overflow-hidden md:h-[400px]">
       <div
         className="absolute flex"
         style={{
