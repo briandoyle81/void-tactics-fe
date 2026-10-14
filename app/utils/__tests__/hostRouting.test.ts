@@ -16,6 +16,25 @@ describe("resolveHostRoute", () => {
       });
     });
 
+    it("serves client tabs at /<tab>", () => {
+      expect(resolveHostRoute("play.voidtactics.xyz", "/operations", "?node=3", PROD)).toEqual({
+        type: "rewrite",
+        pathname: "/play/operations",
+        noIndex: true,
+      });
+    });
+
+    it("redirects old ?tab= links to the tab's path", () => {
+      expect(resolveHostRoute("play.voidtactics.xyz", "/", "?tab=battles&game=4", PROD)).toEqual({
+        type: "redirect",
+        url: "/battles?game=4",
+      });
+      expect(resolveHostRoute("play.voidtactics.xyz", "/admin", "?tab=maps", PROD)).toEqual({
+        type: "redirect",
+        url: "/admin/maps",
+      });
+    });
+
     it("serves other paths as-is, marked no-index", () => {
       expect(resolveHostRoute("play.voidtactics.xyz", "/admin", "", PROD)).toEqual({
         type: "next",
@@ -44,6 +63,13 @@ describe("resolveHostRoute", () => {
       expect(resolveHostRoute("voidtactics.xyz", "/play", "?x=1", PROD)).toEqual({
         type: "redirect",
         url: "https://play.voidtactics.xyz/?x=1",
+      });
+    });
+
+    it("redirects old ?tab= links to the tab's path on the play host", () => {
+      expect(resolveHostRoute("voidtactics.xyz", "/play", "?tab=store&section=credits", PROD)).toEqual({
+        type: "redirect",
+        url: "https://play.voidtactics.xyz/store?section=credits",
       });
     });
 
@@ -79,6 +105,14 @@ describe("resolveHostRoute", () => {
         type: "redirect",
         url: "/play?chain=base",
       });
+    });
+
+    it("redirects old ?tab= links to the tab's path, but not on the website", () => {
+      expect(resolveHostRoute("localhost:3000", "/play", "?tab=operations&node=2", PROD)).toEqual({
+        type: "redirect",
+        url: "/play/operations?node=2",
+      });
+      expect(resolveHostRoute("localhost:3000", "/", "?tab=operations", PROD).type).toBe("next");
     });
 
     it("routes paths only when no play host is configured", () => {

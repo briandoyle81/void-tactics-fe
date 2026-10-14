@@ -52,7 +52,7 @@ export function OnboardingTutorial({
     rescueCompletionBranch,
   } = tutorialContext;
   const appMode = useAppMode();
-  // Opened as the Operations map's first mission (see app/play/page.tsx).
+  // Opened as the Operations map's first mission (see app/play/GameClient.tsx).
   const [fromOperations] = useState(() => getTutorialReturnTo() === "mission");
 
   // Reaching a completion step finishes the tutorial: on this device, and on

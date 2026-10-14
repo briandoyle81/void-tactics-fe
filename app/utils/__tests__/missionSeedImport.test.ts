@@ -50,7 +50,7 @@ const files = (): MissionSeedFiles => ({
       { key: "r1", kind: "Combat", mapKey: "rlM01", turnTime: 600, maxScore: 15, creatorGoesFirst: true, title: "Old", description: "Old text", winEffects: ["DEC_BONUS_WIN_EFFECT"] },
       { key: "r2", kind: "Resupply", costCapOverride: 700 },
     ],
-    edges: [{ from: "r1", to: "r2", twoWay: true }],
+    edges: [{ from: "r1", to: "r2" }],
   },
   pvp: { maps: [map("p1")] },
 });
@@ -88,7 +88,7 @@ describe("buildMissionImportRows", () => {
     });
     expect(rows.roguelikeNodes[0]).toMatchObject({ kind: 0, mapId: 3, winEffects: ["DEC_BONUS_WIN_EFFECT"] });
     expect(rows.roguelikeNodes[1]).toMatchObject({ kind: 1, mapId: null, costCapOverride: 700, winEffects: [] });
-    expect(rows.roguelikeEdges).toEqual([{ parentId: 1, childId: 2, twoWay: true }]);
+    expect(rows.roguelikeEdges).toEqual([{ parentId: 1, childId: 2 }]);
     // Repo text wins; seed text fills in; nodes with neither get no row.
     expect(rows.nodeContent).toEqual([
       { graphType: "CAMPAIGN", nodeId: 1, title: "Seed A", description: "" },

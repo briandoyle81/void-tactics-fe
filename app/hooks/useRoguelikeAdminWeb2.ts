@@ -43,8 +43,8 @@ export function useRoguelikeAdminWeb2() {
   const updateNode = (nodeId: number, node: RoguelikeNodeWeb2Input) =>
     apiMutate<RoguelikeNodeWeb2>(`/api/admin/roguelike/nodes/${nodeId}`, "PUT", node);
 
-  const addChild = (parentId: number, childId: number, twoWay: boolean) =>
-    apiMutate(`/api/admin/roguelike/edges`, "POST", { parentId, childId, twoWay });
+  const addChild = (parentId: number, childId: number) =>
+    apiMutate(`/api/admin/roguelike/edges`, "POST", { parentId, childId });
 
   const removeChild = (parentId: number, childId: number) =>
     apiMutate(`/api/admin/roguelike/edges`, "DELETE", { parentId, childId });

@@ -1,39 +1,13 @@
+import { CLIENT_TAB_SLUGS, type ClientTab } from "../config/clientTabs";
 import { PLAY_PATH } from "../config/routes";
 import { applyUrlParams, CLIENT_CHILD_PARAMS, getUrlParam, setUrlParams, type UrlParamUpdates } from "./urlState";
 
-// The game client (app/play/page.tsx) keeps its screen in the URL (see
-// urlState.ts): `?tab=<slug>` plus whatever the screen adds. Inside the
-// client, navigation pushes history entries; from pages without it (Ops
-// Console, spectator) it loads PLAY_PATH with the same query.
+export { CLIENT_TAB_SLUGS, clientTabFromSlug, type ClientTab } from "../config/clientTabs";
 
-/** Top-level client screens (the names older builds saved, kept as-is). */
-export type ClientTab =
-  | "Command Deck"
-  | "Mission"
-  | "Lobbies"
-  | "Tournaments"
-  | "Games"
-  | "Manage Navy"
-  | "Store"
-  | "Profile";
-
-/** URL slug for each tab. */
-export const CLIENT_TAB_SLUGS: Record<ClientTab, string> = {
-  "Command Deck": "deck",
-  Mission: "operations",
-  Lobbies: "skirmish",
-  Tournaments: "tournaments",
-  Games: "battles",
-  "Manage Navy": "fleet",
-  Store: "store",
-  Profile: "profile",
-};
-
-export function clientTabFromSlug(slug: string | null): ClientTab | null {
-  if (!slug) return null;
-  const entry = (Object.entries(CLIENT_TAB_SLUGS) as [ClientTab, string][]).find(([, s]) => s === slug);
-  return entry ? entry[0] : null;
-}
+// The game client (app/play/GameClient.tsx) keeps its screen in the URL (see
+// urlState.ts): the tab in the path (/play/<slug>) plus whatever the screen
+// adds to the query. Inside the client, navigation pushes history entries;
+// from pages without it (Ops Console, spectator) it loads the same URL.
 
 /**
  * Inside the client: switch to `tab` (a new history entry unless
@@ -52,10 +26,10 @@ export function openClientTab(
   );
 }
 
-/** PLAY_PATH with the query for `tab` and its params. */
+/** The URL for `tab` and its params: /play/<slug>?<params>. */
 export function clientTabHref(tab: ClientTab, params: UrlParamUpdates = {}): string {
-  const search = applyUrlParams("", { tab: CLIENT_TAB_SLUGS[tab], ...params });
-  return `${PLAY_PATH}?${search}`;
+  const search = applyUrlParams("", params);
+  return `${PLAY_PATH}/${CLIENT_TAB_SLUGS[tab]}${search ? `?${search}` : ""}`;
 }
 
 /** Set by the game client while it's mounted. */

@@ -9,12 +9,12 @@ import { calculateAttributesFromContracts } from "../utils/shipAttributesCalcula
 import { toGameplayShip, toGridShip } from "../utils/toGridDisplay";
 import { useGameplayInteraction } from "../hooks/useGameplayInteraction";
 import { useDamageCalculationWeb2 } from "../hooks/useDamageCalculationWeb2";
-import {
-  useGetPresetMap,
-  useGetPresetScoringMap,
-  useGetPresetMapImpassable,
-} from "../hooks/useMapsContract";
 import { buildMapGridsFromContractMap } from "../utils/mapGridUtils";
+import {
+  HERO_DEMO_BLOCKED,
+  HERO_DEMO_IMPASSABLE,
+  HERO_DEMO_SCORING,
+} from "../data/content/heroDemoMap";
 import { GameGrid } from "./GameGrid";
 import { GameBoardLayout } from "./GameBoardLayout";
 import { useInView } from "../hooks/useInView";
@@ -25,7 +25,7 @@ import { usePageVisible } from "../hooks/usePageVisible";
 // in-game tutorial (SimulatedGameDisplay.tsx) uses — <GameGrid> +
 // <GameBoardLayout> driven by the shared `useGameplayInteraction` hook —
 // with synthetic local ships (still no live chain/tutorial ship data) on a
-// REAL preset map's terrain (DEMO_MAP_ID, below), and a timer stepping
+// REAL preset map's terrain (DEMO_MAP_GRIDS, below), and a timer stepping
 // through the same setters a player's clicks would call (select ship ->
 // propose move -> lock target -> last-move replay) instead of onClick
 // handlers. Every pixel
@@ -132,14 +132,18 @@ const DEMO_LAST_MOVE: Web2LastMove = {
 
 const COMMITTED_MOVED_SET = new Set<number>([ALLY_ID]);
 
-// A real preset map's terrain instead of a made-up decorative layout —
-// "Debris Ring — Sector 14" (id 14): a real campaign map whose blocked,
-// impassable, and scoring tiles all happen to clear the scripted demo's
-// fixed cells (the ally's move path at row 5 cols 3-7, and every ship
-// position below) with zero overlap, verified directly against the live
-// Base Sepolia deployment. Also gives the hero its first live showcase of
-// impassable terrain (hazard-tile.png) alongside the existing nebula tiles.
-const DEMO_MAP_ID = 14;
+// A real preset map's terrain instead of a made-up decorative layout:
+// "Debris Ring — Sector 14" (id 14), whose blocked, impassable and scoring
+// tiles clear the scripted ally's move path (row 5, cols 3-7). It ships as
+// a local snapshot (app/data/content/heroDemoMap.ts), so the homepage makes
+// no RPC calls for it; built once at module load.
+const DEMO_MAP_GRIDS = buildMapGridsFromContractMap(
+  HERO_DEMO_BLOCKED,
+  HERO_DEMO_SCORING,
+  GRID_WIDTH,
+  GRID_HEIGHT,
+  HERO_DEMO_IMPASSABLE,
+);
 
 // select ship -> propose move -> lock target -> last-move replay -> reset
 const PHASE_DURATIONS = [1000, 1000, 1600, 1800, 2600];
@@ -224,25 +228,7 @@ export function TacticalTargetingPreview() {
     setShips(buildDemoShips());
   }, []);
 
-  // Real map terrain (see DEMO_MAP_ID's comment) — picker-following like
-  // GameDisplay.tsx's own getGameMapState read, which in practice always
-  // resolves to Base Sepolia today.
-  const { data: blockedPositions } = useGetPresetMap(DEMO_MAP_ID, { chainSource: "picker" });
-  const { data: scoringPositions } = useGetPresetScoringMap(DEMO_MAP_ID, { chainSource: "picker" });
-  const { data: impassablePositions } = useGetPresetMapImpassable(DEMO_MAP_ID, {
-    chainSource: "picker",
-  });
-  const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid } = useMemo(
-    () =>
-      buildMapGridsFromContractMap(
-        Array.isArray(blockedPositions) ? blockedPositions : undefined,
-        Array.isArray(scoringPositions) ? scoringPositions : undefined,
-        GRID_WIDTH,
-        GRID_HEIGHT,
-        Array.isArray(impassablePositions) ? impassablePositions : undefined,
-      ),
-    [blockedPositions, scoringPositions, impassablePositions],
-  );
+  const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid } = DEMO_MAP_GRIDS;
 
   const attributesById = useMemo(() => {
     const map = new Map<number, Attributes>();
@@ -354,9 +340,7 @@ export function TacticalTargetingPreview() {
     return () => clearTimeout(t);
   }, [phase, isPlaying]);
 
-  // Wait for the real map terrain too, so it doesn't visibly pop in a beat
-  // after the board first renders.
-  if (!ships || !Array.isArray(blockedPositions)) {
+  if (!ships) {
     // Same root element type as the board below, so React keeps this DOM
     // node and useInView's observer stays attached when the board appears.
     return <div ref={rootRef} className="h-[320px] w-full bg-near-black md:h-[400px]" />;

@@ -38,7 +38,7 @@ import { RunActionBar } from "./operations/RunActionBar";
 import { NodeEditorModal } from "./operations/NodeEditorModal";
 import { RetreatRunConfirmModal } from "./operations/RetreatRunConfirmModal";
 import { useRunRosterHullWeb2 } from "../hooks/useRunRosterHull";
-import { getRunMapAction } from "../utils/runMapAction";
+import { getRunMapAction, isCurrentNodeCleared } from "../utils/runMapAction";
 import { aiConfigToPreviewShipWeb2 } from "../utils/aiShipConfigWeb2";
 import { useUrlSelectedNode } from "../hooks/useUrlSelectedNode";
 import { CLIENT_TAB_SLUGS } from "../utils/clientNavigation";
@@ -100,9 +100,7 @@ export function RoguelikeGraphWeb2({
   const [enteringResupply, setEnteringResupply] = React.useState<number | null>(null);
   const [isRetreating, setIsRetreating] = React.useState(false);
   const [editMode, setEditModeState] = React.useState(false);
-  const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: number; twoWay: boolean } | null>(
-    null,
-  );
+  const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: number } | null>(null);
   const [showSettings, setShowSettings] = React.useState(false);
   // The mission drawer opens on selection; closing it gives the chart the
   // full width until another node is picked.
@@ -141,6 +139,16 @@ export function RoguelikeGraphWeb2({
     () => new Set(isBrowseMode ? [] : run.defeatedNodeIds),
     [isBrowseMode, run],
   );
+  // Next missions open only once the current one is won (mirrors
+  // RoguelikeGraph.tsx).
+  const currentCleared =
+    !isBrowseMode &&
+    !!currentNode &&
+    isCurrentNodeCleared({
+      kind: currentNode.kind === RoguelikeNodeKind.Combat ? "combat" : "resupply",
+      isDefeated: defeatedSet.has(currentNode.id),
+      hasActiveGame: run.activeLobbyId != null,
+    });
 
   const isCreatingNode = selectedNodeId === ADD_NODE_SENTINEL_ID;
 
@@ -159,7 +167,8 @@ export function RoguelikeGraphWeb2({
     () =>
       campaignNodes.map((n) => {
         const isCurrent = !isBrowseMode && n.id === run.currentNodeId;
-        const isAdjacent = isCurrent || !!currentNode?.childEdges.some((e) => e.childId === n.id);
+        const isNextStop = !!currentNode?.childEdges.some((e) => e.childId === n.id);
+        const isAdjacent = isCurrent || isNextStop;
         const isConnectSource = connectMode?.sourceNodeId === n.id;
         const isCompleted = n.kind === RoguelikeNodeKind.Combat ? defeatedSet.has(n.id) : false;
         return {
@@ -173,14 +182,14 @@ export function RoguelikeGraphWeb2({
           // With no run, only the root node (where a run starts).
           selectable: isBrowseMode
             ? editMode || n.id === rootNodeId
-            : editMode || isAdjacent || isCompleted,
+            : editMode || isCurrent || isCompleted || (isNextStop && currentCleared),
           title: n.title,
           titleStatus: n.titleStatus,
           editMode,
           connectHighlight: !connectMode ? undefined : isConnectSource ? "source" : "candidate",
         };
       }),
-    [campaignNodes, isBrowseMode, run, currentNode, rootNodeId, defeatedSet, prerequisitesById, editMode, connectMode],
+    [campaignNodes, isBrowseMode, run, currentNode, rootNodeId, defeatedSet, currentCleared, prerequisitesById, editMode, connectMode],
   );
   // First Contact on the map: the pending first mission (no run yet), or
   // cleared once played or skipped. Not in Edit Mode (the real graph only).
@@ -317,10 +326,9 @@ export function RoguelikeGraphWeb2({
   const handleConnectTarget = async (
     targetNode: RoguelikeNodeWeb2WithContent,
     sourceNodeId: number,
-    twoWay: boolean,
   ) => {
     try {
-      await admin.addChild(sourceNodeId, targetNode.id, twoWay);
+      await admin.addChild(sourceNodeId, targetNode.id);
       toast.success(`Node #${targetNode.id} linked as a child.`);
       await refetchNodes();
     } catch (error) {
@@ -335,7 +343,7 @@ export function RoguelikeGraphWeb2({
     if (connectMode) {
       if (id === connectMode.sourceNodeId || id === ADD_NODE_SENTINEL_ID) return;
       const targetNode = byId.get(id);
-      if (targetNode) void handleConnectTarget(targetNode, connectMode.sourceNodeId, connectMode.twoWay);
+      if (targetNode) void handleConnectTarget(targetNode, connectMode.sourceNodeId);
       return;
     }
     if (id === ADD_NODE_SENTINEL_ID) {
@@ -378,6 +386,7 @@ export function RoguelikeGraphWeb2({
     isDefeated: isSelectedNodeDefeated,
     // Web2 doesn't track a live match on the run; launching resumes it.
     hasActiveGame: false,
+    currentCleared,
     isEnteringResupply: !!selectedNode && enteringResupply === selectedNode.id,
   });
 
@@ -401,7 +410,7 @@ export function RoguelikeGraphWeb2({
       node={selectedNode ?? null}
       campaignId={campaignId}
       connectModeActive={!!selectedNode && connectMode?.sourceNodeId === selectedNode.id}
-      onStartConnectMode={(sourceNodeId) => setConnectMode({ sourceNodeId, twoWay: false })}
+      onStartConnectMode={(sourceNodeId) => setConnectMode({ sourceNodeId })}
       onCancelConnectMode={() => setConnectMode(null)}
       onSaved={() => void refetchNodes()}
       onCreated={() => {

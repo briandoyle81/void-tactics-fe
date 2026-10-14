@@ -42,6 +42,12 @@ interface LaserShootingAnimationProps {
   variant?: number;
 }
 
+// Muzzle points, as offsets from the attacker cell's centre. The sprite
+// fills the cell and a right-facing ship is the same art mirrored
+// horizontally (scale-x(-1)), so only x flips with facing; the height is
+// the same both ways. (A facing-dependent y term here used to make every
+// fix for one side break the other: the hero shows right-facing ships, the
+// AI in single-player faces left.)
 function faction1LaserOrigin(
   grid: HTMLElement,
   row: number,
@@ -54,7 +60,7 @@ function faction1LaserOrigin(
   const dir = facingRight ? 1 : -1;
   return {
     x: cx + dir * box.width * 0.06,
-    y: cy + (facingRight ? -box.height * 0.15 : 0) - box.height * 0.16,
+    y: cy - box.height * 0.16,
   };
 }
 
@@ -70,7 +76,7 @@ function miningLaserOrigin(
   const dir = facingRight ? 1 : -1;
   return {
     x: cx + dir * (box.width * -0.15 + scaleCellPx(box.width, 23)),
-    y: cy + (facingRight ? -box.height * 0.15 : 0) - box.height * 0.13 + scaleCellPx(box.height, -2),
+    y: cy - box.height * 0.13 + scaleCellPx(box.height, -2),
   };
 }
 

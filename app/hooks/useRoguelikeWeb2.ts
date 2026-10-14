@@ -103,7 +103,7 @@ export interface RoguelikeNodeWeb2 {
   creatorGoesFirst: boolean | null;
   costCapOverride: number | null;
   winEffects: string[];
-  childEdges: Array<{ id: number; parentId: number; childId: number; twoWay: boolean }>;
+  childEdges: Array<{ id: number; parentId: number; childId: number }>;
 }
 
 export function useRoguelikeNodeWeb2(nodeId: number | undefined) {

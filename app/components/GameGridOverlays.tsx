@@ -21,6 +21,7 @@ import { EmpWaveAnimation } from "./weapon-animations/EmpWaveAnimation";
 import { LightningFieldAnimation } from "./weapon-animations/LightningFieldAnimation";
 import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
 import { RamAnimation } from "./weapon-animations/RamAnimation";
+import { TutorialTargetPointer } from "./TutorialTarget";
 import { collectDamageLabelTargets } from "../utils/gameGridRanges";
 import { useGridDestHoveredTile, useGridHoveredCell } from "./GridHover";
 
@@ -193,7 +194,6 @@ interface GameGridOverlaysProps {
     label?: string;
     hideLabel?: boolean;
   }[];
-  tutorialDefaultLabel?: string;
   movementTileSet: Set<string>;
   selectedShipCreatorSide: boolean | null;
   directedWeaponBeamTargetId: number | null;
@@ -426,7 +426,7 @@ export const GameGridMoveArrow = React.memo(function GameGridMoveArrow({
 /**
  * Weapon-effect overlay layer: warp-field collapse (retreat), move-path
  * arrow, per-weapon shooting animations, Flak/EMP/repair-drone effects,
- * floating damage labels, and the tutorial "Click here" badges. Extracted
+ * floating damage labels, and the tutorial targets' ripple and chevron. Extracted
  * verbatim from `GameGrid.tsx` — same JSX, same behavior, just relocated.
  */
 export const GameGridOverlays = React.memo(function GameGridOverlays({
@@ -463,7 +463,6 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
   showLastMoveEmpReplayWhenSelected = false,
   retreatPrepShipId,
   tutorialHighlightCells,
-  tutorialDefaultLabel = "Click here",
   movementTileSet,
   selectedShipCreatorSide,
   directedWeaponBeamTargetId,
@@ -1085,7 +1084,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                 );
               })()}
 
-            {/* Damage Labels - grid level; z-40 so tutorial "Click here" overlay (z-[60]) can sit above */}
+            {/* Damage Labels - grid level; z-40 so the tutorial chevrons (z-[60]) can sit above */}
             {(() => {
                 const targetsToShow = collectDamageLabelTargets({
                   grid,
@@ -1437,15 +1436,19 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                 );
               })()}
 
-            {/* Tutorial "Click here": grid-level z-[60] so it appears above damage labels (z-40).
-                Same vertical rules as damage labels: above the cell except row 0 (below). Nudge up when
-                a damage label shares the cell on non-top rows. */}
+            {/* Tutorial click targets: the tap ripple on the cell and a chevron
+                (with the choice's name, when it has one) pointing at it. The
+                cell draws the brackets (GameGridCell); highlight-only cells
+                (hideLabel) get nothing here. Grid-level z-[60] so they sit
+                above damage labels (z-40). The chevron follows the damage
+                labels' rule: above the cell except row 0 (below, pointing
+                up), nudged clear of a damage label on the same ship. */}
             {(() => {
               if (!tutorialHighlightCells?.length) return null;
 
               // Pure cell-unit positioning — no DOM measurements, immune to zoom transforms.
-              const cellCx  = (col: number) => `${((col + 0.5) / 17) * 100}%`;
-              const cellTopPct    = (row: number) => `${(row / 11) * 100}%`;
+              const cellCx = (col: number) => `${((col + 0.5) / 17) * 100}%`;
+              const cellTopPct = (row: number) => `${(row / 11) * 100}%`;
               const cellBottomPct = (row: number) => `${((row + 1) / 11) * 100}%`;
 
               return (
@@ -1465,23 +1468,32 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                         ? targetShipId === shipId
                         : targetsForLabels.some((t) => t.shipId === shipId));
                     const isTopGridRow = p.row === 0;
-                    // Stack below damage label when both sit under row 0.
-                    const top = isTopGridRow ? cellBottomPct(p.row) : cellTopPct(p.row);
-                    const transform = isTopGridRow
-                      ? `translate(-50%, ${damageLabelOnThisShip ? "28px" : "0"})`
-                      : `translate(-50%, calc(-100%${damageLabelOnThisShip ? " - 32px" : ""}))`;
+                    const nudge = damageLabelOnThisShip ? (isTopGridRow ? 28 : -32) : 0;
+                    const label = p.label;
                     return (
-                      <div
-                        key={`tutorial-click-${p.row}-${p.col}-${i}`}
-                        className="absolute rounded-none px-2 py-1 text-xs font-mono text-center text-amber whitespace-nowrap bg-amber/60 border border-amber"
-                        style={{
-                          left: cellCx(p.col),
-                          top,
-                          transform,
-                        }}
-                      >
-                        {p.label ?? tutorialDefaultLabel}
-                      </div>
+                      <React.Fragment key={`tutorial-target-${p.row}-${p.col}-${i}`}>
+                        <div
+                          className="absolute"
+                          style={{
+                            left: `${(p.col / 17) * 100}%`,
+                            top: cellTopPct(p.row),
+                            width: `${100 / 17}%`,
+                            height: `${100 / 11}%`,
+                          }}
+                        >
+                          <span className="vt-target" aria-hidden>
+                            <span className="vt-target-ripple" />
+                          </span>
+                        </div>
+                        <TutorialTargetPointer
+                          label={label}
+                          below={isTopGridRow}
+                          style={{
+                            left: cellCx(p.col),
+                            top: `calc(${isTopGridRow ? cellBottomPct(p.row) : cellTopPct(p.row)} + ${nudge}px)`,
+                          }}
+                        />
+                      </React.Fragment>
                     );
                   })}
                 </div>

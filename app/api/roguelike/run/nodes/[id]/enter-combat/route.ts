@@ -18,6 +18,7 @@ import { requireAuth } from "@/app/lib/auth";
 import { AI_USER_ID, ensureAiUser } from "@/app/lib/aiUser";
 import { generateAiFleetForMap, NoAIPlacementsError } from "@/app/lib/aiFleetWeb2";
 import { createGameFromLobby } from "@/app/lib/createGameFromLobby";
+import { canLeaveCurrentNodeWeb2, FINISH_CURRENT_MISSION_ERROR } from "@/app/lib/roguelikeAdvance";
 
 export async function POST(
   req: NextRequest,
@@ -56,14 +57,14 @@ export async function POST(
   }
 
   const isCurrent = targetNodeId === run.currentNodeId;
+  if (!isCurrent && !(await canLeaveCurrentNodeWeb2(run))) {
+    return NextResponse.json({ error: FINISH_CURRENT_MISSION_ERROR }, { status: 409 });
+  }
   if (!isCurrent) {
-    const edge = await prisma.roguelikeEdge.findFirst({
-      where: {
-        OR: [
-          { parentId: run.currentNodeId, childId: targetNodeId },
-          { parentId: targetNodeId, childId: run.currentNodeId, twoWay: true },
-        ],
-      },
+    // Edges are forward-only, matching RoguelikeMatch: a run moves only to
+    // a child of its current node.
+    const edge = await prisma.roguelikeEdge.findUnique({
+      where: { parentId_childId: { parentId: run.currentNodeId, childId: targetNodeId } },
     });
     if (!edge) {
       return NextResponse.json(

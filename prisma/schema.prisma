@@ -372,7 +372,6 @@ model RoguelikeEdge {
   parent   RoguelikeNode @relation("RoguelikeEdgeParent", fields: [parentId], references: [id])
   childId  Int
   child    RoguelikeNode @relation("RoguelikeEdgeChild", fields: [childId], references: [id])
-  twoWay   Boolean       @default(false)
 
   @@unique([parentId, childId])
   @@index([parentId])
@@ -420,8 +419,8 @@ model RoguelikeRosterShip {
   @@index([runId])
 }
 
-// Gates re-entry via a twoWay back-edge into a Combat node already cleared
-// earlier this run — matches RoguelikeRun.isNodeDefeated/setNodeDefeated.
+// Combat nodes won this run, so a won node can't be fought again — matches
+// RoguelikeRun.isNodeDefeated/setNodeDefeated.
 model RoguelikeNodeDefeat {
   id     Int           @id @default(autoincrement())
   runId  Int

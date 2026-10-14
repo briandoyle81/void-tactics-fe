@@ -23,8 +23,9 @@ export interface ArtSlotConfig {
 }
 
 export const ART_SLOTS: Record<ArtSlotId, ArtSlotConfig> = {
-  // Boot screen, full viewport — ~2560×1440.
-  bootBackdrop: { label: "Title screen backdrop", src: null },
+  // Boot screen, full viewport — ~2560×1440. Human fleet lower left, the
+  // Hive upper right, the centre left dark for the title and sign-in panel.
+  bootBackdrop: { label: "Title screen backdrop", src: "/img/site-art/title-screen-background.webp" },
   // Command Deck layout A, Operations tile — 1796×1200. Pinned to the
   // bottom-left, where the operation's title sits in the art: square-ish
   // tiles (big desktops) show the full height and crop the right side;

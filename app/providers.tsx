@@ -15,9 +15,8 @@ import { VOID_TACTICS_CHAIN_CHANGED_EVENT, xaiTestnet } from "./config/networks"
 import MobileAlphaNoticeModal from "./components/MobileAlphaNoticeModal";
 import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
 import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
+import { ClearOAuthRedirectParams } from "./components/ClearOAuthRedirectParams";
 import { GasGrantClaimer } from "./components/GasGrantClaimer";
-import { useRankConfigSync } from "./hooks/useRankConfigSync";
-import { useRankConfigSyncWeb2 } from "./hooks/useRankConfigSyncWeb2";
 import { recordRpcRequest } from "./utils/rpcUsage";
 
 // Base Sepolia RPC for reads (wagmi) and wallet writes (Dynamic). Set
@@ -43,15 +42,6 @@ const wagmiConfig = createConfig({
   },
 });
 
-// Keeps rankConfigCache.ts warm from both modes' live sources (see
-// useRankConfigSync.ts / useRankConfigSyncWeb2.ts) — mounted once here
-// rather than per ship-display component, since neither hook's data
-// depends on which page is currently open.
-function RankConfigSync() {
-  useRankConfigSync();
-  useRankConfigSyncWeb2();
-  return null;
-}
 
 function InvalidateQueriesOnChainChange() {
   const queryClient = useQueryClient();
@@ -109,10 +99,10 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
   return (
     <>
       <InvalidateQueriesOnChainChange />
-      <RankConfigSync />
       <ContractEventsHost />
       <PosthogAppChainSync />
       <RestoreWalletConnection />
+      <ClearOAuthRedirectParams />
       <GasGrantClaimer />
       <TransactionProvider>
         {children}

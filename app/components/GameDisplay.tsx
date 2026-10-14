@@ -1245,9 +1245,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     [failPendingMove, setProposalLocked, clearProposal, clearOptimisticSos, clearOptimisticDestroy],
   );
 
-  /** Tutorial parity: pulse is driven by tutorial steps in SimulatedGameDisplay; live game leaves it off. */
-  const shouldPulseSubmitMoveButton = React.useMemo(() => false, []);
-
   // A submitted Retreat plays as the last move straight away (warp-out at
   // its tile) instead of the ship just vanishing while the locked proposal
   // waits on the tx: last-move chrome ignores the selection for it.
@@ -2128,11 +2125,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   style={submitMoveButtonStyle}
                   className={`px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 ${
                     isRail ? "min-w-0 flex-[2] h-full w-full" : ""
-                  } ${isRail ? "order-2" : "order-2"}${
-                    shouldPulseSubmitMoveButton
-                      ? " animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                      : ""
-                  }`}
+                  } ${isRail ? "order-2" : "order-2"}`}
                   loadingText="[...]"
                   disabled={isProposalLocked}
                   errorText="[ERR]"
@@ -2810,7 +2803,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       : selectedShip && selectedWeaponType === "special"
         ? getSpecialName(selectedShip.equipment.special, selectedShipVariant)
         : "Weapon";
-  const tutorialDefaultLabel = isLandscapeMobile ? "Tap here" : "Click here";
 
   const renderFleetColumn = ({
       title,
@@ -3278,7 +3270,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       }
                       retreatPrepShipId={retreatPrepShipIdForDisplay}
                       retreatPrepIsCreator={retreatPrepIsCreator}
-                      tutorialDefaultLabel={tutorialDefaultLabel}
                       onGridRightClickDeselect={handleGridRightClickDeselect}
                       setSelectedShipId={setSelectedShipIdForDisplay}
                       setPreviewPosition={setPreviewPositionForDisplay}
@@ -3892,7 +3883,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           }
           retreatPrepShipId={retreatPrepShipIdForDisplay}
           retreatPrepIsCreator={retreatPrepIsCreator}
-          tutorialDefaultLabel={tutorialDefaultLabel}
           onGridRightClickDeselect={handleGridRightClickDeselect}
           setSelectedShipId={setSelectedShipIdForDisplay}
           setPreviewPosition={setPreviewPositionForDisplay}

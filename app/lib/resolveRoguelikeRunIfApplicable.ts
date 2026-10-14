@@ -11,7 +11,7 @@ import type { Web2GameDataView } from "../types/web2Game";
 // On a human win: persists each surviving roster ship's final damage back
 // onto RoguelikeRosterShip.hp (stored as damage taken, 0 = undamaged — see
 // the field's doc-comment in schema.prisma), applies the heal floors, and
-// records the node as defeated (gates re-entry via a twoWay back-edge).
+// records the node as defeated (a won node can't be fought again).
 //
 // Heal floors match the contracts exactly (RoguelikeMatch.onGameEnded and
 // HealAboveFloorWinEffect.onWin): each ship is raised to at least

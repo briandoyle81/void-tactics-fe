@@ -29,10 +29,29 @@ export interface RunMapActionInput {
   isDefeated: boolean;
   /** A match for this run is already live (web3 run.activeGameId). */
   hasActiveGame: boolean;
+  /**
+   * The run's current node is done (isCurrentNodeCleared), so its next
+   * nodes can be entered. Until then they only show what's ahead.
+   */
+  currentCleared: boolean;
   isEnteringResupply: boolean;
 }
 
 const none = (label: string): RunMapAction => ({ type: "none", label, disabled: true });
+
+/**
+ * Whether the player can move on from their current node: a resupply stop,
+ * or a combat mission they've beaten, with no match still in progress. The
+ * next missions open only after the current one is won.
+ */
+export function isCurrentNodeCleared(current: {
+  kind: "combat" | "resupply" | null;
+  isDefeated: boolean;
+  hasActiveGame: boolean;
+}): boolean {
+  if (current.hasActiveGame || current.kind === null) return false;
+  return current.kind === "resupply" || current.isDefeated;
+}
 
 export function getRunMapAction(input: RunMapActionInput): RunMapAction {
   if (input.isBrowseMode && input.tutorialPending) {
@@ -54,6 +73,7 @@ export function getRunMapAction(input: RunMapActionInput): RunMapAction {
   }
 
   if (!input.isReachableChild) return none("Not reachable");
+  if (!input.currentCleared) return none("Finish your current mission");
 
   if (input.selectedKind === "resupply") {
     return input.isEnteringResupply

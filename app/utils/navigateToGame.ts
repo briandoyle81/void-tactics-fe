@@ -1,6 +1,6 @@
 import { openClientTab } from "./clientNavigation";
 
-// Opens Battles, or a specific match in it (`?tab=battles&game=<id>`, see
+// Opens Battles, or a specific match in it (`/play/battles?game=<id>`, see
 // urlState.ts), as a new history entry. Shared by every "go to the game"
 // action: NodeMatchModal / CampaignNodePreview (launching or resuming a
 // mission), the Operations run map, Lobbies once a match exists, Profile.

@@ -22084,21 +22084,18 @@ export namespace Prisma {
     id: number | null
     parentId: number | null
     childId: number | null
-    twoWay: boolean | null
   }
 
   export type RoguelikeEdgeMaxAggregateOutputType = {
     id: number | null
     parentId: number | null
     childId: number | null
-    twoWay: boolean | null
   }
 
   export type RoguelikeEdgeCountAggregateOutputType = {
     id: number
     parentId: number
     childId: number
-    twoWay: number
     _all: number
   }
 
@@ -22119,21 +22116,18 @@ export namespace Prisma {
     id?: true
     parentId?: true
     childId?: true
-    twoWay?: true
   }
 
   export type RoguelikeEdgeMaxAggregateInputType = {
     id?: true
     parentId?: true
     childId?: true
-    twoWay?: true
   }
 
   export type RoguelikeEdgeCountAggregateInputType = {
     id?: true
     parentId?: true
     childId?: true
-    twoWay?: true
     _all?: true
   }
 
@@ -22227,7 +22221,6 @@ export namespace Prisma {
     id: number
     parentId: number
     childId: number
-    twoWay: boolean
     _count: RoguelikeEdgeCountAggregateOutputType | null
     _avg: RoguelikeEdgeAvgAggregateOutputType | null
     _sum: RoguelikeEdgeSumAggregateOutputType | null
@@ -22253,7 +22246,6 @@ export namespace Prisma {
     id?: boolean
     parentId?: boolean
     childId?: boolean
-    twoWay?: boolean
     parent?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
     child?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roguelikeEdge"]>
@@ -22262,7 +22254,6 @@ export namespace Prisma {
     id?: boolean
     parentId?: boolean
     childId?: boolean
-    twoWay?: boolean
     parent?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
     child?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roguelikeEdge"]>
@@ -22271,7 +22262,6 @@ export namespace Prisma {
     id?: boolean
     parentId?: boolean
     childId?: boolean
-    twoWay?: boolean
     parent?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
     child?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roguelikeEdge"]>
@@ -22280,10 +22270,9 @@ export namespace Prisma {
     id?: boolean
     parentId?: boolean
     childId?: boolean
-    twoWay?: boolean
   }
 
-  export type RoguelikeEdgeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "parentId" | "childId" | "twoWay", ExtArgs["result"]["roguelikeEdge"]>
+  export type RoguelikeEdgeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "parentId" | "childId", ExtArgs["result"]["roguelikeEdge"]>
   export type RoguelikeEdgeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     parent?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
     child?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
@@ -22307,7 +22296,6 @@ export namespace Prisma {
       id: number
       parentId: number
       childId: number
-      twoWay: boolean
     }, ExtArgs["result"]["roguelikeEdge"]>
     composites: {}
   }
@@ -22736,7 +22724,6 @@ export namespace Prisma {
     readonly id: FieldRef<"RoguelikeEdge", 'Int'>
     readonly parentId: FieldRef<"RoguelikeEdge", 'Int'>
     readonly childId: FieldRef<"RoguelikeEdge", 'Int'>
-    readonly twoWay: FieldRef<"RoguelikeEdge", 'Boolean'>
   }
     
 
@@ -34860,8 +34847,7 @@ export namespace Prisma {
   export const RoguelikeEdgeScalarFieldEnum: {
     id: 'id',
     parentId: 'parentId',
-    childId: 'childId',
-    twoWay: 'twoWay'
+    childId: 'childId'
   };
 
   export type RoguelikeEdgeScalarFieldEnum = (typeof RoguelikeEdgeScalarFieldEnum)[keyof typeof RoguelikeEdgeScalarFieldEnum]
@@ -36474,7 +36460,6 @@ export namespace Prisma {
     id?: IntFilter<"RoguelikeEdge"> | number
     parentId?: IntFilter<"RoguelikeEdge"> | number
     childId?: IntFilter<"RoguelikeEdge"> | number
-    twoWay?: BoolFilter<"RoguelikeEdge"> | boolean
     parent?: XOR<RoguelikeNodeScalarRelationFilter, RoguelikeNodeWhereInput>
     child?: XOR<RoguelikeNodeScalarRelationFilter, RoguelikeNodeWhereInput>
   }
@@ -36483,7 +36468,6 @@ export namespace Prisma {
     id?: SortOrder
     parentId?: SortOrder
     childId?: SortOrder
-    twoWay?: SortOrder
     parent?: RoguelikeNodeOrderByWithRelationInput
     child?: RoguelikeNodeOrderByWithRelationInput
   }
@@ -36496,7 +36480,6 @@ export namespace Prisma {
     NOT?: RoguelikeEdgeWhereInput | RoguelikeEdgeWhereInput[]
     parentId?: IntFilter<"RoguelikeEdge"> | number
     childId?: IntFilter<"RoguelikeEdge"> | number
-    twoWay?: BoolFilter<"RoguelikeEdge"> | boolean
     parent?: XOR<RoguelikeNodeScalarRelationFilter, RoguelikeNodeWhereInput>
     child?: XOR<RoguelikeNodeScalarRelationFilter, RoguelikeNodeWhereInput>
   }, "id" | "parentId_childId">
@@ -36505,7 +36488,6 @@ export namespace Prisma {
     id?: SortOrder
     parentId?: SortOrder
     childId?: SortOrder
-    twoWay?: SortOrder
     _count?: RoguelikeEdgeCountOrderByAggregateInput
     _avg?: RoguelikeEdgeAvgOrderByAggregateInput
     _max?: RoguelikeEdgeMaxOrderByAggregateInput
@@ -36520,7 +36502,6 @@ export namespace Prisma {
     id?: IntWithAggregatesFilter<"RoguelikeEdge"> | number
     parentId?: IntWithAggregatesFilter<"RoguelikeEdge"> | number
     childId?: IntWithAggregatesFilter<"RoguelikeEdge"> | number
-    twoWay?: BoolWithAggregatesFilter<"RoguelikeEdge"> | boolean
   }
 
   export type RoguelikeRunWhereInput = {
@@ -38551,7 +38532,6 @@ export namespace Prisma {
   }
 
   export type RoguelikeEdgeCreateInput = {
-    twoWay?: boolean
     parent: RoguelikeNodeCreateNestedOneWithoutChildEdgesInput
     child: RoguelikeNodeCreateNestedOneWithoutParentEdgesInput
   }
@@ -38560,11 +38540,9 @@ export namespace Prisma {
     id?: number
     parentId: number
     childId: number
-    twoWay?: boolean
   }
 
   export type RoguelikeEdgeUpdateInput = {
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
     parent?: RoguelikeNodeUpdateOneRequiredWithoutChildEdgesNestedInput
     child?: RoguelikeNodeUpdateOneRequiredWithoutParentEdgesNestedInput
   }
@@ -38573,25 +38551,22 @@ export namespace Prisma {
     id?: IntFieldUpdateOperationsInput | number
     parentId?: IntFieldUpdateOperationsInput | number
     childId?: IntFieldUpdateOperationsInput | number
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type RoguelikeEdgeCreateManyInput = {
     id?: number
     parentId: number
     childId: number
-    twoWay?: boolean
   }
 
   export type RoguelikeEdgeUpdateManyMutationInput = {
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
+
   }
 
   export type RoguelikeEdgeUncheckedUpdateManyInput = {
     id?: IntFieldUpdateOperationsInput | number
     parentId?: IntFieldUpdateOperationsInput | number
     childId?: IntFieldUpdateOperationsInput | number
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type RoguelikeRunCreateInput = {
@@ -40646,7 +40621,6 @@ export namespace Prisma {
     id?: SortOrder
     parentId?: SortOrder
     childId?: SortOrder
-    twoWay?: SortOrder
   }
 
   export type RoguelikeEdgeAvgOrderByAggregateInput = {
@@ -40659,14 +40633,12 @@ export namespace Prisma {
     id?: SortOrder
     parentId?: SortOrder
     childId?: SortOrder
-    twoWay?: SortOrder
   }
 
   export type RoguelikeEdgeMinOrderByAggregateInput = {
     id?: SortOrder
     parentId?: SortOrder
     childId?: SortOrder
-    twoWay?: SortOrder
   }
 
   export type RoguelikeEdgeSumOrderByAggregateInput = {
@@ -47455,14 +47427,12 @@ export namespace Prisma {
   }
 
   export type RoguelikeEdgeCreateWithoutParentInput = {
-    twoWay?: boolean
     child: RoguelikeNodeCreateNestedOneWithoutParentEdgesInput
   }
 
   export type RoguelikeEdgeUncheckedCreateWithoutParentInput = {
     id?: number
     childId: number
-    twoWay?: boolean
   }
 
   export type RoguelikeEdgeCreateOrConnectWithoutParentInput = {
@@ -47476,14 +47446,12 @@ export namespace Prisma {
   }
 
   export type RoguelikeEdgeCreateWithoutChildInput = {
-    twoWay?: boolean
     parent: RoguelikeNodeCreateNestedOneWithoutChildEdgesInput
   }
 
   export type RoguelikeEdgeUncheckedCreateWithoutChildInput = {
     id?: number
     parentId: number
-    twoWay?: boolean
   }
 
   export type RoguelikeEdgeCreateOrConnectWithoutChildInput = {
@@ -47612,7 +47580,6 @@ export namespace Prisma {
     id?: IntFilter<"RoguelikeEdge"> | number
     parentId?: IntFilter<"RoguelikeEdge"> | number
     childId?: IntFilter<"RoguelikeEdge"> | number
-    twoWay?: BoolFilter<"RoguelikeEdge"> | boolean
   }
 
   export type RoguelikeEdgeUpsertWithWhereUniqueWithoutChildInput = {
@@ -50842,13 +50809,11 @@ export namespace Prisma {
   export type RoguelikeEdgeCreateManyParentInput = {
     id?: number
     childId: number
-    twoWay?: boolean
   }
 
   export type RoguelikeEdgeCreateManyChildInput = {
     id?: number
     parentId: number
-    twoWay?: boolean
   }
 
   export type RoguelikeNodeDefeatCreateManyNodeInput = {
@@ -50857,37 +50822,31 @@ export namespace Prisma {
   }
 
   export type RoguelikeEdgeUpdateWithoutParentInput = {
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
     child?: RoguelikeNodeUpdateOneRequiredWithoutParentEdgesNestedInput
   }
 
   export type RoguelikeEdgeUncheckedUpdateWithoutParentInput = {
     id?: IntFieldUpdateOperationsInput | number
     childId?: IntFieldUpdateOperationsInput | number
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type RoguelikeEdgeUncheckedUpdateManyWithoutParentInput = {
     id?: IntFieldUpdateOperationsInput | number
     childId?: IntFieldUpdateOperationsInput | number
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type RoguelikeEdgeUpdateWithoutChildInput = {
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
     parent?: RoguelikeNodeUpdateOneRequiredWithoutChildEdgesNestedInput
   }
 
   export type RoguelikeEdgeUncheckedUpdateWithoutChildInput = {
     id?: IntFieldUpdateOperationsInput | number
     parentId?: IntFieldUpdateOperationsInput | number
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type RoguelikeEdgeUncheckedUpdateManyWithoutChildInput = {
     id?: IntFieldUpdateOperationsInput | number
     parentId?: IntFieldUpdateOperationsInput | number
-    twoWay?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type RoguelikeNodeDefeatUpdateWithoutNodeInput = {

@@ -95,7 +95,6 @@ export interface RoguelikeNodeRow {
 export interface RoguelikeEdgeRow {
   parentId: number;
   childId: number;
-  twoWay: boolean;
 }
 export interface NodeContentRow {
   graphType: "CAMPAIGN" | "ROGUELIKE";
@@ -254,7 +253,7 @@ export function buildMissionImportRows(
       continue;
     }
     seenEdges.add(edgeKey);
-    roguelikeEdges.push({ parentId, childId, twoWay: e.twoWay === true });
+    roguelikeEdges.push({ parentId, childId });
   }
   const roguelikeCampaign: RoguelikeCampaignRow = {
     id: 1,

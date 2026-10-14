@@ -43,7 +43,7 @@ import { NodeEditorModal } from "./operations/NodeEditorModal";
 import { RetreatRunConfirmModal } from "./operations/RetreatRunConfirmModal";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useRunRosterHullWeb3 } from "../hooks/useRunRosterHull";
-import { getRunMapAction } from "../utils/runMapAction";
+import { getRunMapAction, isCurrentNodeCleared } from "../utils/runMapAction";
 import type { Ship } from "../types/types";
 import { useUrlSelectedNode } from "../hooks/useUrlSelectedNode";
 import { CLIENT_TAB_SLUGS } from "../utils/clientNavigation";
@@ -181,6 +181,15 @@ export function RoguelikeGraph({
 
   // Locked/defeated flags for every reachable node, in one GameLens call.
   const { lockedByNodeId, defeatedByNodeId } = useRoguelikeRunView(address, !isBrowseMode);
+  // Next missions open only once the current one is won.
+  const currentCleared =
+    !isBrowseMode &&
+    !!currentNode &&
+    isCurrentNodeCleared({
+      kind: currentNode.kind === RoguelikeNodeKind.Combat ? "combat" : "resupply",
+      isDefeated: !!defeatedByNodeId.get(currentNode.id.toString()),
+      hasActiveGame: run.activeGameId !== 0n,
+    });
 
   const prerequisitesByNumberId = React.useMemo(
     () =>
@@ -204,7 +213,9 @@ export function RoguelikeGraph({
         const isCompleted =
           !isBrowseMode && n.kind === RoguelikeNodeKind.Combat && !!defeatedByNodeId.get(n.id.toString());
         const isNextStop =
-          !!currentNode?.children.some((e) => e.childId === n.id) && !lockedByNodeId.get(n.id.toString());
+          currentCleared &&
+          !!currentNode?.children.some((e) => e.childId === n.id) &&
+          !lockedByNodeId.get(n.id.toString());
         return {
           id: idNum,
           kind: n.kind,
@@ -242,6 +253,7 @@ export function RoguelikeGraph({
       rootNodeId,
       defeatedByNodeId,
       lockedByNodeId,
+      currentCleared,
       prerequisitesByNumberId,
       editMode,
       connectMode,
@@ -332,6 +344,8 @@ export function RoguelikeGraph({
   const selectedNode: RoguelikeNodeWithContent | undefined =
     !isCreatingNode && selectedNodeId != null ? byNumberId.get(selectedNodeId) : undefined;
   const isSelectedCurrentNode = !isBrowseMode && !!selectedNode && selectedNode.id === run.currentNodeId;
+  // Connected and unlocked; currentCleared (passed to getRunMapAction)
+  // decides whether it can be entered yet.
   const isSelectedReachableChild =
     !isBrowseMode &&
     !!selectedNode &&
@@ -510,6 +524,7 @@ export function RoguelikeGraph({
     isReachableChild: isSelectedReachableChild,
     isDefeated: isSelectedNodeDefeated,
     hasActiveGame: !isBrowseMode && run.activeGameId !== 0n,
+    currentCleared,
     isEnteringResupply: !!selectedNode && enteringResupply === selectedNode.id,
   });
 

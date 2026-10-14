@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { DialogPortrait } from "./DialogPortrait";
 import { useCrewReporter } from "./CrewReport";
+import { TutorialTarget } from "./TutorialTarget";
 
 export interface TutorialGridTaskPanelProps {
   /** Step title shown in the panel header */
@@ -421,16 +422,20 @@ export function TutorialGridTaskPanel({
           </button>
         ) : null}
         {!isVisibleLastStep && (
-          <button
-            type="button"
-            onClick={onNext}
-            disabled={nextDisabled}
-            className={`ml-auto bg-steel text-cyan rounded-none font-mono border border-cyan hover:bg-gunmetal transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              isCompactWelcome ? "px-2 py-1 text-xs" : "px-2.5 py-1 text-sm"
-            }`}
-          >
-            Next →
-          </button>
+          // Framed like a tutorial click target (TutorialTarget) once the
+          // step is done and Next is the thing to press.
+          <TutorialTarget active={!nextDisabled} pointer="none" className="ml-auto">
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={nextDisabled}
+              className={`bg-steel text-phosphor-green rounded-none font-mono border border-phosphor-green hover:bg-gunmetal transition-colors disabled:text-text-muted disabled:border-gunmetal disabled:hover:bg-steel disabled:cursor-not-allowed ${
+                isCompactWelcome ? "px-2 py-1 text-xs" : "px-2.5 py-1 text-sm"
+              }`}
+            >
+              Next →
+            </button>
+          </TutorialTarget>
         )}
       </div>
     </div>

@@ -7,6 +7,7 @@ import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { STYLE_LABEL } from "../styles/fontStyles";
 import { useFactionAbilityIsHeal } from "../hooks/useFactionAbilityIsHeal";
 import { canOfferFactionAbility } from "./GameGridWeaponSelector";
+import { TutorialTargetFrame, TutorialTargetPointer } from "./TutorialTarget";
 import type { ConfirmWidgetAnchor } from "../utils/gameGridRanges";
 
 interface GameGridConfirmWidgetProps {
@@ -39,9 +40,8 @@ interface GameGridConfirmWidgetProps {
   clipRootRef?: React.RefObject<HTMLDivElement | null>;
   zoomScale?: number;
   onMoveVertical: (side: "above" | "below") => void;
-  /** Tutorial: pulse this weapon choice with a "Click here" badge above it. */
+  /** Tutorial: frame this weapon choice, with a chevron above it (TutorialTarget). */
   tutorialWeaponOption?: "weapon" | "special" | "ram";
-  tutorialLabel?: string;
 }
 
 export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
@@ -71,7 +71,6 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
   zoomScale = 1,
   onMoveVertical,
   tutorialWeaponOption,
-  tutorialLabel = "Click here",
 }: GameGridConfirmWidgetProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [clamp, setClamp] = useState({ x: 0, y: 0 });
@@ -244,8 +243,9 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
             >
               {label}
               {tutorialWeaponOption === value && (
-                // Same pulse as a highlighted grid cell (GameGridCell).
-                <span className="pointer-events-none absolute inset-0 border border-amber/90 bg-amber/24 animate-pulse" />
+                // Inside the button: the panel's clip-path would cut brackets
+                // drawn outside it. The chevron sits above the panel (below).
+                <TutorialTargetFrame inside />
               )}
             </button>
           );
@@ -307,14 +307,9 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
           panel's clip-path. */}
       <div className="relative">
       {tutorialWeaponOption && tutorialOptionCenterX != null && (
-        // Same badge as the grid's tutorial "Click here" (GameGridOverlays),
-        // above the highlighted weapon choice.
-        <span
-          className="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 whitespace-nowrap rounded-none border border-amber bg-amber/60 px-2 py-1 text-center font-mono text-xs text-amber"
-          style={{ left: tutorialOptionCenterX }}
-        >
-          {tutorialLabel}
-        </span>
+        // Same chevron as a grid click target (GameGridOverlays), above the
+        // highlighted weapon choice.
+        <TutorialTargetPointer className="z-[1]" style={{ left: tutorialOptionCenterX, top: -2 }} />
       )}
       <div
         style={{

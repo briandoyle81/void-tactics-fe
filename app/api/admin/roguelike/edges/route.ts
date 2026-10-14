@@ -13,15 +13,14 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const parentId = Number(body?.parentId);
   const childId = Number(body?.childId);
-  const twoWay = body?.twoWay === true;
   if (!Number.isInteger(parentId) || !Number.isInteger(childId)) {
     return NextResponse.json({ error: "parentId and childId are required" }, { status: 400 });
   }
 
   const edge = await prisma.roguelikeEdge.upsert({
     where: { parentId_childId: { parentId, childId } },
-    create: { parentId, childId, twoWay },
-    update: { twoWay },
+    create: { parentId, childId },
+    update: {},
   });
   return NextResponse.json(edge, { status: 201 });
 }

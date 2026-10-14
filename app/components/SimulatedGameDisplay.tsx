@@ -46,6 +46,7 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
+import { TutorialTarget } from "./TutorialTarget";
 import {
   clearTutorialClaimCompletedCacheEntry,
   isTutorialClaimCompletedCached,
@@ -3178,7 +3179,6 @@ export function SimulatedGameDisplay({
       />
     ) : null;
 
-  const tutorialDefaultLabel = isLandscapeMobile ? "Tap here" : "Click here";
 
   // ── GameGrid boundary adapter ───────────────────────────────────────────
   // GameGrid and its subtree render on plain `number` ids (GridShip /
@@ -3665,20 +3665,23 @@ export function SimulatedGameDisplay({
                           ← Prev
                         </button>
                         {!isVisibleLastStep ? (
-                          <button
-                            type="button"
-                            onClick={() => nextStep()}
-                            disabled={!isStepComplete}
-                            className="px-2 py-1 border border-solid text-[10px] uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
-                            style={{
-                              borderColor: "var(--color-cyan)",
-                              color: "var(--color-cyan)",
-                              backgroundColor: "var(--color-near-black)",
-                              borderRadius: 0,
-                            }}
-                          >
-                            NEXT &gt;&gt;
-                          </button>
+                          // Same as the task panel's Next (TutorialGridTaskPanel).
+                          <TutorialTarget active={isStepComplete} pointer="none">
+                            <button
+                              type="button"
+                              onClick={() => nextStep()}
+                              disabled={!isStepComplete}
+                              className="px-2 py-1 border border-solid text-[10px] uppercase tracking-wider disabled:cursor-not-allowed"
+                              style={{
+                                borderColor: isStepComplete ? "var(--color-phosphor-green)" : "var(--color-gunmetal)",
+                                color: isStepComplete ? "var(--color-phosphor-green)" : "var(--color-text-muted)",
+                                backgroundColor: "var(--color-near-black)",
+                                borderRadius: 0,
+                              }}
+                            >
+                              NEXT &gt;&gt;
+                            </button>
+                          </TutorialTarget>
                         ) : (
                           <div />
                         )}
@@ -3736,46 +3739,22 @@ export function SimulatedGameDisplay({
                         >
                           Cancel
                         </button>
-                        <div className="relative flex-1">
-                          {shouldPulseSubmitMoveButton && (
-                            <div className="absolute -top-7 left-1/2 z-[280] -translate-x-1/2 pointer-events-none">
-                              <div className="relative inline-block">
-                                <div
-                                  className="absolute inset-0 bg-near-black"
-                                  style={{ opacity: 1 }}
-                                  aria-hidden
-                                />
-                                <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                                  Tap here
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                        <TutorialTarget active={shouldPulseSubmitMoveButton} className="flex-1">
                           <button
                             type="button"
                             onClick={handleSubmitMove}
                             disabled={isConfirmingMove}
-                            className={`w-full px-2 py-1 border border-solid text-xs uppercase tracking-wider ${
-                              shouldPulseSubmitMoveButton
-                                ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                                : ""
-                            }`}
+                            className={`w-full px-2 py-1 border border-solid text-xs uppercase tracking-wider `}
                             style={{
-                              borderColor: shouldPulseSubmitMoveButton
-                                ? "var(--color-amber)"
-                                : "var(--color-phosphor-green)",
-                              color: shouldPulseSubmitMoveButton
-                                ? "var(--color-amber)"
-                                : "var(--color-phosphor-green)",
-                              backgroundColor: shouldPulseSubmitMoveButton
-                                ? "rgba(47, 47, 54, 0.5)"
-                                : "var(--color-near-black)",
+                              borderColor: "var(--color-phosphor-green)",
+                              color: "var(--color-phosphor-green)",
+                              backgroundColor: "var(--color-near-black)",
                               borderRadius: 0,
                             }}
                           >
                             {isConfirmingMove ? "[...]" : "Submit"}
                           </button>
-                        </div>
+                        </TutorialTarget>
                       </div>
                     </div>
                   ) : (
@@ -3819,37 +3798,15 @@ export function SimulatedGameDisplay({
                   }}
                 >
                   <div className="mb-1 flex items-center justify-between">
-                    <div className="relative min-w-0">
-                      {shouldHighlightSpecialEmpWeaponDropdown ? (
-                        <div className="absolute -top-7 left-1/2 z-[280] -translate-x-1/2 pointer-events-none">
-                          <div className="relative inline-block">
-                            <div
-                              className="absolute inset-0 bg-near-black"
-                              style={{ opacity: 1 }}
-                              aria-hidden
-                            />
-                            <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                              Tap here
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
+                    <TutorialTarget active={shouldHighlightSpecialEmpWeaponDropdown} className="min-w-0">
                       <button
                         type="button"
                         onClick={() => setIsMobileWeaponMenuOpen((prev) => !prev)}
                         disabled={!selectedShip || !shipHasActivatableSpecial(selectedShip)}
-                        className={`flex min-w-[7.5rem] max-w-[10.5rem] items-center justify-between gap-2 border border-solid px-2 py-1 text-[10px] uppercase tracking-wider text-cyan disabled:opacity-50 disabled:cursor-default ${
-                          shouldHighlightSpecialEmpWeaponDropdown
-                            ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                            : "bg-black/40"
-                        }`}
+                        className={`flex min-w-[7.5rem] max-w-[10.5rem] items-center justify-between gap-2 border border-solid px-2 py-1 text-[10px] uppercase tracking-wider text-cyan disabled:opacity-50 disabled:cursor-default bg-black/40`}
                         style={{
-                          borderColor: shouldHighlightSpecialEmpWeaponDropdown
-                            ? "var(--color-amber)"
-                            : "var(--color-gunmetal)",
-                          backgroundColor: shouldHighlightSpecialEmpWeaponDropdown
-                            ? "rgba(47, 47, 54, 0.5)"
-                            : "rgba(0, 0, 0, 0.4)",
+                          borderColor: "var(--color-gunmetal)",
+                          backgroundColor: "rgba(0, 0, 0, 0.4)",
                           borderRadius: 0,
                         }}
                       >
@@ -3919,49 +3876,25 @@ export function SimulatedGameDisplay({
                           </button>
                         </div>
                       ) : null}
-                    </div>
-                    <div className="relative">
-                      {shouldHighlightMobileCloseButton ? (
-                        <div className="absolute top-[calc(100%+4px)] right-0 z-[280] pointer-events-none">
-                          <div className="relative inline-block">
-                            <div
-                              className="absolute inset-0 bg-near-black"
-                              style={{ opacity: 1 }}
-                              aria-hidden
-                            />
-                            <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                              Tap here
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
+                    </TutorialTarget>
+                    <TutorialTarget active={shouldHighlightMobileCloseButton} pointer="below">
                       <button
                         type="button"
                         onClick={() => {
                           setIsMobileWeaponMenuOpen(false);
                           setSelectedShipId(null);
                         }}
-                        className={`px-1.5 py-0.5 text-[10px] uppercase border border-solid ${
-                          shouldHighlightMobileCloseButton
-                            ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                            : ""
-                        }`}
+                        className={`px-1.5 py-0.5 text-[10px] uppercase border border-solid `}
                         style={{
-                          borderColor: shouldHighlightMobileCloseButton
-                            ? "var(--color-amber)"
-                            : "var(--color-gunmetal)",
-                          color: shouldHighlightMobileCloseButton
-                            ? "var(--color-amber)"
-                            : "var(--color-text-secondary)",
-                          backgroundColor: shouldHighlightMobileCloseButton
-                            ? "var(--color-steel)"
-                            : "var(--color-steel)",
+                          borderColor: "var(--color-gunmetal)",
+                          color: "var(--color-text-secondary)",
+                          backgroundColor: "var(--color-steel)",
                           borderRadius: 0,
                         }}
                       >
                         Close
                       </button>
-                    </div>
+                    </TutorialTarget>
                   </div>
                   <div className="space-y-0.5">
                     <div className="origin-top scale-[0.9] transform-gpu">
@@ -4005,46 +3938,22 @@ export function SimulatedGameDisplay({
                           >
                             Cancel
                           </button>
-                          <div className="relative flex-1">
-                            {shouldPulseSubmitMoveButton && (
-                              <div className="absolute -top-7 left-1/2 z-[280] -translate-x-1/2 pointer-events-none">
-                                <div className="relative inline-block">
-                                  <div
-                                    className="absolute inset-0 bg-near-black"
-                                    style={{ opacity: 1 }}
-                                    aria-hidden
-                                  />
-                                  <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                                    Tap here
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                          <TutorialTarget active={shouldPulseSubmitMoveButton} className="flex-1">
                             <button
                               type="button"
                               onClick={handleSubmitMove}
                               disabled={isConfirmingMove}
-                              className={`w-full px-2 py-1 border border-solid text-[10px] uppercase tracking-wider ${
-                                shouldPulseSubmitMoveButton
-                                  ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                                  : ""
-                              }`}
+                              className={`w-full px-2 py-1 border border-solid text-[10px] uppercase tracking-wider `}
                               style={{
-                                borderColor: shouldPulseSubmitMoveButton
-                                  ? "var(--color-amber)"
-                                  : "var(--color-phosphor-green)",
-                                color: shouldPulseSubmitMoveButton
-                                  ? "var(--color-amber)"
-                                  : "var(--color-phosphor-green)",
-                                backgroundColor: shouldPulseSubmitMoveButton
-                                  ? "var(--color-steel)"
-                                  : "var(--color-near-black)",
+                                borderColor: "var(--color-phosphor-green)",
+                                color: "var(--color-phosphor-green)",
+                                backgroundColor: "var(--color-near-black)",
                                 borderRadius: 0,
                               }}
                             >
                               {isConfirmingMove ? "[...]" : "Submit"}
                             </button>
-                          </div>
+                          </TutorialTarget>
                         </div>
                       </div>
                     ) : null}
@@ -4131,7 +4040,6 @@ export function SimulatedGameDisplay({
                       tutorialWeaponOption={
                         useSideLayout && shouldHighlightSpecialEmpWeaponDropdown ? "special" : undefined
                       }
-                      tutorialDefaultLabel={tutorialDefaultLabel}
                       onGridRightClickDeselect={handleGridRightClickDeselect}
                       setSelectedShipId={setSelectedShipIdForDisplay}
                       setPreviewPosition={wrappedSetPreviewPosition}
@@ -4413,18 +4321,21 @@ export function SimulatedGameDisplay({
                   </div>
                 </div>
               </div>
-              {/* Score grouped with game/round (same conceptual row as in reference) */}
+              {/* Score grouped with game/round (same conceptual row as in reference).
+                  The goals step highlights it (TutorialTarget, outside the
+                  panel's overflow clip). */}
+              <TutorialTarget
+                active={currentStep?.id === "goals"}
+                variant="highlight"
+                className={chromeOnSide ? "w-full shrink-0" : "w-48 shrink-0"}
+              >
               <div
-                className={
-                  chromeOnSide
-                    ? `w-full shrink-0 border border-solid overflow-hidden ${currentStep?.id === "goals" ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]" : ""}`
-                    : `w-48 shrink-0 border border-solid overflow-hidden ${currentStep?.id === "goals" ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]" : ""}`
-                }
+                className="w-full border border-solid overflow-hidden"
                 style={{
-                  backgroundColor: currentStep?.id === "goals" ? "var(--color-steel)" : "var(--color-slate)",
-                  borderColor: currentStep?.id === "goals" ? "var(--color-amber)" : "var(--color-gunmetal)",
-                  borderTopColor: currentStep?.id === "goals" ? "var(--color-amber)" : "var(--color-steel)",
-                  borderLeftColor: currentStep?.id === "goals" ? "var(--color-amber)" : "var(--color-steel)",
+                  backgroundColor: "var(--color-slate)",
+                  borderColor: "var(--color-gunmetal)",
+                  borderTopColor: "var(--color-steel)",
+                  borderLeftColor: "var(--color-steel)",
                   borderRadius: 0,
                 }}
               >
@@ -4433,13 +4344,14 @@ export function SimulatedGameDisplay({
                     <span style={{ ...STYLE_LABEL, fontSize: 11, color: "var(--color-cyan)" }}>[YOU]</span>
                     <span title="Scores update at end of round." style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{gameState.creatorScore.toString()}/{gameState.maxScore.toString()}</span>
                   </div>
-                  <div style={{ width: 1, backgroundColor: currentStep?.id === "goals" ? "var(--color-amber)" : "var(--color-gunmetal)", flexShrink: 0 }} />
+                  <div style={{ width: 1, backgroundColor: "var(--color-gunmetal)", flexShrink: 0 }} />
                   <div className="flex flex-1 items-center justify-center gap-2 px-3 py-2">
                     <span style={{ ...STYLE_LABEL, fontSize: 11, color: "var(--color-warning-red)" }}>[OPP]</span>
                     <span title="Scores update at end of round." style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{gameState.joinerScore.toString()}/{gameState.maxScore.toString()}</span>
                   </div>
                 </div>
               </div>
+              </TutorialTarget>
             </div>
           </div>
 
@@ -4471,30 +4383,12 @@ export function SimulatedGameDisplay({
                 }
               >
                 <div className="relative flex w-full min-w-0 shrink-0 flex-row gap-2 pt-8">
-                  <div className="relative min-w-0 flex-[2]">
-                    {shouldPulseSubmitMoveButton && (
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                        <div className="relative inline-block">
-                          <div
-                            className="absolute inset-0 bg-near-black"
-                            style={{ opacity: 1 }}
-                            aria-hidden
-                          />
-                          <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                            Click here
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                  <TutorialTarget active={shouldPulseSubmitMoveButton} className="min-w-0 flex-[2]">
                     <button
                       type="button"
                       onClick={handleSubmitMove}
                       disabled={isConfirmingMove}
-                      className={`w-full px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 min-w-0 ${
-                        shouldPulseSubmitMoveButton
-                          ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                          : ""
-                      }`}
+                      className={`w-full px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 min-w-0 `}
                       style={{
                         ...STYLE_LABEL,
                         borderColor: "var(--color-phosphor-green)",
@@ -4509,7 +4403,7 @@ export function SimulatedGameDisplay({
                     >
                       {isConfirmingMove ? "[...]" : isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
                     </button>
-                  </div>
+                  </TutorialTarget>
                   <button
                     type="button"
                     onClick={handleCancelMove}
@@ -4571,28 +4465,8 @@ export function SimulatedGameDisplay({
                         const ship = shipMap.get(selectedShipId);
                         if (!ship || !shipHasActivatableSpecial(ship)) return null;
                         return (
-                          <div className="relative mt-1 w-full">
-                            {shouldHighlightSpecialEmpWeaponDropdown && (
-                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                                <div className="relative inline-block">
-                                  <div
-                                    className="absolute inset-0 bg-near-black"
-                                    style={{ opacity: 1 }}
-                                    aria-hidden
-                                  />
-                                  <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                                    Click here
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            <div
-                              className={
-                                shouldHighlightSpecialEmpWeaponDropdown
-                                  ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                                  : ""
-                              }
-                            >
+                          <TutorialTarget active={shouldHighlightSpecialEmpWeaponDropdown} className="mt-1 w-full">
+                            <div>
                               <select
                                 value={selectedWeaponType}
                                 onChange={(e) => {
@@ -4618,7 +4492,7 @@ export function SimulatedGameDisplay({
                                 </option>
                               </select>
                             </div>
-                          </div>
+                          </TutorialTarget>
                         );
                       })()}
                     </div>
@@ -4710,29 +4584,14 @@ export function SimulatedGameDisplay({
                                 </button>
                               );
                               return (
-                                <div key={target.shipId} className="relative">
-                                  {isHammerTargetTutorialHighlight && (
-                                    <div className="mb-1 flex justify-center pointer-events-none">
-                                      <div className="relative inline-block">
-                                        <div
-                                          className="absolute inset-0 bg-near-black"
-                                          style={{ opacity: 1 }}
-                                          aria-hidden
-                                        />
-                                        <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                                          Click here
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {isHammerTargetTutorialHighlight ? (
-                                    <div className="w-full border-2 border-amber animate-pulse">
-                                      {targetButton}
-                                    </div>
-                                  ) : (
-                                    targetButton
-                                  )}
-                                </div>
+                                <TutorialTarget
+                                  key={target.shipId}
+                                  active={isHammerTargetTutorialHighlight}
+                                  pointer="inline"
+                                  inside
+                                >
+                                  {targetButton}
+                                </TutorialTarget>
                               );
                             })}
                           </div>
@@ -4942,7 +4801,6 @@ export function SimulatedGameDisplay({
                   tutorialWeaponOption={
                     useSideLayout && shouldHighlightSpecialEmpWeaponDropdown ? "special" : undefined
                   }
-                  tutorialDefaultLabel={tutorialDefaultLabel}
                   onGridRightClickDeselect={handleGridRightClickDeselect}
                   setSelectedShipId={setSelectedShipIdForDisplay}
                   setPreviewPosition={wrappedSetPreviewPosition}
@@ -4956,30 +4814,14 @@ export function SimulatedGameDisplay({
                   onCancelMove={handleCancelMove}
                   confirmButton={
                     useSideLayout && isShowingProposedMove ? (
-                      <div className="relative flex-[2]">
-                        {shouldPulseSubmitMoveButton && (
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-                            <div className="relative inline-block">
-                              <div
-                                className="absolute inset-0 bg-near-black"
-                                style={{ opacity: 1 }}
-                                aria-hidden
-                              />
-                              <div className="relative border border-amber bg-steel px-2 py-1 text-center font-mono text-xs text-white whitespace-nowrap">
-                                Click here
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      // Inside the confirm widget, whose clip-path cuts anything
+                      // drawn outside the button: brackets inside, no chevron.
+                      <TutorialTarget active={shouldPulseSubmitMoveButton} pointer="none" inside className="flex-[2]">
                         <button
                           type="button"
                           onClick={handleSubmitMove}
                           disabled={isConfirmingMove}
-                          className={`w-full px-4 py-2 text-xs uppercase font-bold tracking-widest transition-colors duration-100 ${
-                            shouldPulseSubmitMoveButton
-                              ? "animate-pulse ring-2 ring-amber ring-offset-2 ring-offset-[var(--color-near-black)]"
-                              : ""
-                          }`}
+                          className={`w-full px-4 py-2 text-xs uppercase font-bold tracking-widest transition-colors duration-100 `}
                           style={{
                             ...STYLE_LABEL,
                             color: "var(--color-phosphor-green)",
@@ -4991,7 +4833,7 @@ export function SimulatedGameDisplay({
                         >
                           {confirmWidgetLabel}
                         </button>
-                      </div>
+                      </TutorialTarget>
                     ) : undefined
                   }
                 />

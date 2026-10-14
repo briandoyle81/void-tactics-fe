@@ -9,6 +9,7 @@ import { calculateShipRank } from "../utils/shipLevel";
 import { setMirroredDragImage } from "../utils/dragShipImage";
 import { RetreatPrepAnimation } from "./weapon-animations/RetreatPrepAnimation";
 import { SosHullFires } from "./SosHullFires";
+import { TutorialTargetFrame } from "./TutorialTarget";
 import { HOLD_HOLOGRAM_CYCLE_MS } from "../constants/animationTiming";
 import { isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { describeTile, tileTooltipLabel } from "../utils/tileTooltip";
@@ -1142,10 +1143,10 @@ export const GameGridCell = React.memo(function GameGridCell({
                         aria-hidden
                       />
                     )}
-                    {/* Tutorial highlight: below ship stack. */}
-                    {isTutorialHighlightCell && (
-                      <div className="absolute inset-0 z-[11] pointer-events-none border border-amber/90 bg-amber/24 animate-pulse" />
-                    )}
+                    {/* Tutorial target: brackets and glow over the ship. A click
+                        target's ripple and chevron are grid-level
+                        (GameGridOverlays) so neighboring cells don't cover them. */}
+                    {isTutorialHighlightCell && <TutorialTargetFrame variant="highlight" inside />}
                     {shouldRenderShipContent && ship && !isHidingDestinationPreview ? (
                       <>
                       <div

@@ -158,11 +158,11 @@ interface GameGridProps {
   retreatPrepShipId?: number | null;
   retreatPrepIsCreator?: boolean | null; // For retreat prep flip direction
   /**
-   * **Tutorial highlight**: cells that show a gentle pulsing yellow tint under ships
+   * **Tutorial target**: cells framed with targeting brackets (TutorialTarget)
    * (e.g. select-ship until a player ship is selected; view-enemy until an enemy ship).
-   * Optional `label` overrides the floating badge text.
-   * `tutorialDefaultLabel` sets fallback text when label is omitted (default "Click here").
-   * Set `hideLabel` to pulse the cell without rendering the badge.
+   * A click target also gets a ripple and a chevron; an optional `label` (a
+   * choice's name, e.g. "Save Ship") is shown with the chevron.
+   * Set `hideLabel` for a highlight only (brackets, no ripple or chevron).
    */
   tutorialHighlightCells?: readonly {
     row: number;
@@ -170,11 +170,10 @@ interface GameGridProps {
     label?: string;
     hideLabel?: boolean;
   }[];
-  tutorialDefaultLabel?: string;
   /**
-   * **Tutorial highlight** on a weapon choice in the confirm widget: that
-   * button pulses with the "Click here" badge above it (e.g. EMP once the
-   * EMP step's target is chosen).
+   * **Tutorial target** on a weapon choice in the confirm widget: that
+   * button is framed, with a chevron above it (e.g. EMP once the EMP step's
+   * target is chosen).
    */
   tutorialWeaponOption?: "weapon" | "special" | "ram";
   /** Extra clears (e.g. retreat override) after right-click deselect on the grid. */
@@ -490,7 +489,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   shootingTileSet,
   tutorialHighlightKeySet,
   tutorialHighlightCells,
-  tutorialDefaultLabel,
   effectiveDragCell,
   effectiveDragShipId,
   effectiveShootingTileSet,
@@ -570,7 +568,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   shootingTileSet: Set<string>;
   tutorialHighlightKeySet?: Set<string> | null;
   tutorialHighlightCells?: GameGridProps["tutorialHighlightCells"];
-  tutorialDefaultLabel: string;
   effectiveDragCell: { row: number; col: number } | null;
   effectiveDragShipId: number | null;
   effectiveShootingTileSet: Set<string>;
@@ -748,7 +745,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         showLastMoveEmpReplayWhenSelected={showLastMoveEmpReplayWhenSelected}
         retreatPrepShipId={retreatPrepShipId}
         tutorialHighlightCells={tutorialHighlightCells}
-        tutorialDefaultLabel={tutorialDefaultLabel}
         movementTileSet={movementTileSet}
         selectedShipCreatorSide={selectedShipCreatorSide}
         directedWeaponBeamTargetId={directedWeaponBeamTargetId}
@@ -819,7 +815,6 @@ const GameGridBoard = React.memo(function GameGridBoard({
   retreatPrepShipId,
   retreatPrepIsCreator,
   tutorialHighlightCells,
-  tutorialDefaultLabel = "Click here",
   tutorialWeaponOption,
   onGridRightClickDeselect,
   setSelectedShipId,
@@ -1131,7 +1126,6 @@ const GameGridBoard = React.memo(function GameGridBoard({
             shootingTileSet={shootingTileSet}
             tutorialHighlightKeySet={tutorialHighlightKeySet}
             tutorialHighlightCells={tutorialHighlightCells}
-            tutorialDefaultLabel={tutorialDefaultLabel}
             effectiveDragCell={effectiveDragCell}
             effectiveDragShipId={effectiveDragShipId}
             effectiveShootingTileSet={effectiveShootingTileSet}
@@ -1230,7 +1224,6 @@ const GameGridBoard = React.memo(function GameGridBoard({
                 zoomScale={zoom.scale}
                 onMoveVertical={setConfirmWidgetVertical}
                 tutorialWeaponOption={tutorialWeaponOption}
-                tutorialLabel={tutorialDefaultLabel}
               />
             )}
         </div>

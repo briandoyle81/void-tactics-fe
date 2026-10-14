@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { requireAuth } from "@/app/lib/auth";
+import { canLeaveCurrentNodeWeb2, FINISH_CURRENT_MISSION_ERROR } from "@/app/lib/roguelikeAdvance";
 
 export async function POST(
   _req: Request,
@@ -36,14 +37,14 @@ export async function POST(
     return NextResponse.json({ error: "This node isn't a resupply node" }, { status: 400 });
   }
 
+  if (targetNodeId !== run.currentNodeId && !(await canLeaveCurrentNodeWeb2(run))) {
+    return NextResponse.json({ error: FINISH_CURRENT_MISSION_ERROR }, { status: 409 });
+  }
   if (targetNodeId !== run.currentNodeId) {
-    const edge = await prisma.roguelikeEdge.findFirst({
-      where: {
-        OR: [
-          { parentId: run.currentNodeId, childId: targetNodeId },
-          { parentId: targetNodeId, childId: run.currentNodeId, twoWay: true },
-        ],
-      },
+    // Edges are forward-only, matching RoguelikeMatch: a run moves only to
+    // a child of its current node.
+    const edge = await prisma.roguelikeEdge.findUnique({
+      where: { parentId_childId: { parentId: run.currentNodeId, childId: targetNodeId } },
     });
     if (!edge) {
       return NextResponse.json(

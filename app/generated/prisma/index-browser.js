@@ -298,8 +298,7 @@ exports.Prisma.RoguelikeNodeScalarFieldEnum = {
 exports.Prisma.RoguelikeEdgeScalarFieldEnum = {
   id: 'id',
   parentId: 'parentId',
-  childId: 'childId',
-  twoWay: 'twoWay'
+  childId: 'childId'
 };
 
 exports.Prisma.RoguelikeRunScalarFieldEnum = {

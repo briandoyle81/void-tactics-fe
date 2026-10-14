@@ -38,7 +38,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { navigateToClientTab } from "../utils/clientNavigation";
 import { useOpsConsoleAccess } from "../hooks/useOpsConsoleAccess";
-import { ADMIN_PATH } from "../config/routes";
+import { ADMIN_PATH, WEBSITE_HREF } from "../config/routes";
 import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import AuthSignIn from "./AuthSignIn";
 import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
@@ -356,17 +356,15 @@ function HeaderModeSwitchBadge({
   );
 }
 
-function HeaderTitleBlock() {
+/**
+ * The VOID TACTICS title. Signed in it opens the Command Deck; signed out
+ * (no deck to go to) it goes back to the website, as a full page load
+ * since the website can be on another host (WEBSITE_HREF).
+ */
+function HeaderTitleBlock({ isSignedIn }: { isSignedIn: boolean }) {
   const router = useRouter();
-  return (
-    <button
-      type="button"
-      onClick={() =>
-        navigateToClientTab("Command Deck", "void-tactics-navigate-to-info", router.push)
-      }
-      aria-label="Go to the Command Deck"
-      className="relative w-fit shrink-0 border-0 bg-transparent p-0 text-left"
-    >
+  const content = (
+    <>
       <span
         className="block text-xl font-black uppercase leading-none tracking-[0.06em] md:text-2xl"
         style={{
@@ -380,6 +378,26 @@ function HeaderTitleBlock() {
         className="absolute -bottom-1 left-0 right-0 h-0.5"
         style={{ backgroundColor: "var(--color-cyan)" }}
       />
+    </>
+  );
+  const className = "relative block w-fit shrink-0 border-0 bg-transparent p-0 text-left";
+  if (!isSignedIn) {
+    return (
+      <a href={WEBSITE_HREF} aria-label="Void Tactics home" className={className}>
+        {content}
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        navigateToClientTab("Command Deck", "void-tactics-navigate-to-info", router.push)
+      }
+      aria-label="Go to the Command Deck"
+      className={className}
+    >
+      {content}
     </button>
   );
 }
@@ -977,7 +995,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
         className={`mx-auto flex ${GAME_CONTENT_MAX_WIDTH_CLASS} items-center gap-2 px-3 py-2 sm:px-6 md:gap-4 lg:px-10`}
       >
         <div className={isSignedIn ? "hidden md:block" : "block"}>
-          <HeaderTitleBlock />
+          <HeaderTitleBlock isSignedIn={isSignedIn} />
         </div>
 
         {isSignedIn && isHydrated && (

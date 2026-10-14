@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRunMapAction, type RunMapActionInput } from "../runMapAction";
+import { getRunMapAction, isCurrentNodeCleared, type RunMapActionInput } from "../runMapAction";
 
 const base: RunMapActionInput = {
   isBrowseMode: false,
@@ -8,6 +8,7 @@ const base: RunMapActionInput = {
   isReachableChild: true,
   isDefeated: false,
   hasActiveGame: false,
+  currentCleared: true,
   isEnteringResupply: false,
 };
 
@@ -75,5 +76,39 @@ describe("getRunMapAction", () => {
     expect(getRunMapAction({ ...base, isReachableChild: false }).label).toBe("Not reachable");
     expect(getRunMapAction({ ...base, selectedKind: null }).label).toBe("Select a mission");
     expect(getRunMapAction({ ...base, isBrowseMode: true }).label).toBe("Start a run to enter");
+  });
+});
+
+describe("next missions wait for the current one", () => {
+  it("won't warp to a next mission until the current one is beaten", () => {
+    const blocked = getRunMapAction({ ...base, currentCleared: false });
+    expect(blocked).toEqual({ type: "none", label: "Finish your current mission", disabled: true });
+    expect(getRunMapAction({ ...base, selectedKind: "resupply", currentCleared: false }).disabled).toBe(true);
+    expect(getRunMapAction({ ...base, currentCleared: true }).type).toBe("warp");
+  });
+  it("still lets the player launch or return to the current mission", () => {
+    expect(getRunMapAction({ ...base, isCurrentNode: true, currentCleared: false }).type).toBe("warp");
+    expect(
+      getRunMapAction({ ...base, isCurrentNode: true, hasActiveGame: true, currentCleared: false }).type,
+    ).toBe("resume");
+  });
+});
+
+describe("isCurrentNodeCleared", () => {
+  it("is cleared after winning a combat mission", () => {
+    expect(isCurrentNodeCleared({ kind: "combat", isDefeated: true, hasActiveGame: false })).toBe(true);
+  });
+  it("isn't cleared before the mission is won (including a run's first mission)", () => {
+    expect(isCurrentNodeCleared({ kind: "combat", isDefeated: false, hasActiveGame: false })).toBe(false);
+  });
+  it("isn't cleared while a match is in progress", () => {
+    expect(isCurrentNodeCleared({ kind: "combat", isDefeated: false, hasActiveGame: true })).toBe(false);
+    expect(isCurrentNodeCleared({ kind: "resupply", isDefeated: false, hasActiveGame: true })).toBe(false);
+  });
+  it("is cleared on a resupply stop, which has no fight", () => {
+    expect(isCurrentNodeCleared({ kind: "resupply", isDefeated: false, hasActiveGame: false })).toBe(true);
+  });
+  it("isn't cleared with no current node", () => {
+    expect(isCurrentNodeCleared({ kind: null, isDefeated: false, hasActiveGame: false })).toBe(false);
   });
 });

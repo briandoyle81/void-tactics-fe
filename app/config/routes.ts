@@ -12,3 +12,12 @@ export const PLAY_PATH = "/play";
 
 /** Admin tools: maps, AI encounters, ship attributes, purchase prices. */
 export const ADMIN_PATH = "/admin";
+
+/**
+ * The website's home page, for links out of the game client. With a
+ * separate play host (NEXT_PUBLIC_PLAY_URL), "/" there is the client, so
+ * this is the site host; otherwise the website is "/" on this host.
+ */
+export const WEBSITE_HREF = process.env.NEXT_PUBLIC_PLAY_URL
+  ? (process.env.NEXT_PUBLIC_SITE_URL ?? "https://voidtactics.xyz")
+  : "/";
