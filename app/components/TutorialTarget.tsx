@@ -23,7 +23,7 @@ export function TutorialTargetFrame({
   inside?: boolean;
 }) {
   const style = inside
-    ? ({ "--vt-target-gap": "-4px", "--vt-target-travel": "3px" } as CSSProperties)
+    ? ({ "--vt-target-gap": "-4px", "--vt-target-travel": "2px" } as CSSProperties)
     : undefined;
   return (
     <span className="vt-target z-[30]" style={style} aria-hidden>

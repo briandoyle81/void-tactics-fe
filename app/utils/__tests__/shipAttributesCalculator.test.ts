@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateAttributesFromContracts } from "../shipAttributesCalculator";
+import { calculateAttributesFromContracts, getAttributeMaxima } from "../shipAttributesCalculator";
 import { Ship } from "../../types/types";
 
 function makeShip(overrides: {
@@ -237,5 +237,31 @@ describe("calculateAttributesFromContracts — output shape", () => {
   it("reactorCriticalTimer is 0", () => {
     const attrs = calculateAttributesFromContracts(makeShip({}));
     expect(attrs.reactorCriticalTimer).toBe(0);
+  });
+});
+
+describe("getAttributeMaxima", () => {
+  it("is the best gear, traits and rank across both variants", () => {
+    // Range: 6 (railgun) +50% rank = 9, +50% accuracy = 13. Damage: 95
+    // (mining drill) +50% = 142. Hull: 125+25 +50% = 225. Move: 3 base +2
+    // engine +3 thruster +1 bare = 9, +50% = 13. Defense: 60 +50% = 90.
+    expect(getAttributeMaxima()).toEqual({
+      range: 13,
+      gunDamage: 142,
+      maxHullPoints: 225,
+      movement: 13,
+      damageReduction: 90,
+    });
+  });
+
+  it("is never below a real ship's stats", () => {
+    const max = getAttributeMaxima();
+    const attrs = calculateAttributesFromContracts(
+      makeShip({ mainWeapon: 1, accuracy: 2, hull: 2, speed: 2, shipsDestroyed: 100000 }),
+    );
+    expect(attrs.range).toBeLessThanOrEqual(max.range);
+    expect(attrs.gunDamage).toBeLessThanOrEqual(max.gunDamage);
+    expect(attrs.maxHullPoints).toBeLessThanOrEqual(max.maxHullPoints);
+    expect(attrs.movement).toBeLessThanOrEqual(max.movement);
   });
 });

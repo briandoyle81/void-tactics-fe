@@ -204,7 +204,7 @@ export function useOnboardingTutorial() {
             if (!isAllowed) {
               return {
                 valid: false,
-                message: TUTORIAL_NOT_ALLOWED.move,
+                message: TUTORIAL_NOT_ALLOWED.moveToMarked,
               };
             }
           }

@@ -6,7 +6,7 @@ import { Ship, Attributes } from "../types/types";
 import { calculateShipRank } from "../utils/shipLevel";
 import { toShipVisual } from "../utils/toShipVisual";
 import { generateRandomShip } from "../utils/generateRandomShip";
-import { calculateAttributesFromContracts } from "../utils/shipAttributesCalculator";
+import { calculateAttributesFromContracts, getAttributeMaxima } from "../utils/shipAttributesCalculator";
 import { SHIP_IMAGE_RANK_STAR_BOX } from "./ShipImage";
 import { useInView } from "../hooks/useInView";
 import { usePageVisible } from "../hooks/usePageVisible";
@@ -115,15 +115,36 @@ export const HeroShipShowcase: React.FC<{
 
   // A non-breaking space keeps an empty line its height while a ship loads.
   const EMPTY = "\u00a0";
-  const stats: { label: string; value: string }[] = [
-    { label: "Range", value: shipAttributes ? String(shipAttributes.range) : EMPTY },
-    { label: "Damage", value: shipAttributes ? String(shipAttributes.gunDamage) : EMPTY },
+  // Each stat's bar shows it against the best any ship can reach.
+  const maxima = useMemo(() => getAttributeMaxima(), []);
+  const share = (value: number, max: number) =>
+    max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
+  const stats: { label: string; value: string; percent: number }[] = [
+    {
+      label: "Range",
+      value: shipAttributes ? String(shipAttributes.range) : EMPTY,
+      percent: shipAttributes ? share(shipAttributes.range, maxima.range) : 0,
+    },
+    {
+      label: "Damage",
+      value: shipAttributes ? String(shipAttributes.gunDamage) : EMPTY,
+      percent: shipAttributes ? share(shipAttributes.gunDamage, maxima.gunDamage) : 0,
+    },
     {
       label: "Hull",
       value: shipAttributes ? `${shipAttributes.hullPoints}/${shipAttributes.maxHullPoints}` : EMPTY,
+      percent: shipAttributes ? share(shipAttributes.maxHullPoints, maxima.maxHullPoints) : 0,
     },
-    { label: "Move", value: shipAttributes ? String(shipAttributes.movement) : EMPTY },
-    { label: "Defense", value: shipAttributes ? `${shipAttributes.damageReduction}%` : EMPTY },
+    {
+      label: "Move",
+      value: shipAttributes ? String(shipAttributes.movement) : EMPTY,
+      percent: shipAttributes ? share(shipAttributes.movement, maxima.movement) : 0,
+    },
+    {
+      label: "Defense",
+      value: shipAttributes ? `${shipAttributes.damageReduction}%` : EMPTY,
+      percent: shipAttributes ? share(shipAttributes.damageReduction, maxima.damageReduction) : 0,
+    },
   ];
 
   // Open, frameless presentation (the website's Intel section): the stats
@@ -151,13 +172,26 @@ export const HeroShipShowcase: React.FC<{
           : <li>{EMPTY}</li>}
       </ul>
       <dl className="w-full" style={{ fontFamily: "var(--font-mono), monospace" }}>
-        {stats.map(({ label, value }) => (
+        {stats.map(({ label, value, percent }) => (
           <div
             key={label}
-            className="flex items-baseline justify-between gap-3 border-t border-white/10 py-1.5"
+            className="flex items-center justify-between gap-3 border-t border-white/10 py-1.5"
           >
-            <dt className="text-[10px] uppercase tracking-[0.16em] text-text-muted">{label}</dt>
-            <dd className="truncate text-base font-bold text-text-primary">{value}</dd>
+            <dt className="shrink-0 text-[10px] uppercase tracking-[0.16em] text-text-muted">{label}</dt>
+            {/* The number sits on a bar of this stat against the best any
+                ship can reach; the bar grows from the side nearest the art. */}
+            <dd className="relative w-3/5 min-w-0 bg-white/[0.04] px-2 py-0.5 text-right">
+              <span
+                aria-hidden
+                className={`absolute inset-y-0 transition-[width] duration-500 ease-out motion-reduce:transition-none ${alignEnd ? "left-0" : "right-0"}`}
+                style={{
+                  width: `${percent}%`,
+                  backgroundColor: `color-mix(in srgb, ${accent} 28%, transparent)`,
+                  boxShadow: `inset 0 -2px 0 ${accent}`,
+                }}
+              />
+              <span className="relative block truncate text-base font-bold text-text-primary">{value}</span>
+            </dd>
           </div>
         ))}
       </dl>

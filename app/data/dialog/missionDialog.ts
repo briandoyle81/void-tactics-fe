@@ -8,7 +8,10 @@ import type { DialogCharacterId } from "./characters";
 //                  as played for a game; renaming it makes it play again.
 //   characterId  — who speaks (a key of DIALOG_CHARACTERS in characters.ts).
 //   text         — what they say. Short is best: the comms panel is small.
-//                  It stays up until the player presses NEXT/OK.
+//                  It stays up until the player presses NEXT/OK. A
+//                  missionStart line is the exception: it's shown in the
+//                  round report at the start of the match, signed by its
+//                  speaker, and its responses then play in the comms panel.
 //   mission      — which mission:
 //                    { kind: "campaign", nodeId: 5 }   campaign node 5
 //                    { kind: "roguelike", nodeId: 5 }  roguelike node 5

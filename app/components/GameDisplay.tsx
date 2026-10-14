@@ -50,6 +50,7 @@ import { GameResultModal, type MissionLossReason } from "./GameResultModal";
 import { resolveNodeContent, useWeb3NodeContent } from "../hooks/useNodeContent";
 import { inferVictoryReason } from "../utils/victoryReason";
 import { RoundStartModal } from "./RoundStartModal";
+import { useOpeningLineReport } from "./useOpeningLineReport";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { useMissionDialog } from "../hooks/useMissionDialog";
 import {
@@ -1652,6 +1653,13 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     // stays put.
     holdNewLines: !isMyTurnEffective && !isGameOver,
   });
+  // The mission's opening line goes in the round report (as in the
+  // tutorial) rather than the comms panel.
+  const openingReport = useOpeningLineReport(
+    missionDialog.openingLine,
+    missionDialog.takeOpeningLine,
+    handleCloseRoundStart,
+  );
   // On the board while the game runs (and after the result screen is
   // dismissed); while the result screen is up, lines play inside it instead
   // (missionDebriefNode) since it covers the board.
@@ -3434,7 +3442,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             myScore={roundStartInfo.myScore}
             opponentScore={roundStartInfo.opponentScore}
             maxScore={roundStartInfo.maxScore}
-            onClose={handleCloseRoundStart}
+            note={openingReport.note}
+            reporterId={openingReport.reporterId}
+            onClose={openingReport.onClose}
           />
         )}
       </div>
@@ -4368,7 +4378,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           myScore={roundStartInfo.myScore}
           opponentScore={roundStartInfo.opponentScore}
           maxScore={roundStartInfo.maxScore}
-          onClose={handleCloseRoundStart}
+          note={openingReport.note}
+          reporterId={openingReport.reporterId}
+          onClose={openingReport.onClose}
         />
       )}
     </div>

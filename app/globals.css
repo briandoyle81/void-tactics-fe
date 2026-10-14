@@ -790,7 +790,7 @@ body::before {
    (negative: inside, for grid cells and clipped panels). */
 .vt-target {
   --vt-target-gap: 5px;
-  --vt-target-travel: 5px;
+  --vt-target-travel: 3px;
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -818,19 +818,19 @@ body::before {
   min-height: 6px;
   border: 2px solid var(--color-phosphor-green);
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
-  animation: vt-target-close-in 1.3s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+  animation: vt-target-close-in 1.6s ease-in-out infinite;
 }
 .vt-target-corners > i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; --vt-dx: -1; --vt-dy: -1; }
 .vt-target-corners > i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; --vt-dx: 1; --vt-dy: -1; }
 .vt-target-corners > i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; --vt-dx: -1; --vt-dy: 1; }
 .vt-target-corners > i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; --vt-dx: 1; --vt-dy: 1; }
 @keyframes vt-target-close-in {
-  0% {
-    translate: calc(var(--vt-dx) * var(--vt-target-travel)) calc(var(--vt-dy) * var(--vt-target-travel));
-    opacity: 0.35;
-  }
-  55%,
+  0%,
   100% {
+    translate: calc(var(--vt-dx) * var(--vt-target-travel)) calc(var(--vt-dy) * var(--vt-target-travel));
+    opacity: 0.7;
+  }
+  50% {
     translate: 0 0;
     opacity: 1;
   }

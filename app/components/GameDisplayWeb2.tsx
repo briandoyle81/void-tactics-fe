@@ -24,6 +24,7 @@ import { usePendingMove } from "../hooks/usePendingMove";
 import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
 import { lastMoveEndPosition } from "../utils/ramLastMove";
 import { RoundStartModal } from "./RoundStartModal";
+import { useOpeningLineReport } from "./useOpeningLineReport";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { GameResultModal, type MissionLossReason } from "./GameResultModal";
 import { resolveNodeContent, useNodeContentWeb2 } from "../hooks/useNodeContent";
@@ -511,6 +512,13 @@ function GameDisplayWeb2({
     // stays put.
     holdNewLines: !isCurrentPlayerTurn && !isGameOver,
   });
+  // The mission's opening line goes in the round report (as in the
+  // tutorial) rather than the comms panel.
+  const openingReport = useOpeningLineReport(
+    missionDialog.openingLine,
+    missionDialog.takeOpeningLine,
+    handleCloseRoundStart,
+  );
   // On the board while the game runs (and after the result screen is
   // dismissed); while the result screen is up, lines play inside it instead
   // (missionDebriefNode) since it covers the board.
@@ -1078,7 +1086,9 @@ function GameDisplayWeb2({
       myScore={roundStartInfo.myScore}
       opponentScore={roundStartInfo.opponentScore}
       maxScore={roundStartInfo.maxScore}
-      onClose={handleCloseRoundStart}
+      note={openingReport.note}
+      reporterId={openingReport.reporterId}
+      onClose={openingReport.onClose}
     />
   );
 

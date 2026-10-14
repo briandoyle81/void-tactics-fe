@@ -384,6 +384,26 @@ export function useMissionDialog({
   const active = enabled && !paused && (!holdNewLines || queue.started);
   const current = active && queue.index < queue.items.length ? queue.items[queue.index] : null;
 
+  // The mission's opening line while it waits, not yet shown, at the front
+  // of the queue. Views put it in the round report (RoundStartModal's note,
+  // via useOpeningLineReport) instead of the comms panel, then call
+  // takeOpeningLine when the report closes; its replies play in the comms
+  // panel straight after. Error placeholders and hideable generic lines
+  // stay in the comms panel, which has their controls.
+  const head = queue.index < queue.items.length ? queue.items[queue.index] : null;
+  const openingLine =
+    enabled && !queue.started && head?.event === "missionStart" && !head.isError && !head.hideableLineId
+      ? head
+      : null;
+  const takeOpeningLine = useCallback(() => {
+    if (!openingLine) return;
+    setLog((l) => appendToLog(l, [openingLine]));
+    clearPending([openingLine.key]);
+    setQueue((q) =>
+      q.items[q.index]?.key === openingLine.key ? { ...q, index: q.index + 1, started: true } : q,
+    );
+  }, [openingLine, clearPending]);
+
   // A line enters the log (and leaves the pending list) as soon as it's shown.
   useEffect(() => {
     if (!current) return;
@@ -403,5 +423,9 @@ export function useMissionDialog({
     /** Lines dismissed unread since the comms log was last opened. */
     unreadCount,
     markLogSeen,
+    /** The mission's opening line, waiting to be shown in the round report. */
+    openingLine,
+    /** Marks openingLine as read (the round report showing it closed). */
+    takeOpeningLine,
   };
 }

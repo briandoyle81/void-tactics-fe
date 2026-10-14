@@ -165,6 +165,8 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
 export const TUTORIAL_NOT_ALLOWED = {
   select: "Selection Not Allowed Now",
   move: "Move Not Allowed Now",
+  /** A move step, but not to one of the marked tiles. */
+  moveToMarked: "Move to Marked Spot",
   shoot: "Shot Not Allowed Now",
   special: "Special Not Allowed Now",
   assist: "Assist Not Allowed Now",

@@ -65,6 +65,40 @@ describe("useMissionDialog", () => {
     expect(result.current.current?.key).toBe("roguelike-1-defeat@missionDefeat");
   });
 
+  it("hands the entry line to the round report while paused, then marks it read", () => {
+    const { result, rerender } = renderHook(
+      ({ paused }: { paused: boolean }) =>
+        useMissionDialog({
+          gameId: "report-1",
+          mission: { kind: "roguelike", nodeId: 1 },
+          snapshot: OPENING,
+          enabled: true,
+          paused,
+        }),
+      { initialProps: { paused: true } },
+    );
+    expect(result.current.current).toBeNull();
+    expect(result.current.openingLine?.text).toBe("Entry.");
+    act(() => result.current.takeOpeningLine());
+    rerender({ paused: false });
+    expect(result.current.openingLine).toBeNull();
+    expect(result.current.current).toBeNull(); // not replayed in the comms panel
+    expect(result.current.log.map((e) => e.key)).toEqual(["roguelike-1-start@missionStart"]);
+  });
+
+  it("offers no opening line once the comms panel has shown it", () => {
+    const { result } = renderHook(() =>
+      useMissionDialog({
+        gameId: "report-2",
+        mission: { kind: "roguelike", nodeId: 1 },
+        snapshot: OPENING,
+        enabled: true,
+      }),
+    );
+    expect(result.current.current?.key).toBe("roguelike-1-start@missionStart");
+    expect(result.current.openingLine).toBeNull();
+  });
+
   it("keeps the entry line queued through React strict mode's double mount", () => {
     const { result } = renderHook(
       () =>

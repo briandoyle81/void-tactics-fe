@@ -1443,6 +1443,22 @@ export function SimulatedGameDisplay({
    * like other move steps; Hammer after center move is staged until a target is chosen;
    * step 13 (rescue-outcome-retreat): no grid tutorial highlight (narrative only).
    */
+  // Select a ship / Inspect enemy ships: once the player has picked one of
+  // the highlighted ships, the highlight stays off for the rest of the step,
+  // even after they deselect it.
+  const [highlightDoneStepId, setHighlightDoneStepId] = useState<string | null>(null);
+  useEffect(() => {
+    setHighlightDoneStepId(null);
+  }, [currentStep?.id]);
+  useEffect(() => {
+    if (selectedShipId === null) return;
+    const stepId = currentStep?.id;
+    const pickedEnemy = isTutorialEnemyFleetShipId(selectedShipId);
+    if ((stepId === "select-ship" && !pickedEnemy) || (stepId === "view-enemy" && pickedEnemy)) {
+      setHighlightDoneStepId(stepId);
+    }
+  }, [currentStep?.id, selectedShipId]);
+
   const tutorialHighlightCells = useMemo(() => {
     const stepId = currentStep?.id;
     const positions = gameState.shipPositions;
@@ -1473,14 +1489,14 @@ export function SimulatedGameDisplay({
     }
 
     if (stepId === "select-ship") {
-      if (selectedShipId !== null) return undefined;
+      if (selectedShipId !== null || highlightDoneStepId === stepId) return undefined;
       return cellsForIds(TUTORIAL_SELECT_SHIP_HIGHLIGHT_SHIP_IDS);
     }
 
     if (stepId === "view-enemy") {
       if (
-        selectedShipId !== null &&
-        isTutorialEnemyFleetShipId(selectedShipId)
+        highlightDoneStepId === stepId ||
+        (selectedShipId !== null && isTutorialEnemyFleetShipId(selectedShipId))
       ) {
         return undefined;
       }
@@ -1699,6 +1715,7 @@ export function SimulatedGameDisplay({
     gameState.shipPositions,
     scoringGrid,
     useSideLayout,
+    highlightDoneStepId,
   ]);
 
   // Where the last mover ended up (a Ram ends on the victim's tile, not the
@@ -2523,6 +2540,12 @@ export function SimulatedGameDisplay({
         return;
       }
 
+      // Select a ship is for inspecting: the range shows, but no move yet.
+      if (currentStep?.id === "select-ship") {
+        toast.error(TUTORIAL_NOT_ALLOWED.move);
+        return;
+      }
+
       // Hard choice (rescue): Vigilant is shoot-only and cannot stage moves to a new square.
       // Clicking a target still sets preview to the Vigilant's current cell first (stay-in-place + fire);
       // only block when the player tries to move to a different cell.
@@ -2555,7 +2578,7 @@ export function SimulatedGameDisplay({
         );
 
         if (!isValidMove) {
-          toast.error(TUTORIAL_NOT_ALLOWED.move);
+          toast.error(TUTORIAL_NOT_ALLOWED.moveToMarked);
           return;
         }
 

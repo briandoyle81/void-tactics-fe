@@ -284,3 +284,70 @@ export function calculateAttributesFromContracts(ship: Ship): Attributes {
     statusEffects: [],
   };
 }
+
+/** The highest value each displayed stat can reach. */
+export interface AttributeMaxima {
+  range: number;
+  gunDamage: number;
+  maxHullPoints: number;
+  movement: number;
+  damageReduction: number;
+}
+
+/**
+ * The best each stat can be on any ship: across both variants' tables, every
+ * equippable gun/defense/special and trait level, at the top rank. Uses the
+ * same formulas as calculateAttributesFromContracts. For scale bars (the
+ * website's ship showcase), not gameplay.
+ */
+export function getAttributeMaxima(): AttributeMaxima {
+  const applyPercentBonus = (value: number, percent: number): number =>
+    value + Math.floor((value * percent) / 100);
+  const maxima: AttributeMaxima = { range: 0, gunDamage: 0, maxHullPoints: 0, movement: 0, damageReduction: 0 };
+  for (const variant of [1, 2]) {
+    const table = tableForVariant(variant);
+    const rankBonus = Math.max(0, ...getRankConfig(variant).bonusPct);
+    const guns = table.guns.slice(0, 4);
+    const specials = table.specials.slice(0, 4);
+    const defenses = [
+      { armor: 0, shields: 0 },
+      ...[1, 2, 3].map((armor) => ({ armor, shields: 0 })),
+      ...[1, 2, 3].map((shields) => ({ armor: 0, shields })),
+    ];
+
+    const range = Math.max(...guns.map((g) => g.range));
+    maxima.range = Math.max(
+      maxima.range,
+      applyPercentBonus(applyPercentBonus(range, rankBonus), Math.max(...table.foreAccuracy)),
+    );
+    maxima.gunDamage = Math.max(
+      maxima.gunDamage,
+      applyPercentBonus(Math.max(...guns.map((g) => g.damage)), rankBonus),
+    );
+    maxima.maxHullPoints = Math.max(
+      maxima.maxHullPoints,
+      applyPercentBonus(table.baseHull + Math.max(...table.hullBonus), rankBonus),
+    );
+
+    let movement = 0;
+    for (let mainWeapon = 0; mainWeapon < guns.length; mainWeapon++) {
+      for (let special = 0; special < specials.length; special++) {
+        for (const defense of defenses) {
+          const ship = {
+            traits: { speed: table.engineSpeeds.length - 1 },
+            equipment: { mainWeapon, special, ...defense },
+          } as unknown as Ship;
+          movement = Math.max(movement, calcBaseMovement(ship, table));
+        }
+      }
+    }
+    maxima.movement = Math.max(maxima.movement, applyPercentBonus(movement, rankBonus));
+
+    const reduction = Math.max(...defenses.map((d) => table.armors[d.armor].damageReduction + table.shields[d.shields].damageReduction));
+    maxima.damageReduction = Math.max(
+      maxima.damageReduction,
+      Math.min(100, applyPercentBonus(reduction, rankBonus)),
+    );
+  }
+  return maxima;
+}
