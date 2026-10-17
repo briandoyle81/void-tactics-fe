@@ -7,7 +7,9 @@ interface Zoom {
 }
 
 /**
- * Wheel-to-zoom and right-click-drag-to-pan for the game grid. Extracted
+ * Wheel-to-zoom and right-click-drag-to-pan for the game grid, and on touch
+ * screens two-finger pinch-to-zoom and drag-to-pan (one finger still taps
+ * and drags ships as before). Extracted
  * verbatim from `GameGrid.tsx` — same math, same event wiring, no behavior
  * change. `gridContainerRef` is created here and returned so callers can
  * both apply pan/zoom to it and pass the same ref down to children that
@@ -150,7 +152,53 @@ export function useGridPanZoom() {
       if (panDidMoveRef.current) e.preventDefault();
     };
 
+    // Two-finger pinch/pan. The point between the fingers stays under them
+    // while zooming, same as the wheel keeps the cursor's point fixed.
+    let pinch: { dist: number; midX: number; midY: number; zoom: Zoom } | null = null;
+    const touchMid = (t: TouchList) => ({
+      x: (t[0].clientX + t[1].clientX) / 2,
+      y: (t[0].clientY + t[1].clientY) / 2,
+      dist: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY),
+    });
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      const m = touchMid(e.touches);
+      pinch = { dist: Math.max(1, m.dist), midX: m.x, midY: m.y, zoom: { ...zoomRef.current } };
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault(); // no page zoom while pinching the board
+      const gridEl = gridContainerRef.current;
+      if (!gridEl) return;
+      const m = touchMid(e.touches);
+      const outerRect = el.getBoundingClientRect();
+      const originX = outerRect.left + gridEl.offsetLeft;
+      const originY = outerRect.top + gridEl.offsetTop;
+      const start = pinch.zoom;
+      const scale = Math.min(5, Math.max(1, start.scale * (m.dist / pinch.dist)));
+      // Content point under the starting midpoint, kept under the current one.
+      const contentX = (pinch.midX - originX - start.tx) / start.scale;
+      const contentY = (pinch.midY - originY - start.ty) / start.scale;
+      const w = gridEl.offsetWidth;
+      const h = gridEl.offsetHeight;
+      let tx = Math.min(0, Math.max(w * (1 - scale), m.x - originX - contentX * scale));
+      let ty = Math.min(0, Math.max(h * (1 - scale), m.y - originY - contentY * scale));
+      if (scale === 1) { tx = 0; ty = 0; }
+      const next = { scale, tx, ty };
+      zoomRef.current = next;
+      applyGridTransform(gridEl, next);
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!pinch || e.touches.length >= 2) return;
+      pinch = null;
+      commitZoomState();
+    };
+
     el.addEventListener("wheel", handleWheel, { passive: false });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
     el.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
@@ -158,6 +206,10 @@ export function useGridPanZoom() {
 
     return () => {
       el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
       el.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);

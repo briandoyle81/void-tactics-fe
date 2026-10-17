@@ -1400,13 +1400,144 @@ function GameDisplayWeb2({
   // button) next to the grid, rather than the sticky-full-header layout the
   // unified render below uses for wider/portrait viewports. Landscape phones
   // don't have room for both a tall header rail and the grid at once.
+  // Replay banner and controls over the board: desktop and landscape
+  // (mirrors GameDisplay.tsx).
+  const renderReplayOverlay = (): React.ReactNode => (
+    <>
+      {isReplaying && (
+        <GameReplayBanner
+          label={replayStep! < 0 ? "Replay · Start" : `Replay · Move ${replayStep! + 1}/${replayData!.turns.length}`}
+        />
+      )}
+      {/* Replay controls (top-left, below the replay banner while it's
+          showing). Same placement as GameDisplay.tsx; the bottom-left
+          corner belongs to the comms panel. */}
+      <div
+        className={`absolute left-0 z-[225] pointer-events-none flex items-start ${
+          showReplay ? "top-7" : "top-0"
+        }`}
+      >
+        <div className="pointer-events-auto flex items-start gap-2 pt-1 pl-1">
+          {!showReplay && (
+            <button
+              type="button"
+              onClick={() => setShowReplay(true)}
+              className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-xs transition-colors duration-150"
+              style={{
+                ...STYLE_LABEL,
+                borderColor: "var(--color-steel)",
+                color: "var(--color-text-secondary)",
+                backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
+                borderRadius: 0,
+              }}
+            >
+              Replay
+            </button>
+          )}
+          {showReplay && !replayData && (
+            <div
+              className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-xs"
+              style={{
+                ...STYLE_LABEL,
+                borderColor: "var(--color-steel)",
+                color: "var(--color-text-secondary)",
+                backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
+                borderRadius: 0,
+              }}
+            >
+              Loading replay…
+            </div>
+          )}
+          {showReplay && replayData && replayData.turns.length === 0 && (
+            <div
+              className="flex items-center gap-2 border-2 border-solid px-2 py-1 text-[11px]"
+              style={{
+                ...STYLE_LABEL,
+                borderColor: "var(--color-warning-red)",
+                color: "var(--color-warning-red)",
+                backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
+                borderRadius: 0,
+              }}
+            >
+              <span>No moves recorded yet.</span>
+              <button
+                type="button"
+                onClick={() => setShowReplay(false)}
+                className="px-1.5 py-0.5 border border-solid"
+                style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "transparent", borderRadius: 0 }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {showReplay && replayData && replayData.turns.length > 0 && (
+            <GameReplayControls
+              stepLabel={
+                replayStep! < 0
+                  ? "Start"
+                  : `Move ${replayStep! + 1}/${replayData.turns.length} · Rd ${replayData.turns[replayStep!]?.round ?? ""}`
+              }
+              onPrev={() => setReplayStep((s) => (s === null ? null : Math.max(-1, s - 1)))}
+              canPrev={(replayStep ?? -1) > -1}
+              onNext={() => setReplayStep((s) => (s === null ? null : Math.min(replayData.turns.length - 1, s + 1)))}
+              canNext={(replayStep ?? -1) < replayData.turns.length - 1}
+              isPlaying={replayAutoPlay}
+              onTogglePlay={() => setReplayAutoPlay((p) => !p)}
+              onExit={() => setShowReplay(false)}
+              extraInfo={
+                replaySnapshotGame && (
+                  <div className="w-full font-mono text-xs text-text-muted">
+                    Score: {replaySnapshotGame.creatorScore} - {replaySnapshotGame.joinerScore} · Round{" "}
+                    {replaySnapshotGame.turnState.currentRound}
+                  </div>
+                )
+              }
+            />
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  // Turn countdown and "Claim win (timeout)": the desktop header and the
+  // landscape Status tab (mirrors GameDisplay.tsx).
+  const renderTurnTimerPanel = (): React.ReactNode => {
+    const isParticipant = !readOnly && (isCreatorMe || game.metadata.joiner === userId);
+    // No timeout-claim vs AI: the AI turn loop is still actively
+    // driving moves server-side even if it runs long, and racing a
+    // forfeit-claim against an in-flight ai-turn call isn't worth
+    // the complexity (mirrors GameDisplay.tsx's isVsAIGame
+    // exclusion).
+    // Mirrors GameDisplay.tsx: vs-AI turns are unlimited, so don't
+    // show the "opponent can claim victory" warning for them.
+    const timeoutEnabled = isParticipant && !isVsAIGame;
+    return (
+      <GameTurnTimerPanel
+        timeoutEnabled={timeoutEnabled}
+        showCountdown={!isVsAIGame}
+        isMyTurn={isCurrentPlayerTurn}
+        onResync={() => refetchGame()}
+        claimTimeoutButton={
+          <button
+            type="button"
+            onClick={handleClaimTimeout}
+            disabled={isClaimingTimeout}
+            className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
+          >
+            {isClaimingTimeout ? "Claiming..." : "Claim win (timeout)"}
+          </button>
+        }
+      />
+    );
+  };
+
   if (isLandscapeMobile) {
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
-          <div className="flex h-full min-h-0 min-w-0 flex-1 items-center justify-center">
+          <div className="flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center">
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">
               <div
                 className="mb-2 border border-solid px-1.5 py-1"
@@ -1458,13 +1589,13 @@ function GameDisplayWeb2({
                 )}
               </div>
 
-              <div className="mb-2 grid grid-cols-3 gap-1">
+              <div className="mb-2 flex flex-wrap gap-1">
                 {(["status", "events"] as const).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setMobileLeftPanelTab(tab)}
-                    className="px-1 py-2 text-xs min-h-[2.75rem] uppercase tracking-wider border border-solid"
+                    className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
                     style={{
                       ...STYLE_LABEL,
                       borderColor: mobileLeftPanelTab === tab ? "var(--color-cyan)" : "var(--color-gunmetal)",
@@ -1479,7 +1610,7 @@ function GameDisplayWeb2({
                 <button
                   type="button"
                   onClick={() => setShowFleetModal(true)}
-                  className="px-1 py-2 text-xs min-h-[2.75rem] uppercase tracking-wider border border-solid"
+                  className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
                   style={{ ...STYLE_LABEL, borderColor: "var(--color-phosphor-green)", color: "var(--color-phosphor-green)", backgroundColor: "var(--color-steel)", borderRadius: 0 }}
                 >
                   Fleets
@@ -1499,6 +1630,7 @@ function GameDisplayWeb2({
                         <span className="font-mono text-white">{opponentScore}/{maxScore}</span>
                       </div>
                     </div>
+                    {!isGameOver && renderTurnTimerPanel()}
                     {selectedShipId != null && isShipOwnedByCurrentPlayer(selectedShipId) && computedActionType !== ActionType.Retreat && (
                       <button
                         type="button"
@@ -1546,8 +1678,10 @@ function GameDisplayWeb2({
           </div>
 
           <div
-            className="relative h-full min-h-0 shrink-0 overflow-hidden"
-            style={{ aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`, paddingRight: "2px", paddingTop: "2px" }}
+            // The board gives up width before the left column drops below
+            // 12rem (small phones), shrinking to fit; see GameDisplay.
+            className="relative min-h-0 shrink-0 self-center overflow-hidden"
+            style={{ aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`, paddingRight: "2px", paddingTop: "2px", height: `min(100%, calc((100vw - 12.5rem) * ${GRID_HEIGHT} / ${GRID_WIDTH}))` }}
           >
             <div className="h-full max-h-full" style={{ height: "calc(100% - 2px)", width: "auto", aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}` }}>
               <GameBoardLayout isCurrentPlayerTurn={isCurrentPlayerTurn} containerRef={gridContainerRef} onBoardChromeMouseDown={handleCancelMove} overlay={missionDialogOverlay}>
@@ -1555,6 +1689,7 @@ function GameDisplayWeb2({
                   <div className="absolute inset-0 min-h-0 overflow-hidden">
                     {gameGridNode}
                   </div>
+                  {(isReplaying || isGameOver) && renderReplayOverlay()}
                   {fleeMenuNode}
                 </div>
               </GameBoardLayout>
@@ -1607,35 +1742,7 @@ function GameDisplayWeb2({
               <span>{gameTitleLabel}</span>
               <span className="text-text-muted text-base">Round {game.turnState.currentRound}</span>
             </h1>
-            {!isGameOver && (() => {
-              const isParticipant = !readOnly && (isCreatorMe || game.metadata.joiner === userId);
-              // No timeout-claim vs AI: the AI turn loop is still actively
-              // driving moves server-side even if it runs long, and racing a
-              // forfeit-claim against an in-flight ai-turn call isn't worth
-              // the complexity (mirrors GameDisplay.tsx's isVsAIGame
-              // exclusion).
-              // Mirrors GameDisplay.tsx: vs-AI turns are unlimited, so don't
-              // show the "opponent can claim victory" warning for them.
-              const timeoutEnabled = isParticipant && !isVsAIGame;
-              return (
-                <GameTurnTimerPanel
-                  timeoutEnabled={timeoutEnabled}
-                  showCountdown={!isVsAIGame}
-                  isMyTurn={isCurrentPlayerTurn}
-                  onResync={() => refetchGame()}
-                  claimTimeoutButton={
-                    <button
-                      type="button"
-                      onClick={handleClaimTimeout}
-                      disabled={isClaimingTimeout}
-                      className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
-                    >
-                      {isClaimingTimeout ? "Claiming..." : "Claim win (timeout)"}
-                    </button>
-                  }
-                />
-              );
-            })()}
+            {!isGameOver && renderTurnTimerPanel()}
             <GameScoreBox score={gameScoreData} />
             {gameWinnerResult ? (
               <div
@@ -1746,98 +1853,7 @@ function GameDisplayWeb2({
             address={userId ?? undefined}
             appendDestroyedText={appendDestroyedTextToLastMove}
           />
-          {isReplaying && (
-            <GameReplayBanner
-              label={replayStep! < 0 ? "Replay · Start" : `Replay · Move ${replayStep! + 1}/${replayData!.turns.length}`}
-            />
-          )}
-          {/* Replay controls (top-left, below the replay banner while it's
-              showing). Same placement as GameDisplay.tsx; the bottom-left
-              corner belongs to the comms panel. */}
-          <div
-            className={`absolute left-0 z-[225] pointer-events-none flex items-start ${
-              showReplay ? "top-7" : "top-0"
-            }`}
-          >
-            <div className="pointer-events-auto flex items-start gap-2 pt-1 pl-1">
-              {!showReplay && (
-                <button
-                  type="button"
-                  onClick={() => setShowReplay(true)}
-                  className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-xs transition-colors duration-150"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-steel)",
-                    color: "var(--color-text-secondary)",
-                    backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
-                    borderRadius: 0,
-                  }}
-                >
-                  Replay
-                </button>
-              )}
-              {showReplay && !replayData && (
-                <div
-                  className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-xs"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-steel)",
-                    color: "var(--color-text-secondary)",
-                    backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
-                    borderRadius: 0,
-                  }}
-                >
-                  Loading replay…
-                </div>
-              )}
-              {showReplay && replayData && replayData.turns.length === 0 && (
-                <div
-                  className="flex items-center gap-2 border-2 border-solid px-2 py-1 text-[11px]"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-warning-red)",
-                    color: "var(--color-warning-red)",
-                    backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
-                    borderRadius: 0,
-                  }}
-                >
-                  <span>No moves recorded yet.</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowReplay(false)}
-                    className="px-1.5 py-0.5 border border-solid"
-                    style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "transparent", borderRadius: 0 }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              {showReplay && replayData && replayData.turns.length > 0 && (
-                <GameReplayControls
-                  stepLabel={
-                    replayStep! < 0
-                      ? "Start"
-                      : `Move ${replayStep! + 1}/${replayData.turns.length} · Rd ${replayData.turns[replayStep!]?.round ?? ""}`
-                  }
-                  onPrev={() => setReplayStep((s) => (s === null ? null : Math.max(-1, s - 1)))}
-                  canPrev={(replayStep ?? -1) > -1}
-                  onNext={() => setReplayStep((s) => (s === null ? null : Math.min(replayData.turns.length - 1, s + 1)))}
-                  canNext={(replayStep ?? -1) < replayData.turns.length - 1}
-                  isPlaying={replayAutoPlay}
-                  onTogglePlay={() => setReplayAutoPlay((p) => !p)}
-                  onExit={() => setShowReplay(false)}
-                  extraInfo={
-                    replaySnapshotGame && (
-                      <div className="w-full font-mono text-xs text-text-muted">
-                        Score: {replaySnapshotGame.creatorScore} - {replaySnapshotGame.joinerScore} · Round{" "}
-                        {replaySnapshotGame.turnState.currentRound}
-                      </div>
-                    )
-                  }
-                />
-              )}
-            </div>
-          </div>
+          {renderReplayOverlay()}
         </div>
       </div>
 

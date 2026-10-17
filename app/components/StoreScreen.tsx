@@ -21,6 +21,13 @@ const SECTION_LABELS: Record<StoreSection, string> = {
   cores: "Drone Cores",
   lottery: "Lottery",
 };
+/** Phone labels, so all four tabs fit on one line. */
+const SECTION_SHORT_LABELS: Record<StoreSection, string> = {
+  packs: "Packs",
+  credits: "Credits",
+  cores: "Cores",
+  lottery: "Lottery",
+};
 
 export function StoreScreen({
   section,
@@ -38,7 +45,7 @@ export function StoreScreen({
     <div className="w-full">
       <SubTabs
         label="Store sections"
-        tabs={sections.map((id) => ({ id, label: SECTION_LABELS[id] }))}
+        tabs={sections.map((id) => ({ id, label: SECTION_LABELS[id], shortLabel: SECTION_SHORT_LABELS[id] }))}
         active={active}
         onSelect={onSection}
       />

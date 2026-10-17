@@ -57,7 +57,7 @@ export function CheckoutSheet({
     <div className="fixed inset-0 z-[450]" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-black/70" onClick={onCancel} aria-hidden />
       <div
-        className="absolute inset-x-0 bottom-0 flex max-h-[90vh] flex-col overflow-y-auto border-t-2 bg-near-black p-4 md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[26rem] md:border-l-2 md:border-t-0 md:p-6"
+        className="absolute inset-x-0 bottom-0 flex max-h-[90dvh] flex-col overflow-y-auto border-t-2 bg-near-black p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[26rem] md:border-l-2 md:border-t-0 md:p-6"
         style={{ borderColor: "var(--color-cyan)", boxShadow: "-1.5rem 0 3rem rgba(0,0,0,0.6)" }}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
@@ -67,7 +67,7 @@ export function CheckoutSheet({
           <button
             type="button"
             onClick={onCancel}
-            className="text-2xl font-bold leading-none text-text-muted hover:text-text-primary"
+            className="-mr-2 -mt-1 flex h-10 w-10 shrink-0 items-center justify-center text-2xl font-bold leading-none text-text-muted hover:text-text-primary"
             aria-label="Close checkout"
           >
             ×

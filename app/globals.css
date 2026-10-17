@@ -80,8 +80,10 @@ html {
   color-scheme: dark;
 }
 
-/* Slightly larger type on small screens (matches Tailwind `md` at 768px). */
-@media (max-width: 767px) {
+/* Slightly larger type on small screens (matches Tailwind `md` at 768px).
+   Not on short ones: a phone in landscape (~340px tall) needs the room for
+   the battle view. */
+@media (max-width: 767px) and (min-height: 501px) {
   html {
     font-size: 110%;
   }
@@ -96,6 +98,11 @@ body {
   text-rendering: optimizeLegibility;
   /* Reveals the boot-time opacity:0 on <body> in layout.tsx. */
   opacity: 1 !important;
+  /* viewport-fit=cover (layout.tsx) lets the page run under a phone's notch
+     in landscape; keep content clear of it. Bottom insets are handled by
+     the bars that sit there (GameNav). */
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 /* Global CRT scanline effect — fixed overlay, covers entire viewport */

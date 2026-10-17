@@ -2895,6 +2895,131 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       </div>
     );
 
+  // Replay banner and controls over the board (Replay start button, the
+  // not-recorded notice, step/play/exit). Desktop board and the landscape
+  // board both draw it.
+  const renderReplayOverlay = (): React.ReactNode => (
+    <>
+      {/* Replay banner */}
+      {isReplaying && (
+        <GameReplayBanner
+          label={replayStep < 0 ? "Replay · Start" : `Replay · Move ${replayStep + 1}/${replayTurns.length}`}
+        />
+      )}
+      {/* Replay controls (top-left, below the replay banner while it's
+          showing). The bottom-left corner belongs to the comms panel. */}
+      <div
+        className={`absolute left-0 z-[225] pointer-events-none flex items-start ${
+          isReplaying ? "top-7" : "top-0"
+        }`}
+      >
+        <div className="pointer-events-auto flex items-start gap-2 pt-1 pl-1">
+          {!isReplaying && !replayNotFound && (
+            <button
+              onClick={fetchAndStartReplay}
+              className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-xs transition-colors duration-150"
+              style={{
+                ...STYLE_LABEL,
+                borderColor: "var(--color-steel)",
+                color: "var(--color-text-secondary)",
+                backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
+                borderRadius: 0,
+              }}
+            >
+              Replay
+            </button>
+          )}
+          {!isReplaying && replayNotFound && (
+            <div
+              className="flex items-center gap-2 border-2 border-solid px-2 py-1 text-[11px]"
+              style={{
+                ...STYLE_LABEL,
+                borderColor: "var(--color-warning-red)",
+                color: "var(--color-warning-red)",
+                backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
+                borderRadius: 0,
+              }}
+            >
+              <span>Replay not available, not recorded on this device</span>
+              <button
+                onClick={() => setReplayNotFound(false)}
+                className="px-1.5 py-0.5 border border-solid"
+                style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "transparent", borderRadius: 0 }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {isReplaying && (
+            <GameReplayControls
+              stepLabel={
+                replayStep < 0
+                  ? "Start"
+                  : `Move ${replayStep + 1}/${replayTurns.length} · Rd ${replayTurns[replayStep]?.round ?? ""}`
+              }
+              onPrev={() => setReplayStep((s) => (s === null ? null : Math.max(-1, s - 1)))}
+              canPrev={replayStep > -1}
+              onNext={() => setReplayStep((s) => (s === null ? null : Math.min(replayTurns.length - 1, s + 1)))}
+              canNext={replayStep < replayTurns.length - 1}
+              isPlaying={replayAutoPlay}
+              onTogglePlay={() => setReplayAutoPlay((p) => !p)}
+              onExit={exitReplay}
+            />
+          )}
+        </div>
+      </div>
+    </>
+  );
+
+  // Turn countdown, plus "Claim win (timeout)" once the opponent runs out of
+  // time. The desktop header and the landscape Status tab both show it.
+  const renderTurnTimerPanel = (): React.ReactNode => {
+    const isParticipant =
+      game.metadata.creator === address ||
+      game.metadata.joiner === address;
+    // PvPMatch.endGameOnTimeout has no single-player
+    // equivalent — never offer to seize the turn on timeout
+    // there (see useAITurnLoop's own error/cap handling for
+    // the single-player "AI is stuck" case instead).
+    // Game.sol never self-enforces turnTime and
+    // SinglePlayerMatch has no timeout function, so vs-AI turns
+    // are already unlimited on-chain — don't show the "opponent
+    // can claim victory" warning for a timer that can't actually
+    // cost the player anything.
+    const timeoutEnabled =
+      !readOnly && !isVsAIGame && isParticipant;
+
+    return (
+      <GameTurnTimerPanel
+        timeoutEnabled={timeoutEnabled}
+        showCountdown={!isVsAIGame}
+        isMyTurn={isMyTurnEffective}
+        onResync={() => refetchGame()}
+        claimTimeoutButton={
+          <TransactionButton
+            transactionId={`timeout-${game.metadata.gameId.toString()}`}
+            contractAddress={pvpMatchContract.address}
+            abi={pvpMatchContract.abi}
+            functionName="endGameOnTimeout"
+            args={[game.metadata.gameId]}
+            className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
+            loadingText="Claiming..."
+            errorText="Failed"
+            onSuccess={async () => {
+              toast.success(
+                "Game ended. Opponent forfeited by timeout.",
+              );
+              await Promise.resolve(refetchGame());
+              await Promise.resolve(refetch?.());
+            }}
+          >
+            Claim win (timeout)
+          </TransactionButton>
+        }
+      />
+    );
+  };
+
   if (isLandscapeMobile) {
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
@@ -2902,7 +3027,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
           <div
-            className={`flex h-full min-h-0 min-w-0 flex-1 items-center justify-center ${
+            className={`flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center ${
               isMobileJoiner ? "order-2" : "order-1"
             }`}
           >
@@ -2976,13 +3101,13 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               )}
             </div>
 
-            <div className="mb-2 grid grid-cols-4 gap-1">
+            <div className="mb-2 flex flex-wrap gap-1">
               {(["status", "actions", "events"] as const).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => setMobileLeftPanelTab(tab)}
-                  className="px-1 py-2 text-xs min-h-[2.75rem] uppercase tracking-wider border border-solid"
+                  className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
                   style={{
                     ...STYLE_LABEL,
                     borderColor:
@@ -3006,7 +3131,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               <button
                 type="button"
                 onClick={() => setIsMobileFleetModalOpen(true)}
-                className="px-1 py-2 text-xs min-h-[2.75rem] uppercase tracking-wider border border-solid"
+                className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
                 style={{
                   ...STYLE_LABEL,
                   borderColor: "var(--color-phosphor-green)",
@@ -3045,7 +3170,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     <div className="text-sm text-text-primary">
                       Result: {game.metadata.winner === address ? "Victory" : "Defeat"}
                     </div>
-                  ) : null}
+                  ) : (
+                    // The countdown and "Claim win (timeout)", which only the
+                    // desktop header had.
+                    renderTurnTimerPanel()
+                  )}
                 </div>
               ) : null}
               {mobileLeftPanelTab === "events" ? (
@@ -3085,7 +3214,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     </button>
                     {isMobileWeaponMenuOpen ? (
                       <div
-                        className="absolute left-0 bottom-[calc(100%+4px)] z-[270] w-full border border-solid bg-[var(--color-near-black)]"
+                        className="absolute left-0 top-[calc(100%+4px)] z-[270] w-full border border-solid bg-[var(--color-near-black)]"
                         style={{
                           borderColor: "var(--color-gunmetal)",
                           borderRadius: 0,
@@ -3163,6 +3292,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   </button>
                 </div>
                 <div className="space-y-1">
+                  {/* A staged move's full action panel (Submit/Cancel, the
+                      weapon, targets, Retreat) comes first, so it's on
+                      screen without scrolling past the ship card. */}
+                  {isShowingProposedMove ? renderProposedMoveActivePanel() : null}
                   <ShipCard
                     ship={toShipCardData(selectedShip)}
                     shipImage={<ShipImage ship={selectedShip} className="h-full w-full" />}
@@ -3187,9 +3320,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     layoutShipId={selectedShip.id.toString()}
                     nameBlockMinHeightPx={gameViewNameBlockMinHeights[selectedShip.id.toString()]}
                   />
-                  {isShowingProposedMove ? (
-                    <div className="pt-1">{renderProposedMoveSubmitCancelRow()}</div>
-                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -3197,11 +3327,15 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           </div>
 
           <div
-            className={`relative h-full min-h-0 shrink-0 overflow-hidden ${
+            // The board gives up width before the left column drops below
+            // 12rem (small phones): its height is capped so its 17:11 width
+            // fits beside the column, and it centers vertically.
+            className={`relative min-h-0 shrink-0 self-center overflow-hidden ${
               isMobileJoiner ? "order-1" : "order-2"
             }`}
             style={{
               aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`,
+              height: `min(100%, calc((100vw - 12.5rem) * ${GRID_HEIGHT} / ${GRID_WIDTH}))`,
               paddingRight: "2px",
               paddingTop: "2px",
             }}
@@ -3293,6 +3427,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       renderShipCard={renderShipCard}
                     />
                   </div>
+                {/* Replay banner and controls (a finished game or a replay opened
+                    from Battles), as on desktop. */}
+                {(isReplaying ||
+                  game.metadata.winner !== "0x0000000000000000000000000000000000000000") &&
+                  renderReplayOverlay()}
                 {canFlee &&
                 game.metadata.winner === "0x0000000000000000000000000000000000000000" ? (
                   <div
@@ -3318,7 +3457,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       </button>
                       {isMobileFleeOpen ? (
                         <div
-                          className="absolute right-0 top-[calc(100%+6px)] w-[13.25rem] border border-solid p-1"
+                          className={`absolute top-[calc(100%+6px)] w-[13.25rem] border border-solid p-1 ${
+                            // Opens toward the board: the flag sits on the left for the joiner.
+                            isMobileJoiner ? "left-0" : "right-0"
+                          }`}
                           style={{
                             backgroundColor: "color-mix(in srgb, var(--color-near-black) 98%, transparent)",
                             borderColor: "var(--color-warning-red)",
@@ -3678,52 +3820,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             {/* Turn Indicator and Countdown / Seize Turn */}
             {game.metadata.winner ===
               "0x0000000000000000000000000000000000000000" &&
-              (() => {
-                const isParticipant =
-                  game.metadata.creator === address ||
-                  game.metadata.joiner === address;
-                // PvPMatch.endGameOnTimeout has no single-player
-                // equivalent — never offer to seize the turn on timeout
-                // there (see useAITurnLoop's own error/cap handling for
-                // the single-player "AI is stuck" case instead).
-                // Game.sol never self-enforces turnTime and
-                // SinglePlayerMatch has no timeout function, so vs-AI turns
-                // are already unlimited on-chain — don't show the "opponent
-                // can claim victory" warning for a timer that can't actually
-                // cost the player anything.
-                const timeoutEnabled =
-                  !readOnly && !isVsAIGame && isParticipant;
-
-                return (
-                  <GameTurnTimerPanel
-                    timeoutEnabled={timeoutEnabled}
-                    showCountdown={!isVsAIGame}
-                    isMyTurn={isMyTurnEffective}
-                    onResync={() => refetchGame()}
-                    claimTimeoutButton={
-                      <TransactionButton
-                        transactionId={`timeout-${game.metadata.gameId.toString()}`}
-                        contractAddress={pvpMatchContract.address}
-                        abi={pvpMatchContract.abi}
-                        functionName="endGameOnTimeout"
-                        args={[game.metadata.gameId]}
-                        className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
-                        loadingText="Claiming..."
-                        errorText="Failed"
-                        onSuccess={async () => {
-                          toast.success(
-                            "Game ended. Opponent forfeited by timeout.",
-                          );
-                          await Promise.resolve(refetchGame());
-                          await Promise.resolve(refetch?.());
-                        }}
-                      >
-                        Claim win (timeout)
-                      </TransactionButton>
-                    }
-                  />
-                );
-              })()}
+              renderTurnTimerPanel()}
           </div>
           {/* Scores box aligned left, to the right of title */}
           {useSideLayout ? (
@@ -3913,74 +4010,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           confirmButton={confirmMoveButton}
         />
             </div>
-          {/* Replay banner */}
-          {isReplaying && (
-            <GameReplayBanner
-              label={replayStep < 0 ? "Replay · Start" : `Replay · Move ${replayStep + 1}/${replayTurns.length}`}
-            />
-          )}
-          {/* Replay controls (top-left, below the replay banner while it's
-              showing). The bottom-left corner belongs to the comms panel. */}
-          <div
-            className={`absolute left-0 z-[225] pointer-events-none flex items-start ${
-              isReplaying ? "top-7" : "top-0"
-            }`}
-          >
-            <div className="pointer-events-auto flex items-start gap-2 pt-1 pl-1">
-              {!isReplaying && !replayNotFound && (
-                <button
-                  onClick={fetchAndStartReplay}
-                  className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-xs transition-colors duration-150"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-steel)",
-                    color: "var(--color-text-secondary)",
-                    backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
-                    borderRadius: 0,
-                  }}
-                >
-                  Replay
-                </button>
-              )}
-              {!isReplaying && replayNotFound && (
-                <div
-                  className="flex items-center gap-2 border-2 border-solid px-2 py-1 text-[11px]"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-warning-red)",
-                    color: "var(--color-warning-red)",
-                    backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
-                    borderRadius: 0,
-                  }}
-                >
-                  <span>Replay not available, not recorded on this device</span>
-                  <button
-                    onClick={() => setReplayNotFound(false)}
-                    className="px-1.5 py-0.5 border border-solid"
-                    style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "transparent", borderRadius: 0 }}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-              {isReplaying && (
-                <GameReplayControls
-                  stepLabel={
-                    replayStep < 0
-                      ? "Start"
-                      : `Move ${replayStep + 1}/${replayTurns.length} · Rd ${replayTurns[replayStep]?.round ?? ""}`
-                  }
-                  onPrev={() => setReplayStep((s) => (s === null ? null : Math.max(-1, s - 1)))}
-                  canPrev={replayStep > -1}
-                  onNext={() => setReplayStep((s) => (s === null ? null : Math.min(replayTurns.length - 1, s + 1)))}
-                  canNext={replayStep < replayTurns.length - 1}
-                  isPlaying={replayAutoPlay}
-                  onTogglePlay={() => setReplayAutoPlay((p) => !p)}
-                  onExit={exitReplay}
-                />
-              )}
-            </div>
-          </div>
+          {renderReplayOverlay()}
           {/* Debug panel (dev only, top-right). */}
           <div className="absolute right-0 top-0 z-[225] pointer-events-none flex items-start justify-end">
             <div className="pointer-events-auto flex flex-col items-end pt-1 pr-1">

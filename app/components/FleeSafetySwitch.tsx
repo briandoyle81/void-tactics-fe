@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 
 interface FleeSafetySwitchProps {
   /** When true, lever cannot be toggled (e.g. tutorial). */
@@ -99,11 +100,13 @@ export function FleeSafetySwitch({
           RETREAT
         </button>
 
-        {/* Confirm modal */}
-        {showConfirmModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div className="hazard-border max-w-md mx-4 w-full">
-              <div className="bg-near-black p-6">
+        {/* Confirm modal. Portaled to <body>: the switch can sit inside the
+            board's [contain:layout] box (landscape phones), which would
+            otherwise confine and clip a fixed overlay to the board. */}
+        {showConfirmModal && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/80 p-2">
+            <div className="hazard-border max-h-[calc(100dvh-1rem)] w-full max-w-md overflow-y-auto">
+              <div className="bg-near-black p-6 [@media(max-height:500px)]:p-4">
                 <div className="text-center mb-1">
                   <span className="text-[10px] font-mono text-text-muted tracking-widest">{"// CONFIRMATION REQUIRED //"}</span>
                 </div>
@@ -129,7 +132,8 @@ export function FleeSafetySwitch({
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </div>

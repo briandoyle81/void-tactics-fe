@@ -34,7 +34,7 @@ export interface TutorialPanelText {
 export const TUTORIAL_PRELUDE = {
   title: "First Contact",
   briefing:
-    "Admiral, welcome aboard. I'm Adjutant Bosch, your second in command. Im glad Headquarters sent you to help us out. There's an engagement already underway in the outer dust belts. I'll be on comms the whole way and walk you through it.",
+    "Admiral, welcome aboard. I'm Adjutant Bosch, your second in command. I'm glad Headquarters sent you to help us out. There's an engagement already underway in the outer dust belts. I'll be on comms the whole way and walk you through it.",
 };
 
 /** Each step's panel, by step id (app/data/tutorialSteps.ts). */

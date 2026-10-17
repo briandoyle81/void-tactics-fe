@@ -480,7 +480,9 @@ const ShipCard: React.FC<ShipCardProps> = ({
             {data.name || `Ship #${data.id}`}
           </h5>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Phones: the icons and chips wrap onto a second line rather than
+            squeezing the ship name into a narrow column. */}
+        <div className="flex max-w-[55%] shrink-0 flex-wrap items-center justify-end gap-1.5 sm:max-w-none sm:gap-2">
           {onCustomizeClick && data.isConstructed && !data.isDestroyed && (
             <button
               type="button"
@@ -488,7 +490,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 e.stopPropagation();
                 onCustomizeClick();
               }}
-              className="p-1 text-cyan hover:text-cyan hover:bg-cyan/10 rounded-none transition-all duration-200"
+              className="p-2 text-cyan hover:text-cyan hover:bg-cyan/10 rounded-none transition-all duration-200 sm:p-1"
               title="Customize ship"
               aria-label="Customize ship"
             >
@@ -516,7 +518,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 onRecycleClick();
               }}
               disabled={data.inFleet}
-              className="p-1 text-warning-red hover:text-warning-red hover:bg-warning-red/10 rounded-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-warning-red hover:text-warning-red hover:bg-warning-red/10 rounded-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed sm:p-1"
               title={
                 data.inFleet
                   ? "Cannot recycle ship in fleet"
@@ -599,8 +601,11 @@ const ShipCard: React.FC<ShipCardProps> = ({
           {/* Rank */}
           {data.isConstructed && !hideRankLabel && (
             <div className="relative group">
+              {/* Focusable so a tap shows the rank tooltip (hover-only before). */}
               <span
-                className={`text-xs px-2 py-1 border border-solid uppercase font-semibold tracking-wider cursor-default ${getRankColor(
+                tabIndex={0}
+                onClick={(e) => e.stopPropagation()}
+                className={`text-xs px-2 py-1 border border-solid uppercase font-semibold tracking-wider cursor-default outline-none focus-visible:ring-1 focus-visible:ring-cyan ${getRankColor(
                   data.rank,
                 )}`}
                 style={{
@@ -611,7 +616,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 R{data.rank}
               </span>
               <div
-                className="pointer-events-none absolute right-0 top-full mt-1 hidden min-w-max border border-solid px-2 py-1 text-xs group-hover:block z-20"
+                className="pointer-events-none absolute right-0 top-full mt-1 hidden min-w-max border border-solid px-2 py-1 text-xs group-hover:block group-focus-within:block z-20"
                 style={{
                   fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
                   backgroundColor: "var(--color-slate)",

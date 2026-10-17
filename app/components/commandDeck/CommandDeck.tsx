@@ -218,9 +218,10 @@ function ComingSoon({
 function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack, onOpen }: Omit<CommandDeckProps, "layout">) {
   return (
     // Sized to the window on desktop (70vh, 30–52rem) so the tiles fill the
-    // screen; rows never shrink below 14rem.
-    <div className="grid grid-cols-1 gap-3 md:h-[clamp(30rem,70vh,52rem)] md:grid-cols-[1.35fr_1fr_15rem] md:grid-rows-[minmax(14rem,1fr)_minmax(14rem,1fr)] md:gap-4 xl:grid-cols-[1.35fr_1fr_18rem]">
-      <Tile borderColor="var(--color-cyan)" className="md:col-start-1 md:row-span-2 md:row-start-1">
+    // screen; rows never shrink below 14rem. Phones: Operations full width,
+    // the other tiles two to a row without their art, to keep it short.
+    <div className="grid grid-cols-2 gap-3 md:h-[clamp(30rem,70vh,52rem)] md:grid-cols-[1.35fr_1fr_15rem] md:grid-rows-[minmax(14rem,1fr)_minmax(14rem,1fr)] md:gap-4 xl:grid-cols-[1.35fr_1fr_18rem]">
+      <Tile borderColor="var(--color-cyan)" className="col-span-2 md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 p-4">
           <span className="text-4xl font-bold uppercase leading-none tracking-wider text-cyan md:text-5xl" style={DISPLAY_FONT}>
             Operations
@@ -231,7 +232,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
             </span>
           )}
         </div>
-        <ArtSlot slot="operations" className="min-h-40 flex-1" />
+        <ArtSlot slot="operations" className="min-h-28 flex-1 md:min-h-40" />
         <div className="grid gap-3 p-4">
           <RunPips pips={operations.pips} />
           <DeckButton solid onClick={() => onOpen("operations")} className="w-full py-3 text-base">
@@ -241,9 +242,9 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
       </Tile>
 
       <Tile className="md:col-start-2 md:row-start-1">
-        <ArtSlot slot="skirmish" className="min-h-28 flex-1" />
-        <div className="flex items-center justify-between gap-3 p-3">
-          <span className="text-3xl font-bold uppercase tracking-wider" style={DISPLAY_FONT}>
+        <ArtSlot slot="skirmish" className="min-h-28 flex-1 max-md:hidden" />
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+          <span className="text-xl font-bold uppercase tracking-wider md:text-3xl" style={DISPLAY_FONT}>
             Skirmish - PvP
           </span>
           <DeckButton onClick={() => onOpen("skirmish")}>Play</DeckButton>
@@ -259,9 +260,9 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
             <FeaturedPackPreview pack={featuredPack} />
           </>
         ) : (
-          <ArtSlot slot="storeFeatured" className="min-h-28 flex-1" />
+          <ArtSlot slot="storeFeatured" className="min-h-28 flex-1 max-md:hidden" />
         )}
-        <div className="flex items-center justify-between gap-2 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-3">
           {featuredPack ? (
             <div className="min-w-0">
               <div className={`text-lg font-bold uppercase leading-tight tracking-wider ${featuredPack.textClass}`} style={DISPLAY_FONT}>
@@ -286,9 +287,9 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
 
       <ComingSoon active={!TOURNAMENTS_ENABLED} className="md:col-start-2 md:row-start-2">
         <Tile className="flex-1">
-          <ArtSlot slot="tournaments" className="min-h-28 flex-1" />
-          <div className="flex items-center justify-between gap-3 p-3">
-            <span className="text-3xl font-bold uppercase tracking-wider" style={DISPLAY_FONT}>
+          <ArtSlot slot="tournaments" className="min-h-28 flex-1 max-md:hidden" />
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+            <span className="text-xl font-bold uppercase tracking-wider md:text-3xl" style={DISPLAY_FONT}>
               Tournaments
             </span>
             <button
@@ -303,7 +304,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
         </Tile>
       </ComingSoon>
 
-      <div className="grid min-h-0 gap-3 md:col-start-3 md:row-start-2 md:grid-rows-[auto_1fr] md:gap-4">
+      <div className="col-span-2 grid min-h-0 grid-cols-2 gap-3 md:col-span-1 md:col-start-3 md:row-start-2 md:grid-cols-1 md:grid-rows-[auto_1fr] md:gap-4">
         <FreeShipsCard />
         <Tile borderColor="var(--color-phosphor-green)">
           <div className="px-3 pt-3 text-lg font-bold uppercase tracking-wider" style={DISPLAY_FONT}>
@@ -311,7 +312,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
           </div>
           <div className="grid flex-1 place-items-center py-2 text-center">
             <div>
-              <div className="text-6xl font-bold leading-none text-phosphor-green" style={DISPLAY_FONT}>
+              <div className="text-4xl font-bold leading-none text-phosphor-green md:text-6xl" style={DISPLAY_FONT}>
                 {yourTurnCount}
               </div>
               <div className="font-mono text-xs text-phosphor-green">your turn</div>

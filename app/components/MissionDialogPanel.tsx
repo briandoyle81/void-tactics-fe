@@ -249,7 +249,9 @@ export function DialogLineCard({
             <button
               type="button"
               aria-label="Dismiss dialog"
-              className="px-1 text-xs leading-none text-text-muted hover:text-text-primary"
+              className={`flex items-center justify-center leading-none text-text-muted hover:text-text-primary ${
+                compact ? "-m-1.5 h-8 w-8 text-base" : "px-1 text-xs"
+              }`}
               onClick={(e) => {
                 e.stopPropagation();
                 onDismiss();
@@ -259,8 +261,10 @@ export function DialogLineCard({
             </button>
           </span>
         </div>
+        {/* Compact (a phone in landscape): the text scrolls past ~a third
+            of the screen's height, so a long line can't bury the board. */}
         <p
-          className={`mt-1 ${bodyText} leading-snug`}
+          className={`mt-1 ${bodyText} leading-snug ${compact ? "max-h-[32dvh] overflow-y-auto" : ""}`}
           style={{ ...STYLE_MONO, color }}
         >
           {line.isError ? line.text : <HighlightedText text={line.text} />}
@@ -269,8 +273,8 @@ export function DialogLineCard({
           {line.hideableLineId && <DontShowAgain lineId={line.hideableLineId} color={color} compact={compact} />}
           <button
             type="button"
-            className={`border border-solid px-2 py-0.5 ${
-              compact ? "text-[10px]" : "text-xs"
+            className={`border border-solid ${
+              compact ? "min-h-8 px-3 py-1 text-[11px]" : "px-2 py-0.5 text-xs"
             } font-bold uppercase tracking-widest transition-colors hover:bg-white/5`}
             style={{ ...STYLE_LABEL, borderColor: color, color, borderRadius: 0 }}
             onClick={(e) => {

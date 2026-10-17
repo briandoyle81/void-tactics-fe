@@ -43,7 +43,7 @@ import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
 import AuthSignIn from "./AuthSignIn";
 import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
 import { CopyAddressButton } from "./CopyAddressButton";
-import { ETH_DISPLAY_DECIMALS, UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
+import { ETH_DISPLAY_DECIMALS, UTC_DISPLAY_DECIMALS, formatBalance, formatBalanceCompact } from "../utils/formatBalance";
 import { openRecoveryCodes, RecoveryCodesHost } from "./RecoveryCodesModal";
 
 function resolveChainIdFromQueryParam(value: string | null): number | null {
@@ -408,6 +408,7 @@ const MONO_FONT = "var(--font-jetbrains-mono), 'Courier New', monospace";
 function ResourcePill({
   label,
   value,
+  compactValue,
   color,
   title,
   plus,
@@ -415,13 +416,15 @@ function ResourcePill({
 }: {
   label: string;
   value: string;
+  /** Shown instead of `value` on phones (below sm), e.g. "1.2k". */
+  compactValue?: string;
   color: string;
   title: string;
   plus?: { title: string; onClick?: () => void; href?: string; disabled?: boolean };
   className?: string;
 }) {
   const plusClass =
-    "flex h-6 w-6 shrink-0 items-center justify-center text-sm font-bold leading-none transition-colors duration-150 hover:bg-slate disabled:cursor-default disabled:opacity-40";
+    "flex h-7 w-7 shrink-0 items-center justify-center text-sm font-bold leading-none transition-colors duration-150 hover:bg-slate disabled:cursor-default disabled:opacity-40";
   const plusStyle = {
     backgroundColor: "var(--color-steel)",
     color: "var(--color-phosphor-green)",
@@ -445,7 +448,14 @@ function ResourcePill({
         className="text-xs font-semibold tabular-nums"
         style={{ fontFamily: MONO_FONT, color: "var(--color-text-primary)" }}
       >
-        {value}
+        {compactValue != null ? (
+          <>
+            <span className="sm:hidden">{compactValue}</span>
+            <span className="hidden sm:inline">{value}</span>
+          </>
+        ) : (
+          value
+        )}
       </span>
       {plus &&
         (plus.href ? (
@@ -1052,6 +1062,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                 <ResourcePill
                   label="UTC"
                   value={formatBalance(utcValue, UTC_DISPLAY_DECIMALS)}
+                  compactValue={formatBalanceCompact(utcValue)}
                   color="var(--color-amber)"
                   title="Universal Credits"
                   plus={{
@@ -1062,6 +1073,9 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                 <ResourcePill
                   label="DEC"
                   value={showWeb3Panel && !isDroneEnergyCoresDeployed ? "N/A" : formatDec(decValue)}
+                  compactValue={
+                    showWeb3Panel && !isDroneEnergyCoresDeployed ? "N/A" : formatBalanceCompact(Math.floor(decValue))
+                  }
                   color="var(--color-purple)"
                   title="Drone Energy Cores"
                   plus={{

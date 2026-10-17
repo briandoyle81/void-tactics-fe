@@ -1,5 +1,12 @@
 import React from "react";
 
+/**
+ * A phone: narrow in portrait (≤500px wide) or short in landscape (≤500px
+ * tall, under 1024px wide). Tablets don't match in either orientation, so
+ * an iPad held upright gets the regular layout instead of a rotate prompt.
+ */
+export const PHONE_MEDIA_QUERY = "(max-width: 500px), (max-width: 1023px) and (max-height: 500px)";
+
 export function useLandscapeMode() {
   const [isLandscapeMobile, setIsLandscapeMobile] = React.useState(false);
   const [requiresLandscapeMode, setRequiresLandscapeMode] =
@@ -8,7 +15,7 @@ export function useLandscapeMode() {
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     const orientationMq = window.matchMedia("(orientation: landscape)");
-    const mobileMq = window.matchMedia("(max-width: 1023px)");
+    const mobileMq = window.matchMedia(PHONE_MEDIA_QUERY);
     const sync = () => {
       const isMobile = mobileMq.matches;
       const isLandscape = orientationMq.matches;

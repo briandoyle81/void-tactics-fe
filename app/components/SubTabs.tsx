@@ -10,7 +10,8 @@ export function SubTabs<T extends string>({
   label,
   trailing,
 }: {
-  tabs: readonly { id: T; label: string; count?: number }[];
+  /** `shortLabel` replaces `label` on phones (below sm), so every tab fits. */
+  tabs: readonly { id: T; label: string; shortLabel?: string; count?: number }[];
   active: T;
   onSelect: (id: T) => void;
   label: string;
@@ -31,12 +32,19 @@ export function SubTabs<T extends string>({
               role="tab"
               aria-selected={isActive}
               onClick={() => onSelect(tab.id)}
-              className={`-mb-px shrink-0 border-b-2 px-2 py-2 text-sm font-bold uppercase tracking-wider transition-colors duration-150 md:px-1 md:text-base ${
+              className={`-mb-px shrink-0 border-b-2 px-2 py-2 text-sm font-bold uppercase tracking-normal transition-colors duration-150 sm:tracking-wider md:px-1 md:text-base ${
                 isActive ? "border-cyan text-cyan" : "border-transparent text-text-secondary hover:text-cyan"
               }`}
               style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" }}
             >
-              {tab.label}
+              {tab.shortLabel ? (
+                <>
+                  <span className="sm:hidden">{tab.shortLabel}</span>
+                  <span className="hidden sm:inline">{tab.label}</span>
+                </>
+              ) : (
+                tab.label
+              )}
               {tab.count != null && <span className="ml-1.5 font-mono text-xs text-text-muted">{tab.count}</span>}
             </button>
           );

@@ -44,14 +44,16 @@ export function FlowPaymentModal({ modal, flowTier }: Props) {
   const locked = LOCKED_STEPS.has(step);
 
   const content = (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    // Above the phone bottom nav (GameNav, z-[250]), with a margin and a
+    // height cap so a long token list scrolls inside the card.
+    <div className="fixed inset-0 z-[450] flex items-center justify-center p-4">
       {/* backdrop */}
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={locked ? undefined : modal.close}
       />
       {/* card */}
-      <div className="relative z-10 w-full max-w-md border-2 border-phosphor-green/60 bg-void-black p-6 font-mono">
+      <div className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto border-2 border-phosphor-green/60 bg-void-black p-6 font-mono max-sm:p-4">
         {/* header */}
         <div className="mb-4 flex items-start justify-between">
           <div>
@@ -65,7 +67,8 @@ export function FlowPaymentModal({ modal, flowTier }: Props) {
           {!locked && (
             <button
               onClick={modal.close}
-              className="text-text-muted hover:text-phosphor-green text-lg leading-none"
+              aria-label="Close"
+              className="-mr-2 -mt-2 flex h-10 w-10 items-center justify-center text-lg leading-none text-text-muted hover:text-phosphor-green"
             >
               ✕
             </button>

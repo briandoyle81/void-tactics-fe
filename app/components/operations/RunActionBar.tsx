@@ -43,11 +43,12 @@ export function RunActionBar({
 
   return (
     <div
-      className="flex flex-col gap-3 border-t px-3 py-3 md:flex-row md:items-center md:gap-5 md:px-4"
+      // Phones: fleet and cost share a row, the action fills the next one.
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t px-3 py-2 md:flex-nowrap md:gap-5 md:px-4 md:py-3"
       style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-slate)" }}
     >
       {roster.length > 0 && (
-        <div className="flex min-w-0 gap-1.5 overflow-x-auto [scrollbar-width:thin]" aria-label="Run fleet">
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:thin] md:flex-none" aria-label="Run fleet">
           {roster.map((ship) => (
             <div key={ship.key} className="grid w-11 shrink-0 gap-1" title={`${ship.name} · ${Math.round(ship.hullPercent)}% hull`}>
               <div className="aspect-square overflow-hidden border border-steel bg-black/40">{ship.image}</div>
@@ -88,7 +89,7 @@ export function RunActionBar({
           type="button"
           onClick={onAction}
           disabled={action.disabled}
-          className={`w-full border-2 border-solid px-6 py-3 text-base font-bold uppercase tracking-wider transition-colors duration-150 md:w-auto ${action.secondary ? "" : "md:ml-auto"} ${
+          className={`w-full basis-full border-2 border-solid px-6 py-3 text-base font-bold uppercase tracking-wider transition-colors duration-150 md:w-auto md:basis-auto ${action.secondary ? "" : "md:ml-auto"} ${
             action.disabled
               ? "cursor-not-allowed border-gunmetal text-text-muted"
               : "border-cyan bg-cyan text-near-black hover:bg-cyan/85"

@@ -180,7 +180,9 @@ export function FleetSelectionModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[400]">
-      <div className="bg-near-black border border-cyan rounded-none p-6 w-[100vw] h-[100vh] flex flex-col">
+      {/* Phones (below md): the map on top, the ship list scrolling below it.
+          dvh so the bottom isn't under a mobile browser's toolbar. */}
+      <div className="bg-near-black border border-cyan rounded-none p-3 md:p-6 w-[100vw] h-[100dvh] flex flex-col">
         <div className="mb-2 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
             <h4 className="text-lg font-bold text-cyan whitespace-nowrap">
@@ -337,19 +339,19 @@ export function FleetSelectionModal({
             Loading ships...
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:flex-row md:gap-4">
             {isCreator ? (
               <>
                 {!participantHasFleet && (
                   <FleetShipListPanel
-                    widthClass="w-1/4"
+                    widthClass="order-2 w-full min-h-0 flex-1 max-md:h-auto md:order-none md:w-1/4 md:flex-none"
                     items={shipListItems}
                     onDropShip={onDropShip}
                     header={factionPicker}
                   />
                 )}
                 <div
-                  className={`${participantHasFleet ? "w-full" : "w-3/4"} flex h-full min-h-0 min-w-0 items-center justify-center overflow-hidden`}
+                  className={`${participantHasFleet ? "w-full" : "md:w-3/4"} order-1 flex w-full ${participantHasFleet ? "h-full" : "h-[45%] shrink-0 md:h-full"} min-h-0 min-w-0 items-center justify-center overflow-hidden md:order-none`}
                 >
                   {mapDisplay}
                 </div>
@@ -357,13 +359,13 @@ export function FleetSelectionModal({
             ) : (
               <>
                 <div
-                  className={`${participantHasFleet ? "w-full" : "w-3/4"} flex h-full min-h-0 min-w-0 items-center justify-center overflow-hidden`}
+                  className={`${participantHasFleet ? "w-full" : "md:w-3/4"} order-1 flex w-full ${participantHasFleet ? "h-full" : "h-[45%] shrink-0 md:h-full"} min-h-0 min-w-0 items-center justify-center overflow-hidden md:order-none`}
                 >
                   {mapDisplay}
                 </div>
                 {!participantHasFleet && (
                   <FleetShipListPanel
-                    widthClass="w-1/4"
+                    widthClass="order-2 w-full min-h-0 flex-1 max-md:h-auto md:order-none md:w-1/4 md:flex-none"
                     items={shipListItems}
                     onDropShip={onDropShip}
                     header={factionPicker}

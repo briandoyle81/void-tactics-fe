@@ -97,14 +97,17 @@ export function RoundStartModal({
 
   return (
     <div
-      className={`round-start-backdrop fixed inset-0 z-[500] flex items-center justify-center bg-black/90 p-4 ${
+      className={`round-start-backdrop fixed inset-0 z-[500] flex items-center justify-center bg-black/90 p-4 [@media(max-height:500px)]:p-2 ${
         // Ignore input while fading out so the board is clickable right away.
         isClosing ? "round-start-closing pointer-events-none" : ""
       }`}
       role="presentation"
     >
       <div
-        className="round-start-card relative w-full max-w-md overflow-hidden border-2 bg-near-black font-mono"
+        // Capped to the screen (a phone in landscape is ~340px tall): the body
+        // scrolls, and Acknowledged stays pinned at the bottom so it can
+        // always be reached. Short screens also get a tighter layout.
+        className="round-start-card relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden border-2 bg-near-black font-mono [@media(max-height:500px)]:max-h-[calc(100dvh-1rem)] [@media(max-height:500px)]:max-w-xl"
         style={{ borderColor: accentColor, borderRadius: 0 }}
         role="dialog"
         aria-label={`Round ${round.toString()} report`}
@@ -121,22 +124,22 @@ export function RoundStartModal({
           reporter={reporter}
         />
 
-        <div className="px-6 pb-6 pt-5 text-center">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 text-center [@media(max-height:500px)]:px-4 [@media(max-height:500px)]:pt-3">
           <div
-            className="text-4xl font-bold uppercase tracking-widest text-text-primary"
+            className="text-4xl font-bold uppercase tracking-widest text-text-primary [@media(max-height:500px)]:text-2xl"
             style={STYLE_LABEL}
           >
             Round {round.toString()}
           </div>
           <div
-            className="mt-1 text-2xl font-bold uppercase tracking-widest"
+            className="mt-1 text-2xl font-bold uppercase tracking-widest [@media(max-height:500px)]:text-lg"
             style={{ ...STYLE_LABEL, color: accentColor }}
           >
             {isMyTurnFirst ? "You go first" : "Opponent goes first"}
           </div>
 
           {(hasRoundScore || hasCurrentScore) && (
-            <table className="mt-5 w-full border-collapse text-left text-xs" style={STYLE_MONO}>
+            <table className="mt-5 w-full border-collapse text-left text-xs [@media(max-height:500px)]:mt-2" style={STYLE_MONO}>
               <thead>
                 <tr
                   className="border-b border-solid text-[10px] uppercase tracking-widest text-text-muted"
@@ -183,21 +186,23 @@ export function RoundStartModal({
 
           {note && (
             <div
-              className="mt-5 space-y-2 border-l-2 pl-3 text-left text-sm leading-relaxed text-text-primary"
+              className="mt-5 space-y-2 border-l-2 pl-3 text-left text-sm leading-relaxed text-text-primary [@media(max-height:500px)]:mt-3"
               style={{ ...STYLE_MONO, borderColor: reporter.color }}
             >
               {note}
             </div>
           )}
 
-          <div className="mt-4">
+          <div className="mt-4 pb-1 [@media(max-height:500px)]:mt-2">
             <CrewReportSignature reporter={reporter} />
           </div>
+        </div>
 
+        <div className="shrink-0 px-6 pb-6 pt-4 [@media(max-height:500px)]:px-4 [@media(max-height:500px)]:pb-3 [@media(max-height:500px)]:pt-2">
           <button
             type="button"
             {...pressProps(close)}
-            className="mt-4 w-full border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
+            className="w-full border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
             style={{ ...STYLE_LABEL, borderColor: accentColor, color: accentColor, borderRadius: 0 }}
           >
             Acknowledged

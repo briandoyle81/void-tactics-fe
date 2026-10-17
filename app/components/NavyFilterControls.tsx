@@ -46,13 +46,29 @@ export function NavyFilterControls({
   const threatValue = activeFilters.find((f) => f.category === "data_threat")?.value ?? "";
   const draftValue = activeFilters.find((f) => f.category === draftCategory)?.value ?? "";
 
+  // Phones get a full-width bottom sheet: a popover anchored under the
+  // button ran off the right edge and below the screen. Wider screens keep
+  // the anchored popover, its height capped to the space below the button.
+  // Read at open time (it only renders after a click), so no SSR concern.
+  const isSheet = typeof window !== "undefined" && window.innerWidth < 768;
+
   return (
     <>
-      <div className="fixed inset-0 z-[259]" onMouseDown={onClose} />
-      <div className="fixed z-[260] p-2" style={{ top: `${anchor.top}px`, left: `${anchor.left}px` }}>
+      <div className="fixed inset-0 z-[259] bg-black/40 md:bg-transparent" onMouseDown={onClose} />
+      <div
+        className={isSheet ? "fixed inset-x-0 bottom-0 z-[260]" : "fixed z-[260] p-2"}
+        style={isSheet ? undefined : { top: `${anchor.top}px`, left: `${anchor.left}px` }}
+      >
         <div
-          className="max-h-[78vh] w-[min(96vw,72rem)] overflow-auto border border-cyan/70 bg-near-black p-4"
-          style={{ borderRadius: 0 }}
+          className={
+            isSheet
+              ? "max-h-[85dvh] w-full overflow-auto border-t-2 border-cyan/70 bg-near-black p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+              : "w-[min(96vw,72rem)] overflow-auto border border-cyan/70 bg-near-black p-4"
+          }
+          style={{
+            borderRadius: 0,
+            maxHeight: isSheet ? undefined : `min(78vh, calc(100dvh - ${anchor.top}px - 1.5rem))`,
+          }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="mb-4 flex items-center justify-between border-b border-cyan/30 pb-3">

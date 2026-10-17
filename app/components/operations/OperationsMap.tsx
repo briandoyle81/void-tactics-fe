@@ -68,7 +68,7 @@ export function OperationsMap({
               onClick={() => onDrawerOpenChange(false)}
               aria-label="Close mission panel"
               title="Close (Esc)"
-              className="absolute right-2 top-2 z-10 text-xl leading-none text-text-muted hover:text-text-primary md:left-[-1.6rem] md:right-auto md:top-1/2 md:flex md:h-16 md:w-[1.6rem] md:-translate-y-1/2 md:items-center md:justify-center md:border md:border-r-0 md:bg-near-black md:text-cyan"
+              className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center text-xl leading-none text-text-muted hover:text-text-primary md:left-[-1.6rem] md:right-auto md:top-1/2 md:flex md:h-16 md:w-[1.6rem] md:-translate-y-1/2 md:items-center md:justify-center md:border md:border-r-0 md:bg-near-black md:text-cyan"
               style={{ borderColor: "var(--color-cyan)" }}
             >
               <span className="md:hidden">×</span>
@@ -90,7 +90,11 @@ export function OperationsMap({
         )}
       </div>
 
-      {actionBar}
+      {/* Phones: pinned above the bottom nav (GameNav, ~3.4rem), so the
+          main action stays on screen while the chart scrolls. */}
+      {actionBar != null && (
+        <div className="sticky bottom-[calc(3.4rem+env(safe-area-inset-bottom))] z-30 md:static">{actionBar}</div>
+      )}
     </div>
   );
 }

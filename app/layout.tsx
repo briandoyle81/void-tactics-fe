@@ -27,6 +27,9 @@ const defaultPageTitle =
 export const viewport: Viewport = {
   colorScheme: "dark",
   themeColor: "#0c1117",
+  // Use the whole screen on notched phones, so env(safe-area-inset-*) is
+  // set (GameNav's bottom padding, body's side padding in globals.css).
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {

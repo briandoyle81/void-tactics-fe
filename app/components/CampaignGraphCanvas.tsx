@@ -7,6 +7,11 @@ const MIN_COL_WIDTH = 230;
 const ROW_HEIGHT = 170;
 const CANVAS_PADDING = 56;
 const CANVAS_MIN_HEIGHT = 560;
+// Phones: tighter columns (nodes are 96px wide) and a shorter minimum height,
+// so the run map's action bar isn't pushed below the screen.
+const NARROW_WIDTH = 640;
+const NARROW_MIN_COL_WIDTH = 150;
+const NARROW_CANVAS_MIN_HEIGHT = 360;
 
 export interface CampaignGraphCanvasNode {
   id: number;
@@ -270,11 +275,28 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
     () => groupNodesByDepth(nodes, manualColumnOverrides),
     [nodes, manualColumnOverrides],
   );
+  const isNarrow = containerWidth != null && containerWidth < NARROW_WIDTH;
+  const minColWidth = isNarrow ? NARROW_MIN_COL_WIDTH : MIN_COL_WIDTH;
+  const minHeight = isNarrow ? NARROW_CANVAS_MIN_HEIGHT : CANVAS_MIN_HEIGHT;
   const colWidth = containerWidth
-    ? Math.max(MIN_COL_WIDTH, (containerWidth - CANVAS_PADDING * 2 - 1) / Math.max(columns.length, 1))
+    ? Math.max(minColWidth, (containerWidth - CANVAS_PADDING * 2 - 1) / Math.max(columns.length, 1))
     : MIN_COL_WIDTH;
   const layout = React.useMemo(() => layoutGraph(columns, colWidth), [columns, colWidth]);
-  const canvasHeight = Math.max(layout.height + CANVAS_PADDING * 2, CANVAS_MIN_HEIGHT);
+  const canvasHeight = Math.max(layout.height + CANVAS_PADDING * 2, minHeight);
+
+  // Keep the selected node (the current mission when a run opens) in view:
+  // a long chart is wider than a phone, and the current node was often
+  // off to the right with nothing pointing at it.
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const selectedX = selectedNodeId != null ? layout.positions.get(selectedNodeId)?.x : undefined;
+  React.useEffect(() => {
+    const box = scrollRef.current;
+    if (!box || selectedX == null || box.scrollWidth <= box.clientWidth) return;
+    const x = selectedX + CANVAS_PADDING;
+    const margin = CAMPAIGN_NODE_WIDTH;
+    if (x - margin >= box.scrollLeft && x + margin <= box.scrollLeft + box.clientWidth) return;
+    box.scrollTo({ left: Math.max(0, x - box.clientWidth / 2), behavior: "smooth" });
+  }, [selectedX]);
   const contentTop = (canvasHeight - layout.height) / 2;
 
   if (nodes.length === 0) {
@@ -297,8 +319,9 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
           affected by a scrollbar appearing/disappearing inside it. */}
       <div ref={containerRef} className="relative w-full">
         <div
+          ref={scrollRef}
           className={`relative w-full overflow-x-auto ${bare ? "" : "border-2"}`}
-          style={{ borderColor: "var(--color-steel)", borderRadius: 0, minHeight: CANVAS_MIN_HEIGHT }}
+          style={{ borderColor: "var(--color-steel)", borderRadius: 0, minHeight }}
         >
           <div className="relative" style={{ width: layout.width + CANVAS_PADDING * 2, height: canvasHeight }}>
             <Starfield backdropSrc={backdropSrc} />

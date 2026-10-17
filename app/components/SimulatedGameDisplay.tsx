@@ -3423,13 +3423,326 @@ export function SimulatedGameDisplay({
     );
   }
 
+  // The staged move's panel (Submit/Cancel, weapon, targets, Retreat):
+  // the stacked layout's panel, and the top of the landscape ship panel.
+  const renderProposedMovePanel = (): React.ReactNode => (
+    <div
+      className={
+        chromeOnSide
+          ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border border-solid p-3"
+          : "min-h-0 flex-1 border border-solid p-3"
+      }
+      style={{
+        backgroundColor: "var(--color-near-black)",
+        borderColor: "var(--color-gunmetal)",
+        borderTopColor: "var(--color-steel)",
+        borderLeftColor: "var(--color-steel)",
+        borderRadius: 0,
+      }}
+    >
+      <div
+        className={
+          chromeOnSide
+            ? "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
+            : "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
+        }
+      >
+        <div className="relative flex w-full min-w-0 shrink-0 flex-row gap-2 pt-8">
+          <TutorialTarget active={shouldPulseSubmitMoveButton} className="min-w-0 flex-[2]">
+            <button
+              type="button"
+              onClick={handleSubmitMove}
+              disabled={isConfirmingMove}
+              className={`w-full px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 min-w-0 `}
+              style={{
+                ...STYLE_LABEL,
+                borderColor: "var(--color-phosphor-green)",
+                borderTopColor: "var(--color-phosphor-green)",
+                borderLeftColor: "var(--color-phosphor-green)",
+                color: "var(--color-phosphor-green)",
+                backgroundColor: "var(--color-steel)",
+                borderWidth: "2px",
+                borderStyle: "solid",
+                borderRadius: 0,
+              }}
+            >
+              {isConfirmingMove ? "[...]" : isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
+            </button>
+          </TutorialTarget>
+          <button
+            type="button"
+            onClick={handleCancelMove}
+            className="min-w-0 flex-[1] px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150"
+            style={{
+              ...STYLE_LABEL,
+              borderColor: "var(--color-gunmetal)",
+              borderTopColor: "var(--color-steel)",
+              borderLeftColor: "var(--color-steel)",
+              color: "var(--color-text-secondary)",
+              backgroundColor: "var(--color-slate)",
+              borderWidth: "2px",
+              borderStyle: "solid",
+              borderRadius: 0,
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+          <div
+            className={
+              chromeOnSide
+                ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4"
+                : "flex min-h-0 min-w-0 flex-1 flex-row items-stretch gap-6"
+            }
+          >
+            <div className="flex min-w-0 flex-shrink-0 flex-col gap-1">
+              {(() => {
+                const ship = shipMap.get(selectedShipId!);
+                const name =
+                  ship?.name || `Ship #${selectedShipId?.toString()}`;
+                const currentPos = gameState.shipPositions.find(
+                  (pos) => pos.shipId === selectedShipId?.toString(),
+                );
+                const fromRow = currentPos?.position.row ?? 0;
+                const fromCol = currentPos?.position.col ?? 0;
+                const toRow = previewPosition
+                  ? previewPosition.row
+                  : fromRow;
+                const toCol = previewPosition
+                  ? previewPosition.col
+                  : fromCol;
+                return (
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <div className="text-sm font-semibold text-white">
+                      {name}
+                    </div>
+                    <div className="text-sm font-mono text-text-secondary">
+                      ({fromRow}, {fromCol}) → ({toRow}, {toCol})
+                    </div>
+                  </div>
+                );
+              })()}
+              {/* Weapon / Special selector, mirroring main game UI */}
+              {(() => {
+                if (isSelectedShipDisabled) return null;
+                if (!selectedShipId) return null;
+                const ship = shipMap.get(selectedShipId);
+                if (!ship || !shipHasActivatableSpecial(ship)) return null;
+                return (
+                  <TutorialTarget active={shouldHighlightSpecialEmpWeaponDropdown} className="mt-1 w-full">
+                    <div>
+                      <select
+                        value={selectedWeaponType}
+                        onChange={(e) => {
+                          const newWeaponType = e.target.value as
+                            | "weapon"
+                            | "special";
+                          setWeaponTypeFromGrid(newWeaponType);
+                          // In tutorial we do not have a boarding special; keep target as-is.
+                        }}
+                        className="w-full px-3 py-1.5 text-sm uppercase font-semibold tracking-wider"
+                        style={{
+                          ...STYLE_MONO,
+                          borderRadius: 0,
+                          backgroundColor: "var(--color-slate)",
+                          color: "var(--color-text-primary)",
+                        }}
+                      >
+                        <option value="weapon">
+                          {getMainWeaponName(ship.equipment.mainWeapon, ship.traits.variant)}
+                        </option>
+                        <option value="special">
+                          {getSpecialName(ship.equipment.special, ship.traits.variant)}
+                        </option>
+                      </select>
+                    </div>
+                  </TutorialTarget>
+                );
+              })()}
+            </div>
+
+            {/* Center: Target selection, mirroring main game UI */}
+            {!isSelectedShipDisabled && validTargets.length > 0 && (
+              <div
+                className={
+                  chromeOnSide
+                    ? "flex min-h-0 min-w-0 flex-1 flex-col"
+                    : "min-h-0 flex-1"
+                }
+              >
+                <div
+                  className={
+                    chromeOnSide
+                      ? "flex min-h-0 min-w-0 flex-1 flex-col border border-solid p-3"
+                      : "min-h-[7.5rem] border border-solid p-3"
+                  }
+                  style={{
+                    backgroundColor: "var(--color-near-black)",
+                    borderColor: "var(--color-gunmetal)",
+                    borderTopColor: "var(--color-steel)",
+                    borderLeftColor: "var(--color-steel)",
+                    borderRadius: 0,
+                  }}
+                >
+                  <div
+                    className="shrink-0 text-xs mb-2 uppercase tracking-wide"
+                    style={{
+                      ...STYLE_MONO,
+                      color: "var(--color-text-secondary)",
+                    }}
+                  >
+                    Select Target (Optional)
+                  </div>
+                  <div className={proposedMoveTargetListClass}>
+                    {validTargets.map((target) => {
+                      const targetShip = shipMap.get(
+                        BigInt(target.shipId),
+                      );
+                      const isHammerTargetTutorialHighlight =
+                        currentStep?.id === "shoot" &&
+                        previewPosition !== null &&
+                        targetShipId === null &&
+                        BigInt(target.shipId) === 2001n;
+                      const isSelectedTarget =
+                        targetShipId !== null &&
+                        targetShipId === BigInt(target.shipId);
+                      const isRepair =
+                        selectedWeaponType === "special" &&
+                        isRepairDronesSpecial(
+                          Number(selectedShip?.traits.variant ?? 1),
+                          specialType,
+                        );
+                      const accentColor = isRepair
+                        ? "var(--color-cyan)"
+                        : "var(--color-warning-red)";
+                      const targetButtonStyle: React.CSSProperties = {
+                        ...STYLE_LABEL,
+                        borderColor: isSelectedTarget
+                          ? accentColor
+                          : "var(--color-gunmetal)",
+                        borderTopColor: isSelectedTarget
+                          ? accentColor
+                          : "var(--color-steel)",
+                        borderLeftColor: isSelectedTarget
+                          ? accentColor
+                          : "var(--color-steel)",
+                        color: accentColor,
+                        backgroundColor: isSelectedTarget
+                          ? "var(--color-steel)"
+                          : "var(--color-slate)",
+                        borderWidth: "2px",
+                        borderStyle: "solid",
+                        borderRadius: 0,
+                      };
+                      const targetButton = (
+                        <button
+                          onClick={() =>
+                            setTargetShipId(BigInt(target.shipId))
+                          }
+                          className={proposedMoveTargetBtnClass}
+                          style={targetButtonStyle}
+                        >
+                          {`[>] `}
+                          {targetShip?.name ||
+                            `#${BigInt(target.shipId).toString()}`}
+                        </button>
+                      );
+                      return (
+                        <TutorialTarget
+                          key={target.shipId}
+                          active={isHammerTargetTutorialHighlight}
+                          pointer="inline"
+                          inside
+                        >
+                          {targetButton}
+                        </TutorialTarget>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {chromeOnSide &&
+              (validTargets.length === 0 || isSelectedShipDisabled) && (
+                <div className="min-h-0 min-w-0 flex-1" aria-hidden />
+              )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedShipId != null) {
+                setRetreatExplicitByShipId((prev) => ({
+                  ...prev,
+                  [selectedShipId.toString()]: true,
+                }));
+              }
+              setTargetShipId(null);
+              setPreviewPosition(null);
+            }}
+            className="w-full shrink-0 px-3 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150"
+            style={{
+              ...STYLE_LABEL,
+              borderColor:
+                actionOverride === ActionType.Retreat
+                  ? "var(--color-warning-red)"
+                  : "var(--color-gunmetal)",
+              borderTopColor:
+                actionOverride === ActionType.Retreat
+                  ? "var(--color-warning-red)"
+                  : "var(--color-steel)",
+              borderLeftColor:
+                actionOverride === ActionType.Retreat
+                  ? "var(--color-warning-red)"
+                  : "var(--color-steel)",
+              color:
+                actionOverride === ActionType.Retreat
+                  ? "var(--color-warning-red)"
+                  : "var(--color-text-secondary)",
+              backgroundColor:
+                actionOverride === ActionType.Retreat
+                  ? "color-mix(in srgb, var(--color-warning-red) 15%, transparent)"
+                  : "var(--color-slate)",
+              borderWidth: "2px",
+              borderStyle: "solid",
+              borderRadius: 0,
+            }}
+            onMouseEnter={(e) => {
+              if (actionOverride !== ActionType.Retreat) {
+                e.currentTarget.style.borderColor =
+                  "var(--color-warning-red)";
+                e.currentTarget.style.color =
+                  "var(--color-warning-red)";
+                e.currentTarget.style.backgroundColor =
+                  "color-mix(in srgb, var(--color-warning-red) 12%, transparent)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (actionOverride !== ActionType.Retreat) {
+                e.currentTarget.style.borderColor =
+                  "var(--color-gunmetal)";
+                e.currentTarget.style.color =
+                  "var(--color-text-secondary)";
+                e.currentTarget.style.backgroundColor =
+                  "var(--color-slate)";
+              }
+            }}
+          >
+            Retreat
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   if (isLandscapeMobile) {
     return (
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
           <div
-            className={`flex h-full min-h-0 min-w-0 flex-1 items-center justify-center ${
+            className={`flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center ${
               isMobileJoiner ? "order-2" : "order-1"
             }`}
           >
@@ -3491,13 +3804,13 @@ export function SimulatedGameDisplay({
                 </div>
               </div>
 
-              <div className="mb-2 grid grid-cols-5 gap-1">
+              <div className="mb-2 flex flex-wrap gap-1">
                 {(["tutorial", "status", "actions", "events"] as const).map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     onClick={() => setMobileLeftPanelTab(tab)}
-                    className="px-1 py-2 text-xs min-h-[2.75rem] uppercase tracking-wider border border-solid"
+                    className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
                     style={{
                       ...STYLE_LABEL,
                       borderColor:
@@ -3515,13 +3828,13 @@ export function SimulatedGameDisplay({
                       borderRadius: 0,
                     }}
                   >
-                    {tab}
+                    {tab === "tutorial" ? "brief" : tab}
                   </button>
                 ))}
                 <button
                   type="button"
                   onClick={() => setIsMobileFleetModalOpen(true)}
-                  className="px-1 py-2 text-xs min-h-[2.75rem] uppercase tracking-wider border border-solid"
+                  className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
                   style={{
                     ...STYLE_LABEL,
                     borderColor: "var(--color-phosphor-green)",
@@ -3701,7 +4014,7 @@ export function SimulatedGameDisplay({
                               type="button"
                               onClick={() => nextStep()}
                               disabled={!isStepComplete}
-                              className="px-2 py-1 border border-solid text-[10px] uppercase tracking-wider disabled:cursor-not-allowed"
+                              className="w-full px-2 py-1 border border-solid text-[10px] uppercase tracking-wider disabled:cursor-not-allowed"
                               style={{
                                 borderColor: isStepComplete ? "var(--color-phosphor-green)" : "var(--color-gunmetal)",
                                 color: isStepComplete ? "var(--color-phosphor-green)" : "var(--color-text-muted)",
@@ -3827,6 +4140,16 @@ export function SimulatedGameDisplay({
                     backgroundColor: "color-mix(in srgb, var(--color-near-black) 97%, transparent)",
                   }}
                 >
+                  {/* This panel covers the tutorial card, so keep the step in
+                      view: its title and progress. Close returns to the card. */}
+                  {tutorialGridPanelConfig ? (
+                    <div className="mb-1 flex items-baseline justify-between gap-2 border-l-2 border-cyan pl-1.5 font-mono text-[11px] uppercase tracking-wide text-cyan">
+                      <span className="truncate">{tutorialGridPanelConfig.title}</span>
+                      <span className="shrink-0 text-text-muted">
+                        {displayStepNumber}/{displayTotalSteps}
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="mb-1 flex items-center justify-between">
                     <TutorialTarget active={shouldHighlightSpecialEmpWeaponDropdown} className="min-w-0">
                       <button
@@ -3847,7 +4170,7 @@ export function SimulatedGameDisplay({
                       </button>
                       {isMobileWeaponMenuOpen ? (
                         <div
-                          className="absolute left-0 bottom-[calc(100%+4px)] z-[270] w-full border border-solid bg-[var(--color-near-black)]"
+                          className="absolute left-0 top-[calc(100%+4px)] z-[270] w-full border border-solid bg-[var(--color-near-black)]"
                           style={{
                             borderColor: "var(--color-gunmetal)",
                             borderRadius: 0,
@@ -3927,6 +4250,8 @@ export function SimulatedGameDisplay({
                     </TutorialTarget>
                   </div>
                   <div className="space-y-0.5">
+                    {/* Same as GameDisplay: a staged move's full panel first. */}
+                    {isShowingProposedMove ? renderProposedMovePanel() : null}
                     <div className="origin-top scale-[0.9] transform-gpu">
                       <ShipCard
                         ship={toShipCardData(selectedShip)}
@@ -3952,41 +4277,6 @@ export function SimulatedGameDisplay({
                         layoutShipId={selectedShip.id.toString()}
                       />
                     </div>
-                    {isShowingProposedMove ? (
-                      <div className="pt-0.5">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={handleCancelMove}
-                            className="flex-1 px-2 py-1 border border-solid text-[10px] uppercase tracking-wider"
-                            style={{
-                              borderColor: "var(--color-gunmetal)",
-                              color: "var(--color-text-secondary)",
-                              backgroundColor: "var(--color-steel)",
-                              borderRadius: 0,
-                            }}
-                          >
-                            Cancel
-                          </button>
-                          <TutorialTarget active={shouldPulseSubmitMoveButton} className="flex-1">
-                            <button
-                              type="button"
-                              onClick={handleSubmitMove}
-                              disabled={isConfirmingMove}
-                              className={`w-full px-2 py-1 border border-solid text-[10px] uppercase tracking-wider `}
-                              style={{
-                                borderColor: "var(--color-phosphor-green)",
-                                color: "var(--color-phosphor-green)",
-                                backgroundColor: "var(--color-near-black)",
-                                borderRadius: 0,
-                              }}
-                            >
-                              {isConfirmingMove ? "[...]" : "Submit"}
-                            </button>
-                          </TutorialTarget>
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -3994,11 +4284,15 @@ export function SimulatedGameDisplay({
           </div>
 
           <div
-            className={`relative h-full min-h-0 shrink-0 overflow-hidden ${
+            // The board gives up width before the left column drops below
+            // 12rem (small phones): its height is capped so its 17:11 width
+            // fits beside the column, and it centers vertically.
+            className={`relative min-h-0 shrink-0 self-center overflow-hidden ${
               isMobileJoiner ? "order-1" : "order-2"
             }`}
             style={{
               aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`,
+              height: `min(100%, calc((100vw - 12.5rem) * ${GRID_HEIGHT} / ${GRID_WIDTH}))`,
             }}
           >
             <div
@@ -4103,7 +4397,10 @@ export function SimulatedGameDisplay({
                       </button>
                       {isMobileFleeOpen ? (
                         <div
-                          className="absolute right-0 top-[calc(100%+6px)] w-[13.25rem] border border-solid p-1"
+                          className={`absolute top-[calc(100%+6px)] w-[13.25rem] border border-solid p-1 ${
+                            // Opens toward the board: the flag sits on the left for the joiner.
+                            isMobileJoiner ? "left-0" : "right-0"
+                          }`}
                           style={{
                             backgroundColor: "color-mix(in srgb, var(--color-near-black) 98%, transparent)",
                             borderColor: "var(--color-warning-red)",
@@ -4390,316 +4687,7 @@ export function SimulatedGameDisplay({
             Wide layout uses GameGrid's in-grid confirm widget instead (parity
             with GameDisplay.tsx, which does the same — see its useSideLayout
             branch); this panel is for the narrow/stacked layout only. */}
-          {isShowingProposedMove && !useSideLayout && (
-            <div
-              className={
-                chromeOnSide
-                  ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border border-solid p-3"
-                  : "min-h-0 flex-1 border border-solid p-3"
-              }
-              style={{
-                backgroundColor: "var(--color-near-black)",
-                borderColor: "var(--color-gunmetal)",
-                borderTopColor: "var(--color-steel)",
-                borderLeftColor: "var(--color-steel)",
-                borderRadius: 0,
-              }}
-            >
-              <div
-                className={
-                  chromeOnSide
-                    ? "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
-                    : "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
-                }
-              >
-                <div className="relative flex w-full min-w-0 shrink-0 flex-row gap-2 pt-8">
-                  <TutorialTarget active={shouldPulseSubmitMoveButton} className="min-w-0 flex-[2]">
-                    <button
-                      type="button"
-                      onClick={handleSubmitMove}
-                      disabled={isConfirmingMove}
-                      className={`w-full px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 min-w-0 `}
-                      style={{
-                        ...STYLE_LABEL,
-                        borderColor: "var(--color-phosphor-green)",
-                        borderTopColor: "var(--color-phosphor-green)",
-                        borderLeftColor: "var(--color-phosphor-green)",
-                        color: "var(--color-phosphor-green)",
-                        backgroundColor: "var(--color-steel)",
-                        borderWidth: "2px",
-                        borderStyle: "solid",
-                        borderRadius: 0,
-                      }}
-                    >
-                      {isConfirmingMove ? "[...]" : isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
-                    </button>
-                  </TutorialTarget>
-                  <button
-                    type="button"
-                    onClick={handleCancelMove}
-                    className="min-w-0 flex-[1] px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150"
-                    style={{
-                      ...STYLE_LABEL,
-                      borderColor: "var(--color-gunmetal)",
-                      borderTopColor: "var(--color-steel)",
-                      borderLeftColor: "var(--color-steel)",
-                      color: "var(--color-text-secondary)",
-                      backgroundColor: "var(--color-slate)",
-                      borderWidth: "2px",
-                      borderStyle: "solid",
-                      borderRadius: 0,
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-                  <div
-                    className={
-                      chromeOnSide
-                        ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4"
-                        : "flex min-h-0 min-w-0 flex-1 flex-row items-stretch gap-6"
-                    }
-                  >
-                    <div className="flex min-w-0 flex-shrink-0 flex-col gap-1">
-                      {(() => {
-                        const ship = shipMap.get(selectedShipId!);
-                        const name =
-                          ship?.name || `Ship #${selectedShipId?.toString()}`;
-                        const currentPos = gameState.shipPositions.find(
-                          (pos) => pos.shipId === selectedShipId?.toString(),
-                        );
-                        const fromRow = currentPos?.position.row ?? 0;
-                        const fromCol = currentPos?.position.col ?? 0;
-                        const toRow = previewPosition
-                          ? previewPosition.row
-                          : fromRow;
-                        const toCol = previewPosition
-                          ? previewPosition.col
-                          : fromCol;
-                        return (
-                          <div className="flex min-w-0 flex-col gap-0.5">
-                            <div className="text-sm font-semibold text-white">
-                              {name}
-                            </div>
-                            <div className="text-sm font-mono text-text-secondary">
-                              ({fromRow}, {fromCol}) → ({toRow}, {toCol})
-                            </div>
-                          </div>
-                        );
-                      })()}
-                      {/* Weapon / Special selector, mirroring main game UI */}
-                      {(() => {
-                        if (isSelectedShipDisabled) return null;
-                        if (!selectedShipId) return null;
-                        const ship = shipMap.get(selectedShipId);
-                        if (!ship || !shipHasActivatableSpecial(ship)) return null;
-                        return (
-                          <TutorialTarget active={shouldHighlightSpecialEmpWeaponDropdown} className="mt-1 w-full">
-                            <div>
-                              <select
-                                value={selectedWeaponType}
-                                onChange={(e) => {
-                                  const newWeaponType = e.target.value as
-                                    | "weapon"
-                                    | "special";
-                                  setWeaponTypeFromGrid(newWeaponType);
-                                  // In tutorial we do not have a boarding special; keep target as-is.
-                                }}
-                                className="w-full px-3 py-1.5 text-sm uppercase font-semibold tracking-wider"
-                                style={{
-                                  ...STYLE_MONO,
-                                  borderRadius: 0,
-                                  backgroundColor: "var(--color-slate)",
-                                  color: "var(--color-text-primary)",
-                                }}
-                              >
-                                <option value="weapon">
-                                  {getMainWeaponName(ship.equipment.mainWeapon, ship.traits.variant)}
-                                </option>
-                                <option value="special">
-                                  {getSpecialName(ship.equipment.special, ship.traits.variant)}
-                                </option>
-                              </select>
-                            </div>
-                          </TutorialTarget>
-                        );
-                      })()}
-                    </div>
-
-                    {/* Center: Target selection, mirroring main game UI */}
-                    {!isSelectedShipDisabled && validTargets.length > 0 && (
-                      <div
-                        className={
-                          chromeOnSide
-                            ? "flex min-h-0 min-w-0 flex-1 flex-col"
-                            : "min-h-0 flex-1"
-                        }
-                      >
-                        <div
-                          className={
-                            chromeOnSide
-                              ? "flex min-h-0 min-w-0 flex-1 flex-col border border-solid p-3"
-                              : "min-h-[7.5rem] border border-solid p-3"
-                          }
-                          style={{
-                            backgroundColor: "var(--color-near-black)",
-                            borderColor: "var(--color-gunmetal)",
-                            borderTopColor: "var(--color-steel)",
-                            borderLeftColor: "var(--color-steel)",
-                            borderRadius: 0,
-                          }}
-                        >
-                          <div
-                            className="shrink-0 text-xs mb-2 uppercase tracking-wide"
-                            style={{
-                              ...STYLE_MONO,
-                              color: "var(--color-text-secondary)",
-                            }}
-                          >
-                            Select Target (Optional)
-                          </div>
-                          <div className={proposedMoveTargetListClass}>
-                            {validTargets.map((target) => {
-                              const targetShip = shipMap.get(
-                                BigInt(target.shipId),
-                              );
-                              const isHammerTargetTutorialHighlight =
-                                currentStep?.id === "shoot" &&
-                                previewPosition !== null &&
-                                targetShipId === null &&
-                                BigInt(target.shipId) === 2001n;
-                              const isSelectedTarget =
-                                targetShipId !== null &&
-                                targetShipId === BigInt(target.shipId);
-                              const isRepair =
-                                selectedWeaponType === "special" &&
-                                isRepairDronesSpecial(
-                                  Number(selectedShip?.traits.variant ?? 1),
-                                  specialType,
-                                );
-                              const accentColor = isRepair
-                                ? "var(--color-cyan)"
-                                : "var(--color-warning-red)";
-                              const targetButtonStyle: React.CSSProperties = {
-                                ...STYLE_LABEL,
-                                borderColor: isSelectedTarget
-                                  ? accentColor
-                                  : "var(--color-gunmetal)",
-                                borderTopColor: isSelectedTarget
-                                  ? accentColor
-                                  : "var(--color-steel)",
-                                borderLeftColor: isSelectedTarget
-                                  ? accentColor
-                                  : "var(--color-steel)",
-                                color: accentColor,
-                                backgroundColor: isSelectedTarget
-                                  ? "var(--color-steel)"
-                                  : "var(--color-slate)",
-                                borderWidth: "2px",
-                                borderStyle: "solid",
-                                borderRadius: 0,
-                              };
-                              const targetButton = (
-                                <button
-                                  onClick={() =>
-                                    setTargetShipId(BigInt(target.shipId))
-                                  }
-                                  className={proposedMoveTargetBtnClass}
-                                  style={targetButtonStyle}
-                                >
-                                  {`[>] `}
-                                  {targetShip?.name ||
-                                    `#${BigInt(target.shipId).toString()}`}
-                                </button>
-                              );
-                              return (
-                                <TutorialTarget
-                                  key={target.shipId}
-                                  active={isHammerTargetTutorialHighlight}
-                                  pointer="inline"
-                                  inside
-                                >
-                                  {targetButton}
-                                </TutorialTarget>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {chromeOnSide &&
-                      (validTargets.length === 0 || isSelectedShipDisabled) && (
-                        <div className="min-h-0 min-w-0 flex-1" aria-hidden />
-                      )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedShipId != null) {
-                        setRetreatExplicitByShipId((prev) => ({
-                          ...prev,
-                          [selectedShipId.toString()]: true,
-                        }));
-                      }
-                      setTargetShipId(null);
-                      setPreviewPosition(null);
-                    }}
-                    className="w-full shrink-0 px-3 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150"
-                    style={{
-                      ...STYLE_LABEL,
-                      borderColor:
-                        actionOverride === ActionType.Retreat
-                          ? "var(--color-warning-red)"
-                          : "var(--color-gunmetal)",
-                      borderTopColor:
-                        actionOverride === ActionType.Retreat
-                          ? "var(--color-warning-red)"
-                          : "var(--color-steel)",
-                      borderLeftColor:
-                        actionOverride === ActionType.Retreat
-                          ? "var(--color-warning-red)"
-                          : "var(--color-steel)",
-                      color:
-                        actionOverride === ActionType.Retreat
-                          ? "var(--color-warning-red)"
-                          : "var(--color-text-secondary)",
-                      backgroundColor:
-                        actionOverride === ActionType.Retreat
-                          ? "color-mix(in srgb, var(--color-warning-red) 15%, transparent)"
-                          : "var(--color-slate)",
-                      borderWidth: "2px",
-                      borderStyle: "solid",
-                      borderRadius: 0,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (actionOverride !== ActionType.Retreat) {
-                        e.currentTarget.style.borderColor =
-                          "var(--color-warning-red)";
-                        e.currentTarget.style.color =
-                          "var(--color-warning-red)";
-                        e.currentTarget.style.backgroundColor =
-                          "color-mix(in srgb, var(--color-warning-red) 12%, transparent)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (actionOverride !== ActionType.Retreat) {
-                        e.currentTarget.style.borderColor =
-                          "var(--color-gunmetal)";
-                        e.currentTarget.style.color =
-                          "var(--color-text-secondary)";
-                        e.currentTarget.style.backgroundColor =
-                          "var(--color-slate)";
-                      }
-                    }}
-                  >
-                    Retreat
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {isShowingProposedMove && !useSideLayout && renderProposedMovePanel()}
 
         {/* Fleet status panel */}
         {chromeOnSide && (() => {
