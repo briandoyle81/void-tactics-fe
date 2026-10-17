@@ -90,10 +90,10 @@ export interface SeedRoguelikeNode {
   /** Win effect catalog keys (e.g. "DEC_BONUS_WIN_EFFECT"), in run order. */
   winEffects?: string[];
 }
+/** Forward-only: the run can move from `from` to `to`, never back. */
 export interface SeedRoguelikeEdge {
   from: string;
   to: string;
-  twoWay?: boolean;
 }
 
 export interface SinglePlayerSeed {
@@ -172,7 +172,7 @@ export interface ChainRoguelikeNode {
   maxScore: number;
   creatorGoesFirst: boolean;
   costCapOverride: number;
-  children: { childId: number; twoWay: boolean }[];
+  children: { childId: number }[];
   /** Win effect catalog keys already resolved from resolver addresses. */
   winEffects: string[];
 }
@@ -505,7 +505,7 @@ export function buildMissionSeedFiles(
         warnings.push(`Roguelike node #${n.id} links to node #${child.childId}, which isn't in this campaign.`);
         continue;
       }
-      chainEdges.push({ from: rlKeyById.get(n.id)!, to, ...(child.twoWay ? { twoWay: true } : {}) });
+      chainEdges.push({ from: rlKeyById.get(n.id)!, to });
     }
   }
   const edgeId = (e: SeedRoguelikeEdge) => `${e.from}->${e.to}`;

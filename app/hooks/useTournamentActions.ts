@@ -74,8 +74,10 @@ export function useTournamentActions() {
   );
 
   // Escape hatch — only needed if buildBracket()'s SHUFFLE_REVEAL_WINDOW
-  // (10 min) expires before anyone calls it. Requests a fresh randomness
-  // value and resets the reveal window; permissionless, like buildBracket.
+  // (10 min) passes, or the shuffle's randomness request expires (its block
+  // hash is readable for ~4.5h on Base, so the deadline normally comes
+  // first), before anyone calls it. Requests a fresh randomness value and
+  // resets the reveal window; permissionless, like buildBracket.
   // Reverts NotStarting outside the Starting state, ShuffleWindowNotExpired
   // if the current window hasn't lapsed yet (call buildBracket instead).
   const rerollBracketShuffle = useCallback(

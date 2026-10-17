@@ -173,6 +173,8 @@ export function RoguelikeCombatModal({
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("CannotAdvance")) {
         toast.error("This node isn't reachable from your current position.");
+      } else if (message.includes("CurrentNodeNotCleared")) {
+        toast.error("Finish your current mission first.");
       } else if (message.includes("NodeAlreadyDefeated")) {
         toast.error("This node has already been cleared and can't be re-fought.");
       } else if (message.includes("WrongNodeKind")) {

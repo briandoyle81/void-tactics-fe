@@ -23,6 +23,9 @@ const LOBBY_JOIN_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  // Listed so viem decodes the revert name (shown by the caller's onError).
+  { type: "error", name: "NotReservedJoiner", inputs: [] },
+  { type: "error", name: "KickedFromLobby", inputs: [] },
 ] as const;
 
 export function LobbyJoinButton({

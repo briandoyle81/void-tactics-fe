@@ -67,7 +67,7 @@ export function chainFromSeed(seed: MissionSeedFiles): MissionChainSnapshot {
         costCapOverride: n.costCapOverride ?? 0,
         children: seed.roguelike.edges
           .filter((e) => e.from === n.key)
-          .map((e) => ({ childId: rlIds.get(e.to)!, twoWay: e.twoWay ?? false })),
+          .map((e) => ({ childId: rlIds.get(e.to)! })),
         winEffects: n.winEffects ?? [],
       })),
     },
@@ -173,7 +173,6 @@ describe("buildMissionSeedFiles", () => {
     chain.maps[0].name = "Renamed";
     chain.campaignContent.set(2, { title: "Final Stand", description: "Hold the line." });
     chain.roguelike.nodes[0].winEffects = ["DEC_BONUS_WIN_EFFECT"];
-    chain.roguelike.nodes[0].children[0].twoWay = true;
 
     const { files, warnings } = buildMissionSeedFiles(chain, seed);
     expect(warnings).toEqual([]);
@@ -186,7 +185,7 @@ describe("buildMissionSeedFiles", () => {
       description: "Hold the line.",
     });
     expect(files.roguelike.nodes[0].winEffects).toEqual(["DEC_BONUS_WIN_EFFECT"]);
-    expect(files.roguelike.edges).toEqual([{ from: "m01", to: "r01", twoWay: true }]);
+    expect(files.roguelike.edges).toEqual([{ from: "m01", to: "r01" }]);
   });
 
   it("gives new chain items generated keys in the right file", () => {

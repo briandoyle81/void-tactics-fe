@@ -113,9 +113,7 @@ interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
 // inverted from RoguelikeNodeMap's children-with-lockout edges (see
 // buildRoguelikePrerequisites). Play-mode interaction stays scoped to
 // what's actually enterable today — the current node, or one of its direct
-// children; walking back across a twoWay edge to an already-left node isn't
-// surfaced as a play action here (a real contract-level option that was
-// never wired up). Edit Mode (gated on isRoguelikeNodeEditor) layers node/
+// children (edges are forward-only). Edit Mode (gated on isRoguelikeNodeEditor) layers node/
 // edge/map/fleet editing onto this same screen — see RoguelikeNodeEditPanel.
 export function RoguelikeGraph({
   run,
@@ -134,7 +132,7 @@ export function RoguelikeGraph({
   const [enteringResupply, setEnteringResupply] = React.useState<bigint | null>(null);
   const [isRetreating, setIsRetreating] = React.useState(false);
   const [editMode, setEditModeState] = React.useState(false);
-  const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: bigint; twoWay: boolean } | null>(
+  const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: bigint } | null>(
     null,
   );
   const [showSettings, setShowSettings] = React.useState(false);
@@ -196,7 +194,7 @@ export function RoguelikeGraph({
       buildRoguelikePrerequisites(
         campaignNodes.map((n) => ({
           id: Number(n.id),
-          children: n.children.map((e) => ({ childId: Number(e.childId) })),
+          children: n.children.map((childId) => ({ childId: Number(childId) })),
         })),
       ),
     [campaignNodes],
@@ -214,7 +212,7 @@ export function RoguelikeGraph({
           !isBrowseMode && n.kind === RoguelikeNodeKind.Combat && !!defeatedByNodeId.get(n.id.toString());
         const isNextStop =
           currentCleared &&
-          !!currentNode?.children.some((e) => e.childId === n.id) &&
+          !!currentNode?.children.some((childId) => childId === n.id) &&
           !lockedByNodeId.get(n.id.toString());
         return {
           id: idNum,
@@ -350,7 +348,7 @@ export function RoguelikeGraph({
     !isBrowseMode &&
     !!selectedNode &&
     !!currentNode &&
-    currentNode.children.some((e) => e.childId === selectedNode.id) &&
+    currentNode.children.some((childId) => childId === selectedNode.id) &&
     !lockedByNodeId.get(selectedNode.id.toString());
   const isSelectedNodeDefeated = selectedNode
     ? !!defeatedByNodeId.get(selectedNode.id.toString())
@@ -407,6 +405,8 @@ export function RoguelikeGraph({
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("CannotAdvance")) {
         toast.error("This node isn't reachable from your current position.");
+      } else if (message.includes("CurrentNodeNotCleared")) {
+        toast.error("Finish your current mission first.");
       } else if (message.includes("WrongNodeKind")) {
         toast.error("This node isn't a resupply node.");
       } else if (message.includes("ActiveGameInProgress")) {
@@ -464,10 +464,9 @@ export function RoguelikeGraph({
   const handleConnectTarget = async (
     targetNode: RoguelikeNodeWithContent,
     sourceNodeId: bigint,
-    twoWay: boolean,
   ) => {
     try {
-      await admin.addChild(sourceNodeId, targetNode.id, twoWay);
+      await admin.addChild(sourceNodeId, targetNode.id);
       toast.success(`Node #${targetNode.id.toString()} linked as a child.`);
       await refetchNodes();
     } catch (error) {
@@ -482,7 +481,7 @@ export function RoguelikeGraph({
     if (connectMode) {
       if (id === Number(connectMode.sourceNodeId) || id === ADD_NODE_SENTINEL_ID) return;
       const targetNode = byNumberId.get(id);
-      if (targetNode) void handleConnectTarget(targetNode, connectMode.sourceNodeId, connectMode.twoWay);
+      if (targetNode) void handleConnectTarget(targetNode, connectMode.sourceNodeId);
       return;
     }
     if (id === ADD_NODE_SENTINEL_ID) {
@@ -549,7 +548,7 @@ export function RoguelikeGraph({
       node={selectedNode ?? null}
       campaignId={campaignId}
       connectModeActive={!!selectedNode && connectMode?.sourceNodeId === selectedNode.id}
-      onStartConnectMode={(sourceNodeId) => setConnectMode({ sourceNodeId, twoWay: false })}
+      onStartConnectMode={(sourceNodeId) => setConnectMode({ sourceNodeId })}
       onCancelConnectMode={() => setConnectMode(null)}
       onSaved={() => void refetchNodes()}
       onCreated={() => {

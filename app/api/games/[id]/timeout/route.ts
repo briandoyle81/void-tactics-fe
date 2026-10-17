@@ -5,7 +5,6 @@ import { GamePhase } from "../../../../generated/prisma";
 import { resolveTournamentMatchIfApplicable } from "../../../../lib/resolveTournamentMatchIfApplicable";
 import { resolveCampaignNodeIfApplicable } from "../../../../lib/resolveCampaignNodeIfApplicable";
 import { resolveRoguelikeRunIfApplicable } from "../../../../lib/resolveRoguelikeRunIfApplicable";
-import { applyPvpWinEffectsIfApplicable } from "../../../../lib/resolvePvpWinEffectsIfApplicable";
 
 export async function POST(
   _req: NextRequest,
@@ -68,7 +67,6 @@ export async function POST(
   await resolveTournamentMatchIfApplicable(game.lobbyId, winnerId);
   await resolveCampaignNodeIfApplicable(game.lobbyId, winnerId);
   await resolveRoguelikeRunIfApplicable(game.lobbyId, winnerId);
-  await applyPvpWinEffectsIfApplicable(game.lobbyId, winnerId);
 
   return NextResponse.json({ winnerId });
 }

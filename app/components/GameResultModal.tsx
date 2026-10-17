@@ -67,6 +67,8 @@ interface GameResultModalProps {
   comms?: React.ReactNode;
   /** Who files the report (a dialog character). Defaults to the adjutant. */
   reporterId?: DialogCharacterId;
+  /** Shown above the actions, e.g. constructing a ship the win granted. */
+  rewardAction?: React.ReactNode;
 }
 
 // End-of-game overlay for both PvP and single-player — one shared screen,
@@ -91,6 +93,7 @@ export function GameResultModal({
   isTie = false,
   comms,
   reporterId = DEFAULT_REPORTER,
+  rewardAction,
 }: GameResultModalProps) {
   const accentColor = isTie
     ? "var(--color-amber)"
@@ -202,6 +205,8 @@ export function GameResultModal({
           <div className="mt-4">
             <CrewReportSignature reporter={reporter} />
           </div>
+
+          {rewardAction && <div className="mt-4">{rewardAction}</div>}
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button

@@ -11,7 +11,6 @@ import { TournamentRegister } from "./TournamentRegister";
 import { TournamentBracket } from "./TournamentBracket";
 import { TournamentStartControls } from "./TournamentStartControls";
 import { TournamentAdminPanel } from "./TournamentAdminPanel";
-import { TournamentWinEffectsAdminPanel } from "./TournamentWinEffectsAdminPanel";
 import { TournamentDetailHeader } from "./TournamentDetailHeader";
 import { TournamentDetailStatsRow } from "./TournamentDetailStatsRow";
 import { TournamentCreateForm } from "./TournamentCreateForm";
@@ -430,7 +429,6 @@ export function Tournaments() {
         onSelect={(id) => setView({ type: "detail", tournamentId: id })}
         onCreate={() => setView({ type: "create" })}
       />
-      <TournamentWinEffectsAdminPanel />
     </>
   );
 }

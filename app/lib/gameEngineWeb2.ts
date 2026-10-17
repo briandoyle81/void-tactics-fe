@@ -17,7 +17,6 @@ import { getFactionAbilityConfigWeb2 } from "../utils/factionAbilityConfigWeb2";
 import { resolveTournamentMatchIfApplicable } from "./resolveTournamentMatchIfApplicable";
 import { resolveCampaignNodeIfApplicable } from "./resolveCampaignNodeIfApplicable";
 import { resolveRoguelikeRunIfApplicable } from "./resolveRoguelikeRunIfApplicable";
-import { applyPvpWinEffectsIfApplicable } from "./resolvePvpWinEffectsIfApplicable";
 import { getWinEffectsSettings } from "./winEffectsWeb2";
 import { AI_USER_ID } from "../config/aiUser";
 
@@ -913,7 +912,6 @@ export async function applyGameAction(
     await resolveTournamentMatchIfApplicable(game.lobbyId, finalWinnerId);
     await resolveCampaignNodeIfApplicable(game.lobbyId, finalWinnerId);
     await resolveRoguelikeRunIfApplicable(game.lobbyId, finalWinnerId);
-    await applyPvpWinEffectsIfApplicable(game.lobbyId, finalWinnerId);
   }
 
   return finalState;

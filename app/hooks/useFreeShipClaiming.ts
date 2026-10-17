@@ -17,6 +17,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { getVariantForChainId } from "../config/networks";
 import { useSelectedChainId } from "./useSelectedChainId";
 import { useSwitchToSelectedChainIfNeeded } from "./useSwitchToSelectedChainIfNeeded";
+import { useConstructAfterMint } from "./useConstructAfterMint";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -138,9 +139,15 @@ export function useFreeShipClaiming() {
   // Write contract for claiming
   const { writeContract, isPending, error, data: hash } = useWriteContract();
   const publicClient = usePublicClient({ chainId: activeChainId });
+  const constructAfterMint = useConstructAfterMint();
 
   // Wait for transaction receipt
-  const { isLoading: isConfirming, isSuccess: isConfirmed, error: receiptError } = useWaitForTransactionReceipt({
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    error: receiptError,
+    data: claimReceipt,
+  } = useWaitForTransactionReceipt({
     hash,
     chainId: activeChainId,
   });
@@ -328,6 +335,8 @@ export function useFreeShipClaiming() {
 
     // Transaction receipt received - show success toast
     toast.success("Free ships claimed successfully!");
+    // Build them now, while their construction window is open.
+    if (claimReceipt && claimReceipt.status === "success") void constructAfterMint(claimReceipt);
 
     setEligibilityCache((prev) => {
       const newCache = {
@@ -362,7 +371,7 @@ export function useFreeShipClaiming() {
     return () => {
       cancelled = true;
     };
-  }, [isConfirmed, hash, address, refetch, refetchClaimStatus, saveCacheToStorage]);
+  }, [isConfirmed, hash, address, refetch, refetchClaimStatus, saveCacheToStorage, claimReceipt, constructAfterMint]);
 
   // Handle receipt errors
   useEffect(() => {

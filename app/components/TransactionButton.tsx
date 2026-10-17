@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
-import type { Abi } from "viem";
+import type { Abi, TransactionReceipt } from "viem";
 import { toast } from "react-hot-toast";
 import { useTransaction } from "../providers/TransactionContext";
 import { useSelectedChainId } from "../hooks/useSelectedChainId";
@@ -39,7 +39,7 @@ interface TransactionButtonProps {
   onSuccess?: TransactionFollowUp;
   onError?: (error: Error) => void;
   onTransactionSent?: (hash: `0x${string}`) => void; // Called when transaction is sent (hash available)
-  onReceipt?: (receipt: { gasUsed: bigint }) => void; // Called when transaction receipt is received
+  onReceipt?: (receipt: TransactionReceipt) => void; // Called with the confirmed (not reverted) receipt
 
   // Validation
   validateBeforeTransaction?: () => boolean | string; // Return true or error message
@@ -270,9 +270,9 @@ export function TransactionButton({
         return;
       }
 
-      // Call onReceipt callback with gas information
-      if (onReceipt && receipt.gasUsed) {
-        onReceipt({ gasUsed: receipt.gasUsed });
+      // The confirmed receipt (e.g. minted ship ids for useConstructAfterMint)
+      if (onReceipt) {
+        onReceipt(receipt);
       }
 
       // Stay loading/disabled until follow-up UI work (refetch, wait for

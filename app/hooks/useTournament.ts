@@ -35,7 +35,7 @@ const TOURNAMENT_DETAIL_EVENTS = [
 const TOURNAMENT_POLL_MS = 10_000;
 const CHAIN_ID = baseSepolia.id;
 
-/** owner()-gated admin controls (Tournament.setWinEffects) check this before rendering, same gate LobbyAdminPanel.tsx uses. */
+/** owner()-gated Tournament admin controls check this before rendering, same gate LobbyAdminPanel.tsx uses. */
 export function useTournamentOwner() {
   const result = useReadContract({
     address: BASE_SEPOLIA_TOURNAMENT_ADDRESS,

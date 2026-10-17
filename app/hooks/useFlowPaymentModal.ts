@@ -14,6 +14,7 @@ import {
 import { createPublicClient, http, formatUnits } from "viem";
 import { mainnet, base, polygon, arbitrum, optimism } from "viem/chains";
 import { FLOW_USD_TIERS } from "@/app/config/flowPayment";
+import { useConstructAfterMint } from "./useConstructAfterMint";
 
 const CHECKOUT_ID = process.env.NEXT_PUBLIC_FLOW_CHECKOUT_ID!;
 
@@ -281,6 +282,7 @@ function reducer(s: State, a: Action): State {
 
 export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Promise<unknown> }) {
   const { address: buyerAddress } = useAccount();
+  const constructAfterMint = useConstructAfterMint();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const ref = useRef(state);
   ref.current = state;
@@ -454,16 +456,20 @@ export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Pro
         body: JSON.stringify({ transactionId, tier, buyerAddress, gameChainId, variant }),
       });
       if (!res.ok) throw new Error(await res.text());
+      const { mintTxHash } = (await res.json()) as { mintTxHash?: `0x${string}` };
 
       dispatch({ type: "STEP", step: "success" });
       await onSuccess();
+      // The server minted the ships: build them now, while their
+      // construction window is open (useConstructAfterMint).
+      if (mintTxHash) void constructAfterMint({ hash: mintTxHash });
     } catch (err) {
       dispatch({
         type: "ERROR",
         error: err instanceof Error ? err.message : "Payment failed",
       });
     }
-  }, [buyerAddress, onSuccess]);
+  }, [buyerAddress, onSuccess, constructAfterMint]);
 
   const close = useCallback(() => dispatch({ type: "CLOSE" }), []);
   const retry = useCallback(() => dispatch({ type: "RETRY" }), []);

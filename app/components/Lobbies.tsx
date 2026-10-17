@@ -2159,6 +2159,8 @@ const Lobbies: React.FC = () => {
                         const errorMessage = error.message || "";
                         if (errorMessage.includes("NotReservedJoiner")) {
                           toast.error("This game is reserved for another player");
+                        } else if (errorMessage.includes("KickedFromLobby")) {
+                          toast.error("You were removed from this lobby and can't rejoin it");
                         } else {
                           toast.error("Failed to join lobby");
                         }

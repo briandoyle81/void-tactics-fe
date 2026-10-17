@@ -4,14 +4,11 @@ import { requireWeb2Admin } from "@/app/lib/auth";
 import {
   getWinEffectsSettings,
   invalidateWinEffectsSettingsCache,
-  isWinEffectKey,
 } from "@/app/lib/winEffectsWeb2";
 
 // GET/PUT /api/admin/win-effects-settings — admin-only read/write for the
 // global win-effect config (DEC bonus amount, grant-ship variant/tier, heal
-// cap %) plus which effects fire for a plain PvP win vs a tournament
-// champion. Web2 counterpart to Game.setHealCapPercent,
-// PvPMatch.setWinEffects, Tournament.setWinEffects, and the
+// cap %). Web2 counterpart to Game.setHealCapPercent and the
 // DECBonusWinEffect/ShipGrantWinEffect owner setters, gated on
 // WEB2_ADMIN_EMAILS instead of contract ownership. Any subset of fields may
 // be sent — omitted fields keep their current stored value (same merge
@@ -23,13 +20,6 @@ export async function GET() {
 
   const settings = await getWinEffectsSettings();
   return NextResponse.json(settings);
-}
-
-function parseEffectList(value: unknown, field: string): string[] | { error: string } {
-  if (!Array.isArray(value) || !value.every(isWinEffectKey)) {
-    return { error: `${field} must be an array of known win-effect keys` };
-  }
-  return value;
 }
 
 export async function PUT(req: NextRequest) {
@@ -73,16 +63,6 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "healCapPercent must be 0-100" }, { status: 400 });
     }
     next.healCapPercent = body.healCapPercent;
-  }
-  if (body.pvpWinEffects !== undefined) {
-    const parsed = parseEffectList(body.pvpWinEffects, "pvpWinEffects");
-    if ("error" in parsed) return NextResponse.json(parsed, { status: 400 });
-    next.pvpWinEffects = parsed as typeof next.pvpWinEffects;
-  }
-  if (body.tournamentWinEffects !== undefined) {
-    const parsed = parseEffectList(body.tournamentWinEffects, "tournamentWinEffects");
-    if ("error" in parsed) return NextResponse.json(parsed, { status: 400 });
-    next.tournamentWinEffects = parsed as typeof next.tournamentWinEffects;
   }
 
   await prisma.config.upsert({

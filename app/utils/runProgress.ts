@@ -26,8 +26,9 @@ export function buildRunPips(
 
   const done = nodes.filter((n) => n.id !== currentNodeId && defeated.has(n.id)).length;
 
-  // Longest route forward through nodes not yet defeated. Two-way edges make
-  // the graph cyclic, so a node already on the current route is skipped.
+  // Longest route forward through nodes not yet defeated. Edges are
+  // forward-only, but a map can still loop back, so a node already on the
+  // current route is skipped.
   const onRoute = new Set<number>();
   const longestAhead = (id: number): RunPipState[] => {
     onRoute.add(id);

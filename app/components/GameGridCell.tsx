@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { destroyedShipImage } from "../utils/shipRenderer/stateArt";
 import Image from "next/image";
 import { Attributes, ActionType } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
@@ -1124,7 +1125,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                         return (
                           <div className="absolute inset-0 z-[17] flex items-center justify-center pointer-events-none">
                             <img
-                              src="/img/ship-destroyed.png"
+                              src={destroyedShipImage(ship?.traits.variant)}
                               alt="Predicted destroyed target ship"
                               className="w-[98%] h-[98%] object-contain opacity-75"
                               style={{

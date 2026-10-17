@@ -37,6 +37,7 @@ export function ShipImageWeb2({
       idLabel={`Ship #${ship.id}`}
       isDestroyed={ship.shipData.timestampDestroyed > 0}
       isNotConstructed={!ship.shipData.constructed}
+      variant={ship.traits.variant}
       rank={calculateShipRank(ship).rank}
       dataUrl={dataUrl}
       isLoading={isLoading}

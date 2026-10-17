@@ -6,7 +6,6 @@ import { MapMode } from "../types/types";
 import { AIEncountersAdminPanel } from "./AIEncountersAdminPanel";
 import { LobbyAdminPanel } from "./LobbyAdminPanel";
 import { GameAdminPanel } from "./GameAdminPanel";
-import { PvPMatchAdminPanel } from "./PvPMatchAdminPanel";
 import { AdminSettingsExport } from "./AdminSettingsExport";
 
 // Admin tab (web3): every admin panel that isn't map editing, moved out of
@@ -31,7 +30,6 @@ export default function Admin() {
       <AIEncountersAdminPanel mapIds={pveMapIds} />
       <LobbyAdminPanel />
       <GameAdminPanel />
-      <PvPMatchAdminPanel />
       <AdminSettingsExport />
     </div>
   );

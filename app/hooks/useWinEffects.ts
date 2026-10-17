@@ -9,9 +9,9 @@ import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contrac
 // Pluggable win effects (see contracts/IWinEffect.sol) — one singleton
 // instance of each concrete effect exists per deploy
 // (DECBonusWinEffect/HealAboveFloorWinEffect/ShipGrantWinEffect), each with
-// its own global config, and each caller (RoguelikeNodeMap per-node,
-// PvPMatch, Tournament) assigns an ordered subset of these addresses via
-// its own setWinEffects/setNodeWinEffects. This catalog is the FE's map
+// its own global config, and RoguelikeNodeMap assigns an ordered subset
+// of these addresses per node via setNodeWinEffects (PvP and tournament
+// games have none since the 2026-10-17 redeploy). This catalog is the FE's map
 // from "known effect contract" to a human label + which chain key to
 // resolve its address from — adding a future effect kind means deploying
 // its contract, adding one entry here, and wiring its own config UI, not
@@ -75,28 +75,6 @@ export function useRoguelikeNodesWinEffects(nodeIds: bigint[]) {
     return map;
   }, [nodeIds, result.data]);
   return { effectsByNodeId, isLoading: result.isLoading, error: result.error };
-}
-
-export function usePvPMatchWinEffects() {
-  const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID].PVP_MATCH as Address;
-  const result = useReadContract({
-    address,
-    abi: CONTRACT_ABIS.PVP_MATCH as Abi,
-    chainId: CHAIN_ID,
-    functionName: "getWinEffects",
-  });
-  return { ...result, data: result.data as Address[] | undefined };
-}
-
-export function useTournamentWinEffects() {
-  const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID].TOURNAMENT as Address;
-  const result = useReadContract({
-    address,
-    abi: CONTRACT_ABIS.TOURNAMENT as Abi,
-    chainId: CHAIN_ID,
-    functionName: "getWinEffects",
-  });
-  return { ...result, data: result.data as Address[] | undefined };
 }
 
 export function useDECBonusAmount() {

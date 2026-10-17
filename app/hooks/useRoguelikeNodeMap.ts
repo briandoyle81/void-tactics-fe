@@ -27,7 +27,7 @@ export function useRoguelikeNodeMapContract() {
   };
 }
 
-/** `getNode` already embeds `children` (RoguelikeEdge[]) — no separate `getChildren` call needed for the common case. */
+/** `getNode` already embeds `children` (child node ids) — no separate `getChildren` call needed for the common case. */
 export function useGetRoguelikeNode(nodeId: bigint | undefined) {
   const result = useReadContract({
     address: ROGUELIKE_NODE_MAP_ADDRESS,

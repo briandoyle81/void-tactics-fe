@@ -8,10 +8,9 @@ import type { WinEffectsSettings } from "../lib/winEffectsWeb2";
 
 // Web2 counterpart to useWinEffects.ts/useWinEffectsAdmin.ts — Prisma-backed
 // reads/writes against /api/admin/win-effects-settings instead of the
-// Game/PvPMatch/Tournament/DECBonusWinEffect/ShipGrantWinEffect contract
-// calls. One settings object backs all three admin surfaces
-// (GameAdminPanelWeb2, PvPMatchAdminPanelWeb2, TournamentWinEffectsAdminPanelWeb2)
-// plus the global effect-config rows in RoguelikeSettingsModalWeb2.
+// Game/DECBonusWinEffect/ShipGrantWinEffect contract calls. One settings
+// object backs GameAdminPanelWeb2 and the global effect-config rows in
+// RoguelikeSettingsModalWeb2.
 export function useWinEffectsAdminWeb2() {
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({

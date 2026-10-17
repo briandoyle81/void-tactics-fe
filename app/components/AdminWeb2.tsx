@@ -8,7 +8,6 @@ import type { Web2Map } from "./MapsWeb2";
 import { AIEncountersAdminPanelWeb2 } from "./AIEncountersAdminPanelWeb2";
 import { LobbyAdminPanelWeb2 } from "./LobbyAdminPanelWeb2";
 import { GameAdminPanelWeb2 } from "./GameAdminPanelWeb2";
-import { PvPMatchAdminPanelWeb2 } from "./PvPMatchAdminPanelWeb2";
 import { AdminSettingsExportWeb2 } from "./AdminSettingsExportWeb2";
 
 // Web2 counterpart to Admin.tsx — the non-map admin panels moved out of
@@ -30,7 +29,6 @@ export default function AdminWeb2() {
       <AIEncountersAdminPanelWeb2 mapIds={pveMapIds} />
       <LobbyAdminPanelWeb2 />
       <GameAdminPanelWeb2 />
-      <PvPMatchAdminPanelWeb2 />
       <AdminSettingsExportWeb2 maps={maps} />
     </div>
   );

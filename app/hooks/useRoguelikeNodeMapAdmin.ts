@@ -135,11 +135,11 @@ export function useRoguelikeNodeMapAdmin() {
   );
 
   const addChild = useCallback(
-    async (parentId: bigint, childId: bigint, twoWay: boolean) => {
+    async (parentId: bigint, childId: bigint) => {
       const hash = await writeContractAsync({
         ...nodeMapContract,
         functionName: "addChild",
-        args: [parentId, childId, twoWay],
+        args: [parentId, childId],
       });
       await publicClient!.waitForTransactionReceipt({ hash });
       return hash;

@@ -92,7 +92,6 @@ export function RoguelikeNodeEditPanel({
   const [costCapOverride, setCostCapOverride] = React.useState(
     node?.costCapOverride ?? NEW_NODE_DEFAULTS.costCapOverride,
   );
-  const [twoWay, setTwoWay] = React.useState(false);
   const [showMapPicker, setShowMapPicker] = React.useState(false);
   const [showFleetEditor, setShowFleetEditor] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -418,17 +417,17 @@ export function RoguelikeNodeEditPanel({
                 None — clearing this node ends the run.
               </span>
             )}
-            {node.children.map((edge) => (
+            {node.children.map((childId) => (
               <span
-                key={edge.childId.toString()}
+                key={childId.toString()}
                 className="flex items-center gap-1.5 px-2 py-1 text-xs border border-cyan/40 text-cyan"
               >
-                #{edge.childId.toString()} {edge.twoWay ? "↔" : "→"}
+                #{childId.toString()} →
                 <button
                   type="button"
-                  onClick={() => void handleRemoveChild(edge.childId)}
+                  onClick={() => void handleRemoveChild(childId)}
                   className="text-warning-red hover:text-warning-red/70"
-                  aria-label={`Remove child ${edge.childId}`}
+                  aria-label={`Remove child ${childId}`}
                 >
                   ×
                 </button>
@@ -445,20 +444,14 @@ export function RoguelikeNodeEditPanel({
               [CANCEL LINKING]
             </button>
           ) : (
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-xs text-text-muted">
-                <input type="checkbox" checked={twoWay} onChange={(e) => setTwoWay(e.target.checked)} />
-                Two-way (player can walk back across this edge)
-              </label>
-              <button
-                type="button"
-                onClick={() => onStartConnectMode(node.id)}
-                className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10"
-                style={{ borderRadius: 0 }}
-              >
-                [+ LINK CHILD]
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => onStartConnectMode(node.id)}
+              className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10"
+              style={{ borderRadius: 0 }}
+            >
+              [+ LINK CHILD]
+            </button>
           )}
 
           {isCombat && mapId !== 0n && (

@@ -15,7 +15,8 @@ import {
 // Web2 counterpart to the on-chain pluggable win effects (contracts/
 // IWinEffect.sol — DECBonusWinEffect/HealAboveFloorWinEffect/
 // ShipGrantWinEffect), assignable to roguelike combat nodes
-// (RoguelikeNode.winEffects), PvP games, and tournament champions. Same
+// (RoguelikeNode.winEffects). Like the contracts since the 2026-10-17
+// redeploy (audit HA6-27), PvP and tournament games have none. Same
 // three keys as useWinEffects.ts's WIN_EFFECT_CATALOG so admin UI and node
 // config speak one vocabulary across both flows. The catalog itself lives
 // in winEffectsCatalog.ts (re-exported below) since this file imports
@@ -25,7 +26,6 @@ import {
 // on-chain HealAboveFloorWinEffect it raises every surviving roguelike
 // roster ship to healAboveFloorPercent of max hull, so it's applied inside
 // resolveRoguelikeRunIfApplicable alongside the campaign auto-heal floor.
-// Outside roguelike (PvP/tournament) it's a no-op, same as on chain.
 export { WIN_EFFECT_KEYS, WIN_EFFECT_LABELS, IMPLEMENTED_WIN_EFFECT_KEYS, isWinEffectKey };
 export type { WinEffectKey };
 
@@ -35,8 +35,6 @@ export interface WinEffectsSettings {
   shipGrantTier: number; // 0-3, minimum equipment level the grant guarantees
   healAboveFloorPercent: number; // applied in resolveRoguelikeRunIfApplicable, see module doc
   healCapPercent: number; // 100 = uncapped — caps every heal effect (Repair special, win-effect heals) at this % of max HP
-  pvpWinEffects: WinEffectKey[];
-  tournamentWinEffects: WinEffectKey[];
 }
 
 export const DEFAULT_WIN_EFFECTS_SETTINGS: WinEffectsSettings = {
@@ -45,8 +43,6 @@ export const DEFAULT_WIN_EFFECTS_SETTINGS: WinEffectsSettings = {
   shipGrantTier: 0,
   healAboveFloorPercent: 100,
   healCapPercent: 100,
-  pvpWinEffects: [],
-  tournamentWinEffects: [],
 };
 
 const cache = createTtlCache<WinEffectsSettings>(async () => {
@@ -103,9 +99,7 @@ async function grantShip(ownerId: string, variant: number, tier: number): Promis
 }
 
 /**
- * Applies the given subset of effect keys (already filtered to whichever
- * list is relevant — a node's own winEffects, or the global pvp/tournament
- * list) to `winnerId`. Skips HEAL_ABOVE_FLOOR_WIN_EFFECT, which the
+ * Applies a roguelike node's win effect keys to `winnerId`. Skips HEAL_ABOVE_FLOOR_WIN_EFFECT, which the
  * roguelike resolver applies itself — see module doc.
  */
 export async function applyWinEffects(effects: readonly string[], winnerId: string): Promise<void> {

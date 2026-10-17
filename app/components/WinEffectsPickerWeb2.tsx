@@ -9,10 +9,8 @@ interface WinEffectsPickerWeb2Props {
   saveLabel?: string;
 }
 
-// Web2 counterpart to WinEffectsPicker.tsx — same checkbox-list + save
-// shape, backed by a plain PUT instead of setWinEffects(address[]). Used by
-// PvPMatchAdminPanelWeb2, TournamentWinEffectsAdminPanelWeb2, and
-// RoguelikeNodeEditPanelWeb2 (per-node). HEAL_ABOVE_FLOOR_WIN_EFFECT is
+// Checkbox list + save for a roguelike node's win effects, backed by a plain
+// PUT. Used by RoguelikeNodeEditPanelWeb2 (per-node). HEAL_ABOVE_FLOOR_WIN_EFFECT is
 // shown disabled — applyWinEffects() doesn't act on it yet, see
 // winEffectsWeb2.ts's module doc.
 export function WinEffectsPickerWeb2({ currentEffects, onSave, saveLabel = "[SAVE WIN EFFECTS]" }: WinEffectsPickerWeb2Props) {

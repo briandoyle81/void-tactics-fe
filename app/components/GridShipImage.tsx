@@ -1,4 +1,5 @@
 import React from "react";
+import { destroyedShipImage, unconstructedShipImage } from "../utils/shipRenderer/stateArt";
 import { useGridShipRenderer } from "../hooks/useGridShipRenderer";
 import { GridShip } from "../types/gridDisplay";
 import { calculateShipRank } from "../utils/shipLevel";
@@ -57,9 +58,9 @@ export function GridShipImage({
         style={style}
       >
         <img
-          src="/img/ship-destroyed.png"
+          src={destroyedShipImage(ship.traits.variant)}
           alt={`Destroyed Ship #${ship.id}`}
-          className="h-full w-full object-contain opacity-75"
+          className="h-full w-full object-contain"
         />
         {rankStarsOverlay}
       </div>
@@ -73,9 +74,9 @@ export function GridShipImage({
         style={style}
       >
         <img
-          src="/img/dry-dock.png"
+          src={unconstructedShipImage(ship.traits.variant)}
           alt={`Unconstructed Ship #${ship.id}`}
-          className="h-full w-full object-contain opacity-75"
+          className="h-full w-full object-contain"
         />
       </div>
     );

@@ -104,7 +104,7 @@ export function usePvPMatchContract() {
   };
 }
 
-/** owner()-gated admin controls (Game.setHealCapPercent, PvPMatch.setWinEffects) check this before rendering, same gate LobbyAdminPanel.tsx uses. */
+/** owner()-gated admin controls (e.g. Game.setHealCapPercent) check this before rendering, same gate LobbyAdminPanel.tsx uses. */
 export function useGameOwner() {
   const result = useGameRead("owner");
   return { ...result, data: result.data as `0x${string}` | undefined };

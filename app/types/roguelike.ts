@@ -35,11 +35,6 @@ export interface RoguelikeRun {
   requiredVariantAtStart: number;
 }
 
-export interface RoguelikeEdge {
-  childId: bigint;
-  twoWay: boolean;
-}
-
 export interface RoguelikeNode {
   id: bigint;
   campaignId: bigint;
@@ -49,7 +44,8 @@ export interface RoguelikeNode {
   maxScore: bigint;
   creatorGoesFirst: boolean;
   costCapOverride: bigint;
-  children: RoguelikeEdge[];
+  /** Child node ids. Edges are forward-only (RoguelikeNodeMap, 2026-10-17 redeploy). */
+  children: bigint[];
   exists: boolean;
 }
 

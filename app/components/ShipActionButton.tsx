@@ -1,17 +1,11 @@
 "use client";
 
 import React from "react";
-import { useConfig, usePublicClient, useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "wagmi/actions";
 import { toast } from "react-hot-toast";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES, getContractAddresses } from "../config/contracts";
-import { useRevealRandomness } from "../hooks/useRandomManager";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
-import { useSwitchToSelectedChainIfNeeded } from "../hooks/useSwitchToSelectedChainIfNeeded";
+import { CONTRACT_ADDRESSES } from "../config/contracts";
+import { constructErrorMessage, useConstructShips } from "../hooks/useConstructShips";
 import { useTransaction } from "../providers/TransactionContext";
-import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWrite";
-import { invalidateShipAttributesByIdsCache } from "../utils/shipAttributesLocalCache";
 import type { Ship } from "../types/types";
 import type { Abi } from "viem";
 import posthog from "posthog-js";
@@ -20,11 +14,9 @@ interface ShipActionButtonProps {
   action: "construct" | "constructAll" | "constructShips" | "recycle";
   shipId?: bigint;
   shipIds?: bigint[];
-  /** The exact ships a construct action will attempt to construct (required
-   * for construct/constructAll/constructShips, ignored for recycle) — used
-   * to reveal each ship's RandomManager randomness first, since
-   * constructShip/constructAllMyShips/constructShips now revert
-   * NotYetRevealed otherwise. See docs/update/Frontend_Updates_2026-08-26.md. */
+  /** The ships a construct action covers (constructAll uses their ids to
+   * check the construction window first; see useConstructShips). Ignored
+   * for recycle. */
   ships?: Ship[];
   children: React.ReactNode;
   className?: string;
@@ -195,10 +187,9 @@ export function ShipActionButton({
 
   if (isConstructAction) {
     return (
-      <RevealThenConstructButton
+      <ConstructButton
         transactionId={transactionId}
         functionName={config.functionName}
-        abi={config.abi}
         args={args}
         ships={ships ?? []}
         className={className}
@@ -208,7 +199,7 @@ export function ShipActionButton({
         onError={onError}
       >
         {children}
-      </RevealThenConstructButton>
+      </ConstructButton>
     );
   }
 
@@ -235,16 +226,14 @@ export function ShipActionButton({
   );
 }
 
-// Construct actions need a RandomManager.revealRandomness signature per
-// not-yet-constructed ship before the construct call itself will succeed
-// (NotYetRevealed otherwise) — TransactionButton only fires one contract
-// call per click, so this drives the multi-step sequence imperatively
-// instead, reusing TransactionButton's global pending-transaction context
-// so it still disables/reflects state alongside every other button.
-function RevealThenConstructButton({
+// Construct actions run through useConstructShips (re-read the ships, check
+// the construction window, then one constructShips/constructAllMyShips
+// signature) — more than TransactionButton's single call, so this drives it
+// imperatively, reusing TransactionButton's global pending-transaction
+// context so it still disables/reflects state alongside every other button.
+function ConstructButton({
   transactionId,
   functionName,
-  abi,
   args,
   ships,
   children,
@@ -256,7 +245,6 @@ function RevealThenConstructButton({
 }: {
   transactionId: string;
   functionName: string;
-  abi: Abi;
   args: unknown[];
   ships: Ship[];
   children: React.ReactNode;
@@ -266,13 +254,7 @@ function RevealThenConstructButton({
   onSuccess: TransactionFollowUp;
   onError?: (error: Error) => void;
 }) {
-  const activeChainId = useSelectedChainId();
-  const contractAddresses = getContractAddresses(activeChainId);
-  const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
-  const publicClient = usePublicClient({ chainId: activeChainId });
-  const wagmiConfig = useConfig();
-  const { writeContractAsync } = useWriteContract();
-  const { revealAllForShips } = useRevealRandomness();
+  const constructShips = useConstructShips();
   const {
     transactionState,
     startTransaction,
@@ -280,7 +262,6 @@ function RevealThenConstructButton({
   } = useTransaction();
 
   const [isRunning, setIsRunning] = React.useState(false);
-  const [step, setStep] = React.useState<"reveal" | "construct" | null>(null);
 
   const isActiveTransaction = transactionState.activeTransactionId === transactionId;
   const isDisabled =
@@ -298,121 +279,29 @@ function RevealThenConstructButton({
     setIsRunning(true);
     startTransaction(transactionId);
     try {
-      await switchToSelectedChainIfNeeded();
-      if (!publicClient) throw new Error("No RPC client available");
-
-      const shipsAddress = contractAddresses.SHIPS as `0x${string}`;
-
-      // Navy ship rows can lag a successful construct (same IDs, wagmi still
-      // serving the pre-construct snapshot). constructShips reverts the whole
-      // batch on ShipConstructed, so drop any id that is already built onchain
-      // before we spend another signature.
-      const candidateIds =
+      const ids =
         functionName === "constructShips"
           ? ((args[0] as bigint[] | undefined) ?? [])
           : functionName === "constructShip"
-            ? ((args[0] != null ? [args[0] as bigint] : []) )
+            ? (args[0] != null ? [args[0] as bigint] : [])
             : ships.filter((s) => !s.shipData.constructed).map((s) => s.id);
-
-      let stillUnconstructedIds = candidateIds;
-      if (candidateIds.length > 0) {
-        const liveShips = (await publicClient.readContract({
-          address: shipsAddress,
-          abi: CONTRACT_ABIS.SHIPS as Abi,
-          functionName: "getShipsByIds",
-          args: [candidateIds],
-        })) as Array<{ id: bigint; shipData: { constructed: boolean } }>;
-        stillUnconstructedIds = liveShips
-          .filter((s) => !s.shipData.constructed)
-          .map((s) => s.id);
-      }
-
-      if (functionName !== "constructAllMyShips" && stillUnconstructedIds.length === 0) {
-        invalidateShipAttributesByIdsCache(activeChainId);
-        await onSuccess();
-        completeTransaction(transactionId, true);
-        return;
-      }
-
-      const toReveal = ships.filter(
-        (s) =>
-          !s.shipData.constructed &&
-          stillUnconstructedIds.some((id) => id === s.id),
-      );
-      if (toReveal.length > 0) {
-        setStep("reveal");
-        await revealAllForShips(toReveal);
-      }
-
-      setStep("construct");
-      const writeArgs =
-        functionName === "constructShips"
-          ? [stillUnconstructedIds]
-          : functionName === "constructShip"
-            ? [stillUnconstructedIds[0]]
-            : args;
-      const hash = await writeContractAsync({
-        address: shipsAddress,
-        abi,
-        functionName,
-        args: writeArgs,
-        chainId: activeChainId,
-        ...(await getLegacyGasPriceOverridesForWrite(activeChainId, publicClient)),
-      });
-      const receipt = await waitForTransactionReceipt(wagmiConfig, {
-        hash,
-        chainId: activeChainId,
-      });
-
-      if (receipt.status === "reverted") {
-        throw new Error("Transaction reverted on-chain");
-      }
-
-      // Construction is what populates a ship's real attributes (equipment is
-      // all zeros until then). The by-ids attributes cache is keyed only by
-      // the shipIds list, which doesn't change when a ship goes
-      // unconstructed -> constructed, so without this the navy keeps serving
-      // the pre-construction zeros (e.g. 0% armor/shield damage reduction).
-      invalidateShipAttributesByIdsCache(activeChainId);
-
+      await constructShips(functionName === "constructAllMyShips" ? { all: true, ids } : { ids });
       await onSuccess();
       completeTransaction(transactionId, true);
     } catch (err: unknown) {
       const message = messageFromUnknownError(err);
-      const isUserRejection =
-        message.includes("User rejected") ||
-        message.includes("User denied") ||
-        message.includes("rejected");
       const error = new Error(message);
       completeTransaction(transactionId, false, error);
-      if (isUserRejection) {
-        toast.error("Transaction declined by user");
-      } else if (message.includes("TooSoonToReveal")) {
-        toast.error(
-          "Ship randomness isn't ready to reveal yet — try again in a few seconds.",
-        );
-      } else if (
-        message.includes("ShipConstructed") ||
-        message.includes("0xa6639c3e")
-      ) {
-        toast.error(
-          "Some ships in this batch are already constructed. Refreshing your navy.",
-        );
-        onSuccess();
-      } else {
-        toast.error(`Failed to construct: ${message}`);
+      const friendly = constructErrorMessage(message);
+      toast.error(friendly ?? "Transaction declined by user");
+      if (message.includes("ShipConstructed") || message.includes("0xa6639c3e")) {
+        void onSuccess();
       }
       onError?.(error);
     } finally {
       setIsRunning(false);
-      setStep(null);
     }
   };
-
-  let buttonContent = children;
-  if (isRunning) {
-    buttonContent = step === "reveal" ? "[REVEALING...]" : "[CONSTRUCTING...]";
-  }
 
   const cleanedClassName = className
     .replace(/\brounded(-\w+)?\b/g, "")
@@ -426,7 +315,7 @@ function RevealThenConstructButton({
       className={`${cleanedClassName} ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
       style={{ borderRadius: 0 }}
     >
-      {buttonContent}
+      {isRunning ? "[CONSTRUCTING...]" : children}
     </button>
   );
 }

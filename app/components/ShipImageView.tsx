@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { destroyedShipImage, unconstructedShipImage } from "../utils/shipRenderer/stateArt";
 
 /** Rank ⭐ overlay size; reactor skull discs on cards use the same em box. */
 export const SHIP_IMAGE_RANK_STAR_BOX =
@@ -21,6 +22,8 @@ interface ShipImageViewProps {
   idLabel: string;
   isDestroyed: boolean;
   isNotConstructed: boolean;
+  /** Picks the faction's destroyed / unconstructed art. */
+  variant: number;
   rank: number;
   dataUrl: string | null;
   isLoading: boolean;
@@ -43,6 +46,7 @@ export function ShipImageView({
   idLabel,
   isDestroyed,
   isNotConstructed,
+  variant,
   rank,
   dataUrl,
   isLoading,
@@ -91,9 +95,9 @@ export function ShipImageView({
         style={style}
       >
         <img
-          src="/img/ship-destroyed.png"
+          src={destroyedShipImage(variant)}
           alt={`Destroyed ${idLabel}`}
-          className={`${hullClassName} opacity-75`}
+          className={hullClassName}
         />
         {rankStarsOverlay}
       </div>
@@ -108,9 +112,9 @@ export function ShipImageView({
         style={style}
       >
         <img
-          src="/img/dry-dock.png"
+          src={unconstructedShipImage(variant)}
           alt={`Unconstructed ${idLabel}`}
-          className={`${hullClassName} opacity-75`}
+          className={hullClassName}
         />
       </div>
     );

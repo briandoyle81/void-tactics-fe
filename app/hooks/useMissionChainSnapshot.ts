@@ -204,7 +204,7 @@ export function useMissionChainSnapshot(): {
           maxScore: Number(n.maxScore),
           creatorGoesFirst: n.creatorGoesFirst,
           costCapOverride: Number(n.costCapOverride),
-          children: n.children.map((c) => ({ childId: Number(c.childId), twoWay: c.twoWay })),
+          children: n.children.map((childId) => ({ childId: Number(childId) })),
           winEffects: (effectsByNodeId.get(Number(n.id)) ?? []).flatMap((address) => {
             const key = keyByAddress.get(address.toLowerCase());
             if (!key) unknownWinEffects.add(address);

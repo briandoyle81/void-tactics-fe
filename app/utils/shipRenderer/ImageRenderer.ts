@@ -10,12 +10,8 @@ import { renderWeapon } from "./renderers/RenderWeapon";
 import { renderBody } from "./renderers/RenderBody";
 import { renderFore } from "./renderers/RenderFore";
 import { renderShipV2Body } from "./ImageRendererV2";
+import { destroyedShipImage, unconstructedShipImage } from "./stateArt";
 
-// IPFS URIs for different ship states
-const UNCONSTRUCTED_IMAGE =
-  "ipfs://bafkreibc3fdrdsw4l7zy4wjrgalvfhg6kfd3wmijwefny3nxj5244x2tr4";
-const DESTROYED_IMAGE =
-  "ipfs://bafkreige3z6iopsmgyzefidhydbaikpipxwrstqzuylw2y2c4rvwnn6yvm";
 
 // Base SVG template with viewBox and dimensions
 const BASE_SVG =
@@ -30,10 +26,11 @@ const SVG_END = "</svg>";
 export function renderShip(ship: ShipVisual): string {
   try {
     // Return appropriate image URI based on ship state
+    // Each variant's own destroyed / unconstructed art (stateArt.ts).
     if (ship.shipData.timestampDestroyed > 0) {
-      return DESTROYED_IMAGE;
+      return destroyedShipImage(ship.traits?.variant);
     } else if (!ship.shipData.constructed) {
-      return UNCONSTRUCTED_IMAGE;
+      return unconstructedShipImage(ship.traits?.variant);
     }
 
     // Validate ship structure

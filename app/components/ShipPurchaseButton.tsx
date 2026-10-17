@@ -7,11 +7,12 @@ import {
   getContractAddresses,
 } from "../config/contracts";
 import { useAccount, useBalance, useReadContract, usePublicClient } from "wagmi";
-import type { Abi } from "viem";
+import type { Abi, TransactionReceipt } from "viem";
 import { formatEther } from "viem";
 import { toast } from "react-hot-toast";
 import { getSelectedChainId, getVariantForChainId } from "../config/networks";
 import posthog from "posthog-js";
+import { useConstructAfterMint } from "../hooks/useConstructAfterMint";
 
 interface ShipPurchaseButtonProps {
   tier: number;
@@ -208,6 +209,14 @@ export function ShipPurchaseButton({
     paymentMethod,
   ]);
 
+  // Build the new ships right away, while their construction window is open
+  // (see useConstructAfterMint). Runs alongside the success follow-up.
+  const constructAfterMint = useConstructAfterMint();
+  const handleMintReceipt = React.useCallback(
+    (receipt: TransactionReceipt) => void constructAfterMint(receipt),
+    [constructAfterMint],
+  );
+
   const handleSuccess = React.useCallback(async () => {
     posthog.capture("ship_purchased", {
       tier,
@@ -287,6 +296,7 @@ export function ShipPurchaseButton({
         disabled={disabled}
         loadingText="[PURCHASING...]"
         errorText="[ERROR PURCHASING]"
+        onReceipt={handleMintReceipt}
         onSuccess={handleSuccess}
         onError={onError}
         validateBeforeTransaction={validateBeforeTransaction}
@@ -319,6 +329,7 @@ export function ShipPurchaseButton({
       disabled={disabled}
       loadingText="[PURCHASING...]"
       errorText="[ERROR PURCHASING]"
+      onReceipt={handleMintReceipt}
       onSuccess={handleSuccess}
       onError={onError}
       validateBeforeTransaction={validateBeforeTransaction}

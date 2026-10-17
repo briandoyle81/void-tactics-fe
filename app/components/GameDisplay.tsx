@@ -50,6 +50,7 @@ import { GameResultModal, type MissionLossReason } from "./GameResultModal";
 import { resolveNodeContent, useWeb3NodeContent } from "../hooks/useNodeContent";
 import { inferVictoryReason } from "../utils/victoryReason";
 import { RoundStartModal } from "./RoundStartModal";
+import { ConstructRewardShips } from "./ConstructRewardShips";
 import { useOpeningLineReport } from "./useOpeningLineReport";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { useMissionDialog } from "../hooks/useMissionDialog";
@@ -2739,6 +2740,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // Roguelike: a win returns to the run map; any loss has already ended the
   // run on chain, so "Quit" drops the cached run and lands on the Mission
   // tab's start-a-run screen.
+  // A won mission can grant a ship, minted unconstructed at game end: offer
+  // to build it before the player moves on (ConstructRewardShips).
+  const resultRewardAction =
+    isVsAIGame && gameWinnerResult === "me" && !readOnly ? <ConstructRewardShips /> : undefined;
   const resultPrimaryActionLabel = isRoguelikeGame
     ? gameWinnerResult === "me"
       ? "Return to Run"
@@ -3427,6 +3432,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             }
             nodeContent={missionNodeContent}
             comms={missionDebriefNode}
+            rewardAction={resultRewardAction}
             onClose={() => setIsGameResultDismissed(true)}
             primaryActionLabel={resultPrimaryActionLabel}
             onPrimaryAction={handleResultPrimaryAction}
@@ -4363,6 +4369,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           }
           nodeContent={missionNodeContent}
           comms={missionDebriefNode}
+          rewardAction={resultRewardAction}
           onClose={() => setIsGameResultDismissed(true)}
           primaryActionLabel={resultPrimaryActionLabel}
           onPrimaryAction={handleResultPrimaryAction}

@@ -142,7 +142,7 @@ export function useIsRoguelikeNodeDefeated(
   return { ...result, data: result.data as boolean | undefined };
 }
 
-/** Batched defeated-state check for a node's children (avoids a hook-per-child loop) — gates re-entry via a twoWay back-edge into a Combat node already cleared earlier this run (NodeAlreadyDefeated otherwise). */
+/** Batched defeated-state check for a node's children (avoids a hook-per-child loop) — a won Combat node can't be fought again (NodeAlreadyDefeated). */
 export function useAreRoguelikeNodesDefeated(
   playerAddress: Address | undefined,
   nodeIds: bigint[],

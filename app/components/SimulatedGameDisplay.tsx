@@ -47,6 +47,7 @@ import {
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
 import { TutorialTarget } from "./TutorialTarget";
+import { useConstructAfterMint } from "../hooks/useConstructAfterMint";
 import {
   clearTutorialClaimCompletedCacheEntry,
   isTutorialClaimCompletedCached,
@@ -401,7 +402,9 @@ export function SimulatedGameDisplay({
     isLoading: isTutorialClaimConfirming,
     isSuccess: isTutorialClaimConfirmed,
     error: tutorialClaimReceiptError,
+    data: tutorialClaimReceipt,
   } = useWaitForTransactionReceipt(tutorialClaimReceiptConfig);
+  const constructAfterMint = useConstructAfterMint();
 
   useEffect(() => {
     if (!tutorialClaimWriteError) return;
@@ -430,6 +433,10 @@ export function SimulatedGameDisplay({
     setClaimCompleteCached(true);
     toast.success("Tutorial reward claimed");
     setPendingTutorialClaimPath(null);
+    // Build the reward ships now, while their construction window is open.
+    if (tutorialClaimReceipt?.status === "success") void constructAfterMint(tutorialClaimReceipt);
+    // Once per confirmed claim; constructAfterMint is stable per address.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTutorialClaimConfirmed, activeChainId, address]);
 
   const runTutorialClaimTx = useCallback(

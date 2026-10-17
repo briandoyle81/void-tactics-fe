@@ -54,7 +54,7 @@ export function CommandDeckWeb3(
       nodes.map((n) => ({
         id: Number(n.id),
         isResupply: n.kind === RoguelikeNodeKind.Resupply,
-        childIds: n.children.map((e) => Number(e.childId)),
+        childIds: n.children.map((childId) => Number(childId)),
       })),
       Number(activeRun.currentNodeId),
       nodes.filter((n) => defeatedByNodeId.get(n.id.toString())).map((n) => Number(n.id)),
