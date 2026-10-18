@@ -4,13 +4,16 @@ import React from "react";
 import Image from "next/image";
 import { HeroShipShowcase } from "./HeroShipShowcase";
 import { TacticalTargetingPreview } from "./TacticalTargetingPreview";
+import { ART_SLOTS } from "../config/art";
 
 // The website's hero and the sections below it (app/components/Website.tsx):
-// the ship showcase, the Shattered Hive campaign, the enemy, how battles
+// the ship showcase, the enemy, the Shattered Hive campaign, how battles
 // play, PvP, onchain, getting started and a closing Play. Open, editorial
 // layout: no framed cards, sections separated by space and hairlines, large
 // text left-aligned. The hero and the closing section take their Play
-// button as a prop.
+// button as a prop. The hero and the showcase share one backdrop, the
+// sign-in screen's art (InfoTopBackdrop), the way the campaign section sits
+// over its key art.
 
 /** The content column every section lines up on. */
 const CONTAINER = "mx-auto w-full max-w-7xl px-5 md:px-12";
@@ -78,8 +81,12 @@ export function InfoHero({ actions }: { actions: React.ReactNode }) {
         {actions}
       </div>
 
-      {/* Right side - Gameplay clip (above the fold), unframed */}
-      <div className="w-full md:col-span-7">
+      {/* Right side - Gameplay clip (above the fold), framed so it reads
+          as a game screen over the backdrop art */}
+      <div
+        className="w-full overflow-hidden border border-cyan/40 md:col-span-7"
+        style={{ boxShadow: "0 0 24px rgba(86, 214, 255, 0.15)" }}
+      >
         <TacticalTargetingPreview />
       </div>
     </section>
@@ -145,38 +152,104 @@ const STEPS = [
 ] as const;
 
 /**
- * Everything below the hero: the ship showcase (the ships are the heroes),
- * then the campaign. `cta` is the closing Play button (Website.tsx).
+ * The hero and the ship showcase over the sign-in screen's art: human fleet
+ * lower left, the Hive upper right. Darkened toward the left for the hero
+ * text and fading into the page at the bottom, like the campaign section
+ * over its key art.
+ */
+export function InfoTopBackdrop({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative isolate overflow-hidden">
+      <Image
+        src={ART_SLOTS.bootBackdrop.src ?? ""}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="-z-10 object-cover"
+        style={{ objectPosition: "center 35%" }}
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            // Blends into the header at the top and the page at the bottom.
+            "linear-gradient(to bottom, var(--color-near-black) 0%, rgba(12, 17, 23, 0.2) 12%, rgba(12, 17, 23, 0.35) 55%, var(--color-near-black) 100%), linear-gradient(to right, rgba(12, 17, 23, 0.6) 0%, rgba(12, 17, 23, 0) 55%)",
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
+/** The live ship showcase, ours against theirs (the ships are the heroes). */
+export function InfoShowcase() {
+  return (
+    <section aria-label="Intel">
+      <div className={`${CONTAINER} pb-16 pt-12 md:pb-20 md:pt-16`}>
+        <div className="flex flex-col items-center gap-12 md:flex-row md:gap-8">
+          <div className="w-full min-w-0 flex-1">
+            <HeroShipShowcase
+              seedOffset={0}
+              side="allied"
+              forcedVariant={1}
+            />
+          </div>
+          <p
+            aria-hidden="true"
+            className="hidden shrink-0 text-sm tracking-[0.3em] text-text-muted md:block"
+            style={MONO_FONT}
+          >
+            VS
+          </p>
+          <div className="hidden w-full min-w-0 flex-1 md:block">
+            <HeroShipShowcase
+              seedOffset={3}
+              side="enemy"
+              flipLayout={true}
+              forcedVariant={2}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Everything below the showcase, starting with the Hive's intercepted line
+ * and then the campaign. `cta` is the closing Play button (Website.tsx).
  */
 export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
   return (
     <>
-      {/* Intel: the live ship showcase, ours against theirs */}
-      <section className={HAIRLINE} aria-label="Intel">
-        <div className={`${CONTAINER} pb-16 pt-12 md:pb-20 md:pt-16`}>
-          <div className="flex flex-col items-center gap-12 md:flex-row md:gap-8">
-            <div className="w-full min-w-0 flex-1">
-              <HeroShipShowcase
-                seedOffset={0}
-                side="allied"
-                forcedVariant={1}
-              />
-            </div>
+      {/* The enemy: an intercepted line, the portrait beside it */}
+      <section className="bg-[#0d0806]" aria-label="The enemy">
+        <div
+          className={`${CONTAINER} flex flex-col items-start gap-8 py-14 md:flex-row md:items-center md:gap-14 md:py-16`}
+        >
+          <Image
+            src="/img/character-art/hive-queen.svg"
+            alt="Unknown source"
+            width={256}
+            height={256}
+            unoptimized
+            className="h-40 w-40 shrink-0 object-cover md:h-64 md:w-64"
+          />
+          <div className="flex min-w-0 flex-col gap-5">
             <p
-              aria-hidden="true"
-              className="hidden shrink-0 text-sm tracking-[0.3em] text-text-muted md:block"
-              style={MONO_FONT}
+              className="text-base uppercase tracking-[0.2em] md:text-xl"
+              style={{ ...MONO_FONT, color: "var(--color-warning-red)" }}
             >
-              VS
+              {"// Intercepted · Unknown Source"}
             </p>
-            <div className="hidden w-full min-w-0 flex-1 md:block">
-              <HeroShipShowcase
-                seedOffset={3}
-                side="enemy"
-                flipLayout={true}
-                forcedVariant={2}
-              />
-            </div>
+            <p
+              className="text-5xl font-semibold leading-none text-text-primary md:text-7xl lg:text-8xl"
+              style={DISPLAY_FONT}
+            >
+              &ldquo;Your hulls break so easily.&rdquo;
+            </p>
           </div>
         </div>
       </section>
@@ -257,36 +330,6 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
               </li>
             ))}
           </ol>
-        </div>
-      </section>
-
-      {/* The enemy: an intercepted line, the portrait beside it */}
-      <section className="bg-[#0d0806]" aria-label="The enemy">
-        <div
-          className={`${CONTAINER} flex flex-col items-start gap-8 py-14 md:flex-row md:items-center md:gap-14 md:py-16`}
-        >
-          <Image
-            src="/img/character-art/hive-queen.svg"
-            alt="Unknown source"
-            width={256}
-            height={256}
-            unoptimized
-            className="h-40 w-40 shrink-0 object-cover md:h-64 md:w-64"
-          />
-          <div className="flex min-w-0 flex-col gap-5">
-            <p
-              className="text-base uppercase tracking-[0.2em] md:text-xl"
-              style={{ ...MONO_FONT, color: "var(--color-warning-red)" }}
-            >
-              {"// Intercepted · Unknown Source"}
-            </p>
-            <p
-              className="text-5xl font-semibold leading-none text-text-primary md:text-7xl lg:text-8xl"
-              style={DISPLAY_FONT}
-            >
-              &ldquo;Your hulls break so easily.&rdquo;
-            </p>
-          </div>
         </div>
       </section>
 

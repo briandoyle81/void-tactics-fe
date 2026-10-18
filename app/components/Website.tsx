@@ -3,7 +3,7 @@
 import Link from "next/link";
 import SiteFooter from "./SiteFooter";
 import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink } from "./BrandLinks";
-import { InfoFeatureSections, InfoHero } from "./InfoSections";
+import { InfoFeatureSections, InfoHero, InfoShowcase, InfoTopBackdrop } from "./InfoSections";
 import { PLAY_PATH } from "../config/routes";
 import posthog from "posthog-js";
 
@@ -100,18 +100,21 @@ export default function Website() {
           manage your navy, join lobbies, and play tactical grid battles where range, movement,
           and target priority decide each match.
         </p>
-        <InfoHero
-          actions={
-            <div className="flex flex-col items-stretch gap-3 md:items-start">
-              <PlayLink
-                surface="hero"
-                label="[PLAY NOW]"
-                solid
-                className="w-full px-6 py-3.5 text-sm sm:px-8 sm:text-base md:w-auto md:px-10 md:py-4"
-              />
-            </div>
-          }
-        />
+        <InfoTopBackdrop>
+          <InfoHero
+            actions={
+              <div className="flex flex-col items-stretch gap-3 md:items-start">
+                <PlayLink
+                  surface="hero"
+                  label="[PLAY NOW]"
+                  solid
+                  className="w-full px-6 py-3.5 text-sm sm:px-8 sm:text-base md:w-auto md:px-10 md:py-4"
+                />
+              </div>
+            }
+          />
+          <InfoShowcase />
+        </InfoTopBackdrop>
         <InfoFeatureSections
           cta={
             <PlayLink
