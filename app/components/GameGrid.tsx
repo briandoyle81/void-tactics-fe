@@ -282,6 +282,7 @@ const GameGridCells = React.memo(function GameGridCells({
   projectedDamageByShipId,
   projectedRepairByShipId,
   destroyPreviewShipIds,
+  destroyHologramShipIds,
   sosPreviewShipIds,
   optimisticSosShipIds,
   isSubmitting,
@@ -342,6 +343,8 @@ const GameGridCells = React.memo(function GameGridCells({
   projectedDamageByShipId: Map<number, number>;
   projectedRepairByShipId: Map<number, number>;
   destroyPreviewShipIds: Set<number>;
+  /** Staged (not yet submitted) kills, drawn as a hologram. */
+  destroyHologramShipIds: Set<number>;
   sosPreviewShipIds: Set<number>;
   optimisticSosShipIds: Set<number>;
   isSubmitting: boolean;
@@ -429,6 +432,7 @@ const GameGridCells = React.memo(function GameGridCells({
             projectedDamageByShipId={projectedDamageByShipId}
             projectedRepairByShipId={projectedRepairByShipId}
             destroyPreviewShipIds={destroyPreviewShipIds}
+            destroyHologramShipIds={destroyHologramShipIds}
             sosPreviewShipIds={sosPreviewShipIds}
             optimisticSosShipIds={optimisticSosShipIds}
             isSubmitting={isSubmitting}
@@ -503,6 +507,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   projectedDamageByShipId,
   projectedRepairByShipId,
   destroyPreviewShipIds,
+  destroyHologramShipIds,
   sosPreviewShipIds,
   optimisticSosShipIds,
   isSubmitting,
@@ -582,6 +587,8 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   projectedDamageByShipId: Map<number, number>;
   projectedRepairByShipId: Map<number, number>;
   destroyPreviewShipIds: Set<number>;
+  /** Staged (not yet submitted) kills, drawn as a hologram. */
+  destroyHologramShipIds: Set<number>;
   sosPreviewShipIds: Set<number>;
   optimisticSosShipIds: Set<number>;
   isSubmitting: boolean;
@@ -672,6 +679,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         projectedDamageByShipId={projectedDamageByShipId}
         projectedRepairByShipId={projectedRepairByShipId}
         destroyPreviewShipIds={destroyPreviewShipIds}
+        destroyHologramShipIds={destroyHologramShipIds}
         sosPreviewShipIds={sosPreviewShipIds}
         optimisticSosShipIds={optimisticSosShipIds}
         isSubmitting={isSubmitting}
@@ -970,6 +978,16 @@ const GameGridBoard = React.memo(function GameGridBoard({
     if (stagedDestroyShipIds.size === 0) return optimisticDestroyShipIds;
     return new Set([...stagedDestroyShipIds, ...optimisticDestroyShipIds]);
   }, [stagedDestroyShipIds, optimisticDestroyShipIds]);
+  // The staged ones draw as a hologram (a prediction, like the SOS preview);
+  // a submitted shot's kill is solid.
+  const destroyHologramShipIds = React.useMemo(() => {
+    if (optimisticDestroyShipIds.size === 0) return stagedDestroyShipIds;
+    const ids = new Set<number>();
+    stagedDestroyShipIds.forEach((id) => {
+      if (!optimisticDestroyShipIds.has(id)) ids.add(id);
+    });
+    return ids;
+  }, [stagedDestroyShipIds, optimisticDestroyShipIds]);
 
   // Compute the best placement for the confirm widget to avoid covering the target ship,
   // weapon beam path, and move arrow. See computeConfirmWidgetAnchor for the algorithm.
@@ -1155,6 +1173,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
             projectedDamageByShipId={projectedDamageByShipId}
             projectedRepairByShipId={projectedRepairByShipId}
             destroyPreviewShipIds={destroyPreviewShipIds}
+            destroyHologramShipIds={destroyHologramShipIds}
             sosPreviewShipIds={sosPreviewShipIds}
             optimisticSosShipIds={optimisticSosShipIds}
             isSubmitting={isSubmitting}

@@ -113,6 +113,8 @@ interface GameGridCellProps {
   projectedDamageByShipId: Map<number, number>;
   projectedRepairByShipId: Map<number, number>;
   destroyPreviewShipIds: Set<number>;
+  /** Staged (not yet submitted) kills: their destroyed art is a hologram. */
+  destroyHologramShipIds: Set<number>;
   sosPreviewShipIds: Set<number>;
   optimisticSosShipIds: Set<number>;
   isSubmitting: boolean;
@@ -185,6 +187,7 @@ export const GameGridCell = React.memo(function GameGridCell({
   projectedDamageByShipId,
   projectedRepairByShipId,
   destroyPreviewShipIds,
+  destroyHologramShipIds,
   sosPreviewShipIds,
   optimisticSosShipIds,
   isSubmitting,
@@ -1119,15 +1122,31 @@ export const GameGridCell = React.memo(function GameGridCell({
                         const shouldShowDestroyedArt =
                           isLastMoveDestroyedTargetCell || shouldPreviewDestroyedTarget;
                         if (!shouldShowDestroyedArt) return null;
+                        // A staged kill is a prediction: the destroyed art as
+                        // a hologram, in the same language as the preview To
+                        // ship and the SOS preview. Solid once the shot is
+                        // submitted or the kill is the last move.
+                        const isDestroyHologram =
+                          !isLastMoveDestroyedTargetCell &&
+                          !isSubmitting &&
+                          destroyHologramShipIds.has(cell.shipId);
 
                         // Keep destroyed art above the ship stack (z-[16]) so it
                         // remains visible in move preview and last-move states.
                         return (
-                          <div className="absolute inset-0 z-[17] flex items-center justify-center pointer-events-none">
+                          <div
+                            className={`absolute inset-0 z-[17] flex items-center justify-center pointer-events-none${
+                              isDestroyHologram ? " move-hologram" : ""
+                            }`}
+                          >
                             <img
                               src={destroyedShipImage(ship?.traits.variant)}
-                              alt="Predicted destroyed target ship"
-                              className="w-[98%] h-[98%] object-contain opacity-75"
+                              alt={
+                                isLastMoveDestroyedTargetCell
+                                  ? "Destroyed ship"
+                                  : "Predicted destroyed target ship"
+                              }
+                              className={`w-[98%] h-[98%] object-contain${isDestroyHologram ? "" : " opacity-75"}`}
                               style={{
                                 transform: cell.isCreator
                                   ? "scaleX(-1)"
