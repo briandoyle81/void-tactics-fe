@@ -2,8 +2,8 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { FLEE_GLOW_BUILD_MS, FLEE_ZOOM_DURATION_MS } from "../../constants/animationTiming";
-import { Ship } from "../../types/types";
-import { ShipImage } from "../ShipImage";
+import { GridShip } from "../../types/gridDisplay";
+import { GridShipImage } from "../GridShipImage";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 
 type FleeLayout = {
@@ -43,7 +43,7 @@ interface FleeAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
   fromRow: number;
   fromCol: number;
-  ship: Ship;
+  ship: GridShip;
   /** True if ship belongs to creator, false if joiner. Retreat flip: creator = native (no flip), joiner = opposite (flip). */
   isCreator: boolean;
   /** When true, skip glow build and start zoom immediately (used after tx completes). */
@@ -51,6 +51,12 @@ interface FleeAnimationProps {
 }
 
 
+/**
+ * Retreat last move: the ship, drawn as the hologram the last move's From
+ * position always is (see GameGridCell), turns to face its own side, builds
+ * engine glow and zooms off the board. Plays once per mount; GameGridOverlays
+ * keys it by the move. Shared by web3, web2 and the tutorial.
+ */
 export const FleeAnimation = React.memo(function FleeAnimation({
   gridContainerRef,
   fromRow,
@@ -125,12 +131,15 @@ export const FleeAnimation = React.memo(function FleeAnimation({
 
   return (
     <div
-      className="absolute inset-0 pointer-events-none z-30 overflow-visible"
+      className="absolute inset-0 pointer-events-none overflow-visible"
       style={{
         left: 0,
         top: 0,
         width,
         height,
+        // Above the retreat's warp-field collapse (zIndex 100), which plays
+        // at the same cell.
+        zIndex: 110,
       }}
     >
       <div
@@ -195,15 +204,16 @@ export const FleeAnimation = React.memo(function FleeAnimation({
         />
         {/* Ship art - opposite of in-game: creator = native (no flip), joiner = flip */}
         <div
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center move-hologram move-hologram-steady"
           style={{
             transform: shipFlipForRetreat,
           }}
         >
-          <ShipImage
+          <GridShipImage
             ship={ship}
             className="w-full h-full object-contain"
             showLoadingState={false}
+            hideRankStars
           />
         </div>
       </div>

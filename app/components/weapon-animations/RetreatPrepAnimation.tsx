@@ -14,7 +14,7 @@ interface RetreatPrepAnimationProps {
 }
 
 
-/** Shown in-cell when player selects Retreat: ship flips to face starting side and engine glow powers up. */
+/** Shown in-cell when player selects Retreat: the ship, as a hologram, flips to face its starting side and engine glow powers up. */
 export const RetreatPrepAnimation = React.memo(function RetreatPrepAnimation({
   ship,
   isCreator,
@@ -81,9 +81,11 @@ export const RetreatPrepAnimation = React.memo(function RetreatPrepAnimation({
             : "ellipse(100% 50% at 100% 50%)",
         }}
       />
-      {/* Ship art - opposite of in-game: creator = native (no flip), joiner = flip */}
+      {/* Ship art - opposite of in-game: creator = native (no flip), joiner = flip.
+          A staged retreat is a preview, so the ship is a hologram (like a
+          staged move's To ship). */}
       <div
-        className="relative w-full h-full flex items-center justify-center"
+        className="relative w-full h-full flex items-center justify-center move-hologram"
         style={{
           transform: shipFlipForRetreat,
         }}

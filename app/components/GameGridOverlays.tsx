@@ -20,6 +20,7 @@ import { AttackDroneAnimation } from "./weapon-animations/AttackDroneAnimation";
 import { EmpWaveAnimation } from "./weapon-animations/EmpWaveAnimation";
 import { LightningFieldAnimation } from "./weapon-animations/LightningFieldAnimation";
 import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
+import { FleeAnimation } from "./weapon-animations/FleeAnimation";
 import { RamAnimation } from "./weapon-animations/RamAnimation";
 import { TutorialTargetPointer } from "./TutorialTarget";
 import { collectDamageLabelTargets } from "../utils/gameGridRanges";
@@ -472,6 +473,11 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
 }: GameGridOverlaysProps) {
   const lastMoveActionNum =
     lastMoveActionType != null ? Number(lastMoveActionType) : NaN;
+  // Each ship's side as last seen on the board: a retreated ship can be gone
+  // from the positions by the time its retreat plays as the last move (the
+  // tutorial removes it), and the zoom-off needs to know which way it flies.
+  const lastSeenIsCreatorRef = React.useRef(new Map<number, boolean>());
+  allShipPositions?.forEach((p) => lastSeenIsCreatorRef.current.set(p.shipId, p.isCreator));
   const showLastMoveEmpReplay =
     !selectedShipId || showLastMoveEmpReplayWhenSelected;
   // Preview weapon fire is a hologram at To. Last-move fire is live color at To.
@@ -507,7 +513,9 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
 
   return (
           <div className="absolute inset-0 z-50 pointer-events-none">
-            {/* Retreat last move: warp field collapsing at the position (no ship data needed) */}
+            {/* Retreat last move: the warp field collapsing at the position,
+                and the ship (a hologram, like every last-move From) zooming
+                off toward its own side. The cell hides its own ghost there. */}
             {(lastMoveActionType as ActionType) === ActionType.Retreat &&
               lastMoveOldPosition != null && (
                 <WarpFieldCollapseAnimation
@@ -516,6 +524,28 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                   col={lastMoveOldPosition.col}
                 />
               )}
+            {(lastMoveActionType as ActionType) === ActionType.Retreat &&
+              lastMoveOldPosition != null &&
+              lastMoveShipId != null &&
+              (() => {
+                const ship = shipMap.get(lastMoveShipId);
+                if (!ship) return null;
+                const isCreator =
+                  allShipPositions?.find((p) => p.shipId === lastMoveShipId)?.isCreator ??
+                  grid[lastMoveOldPosition.row]?.[lastMoveOldPosition.col]?.isCreator ??
+                  lastSeenIsCreatorRef.current.get(lastMoveShipId);
+                if (isCreator == null) return null;
+                return (
+                  <FleeAnimation
+                    key={`${lastMoveShipId}:${lastMoveOldPosition.row},${lastMoveOldPosition.col}`}
+                    gridContainerRef={gridContainerRef}
+                    fromRow={lastMoveOldPosition.row}
+                    fromCol={lastMoveOldPosition.col}
+                    ship={ship}
+                    isCreator={isCreator}
+                  />
+                );
+              })()}
 
 
             {/* Ram last move: charge, impact, victim knocked off (see RamAnimation). */}

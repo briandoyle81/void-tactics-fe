@@ -282,15 +282,18 @@ body::before {
   pointer-events: none;
 }
 
-/* Flee: ship zooms off toward starting side */
+/* Flee / retreat: ship zooms off toward its starting side and is gone. */
 @keyframes flee-zoom-off {
   0% {
     transform: translateX(0);
     opacity: 1;
   }
+  70% {
+    opacity: 0.85;
+  }
   100% {
     transform: translateX(calc(var(--flee-direction, 1) * 200%));
-    opacity: 0.85;
+    opacity: 0;
   }
 }
 
