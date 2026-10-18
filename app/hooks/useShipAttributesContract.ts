@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useReadContract, useWriteContract, useAccount } from "wagmi";
+import { useReadContract, useAccount } from "wagmi";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import { getVariantForChainId } from "../config/networks";
@@ -48,11 +48,6 @@ export interface VariantAttributeData {
   rankBonusPct: number[];
 }
 
-/** Argument shape for `setVariantAttributes` — same fields as `VariantAttributeData` plus which variant it publishes for. No `version`: the contract always publishes `latest + 1` and makes it live. */
-export type SetVariantAttributesParams = VariantAttributeData & {
-  variant: number;
-};
-
 export interface Costs {
   version: number;
   baseCost: number;
@@ -82,11 +77,6 @@ export type ShipAttributesReadFunction =
   | "getRank"
   | "owner";
 
-export type ShipAttributesWriteFunction =
-  | "setCurrentAttributesVersion"
-  | "setVariantAttributes"
-  | "setCosts";
-
 // `chainIdOverride` pins the read to a specific chain instead of following
 // the header network picker — needed by the campaign flow (Base-Sepolia-
 // only, like every other campaign hook).
@@ -115,10 +105,6 @@ export function useShipAttributesRead(
     },
     args,
   });
-}
-
-export function useShipAttributesWrite() {
-  return useWriteContract();
 }
 
 export function useShipAttributesOwner() {
@@ -182,15 +168,6 @@ export function useVariantAttributes(variant: number, version: number = 0) {
   return useShipAttributesRead("getVariantAttributes", args);
 }
 
-/** Kills-based rank (1-6) for a variant, using that variant's own published rankThresholds. */
-export function useRank(variant: number, shipsDestroyed: bigint | number) {
-  const args = useMemo(
-    () => [variant, BigInt(shipsDestroyed)] as const,
-    [variant, shipsDestroyed],
-  );
-  return useShipAttributesRead("getRank", args);
-}
-
 // --- Costs: per variant, unchanged model (only validation changed) ---
 
 export function useCurrentCostsVersion(
@@ -208,25 +185,6 @@ export function useCosts(variantOverride?: number) {
   const variant = variantOverride ?? chainVariant;
   const args = useMemo(() => [variant] as const, [variant]);
   return useShipAttributesRead("getCosts", args);
-}
-
-// --- Equipment stat lookups (live table) — fine for pre-game/editor
-// display; wrong for an in-flight game, which must pin to the acting
-// ship's own attributes.version via `useSpecialRangeAt`/`useSpecialStrengthAt`.
-
-export function useGunData(weaponIndex: number, variant: number) {
-  const args = useMemo(() => [weaponIndex, variant] as const, [weaponIndex, variant]);
-  return useShipAttributesRead("getGunData", args);
-}
-
-export function useArmorData(armorIndex: number, variant: number) {
-  const args = useMemo(() => [armorIndex, variant] as const, [armorIndex, variant]);
-  return useShipAttributesRead("getArmorData", args);
-}
-
-export function useShieldData(shieldIndex: number, variant: number) {
-  const args = useMemo(() => [shieldIndex, variant] as const, [shieldIndex, variant]);
-  return useShipAttributesRead("getShieldData", args);
 }
 
 // `getSpecialData` takes a `_variant` argument (ship traits.variant) as of

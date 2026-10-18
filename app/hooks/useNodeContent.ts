@@ -127,14 +127,6 @@ export function resolveNodeContent(
   };
 }
 
-/** Editor field values: only real content, never the loading/error placeholder. */
-export function editableTitle(node: Partial<ResolvedNodeContent> | null | undefined): string {
-  return node?.titleStatus === "ok" ? (node.title ?? "") : "";
-}
-export function editableDescription(node: Partial<ResolvedNodeContent> | null | undefined): string {
-  return node?.descriptionStatus === "ok" ? (node.description ?? "") : "";
-}
-
 /** Text class for a node title/description: warning color when missing, muted while loading. */
 export function nodeContentTextClass(status: NodeContentStatus | undefined, okClass: string): string {
   if (status === "missing") return "text-warning-red";

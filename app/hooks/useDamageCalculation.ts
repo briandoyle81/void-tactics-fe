@@ -10,8 +10,8 @@ export function useDamageCalculation({
   specialType,
   shipVariant,
 }: {
-  selectedShipId: bigint | null;
-  getShipAttributes: (id: bigint) => Attributes | null;
+  selectedShipId: number | null;
+  getShipAttributes: (id: number) => Attributes | null;
   selectedWeaponType: "weapon" | "special" | "ram";
   specialData: unknown;
   specialType: number;
@@ -19,10 +19,10 @@ export function useDamageCalculation({
 }) {
   return useCallback(
     (
-      targetShipId: bigint,
+      targetShipId: number,
       weaponType?: "weapon" | "special",
       showReducedDamage?: boolean,
-      shooterShipIdOverride?: bigint,
+      shooterShipIdOverride?: number,
     ) =>
       calculateDamage({
         shooterId: shooterShipIdOverride ?? selectedShipId,

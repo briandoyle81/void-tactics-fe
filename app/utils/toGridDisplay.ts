@@ -37,12 +37,6 @@ export function toGridShipPosition(pos: ShipPosition): GridShipPosition {
   };
 }
 
-export function toGridShipPositionGrid(
-  grid: (ShipPosition | null)[][],
-): (GridShipPosition | null)[][] {
-  return grid.map((row) => row.map((cell) => (cell ? toGridShipPosition(cell) : null)));
-}
-
 export function toGridShipPositions(
   positions: readonly ShipPosition[] | undefined,
 ): GridShipPosition[] | undefined {

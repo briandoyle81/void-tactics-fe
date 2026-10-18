@@ -4,7 +4,7 @@ import React from "react";
 import { GRID_DIMENSIONS } from "../types/types";
 import { Web2Ship } from "../types/web2Ship";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { MapDisplayView } from "./MapDisplayView";
 import type { ShipCardData } from "../types/shipCardData";

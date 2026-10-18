@@ -589,6 +589,125 @@ interface ShipOwner {
   owner: string;
 }
 
+interface ValidTargetsParams {
+  selectedShipId: number | null;
+  previewPosition: { row: number; col: number } | null;
+  isRammingMovePreview: boolean;
+  /** Alive ships only. */
+  shipPositions: readonly Web2ShipPosition[];
+  shipMap: Map<number, ShipOwner>;
+  playerAddress: string | null;
+  getShipAttributes: (shipId: number) => Attributes | null;
+  selectedWeaponType: "weapon" | "special" | "ram";
+  specialRange: number | undefined;
+  specialType: number;
+  shipVariant?: number;
+  /** Gates "ram" targeting (the FactionAbility system); false on legacy chains. */
+  isFactionAbilitySupported: boolean;
+  factionAbilityRange?: number | undefined;
+  factionAbilityIsHeal?: boolean;
+  blockedGrid: boolean[][];
+  /** Enemy ships blocking the acting ship's line of sight (buildEnemyOccupiedGrid). */
+  enemyOccupiedGrid?: boolean[][];
+}
+
+/**
+ * Ships the selected ship can act on this turn with the chosen weapon, from
+ * its staged destination (or where it is). Shared by useGameplayInteraction
+ * (web3 and web2 battles) and the tutorial (SimulatedGameDisplay), which
+ * narrows the result to what each step allows.
+ */
+export function computeValidTargets({
+  selectedShipId,
+  previewPosition,
+  isRammingMovePreview,
+  shipPositions,
+  shipMap,
+  playerAddress,
+  getShipAttributes,
+  selectedWeaponType,
+  specialRange,
+  specialType,
+  shipVariant = 1,
+  isFactionAbilitySupported,
+  factionAbilityRange,
+  factionAbilityIsHeal = false,
+  blockedGrid,
+  enemyOccupiedGrid,
+}: ValidTargetsParams): { shipId: number; position: { row: number; col: number } }[] {
+  if (!selectedShipId || shipMap.size === 0) return EMPTY_TARGET_REFS;
+  if (isRammingMovePreview) return EMPTY_TARGET_REFS;
+  const attributes = getShipAttributes(selectedShipId);
+  if (!attributes || attributes.hullPoints === 0) return EMPTY_TARGET_REFS;
+
+  const shootRange = resolveActionRange({
+    selectedWeaponType,
+    specialRange,
+    factionAbilityRange,
+    gunRange: attributes.range,
+  });
+  if (shootRange === undefined) return EMPTY_TARGET_REFS;
+  const currentPosition = shipPositions.find((pos) => pos.shipId === selectedShipId);
+  if (!currentPosition) return EMPTY_TARGET_REFS;
+
+  const startRow = previewPosition ? previewPosition.row : currentPosition.position.row;
+  const startCol = previewPosition ? previewPosition.col : currentPosition.position.col;
+  const targets: { shipId: number; position: { row: number; col: number } }[] = [];
+
+  shipPositions.forEach((shipPosition) => {
+    const ship = shipMap.get(shipPosition.shipId);
+    if (!ship) return;
+
+    if (selectedWeaponType === "special") {
+      if (specialType === 3) {
+        if (shipPosition.shipId === selectedShipId) return;
+      } else if (specialType === 1) {
+        if (ship.owner === playerAddress) return;
+      } else if (isRepairDronesSpecial(shipVariant, specialType)) {
+        if (ship.owner !== playerAddress) return;
+      } else {
+        if (ship.owner === playerAddress) return;
+      }
+    } else if (selectedWeaponType === "ram") {
+      if (!isFactionAbilitySupported) return;
+      const targetHp = getShipAttributes(shipPosition.shipId)?.hullPoints;
+      if (!isValidFactionAbilityTarget(ship.owner, playerAddress, factionAbilityIsHeal, targetHp)) return;
+    } else {
+      if (ship.owner === playerAddress) return;
+    }
+
+    const { row: targetRow, col: targetCol } = actingShipTargetPosition(
+      shipPosition.shipId,
+      selectedShipId,
+      shipPosition.position,
+      previewPosition,
+      selectedWeaponType,
+      specialType,
+      factionAbilityIsHeal,
+      shipVariant,
+    );
+    const distance = Math.abs(targetRow - startRow) + Math.abs(targetCol - startCol);
+    const isSelfHealAction =
+      (selectedWeaponType === "special" && isRepairDronesSpecial(shipVariant, specialType)) ||
+      (selectedWeaponType === "ram" && factionAbilityIsHeal);
+    const canShoot = distance === 1 || distance <= shootRange;
+    const isSelfRepair = isSelfHealAction && shipPosition.shipId === selectedShipId && distance === 0;
+
+    if ((canShoot && distance > 0) || isSelfRepair) {
+      const shouldCheckLineOfSight =
+        distance > 1 && (selectedWeaponType !== "special" || (specialType !== 1 && specialType !== 2 && specialType !== 3));
+      if (
+        !shouldCheckLineOfSight ||
+        hasLineOfSight(startRow, startCol, targetRow, targetCol, blockedGrid, enemyOccupiedGrid)
+      ) {
+        targets.push({ shipId: shipPosition.shipId, position: { row: targetRow, col: targetCol } });
+      }
+    }
+  });
+
+  return targets;
+}
+
 interface LabelTargetsParams {
   selectedShipId: number | null;
   previewPosition: { row: number; col: number } | null;

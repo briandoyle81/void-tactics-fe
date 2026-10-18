@@ -4,7 +4,3 @@
 export function stringifyWithBigint(value: unknown): string {
   return JSON.stringify(value);
 }
-
-export function parseWithBigint<T>(json: string): T {
-  return JSON.parse(json) as T;
-}

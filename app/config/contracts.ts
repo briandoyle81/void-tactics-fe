@@ -380,8 +380,3 @@ export const CONTRACT_ABIS = {
   SELFIE_CHECK_ELIGIBILITY_PROVIDER: SelfieCheckEligibilityProviderContract.abi,
   GAME_ENGINE_REGISTRY: GameEngineRegistryContract.abi,
 } as const;
-
-// Contract types for wagmi
-export type ContractNames = keyof typeof FLOW_TESTNET_CONTRACT_ADDRESSES;
-export type ContractAddresses =
-  (typeof FLOW_TESTNET_CONTRACT_ADDRESSES)[ContractNames];

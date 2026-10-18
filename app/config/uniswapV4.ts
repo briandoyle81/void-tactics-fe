@@ -1,17 +1,8 @@
-import { baseSepolia } from "viem/chains";
 import { encodeAbiParameters, encodePacked, getAddress, type Address, type Hex } from "viem";
 import lotteryHookDeploy from "../contracts/base-sepolia/uniswap-lottery-hook.json";
-
-// Base Sepolia (84532) canonical Uniswap v4 infrastructure — cross-checked against
-// developers.uniswap.org/docs/protocols/v4/deployments; PoolManager independently corroborated
-// against docs/eth-global-remote/eth-global-remote-strategy-v2.md's own live eth_getCode check.
-// Re-verify against the deployed bytecode before relying on this for anything beyond testnet.
-export const POOL_MANAGER_ADDRESS: Address = "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408";
 export const UNIVERSAL_ROUTER_ADDRESS: Address = "0x492E6456D9528771018DeB9E87ef7750EF184104";
 export const PERMIT2_ADDRESS: Address = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 export const V4_QUOTER_ADDRESS: Address = "0x4A6513c898fe1B2d0E78d3b0e0A4a151589B1cBA";
-
-export const UNISWAP_V4_CHAIN_ID = baseSepolia.id;
 
 export interface PoolKey {
   currency0: Address;
@@ -24,7 +15,6 @@ export interface PoolKey {
 // The UTC/ETH pool the lottery hook is locked to — currency0 is native ETH (the zero address),
 // currency1 is UniversalCredits. See app/contracts/base-sepolia/uniswap-lottery-hook.json.
 export const UTC_ETH_POOL_KEY: PoolKey = lotteryHookDeploy.poolKey as PoolKey;
-export const UTC_ETH_POOL_ID = lotteryHookDeploy.poolId as Hex;
 
 const NATIVE_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 

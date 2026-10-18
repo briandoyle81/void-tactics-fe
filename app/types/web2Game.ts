@@ -86,21 +86,5 @@ export interface Web2GameDataView {
   lastMove?: Web2LastMove;
 }
 
-/** Response shape of GET /api/games/[id]/replay — a `GameTurn` row projection. */
-export interface Web2GameReplayTurn {
-  id: number;
-  playerId: string;
-  round: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actions: any;
-  snapshot: Web2GameDataView | null;
-  submittedAt: string;
-}
-
-export interface Web2GameReplay {
-  initialState: Web2GameDataView | null;
-  turns: Web2GameReplayTurn[];
-}
-
 /** Winner sentinel for a tied game (web2-native; see no-crossover rule — never a fake `0x...` address). */
 export const WEB2_TIE_SENTINEL = "__TIE__";

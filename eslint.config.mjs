@@ -10,6 +10,17 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Build output and generated code (the Prisma client, next-env.d.ts).
+  {
+    ignores: [
+      ".next/**",
+      "out/**",
+      "build/**",
+      "coverage/**",
+      "app/generated/**",
+      "next-env.d.ts",
+    ],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
 

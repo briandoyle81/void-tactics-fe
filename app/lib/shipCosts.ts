@@ -55,9 +55,6 @@ export const DEFAULT_COSTS_BY_VARIANT: Record<number, CostsConfig> = {
 export function defaultCostsForVariant(variant: number): CostsConfig {
   return DEFAULT_COSTS_BY_VARIANT[variant] ?? DEFAULT_COSTS_V1;
 }
-
-// Back-compat aliases for any lingering variant-1-only call sites.
-export const DEFAULT_COSTS = DEFAULT_COSTS_V1;
 export const CURRENT_COSTS_VERSION = DEFAULT_COSTS_VERSION;
 
 export function calcShipCost(

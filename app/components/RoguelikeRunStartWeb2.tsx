@@ -4,7 +4,7 @@ import React from "react";
 import { toast } from "react-hot-toast";
 import { useOwnedShipsWeb2 } from "../hooks/useOwnedShipsWeb2";
 import { useShipAttributesByIdsWeb2 } from "../hooks/useShipAttributesByIdsWeb2";
-import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacementWeb2";
+import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacement";
 import { useNavyFilterState } from "../hooks/useNavyFilterState";
 import { useRoguelikeCampaignWeb2, useRoguelikeMatchWeb2 } from "../hooks/useRoguelikeWeb2";
 import { buildFleetShipListItemsWeb2 } from "../utils/buildFleetShipListItemsWeb2";

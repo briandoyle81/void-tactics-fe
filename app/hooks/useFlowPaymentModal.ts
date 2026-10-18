@@ -13,7 +13,7 @@ import {
 } from "@dynamic-labs-sdk/client";
 import { createPublicClient, http, formatUnits } from "viem";
 import { mainnet, base, polygon, arbitrum, optimism } from "viem/chains";
-import { FLOW_USD_TIERS } from "@/app/config/flowPayment";
+import { FLOW_USD_TIERS, type FlowPaymentMemo } from "@/app/config/flowPayment";
 import { useConstructAfterMint } from "./useConstructAfterMint";
 
 const CHECKOUT_ID = process.env.NEXT_PUBLIC_FLOW_CHECKOUT_ID!;
@@ -71,7 +71,7 @@ const NATIVE_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 async function fetchMultichainBalances(address: string): Promise<PaymentTokenBalance[]> {
   // Fetch token prices for all native currencies
-  let prices: Record<string, number> = { ethereum: 3000, "matic-network": 0.5 };
+  const prices: Record<string, number> = { ethereum: 3000, "matic-network": 0.5 };
   try {
     const priceIds = [...new Set(PAYMENT_CHAINS.map((c) => c.priceId))].join(",");
     const res = await fetch(
@@ -145,6 +145,29 @@ async function waitForReceipt(
 
 const POLL_MS = 3000;
 const MAX_POLLS = 100;
+
+/**
+ * Asks the server to mint for a settled payment. 202 means the mint was
+ * broadcast and is still confirming, so it asks again (the server settles
+ * from the stored hash and never mints twice).
+ */
+async function requestFulfillment(transactionId: string): Promise<`0x${string}` | undefined> {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const res = await fetch("/api/flow/fulfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transactionId }),
+    });
+    if (res.status === 202) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      continue;
+    }
+    if (!res.ok) throw new Error(await res.text());
+    const { mintTxHash } = (await res.json()) as { mintTxHash?: `0x${string}` };
+    return mintTxHash;
+  }
+  throw new Error("Your ships are still being minted. They'll appear in your fleet shortly.");
+}
 
 async function pollSettlement(transactionId: string): Promise<void> {
   for (let i = 0; i < MAX_POLLS; i++) {
@@ -282,6 +305,9 @@ function reducer(s: State, a: Action): State {
 
 export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Promise<unknown> }) {
   const { address: buyerAddress } = useAccount();
+  // Read when the payment is created (selectToken), which has no deps.
+  const buyerAddressRef = useRef(buyerAddress);
+  buyerAddressRef.current = buyerAddress;
   const constructAfterMint = useConstructAfterMint();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const ref = useRef(state);
@@ -350,17 +376,22 @@ export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Pro
 
   const selectToken = useCallback(async (token: PaymentTokenBalance) => {
     dispatch({ type: "TOKEN_SELECTED", token });
-    const { tier } = ref.current;
+    const { tier, gameChainId, variant } = ref.current;
     const flowTier = FLOW_USD_TIERS[tier];
-    if (!flowTier) {
-      dispatch({ type: "ERROR", error: "Invalid state" });
+    const buyer = buyerAddressRef.current;
+    if (!flowTier || !buyer) {
+      dispatch({ type: "ERROR", error: buyer ? "Invalid state" : "Connect your game wallet first" });
       return;
     }
     try {
+      // The purchase rides on the payment itself: /api/flow/fulfill mints
+      // to this buyer, whatever a later request claims.
+      const memo: FlowPaymentMemo = { buyerAddress: buyer, tier, gameChainId, variant };
       const { transaction } = await createCheckoutTransaction({
         amount: flowTier.actualAmount,
         currency: "USD",
         checkoutId: CHECKOUT_ID,
+        memo,
       });
       dispatch({ type: "TX_CREATED", transactionId: transaction.id });
 
@@ -390,7 +421,7 @@ export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Pro
   }, []);
 
   const confirm = useCallback(async () => {
-    const { transactionId, paymentWallet, tier, gameChainId, variant } = ref.current;
+    const { transactionId, paymentWallet } = ref.current;
     if (!transactionId || !paymentWallet) {
       dispatch({ type: "ERROR", error: "Invalid state" });
       return;
@@ -450,13 +481,7 @@ export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Pro
       await pollSettlement(transactionId);
 
       dispatch({ type: "STEP", step: "minting" });
-      const res = await fetch("/api/flow/fulfill", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionId, tier, buyerAddress, gameChainId, variant }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const { mintTxHash } = (await res.json()) as { mintTxHash?: `0x${string}` };
+      const mintTxHash = await requestFulfillment(transactionId);
 
       dispatch({ type: "STEP", step: "success" });
       await onSuccess();
@@ -469,7 +494,7 @@ export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Pro
         error: err instanceof Error ? err.message : "Payment failed",
       });
     }
-  }, [buyerAddress, onSuccess, constructAfterMint]);
+  }, [onSuccess, constructAfterMint]);
 
   const close = useCallback(() => dispatch({ type: "CLOSE" }), []);
   const retry = useCallback(() => dispatch({ type: "RETRY" }), []);

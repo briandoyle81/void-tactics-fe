@@ -56,14 +56,6 @@ export function invalidateRoguelikeRunQueries(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ predicate: (query) => isRoguelikeRunQuery(query.queryKey) });
 }
 
-export function useRoguelikeRunContract() {
-  return {
-    address: ROGUELIKE_RUN_ADDRESS,
-    abi: ROGUELIKE_RUN_ABI,
-    chainId: CHAIN_ID,
-  };
-}
-
 export function useGetRoguelikeRun(playerAddress: Address | undefined, enabled = true) {
   const result = useReadContract({
     address: ROGUELIKE_RUN_ADDRESS,
@@ -88,87 +80,6 @@ export function useHasActiveRoguelikeRun(playerAddress: Address | undefined) {
   return { ...result, data: result.data as boolean | undefined };
 }
 
-export function useIsRoguelikeNodeLocked(
-  playerAddress: Address | undefined,
-  nodeId: bigint | undefined,
-) {
-  const result = useReadContract({
-    address: ROGUELIKE_RUN_ADDRESS,
-    abi: ROGUELIKE_RUN_ABI,
-    chainId: CHAIN_ID,
-    functionName: "isNodeLocked",
-    args: playerAddress && nodeId != null ? [playerAddress, nodeId] : undefined,
-    query: { enabled: !!playerAddress && nodeId != null },
-  });
-  return { ...result, data: result.data as boolean | undefined };
-}
-
-/** Batched lock-state check for a node's children (avoids a hook-per-child loop). */
-export function useAreRoguelikeNodesLocked(
-  playerAddress: Address | undefined,
-  nodeIds: bigint[],
-) {
-  const result = useReadContracts({
-    contracts: nodeIds.map((id) => ({
-      address: ROGUELIKE_RUN_ADDRESS,
-      abi: ROGUELIKE_RUN_ABI,
-      chainId: CHAIN_ID,
-      functionName: "isNodeLocked" as const,
-      args: playerAddress ? ([playerAddress, id] as const) : undefined,
-    })),
-    query: { enabled: !!playerAddress && nodeIds.length > 0 },
-  });
-
-  const lockedByNodeId = new Map<string, boolean>();
-  nodeIds.forEach((id, i) => {
-    lockedByNodeId.set(id.toString(), (result.data?.[i]?.result as boolean | undefined) ?? true);
-  });
-
-  return { ...result, lockedByNodeId };
-}
-
-export function useIsRoguelikeNodeDefeated(
-  playerAddress: Address | undefined,
-  nodeId: bigint | undefined,
-) {
-  const result = useReadContract({
-    address: ROGUELIKE_RUN_ADDRESS,
-    abi: ROGUELIKE_RUN_ABI,
-    chainId: CHAIN_ID,
-    functionName: "isNodeDefeated",
-    args: playerAddress && nodeId != null ? [playerAddress, nodeId] : undefined,
-    query: { enabled: !!playerAddress && nodeId != null },
-  });
-  return { ...result, data: result.data as boolean | undefined };
-}
-
-/** Batched defeated-state check for a node's children (avoids a hook-per-child loop) — a won Combat node can't be fought again (NodeAlreadyDefeated). */
-export function useAreRoguelikeNodesDefeated(
-  playerAddress: Address | undefined,
-  nodeIds: bigint[],
-) {
-  const result = useReadContracts({
-    contracts: nodeIds.map((id) => ({
-      address: ROGUELIKE_RUN_ADDRESS,
-      abi: ROGUELIKE_RUN_ABI,
-      chainId: CHAIN_ID,
-      functionName: "isNodeDefeated" as const,
-      args: playerAddress ? ([playerAddress, id] as const) : undefined,
-    })),
-    query: { enabled: !!playerAddress && nodeIds.length > 0 },
-  });
-
-  const defeatedByNodeId = new Map<string, boolean>();
-  nodeIds.forEach((id, i) => {
-    defeatedByNodeId.set(
-      id.toString(),
-      (result.data?.[i]?.result as boolean | undefined) ?? false,
-    );
-  });
-
-  return { ...result, defeatedByNodeId };
-}
-
 /** Batched HP check for a roster (avoids a hook-per-ship loop). 0 means "not yet damaged this run" (fresh 100%), not literally 0 HP. */
 export function useRoguelikeRosterHP(
   playerAddress: Address | undefined,
@@ -191,20 +102,4 @@ export function useRoguelikeRosterHP(
   });
 
   return { ...result, hpByShipId };
-}
-
-/** 0 means "not yet damaged this run" (fresh 100%), not literally 0 HP — see docs/update/Frontend_Update_Guide_Roguelike_Campaign.md §1. */
-export function useRoguelikeShipHP(
-  playerAddress: Address | undefined,
-  shipId: bigint | undefined,
-) {
-  const result = useReadContract({
-    address: ROGUELIKE_RUN_ADDRESS,
-    abi: ROGUELIKE_RUN_ABI,
-    chainId: CHAIN_ID,
-    functionName: "getShipHP",
-    args: playerAddress && shipId != null ? [playerAddress, shipId] : undefined,
-    query: { enabled: !!playerAddress && shipId != null },
-  });
-  return { ...result, data: result.data as number | undefined };
 }

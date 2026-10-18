@@ -70,13 +70,3 @@ export function roguelikeResupplyDossierRows(f: { costCapOverride: number }): Mi
   }
   return rows;
 }
-
-export function campaignDossierRows(
-  f: CombatFields & { requiredVariant: number; unlocked: boolean; completed: boolean },
-): MissionDossierRow[] {
-  const rows = combatRows(f);
-  if (f.requiredVariant > 0) rows.push({ label: "Fleet", value: `${getFactionName(f.requiredVariant)} only` });
-  if (f.completed) rows.push({ label: "Status", value: "Completed", tone: "good" });
-  else if (!f.unlocked) rows.push({ label: "Status", value: "Locked", tone: "warning" });
-  return rows;
-}

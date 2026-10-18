@@ -12,11 +12,6 @@ export interface GameScoreData {
   maxScore: number;
 }
 
-export interface GameTurnData {
-  isMyTurn: boolean;
-  secondsLeft: number;
-}
-
 /** `"tie"` only ever comes from web2 — web3's contract has no tie outcome. */
 export type GameWinnerResult = "me" | "opponent" | "tie" | null;
 

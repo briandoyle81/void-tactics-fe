@@ -11,3 +11,16 @@ export const FLOW_USD_TIERS: FlowTier[] = [
   { displayPrice: "14.99", actualAmount: "0.15" },
   { displayPrice: "24.99", actualAmount: "0.25" },
 ];
+
+/**
+ * Attached to the checkout transaction when it's created
+ * (useFlowPaymentModal) and read back by /api/flow/fulfill, which mints to
+ * `buyerAddress` and nowhere else. The request body carries only the
+ * transaction id.
+ */
+export interface FlowPaymentMemo {
+  buyerAddress: string;
+  tier: number;
+  gameChainId: number;
+  variant?: number;
+}

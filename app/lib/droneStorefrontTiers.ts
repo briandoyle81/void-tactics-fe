@@ -12,11 +12,6 @@ export const TIER_COSTS: readonly number[] = [
 
 export const MAX_TIER = TIER_COSTS.length - 1;
 
-/** Bonus ships/claim after reaching `tier` — equals the tier number itself. */
-export function bonusForTier(tier: number): number {
-  return tier;
-}
-
 /** Cost in DEC of the next tier after `currentTier`, or null past the last configured tier. */
 export function nextTierCost(currentTier: number): number | null {
   const next = currentTier + 1;

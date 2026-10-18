@@ -1149,9 +1149,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     setTargetShipId(null);
   }, [lastMoveSignal, setTargetShipId]);
 
-  const calculateDamageForShip = useDamageCalculation({
-    selectedShipId,
-    getShipAttributes,
+  // Number ids, as the grid and the shared damage maths use.
+  const getShipAttributesForDisplay = React.useCallback(
+    (shipId: number) => getShipAttributes(BigInt(shipId)),
+    [getShipAttributes],
+  );
+  const calculateDamageForDisplay = useDamageCalculation({
+    selectedShipId: selectedShipId != null ? Number(selectedShipId) : null,
+    getShipAttributes: getShipAttributesForDisplay,
     selectedWeaponType,
     specialData,
     specialType,
@@ -1754,25 +1759,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const isShipOwnedByCurrentPlayerForDisplay = React.useCallback(
     (shipId: number) => isShipOwnedByCurrentPlayer(BigInt(shipId)),
     [isShipOwnedByCurrentPlayer],
-  );
-  const getShipAttributesForDisplay = React.useCallback(
-    (shipId: number) => getShipAttributes(BigInt(shipId)),
-    [getShipAttributes],
-  );
-  const calculateDamageForDisplay = React.useCallback(
-    (
-      targetShipId: number,
-      weaponType?: "weapon" | "special",
-      showReducedDamage?: boolean,
-      shooterShipIdOverride?: number,
-    ) =>
-      calculateDamageForShip(
-        BigInt(targetShipId),
-        weaponType,
-        showReducedDamage,
-        shooterShipIdOverride != null ? BigInt(shooterShipIdOverride) : undefined,
-      ),
-    [calculateDamageForShip],
   );
 
   const snapshotOptimisticSosIfNeeded = React.useCallback(() => {

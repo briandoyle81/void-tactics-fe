@@ -8,14 +8,14 @@ import { useLobbiesWeb2 } from "../hooks/useLobbiesWeb2";
 import { useOwnedShipsWeb2 } from "../hooks/useOwnedShipsWeb2";
 import ShipCard from "./ShipCard";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { MapDisplayWeb2 } from "./MapDisplayWeb2";
 import { useFleetViewWeb2 } from "../hooks/useFleetViewWeb2";
 import { FleetViewModal } from "./FleetViewModal";
 import { FleetSelectionModal } from "./FleetSelectionModal";
 import { FleetThreatWarningModal } from "./FleetThreatWarningModal";
 import { LobbyCreateSection } from "./LobbyCreateSection";
-import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacementWeb2";
+import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacement";
 import { buildFleetShipListItemsWeb2 } from "../utils/buildFleetShipListItemsWeb2";
 import {
   readFleetDraftsWeb2,

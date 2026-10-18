@@ -8,11 +8,6 @@ import { useLayoutEffect, type RefObject } from "react";
  */
 export type GameViewChromeLayout = "top" | "side";
 
-export function horizontalWastePx(el: HTMLElement): number {
-  const r = el.getBoundingClientRect();
-  return r.left + (window.innerWidth - r.right);
-}
-
 export const GAME_VIEW_EDGE_PAD_PX = 8;
 export const GAME_VIEW_EDGE_PAD_MOBILE_PX = 0;
 

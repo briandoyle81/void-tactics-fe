@@ -31,14 +31,6 @@ export function setCircle(
   el.setAttribute("r", String(Math.max(0, r)));
 }
 
-export function setPolyline(
-  el: SVGPolylineElement | null | undefined,
-  points: string,
-) {
-  if (!el) return;
-  el.setAttribute("points", points);
-}
-
 /**
  * Replay a pooled slot's CSS animation without forcing layout.
  * A hidden slot restarts on its own when un-hidden. A slot reused while

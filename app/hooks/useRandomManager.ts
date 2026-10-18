@@ -23,16 +23,6 @@ const RANDOM_MANAGER_ABI = CONTRACT_ABIS.RANDOM_MANAGER as Abi;
 const READY_POLL_INTERVAL_MS = 1000;
 const READY_TIMEOUT_MS = 20000;
 
-export function useRandomManagerContract() {
-  const activeChainId = useSelectedChainId();
-  const contractAddresses = getContractAddresses(activeChainId);
-  return {
-    address: contractAddresses.RANDOM_MANAGER as `0x${string}`,
-    abi: RANDOM_MANAGER_ABI,
-    chainId: activeChainId,
-  };
-}
-
 /** Thrown when a ship's construction window has passed (admin re-target needed). */
 export const REQUEST_EXPIRED_ERROR = "RequestExpired";
 /** Thrown when the mint block isn't sealed yet within the wait. */

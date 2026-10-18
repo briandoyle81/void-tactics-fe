@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import {
   CONTRACT_ABIS,
@@ -110,12 +110,6 @@ export function useGameOwner() {
   return { ...result, data: result.data as `0x${string}` | undefined };
 }
 
-export function usePvPMatchOwner() {
-  const { address, abi, chainId } = usePvPMatchContract();
-  const result = useReadContract({ address, abi, chainId, functionName: "owner" });
-  return { ...result, data: result.data as `0x${string}` | undefined };
-}
-
 /** Global heal ceiling (see contracts/SpecialEffectsLib.sol) — caps any heal effect, in any mode, at this % of a ship's max HP. Defaults to 100 (no extra cap). */
 export function useHealCapPercent() {
   const result = useGameRead("healCapPercent");
@@ -152,24 +146,6 @@ export function useGameRead(
     args,
     query: options?.query,
   });
-}
-
-// Hook for writing to contract with proper typing
-export function useGameWrite() {
-  return useWriteContract();
-}
-
-// Type-safe contract function names
-export type GameReadFunction =
-  | "gameCount"
-  | "playerGames"
-  | "getGame"
-  | "getGamesFromIds"
-  | "games";
-
-// Specific hooks for common functions
-export function useGameCount() {
-  return useGameRead("gameCount");
 }
 
 export function useGetGamesForPlayer(

@@ -8,7 +8,7 @@ import { generateRandomShip } from "../utils/generateRandomShip";
 import { calculateAttributesFromContracts } from "../utils/shipAttributesCalculator";
 import { toGameplayShip, toGridShip } from "../utils/toGridDisplay";
 import { useGameplayInteraction } from "../hooks/useGameplayInteraction";
-import { useDamageCalculationWeb2 } from "../hooks/useDamageCalculationWeb2";
+import { useDamageCalculation } from "../hooks/useDamageCalculation";
 import { buildMapGridsFromContractMap } from "../utils/mapGridUtils";
 import {
   HERO_DEMO_BLOCKED,
@@ -312,7 +312,7 @@ export function TacticalTargetingPreview() {
     isFactionAbilitySupported: false,
   });
 
-  const calculateDamage = useDamageCalculationWeb2({
+  const calculateDamage = useDamageCalculation({
     selectedShipId: interaction.selectedShipId,
     getShipAttributes,
     selectedWeaponType: interaction.selectedWeaponType,

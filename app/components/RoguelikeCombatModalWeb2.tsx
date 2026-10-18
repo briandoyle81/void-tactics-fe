@@ -9,7 +9,7 @@ import { waitForPlayerGameWeb2 } from "../utils/waitForPlayerGame";
 import { navigateToGameWeb2 } from "../utils/navigateToGame";
 import { FleetSelectionModal } from "./FleetSelectionModal";
 import { MapDisplayWeb2 } from "./MapDisplayWeb2";
-import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacementWeb2";
+import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacement";
 import { useShipAttributesByIdsWeb2 } from "../hooks/useShipAttributesByIdsWeb2";
 import { buildFleetShipListItemsWeb2 } from "../utils/buildFleetShipListItemsWeb2";
 import { useRoguelikeMatchWeb2, type RoguelikeRunWeb2, type RoguelikeNodeWeb2 } from "../hooks/useRoguelikeWeb2";

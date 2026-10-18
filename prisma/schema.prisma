@@ -586,6 +586,34 @@ model NodeContent {
 // automatically, since it may have gone out). SENT: broadcast, `txHash` set.
 // FAILED: nothing was sent (e.g. the faucet wallet was empty); the same
 // account may retry.
+enum FlowFulfillmentStatus {
+  PENDING
+  SENT
+  MINTED
+  FAILED
+}
+
+/// One row per Fireblocks Flow card payment (app/api/flow/fulfill): written
+/// before the mint so a payment mints once across restarts and server
+/// instances. PENDING: claimed, mint not yet broadcast. SENT: mint broadcast
+/// (mintTxHash stored), awaiting the receipt. MINTED: done. FAILED: nothing
+/// went out (or the mint reverted), so the payment can be retried.
+model FlowFulfillment {
+  id            Int                   @id @default(autoincrement())
+  transactionId String                @unique
+  buyerAddress  String
+  tier          Int
+  chainId       Int
+  variant       Int
+  status        FlowFulfillmentStatus @default(PENDING)
+  mintTxHash    String?
+  error         String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([status])
+}
+
 enum GasGrantStatus {
   PENDING
   SENT

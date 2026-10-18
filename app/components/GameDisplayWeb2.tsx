@@ -17,10 +17,10 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useGetGame } from "../hooks/useGamesWeb2";
 import { useGameShipsWeb2 } from "../hooks/useGameShipsWeb2";
 import { useGameStreamWeb2 } from "../hooks/useGameStreamWeb2";
-import { useGamePollingWeb2 } from "../hooks/useGamePollingWeb2";
+import { useGamePolling } from "../hooks/useGamePolling";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
-import { useDamageCalculationWeb2 } from "../hooks/useDamageCalculationWeb2";
+import { useDamageCalculation } from "../hooks/useDamageCalculation";
 import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
 import { usePendingMove } from "../hooks/usePendingMove";
 import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
@@ -53,7 +53,7 @@ import { GameBoardLayout } from "./GameBoardLayout";
 import { GameGrid } from "./GameGrid";
 import { GameGridTooltipHoveredCell } from "./GameGridTooltip";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { GameScoreBox } from "./GameScoreBox";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
@@ -721,7 +721,7 @@ function GameDisplayWeb2({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleCancelMove, setDragOverCell]);
 
-  const calculateDamageForShip = useDamageCalculationWeb2({
+  const calculateDamageForShip = useDamageCalculation({
     selectedShipId,
     getShipAttributes,
     selectedWeaponType,
@@ -731,12 +731,15 @@ function GameDisplayWeb2({
   });
 
   const recordPlayerMoveRef = React.useRef<(() => void) | null>(null);
-  const { recordPlayerMove } = useGamePollingWeb2({
+  const { recordPlayerMove } = useGamePolling({
     gameId,
     turnTime: game.turnState.turnTime,
     gameData: chainGame,
     refetchGame,
     onRefetch: useCallback(() => setTargetShipId(null), [setTargetShipId]),
+    // vs AI: a fixed fast post-move cadence, not one derived from the
+    // stored turn time (as in GameDisplay).
+    isSinglePlayerGame: isVsAIGame,
   });
   recordPlayerMoveRef.current = recordPlayerMove;
 

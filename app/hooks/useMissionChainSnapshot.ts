@@ -1,5 +1,4 @@
 "use client";
-
 import { useMemo } from "react";
 import {
   useGetAllPresetMaps,
@@ -21,7 +20,7 @@ import {
 } from "./useRoguelikeNodeMap";
 import { useWeb3NodeContent } from "./useNodeContent";
 import { useRoguelikeNodesWinEffects, useWinEffectAddresses } from "./useWinEffects";
-import type { MissionChainSnapshot, NodeContent } from "../utils/missionSeedExport";
+import type { MissionChainSnapshot } from "../utils/missionSeedExport";
 
 /** The deploy seeds exactly one roguelike campaign, which gets id 1. */
 const ROGUELIKE_CAMPAIGN_ID = BigInt(1);

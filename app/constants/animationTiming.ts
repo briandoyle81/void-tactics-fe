@@ -11,10 +11,6 @@ export const LASER_TRACE_PERIOD_MS = 2800;
 export const FLAK_BURST_CLEANUP_MS = 450;
 export const FLAK_BURST_SPAWN_INTERVAL_MS = 90;
 export const FLAK_BURST_SLOTS = 32;
-
-// Lightening Field (variant 2 slot 1)
-export const LIGHTNING_FIELD_SPAWN_MS = 70;
-export const LIGHTNING_FIELD_BOLT_MS = 220;
 export const LIGHTNING_FIELD_STRING_COUNT = 12;
 export const LIGHTNING_FIELD_LOOP_MS = 600;
 
@@ -24,7 +20,6 @@ export const RAILGUN_FLASH_DURATION_MS = 140;
 export const RAILGUN_PEN_DURATION_MS = 220;
 export const RAILGUN_MUZZLE_FADEOUT_MS = 150;
 export const RAILGUN_RESPAWN_DELAY_MS = 2000;
-export const RAILGUN_FLASH_SLOTS = 2;
 export const RAILGUN_IMPACT_SLOTS = 3;
 
 // Missile

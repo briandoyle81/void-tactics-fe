@@ -1,6 +1,11 @@
 import { Attributes } from "../types/types";
 import { isAttackDronesSpecial, isRepairDronesSpecial } from "./specialConfigWeb2";
 
+// Damage a shot or special would do. Number ids (web3 views adapt their
+// bigint ids at the call). Isomorphic: the battle previews in all three
+// views and the web2 server engine (gameEngineWeb2.ts, which floors applied
+// damage at 1 where the preview can show 0).
+
 export interface SpecialLike {
   strength: number;
 }
@@ -23,9 +28,9 @@ export function calculateDamage({
   weaponType,
   showReducedDamage,
 }: {
-  shooterId: bigint | null;
-  targetShipId: bigint;
-  getShipAttributes: (id: bigint) => Attributes | null;
+  shooterId: number | null;
+  targetShipId: number;
+  getShipAttributes: (id: number) => Attributes | null;
   selectedWeaponType: "weapon" | "special";
   specialData: SpecialLike | null | undefined;
   specialType: number;

@@ -395,6 +395,20 @@ exports.Prisma.NodeContentScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.FlowFulfillmentScalarFieldEnum = {
+  id: 'id',
+  transactionId: 'transactionId',
+  buyerAddress: 'buyerAddress',
+  tier: 'tier',
+  chainId: 'chainId',
+  variant: 'variant',
+  status: 'status',
+  mintTxHash: 'mintTxHash',
+  error: 'error',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.GasGrantScalarFieldEnum = {
   id: 'id',
   address: 'address',
@@ -470,6 +484,13 @@ exports.NodeGraphType = exports.$Enums.NodeGraphType = {
   ROGUELIKE: 'ROGUELIKE'
 };
 
+exports.FlowFulfillmentStatus = exports.$Enums.FlowFulfillmentStatus = {
+  PENDING: 'PENDING',
+  SENT: 'SENT',
+  MINTED: 'MINTED',
+  FAILED: 'FAILED'
+};
+
 exports.GasGrantStatus = exports.$Enums.GasGrantStatus = {
   PENDING: 'PENDING',
   SENT: 'SENT',
@@ -502,6 +523,7 @@ exports.Prisma.ModelName = {
   TournamentRegistrant: 'TournamentRegistrant',
   TournamentMatch: 'TournamentMatch',
   NodeContent: 'NodeContent',
+  FlowFulfillment: 'FlowFulfillment',
   GasGrant: 'GasGrant'
 };
 

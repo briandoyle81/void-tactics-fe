@@ -106,15 +106,6 @@ export interface RoguelikeNodeWeb2 {
   childEdges: Array<{ id: number; parentId: number; childId: number }>;
 }
 
-export function useRoguelikeNodeWeb2(nodeId: number | undefined) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["roguelike", "node", "web2", nodeId],
-    queryFn: () => apiFetch<RoguelikeNodeWeb2>(`/api/roguelike/nodes/${nodeId}`),
-    enabled: nodeId != null,
-  });
-  return { node: data, isLoading, error: error instanceof Error ? error : null };
-}
-
 /** Every node in a campaign, in one call — web2 counterpart to web3's useAllRoguelikeNodes. Powers RoguelikeGraphWeb2's full-map view. */
 export function useRoguelikeCampaignNodesWeb2(campaignId: number | undefined) {
   const { data, isLoading, error, refetch } = useQuery({

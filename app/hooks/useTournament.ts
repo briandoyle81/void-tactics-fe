@@ -1,6 +1,5 @@
 "use client";
-
-import { useReadContract, useReadContracts } from "wagmi";
+import { useReadContracts } from "wagmi";
 import { eventAbi, useCombinedEventWatch } from "./useCombinedEventWatch";
 import { usePageVisible } from "./usePageVisible";
 import { useCallback, useMemo } from "react";
@@ -34,17 +33,6 @@ const TOURNAMENT_DETAIL_EVENTS = [
 ].map((name) => eventAbi(TOURNAMENT_ABI, name));
 const TOURNAMENT_POLL_MS = 10_000;
 const CHAIN_ID = baseSepolia.id;
-
-/** owner()-gated Tournament admin controls check this before rendering, same gate LobbyAdminPanel.tsx uses. */
-export function useTournamentOwner() {
-  const result = useReadContract({
-    address: BASE_SEPOLIA_TOURNAMENT_ADDRESS,
-    abi: TOURNAMENT_ABI,
-    chainId: CHAIN_ID,
-    functionName: "owner",
-  });
-  return { ...result, data: result.data as Address | undefined };
-}
 
 export function useTournament(tournamentId: bigint | null) {
   const { address } = useAccount();

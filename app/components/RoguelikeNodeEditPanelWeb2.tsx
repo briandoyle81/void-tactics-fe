@@ -22,7 +22,7 @@ import { aiConfigToPreviewShipWeb2, type AIShipConfigWeb2 } from "../utils/aiShi
 import { ARCHETYPE_LABEL } from "../utils/aiShipConfig";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
 import ShipCard from "./ShipCard";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { parseZoneTiles } from "../utils/deploymentZone";
 
 const NEW_NODE_DEFAULTS = { turnTimeSeconds: 120, maxScore: 1000, costCapOverride: 700 };

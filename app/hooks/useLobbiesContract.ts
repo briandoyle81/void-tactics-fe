@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useReadContract, useWriteContract } from "wagmi";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import type { Abi } from "viem";
-import { Lobby, PlayerLobbyState, PlayerLobbyStateTuple, tupleToPlayerLobbyState } from "../types/types";
+import { Lobby, PlayerLobbyStateTuple, tupleToPlayerLobbyState } from "../types/types";
 import { useSelectedChainId } from "./useSelectedChainId";
 
 /** Lobbies contract target for the in-app network picker (reads and intended writes). */
@@ -42,27 +42,6 @@ export function useLobbiesRead(
 export function useLobbiesWrite() {
   return useWriteContract();
 }
-
-// Type-safe contract function names
-export type LobbiesReadFunction =
-  | "getLobby"
-  | "getPlayerState"
-  | "getPlayerTimeoutEnd"
-  | "isLobbyOpenForJoining"
-  | "lobbyCount"
-  | "freeGamesPerAddress"
-  | "additionalLobbyFee"
-  | "paused";
-
-export type LobbiesWriteFunction =
-  | "createLobby"
-  | "joinLobby"
-  | "leaveLobby"
-  | "timeoutJoiner"
-  | "createFleet"
-  | "quitWithPenalty"
-  | "acceptGame"
-  | "rejectGame";
 
 // Helper hooks for common operations
 export function useLobby(

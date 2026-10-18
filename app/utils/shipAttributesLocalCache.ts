@@ -196,20 +196,6 @@ function jsonStringifyWithBigint(value: unknown): string {
   );
 }
 
-/** Read snapshot written by `fetchAndPersistShipAttributesCaches` (optional UI use). */
-export function readShipAttributesContractSnapshot(
-  chainId: number,
-): ShipAttributesContractSnapshotV1 | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(CONTRACT_SNAPSHOT_KEY(chainId));
-    if (!raw) return null;
-    return JSON.parse(raw) as ShipAttributesContractSnapshotV1;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Re-read ShipAttributes cost tables / versions and `calculateShipAttributesByIds`
  * for the current navy, then persist to localStorage (long-lived).

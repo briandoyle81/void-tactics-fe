@@ -1,6 +1,5 @@
 "use client";
-
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { CLIENT_TAB_SLUG_LIST } from "../config/clientTabs";
 import { ADMIN_PATH, PLAY_PATH } from "../config/routes";
 
@@ -185,35 +184,6 @@ export function useUrlSearch(): string {
     () => window.location.search.replace(/^\?/, ""),
     () => "",
   );
-}
-
-/**
- * A screen's state backed by one query param: [value, set]. `set` pushes a
- * history entry (pass `{ replace: true }` for automatic changes, e.g.
- * closing a lobby that no longer exists, so Back doesn't land on it).
- */
-export function useUrlValue(
-  key: string,
-): [string | null, (value: string | number | bigint | null, options?: SetUrlParamsOptions) => void] {
-  const value = useUrlParam(key);
-  const set = useCallback(
-    (next: string | number | bigint | null, options?: SetUrlParamsOptions) =>
-      setUrlParams({ [key]: next == null ? null : String(next) }, options),
-    [key],
-  );
-  return [value, set];
-}
-
-/** Boolean form of useUrlValue (`key=1` when true). */
-export function useUrlFlag(
-  key: string,
-): [boolean, (on: boolean, options?: SetUrlParamsOptions) => void] {
-  const [value, setValue] = useUrlValue(key);
-  const set = useCallback(
-    (on: boolean, options?: SetUrlParamsOptions) => setValue(on ? "1" : null, options),
-    [setValue],
-  );
-  return [value === "1", set];
 }
 
 /** Parses a bigint param, null when absent or malformed. */

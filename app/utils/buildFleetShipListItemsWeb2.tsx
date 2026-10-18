@@ -4,7 +4,7 @@ import type { Attributes } from "../types/types";
 import type { Web2Ship } from "../types/web2Ship";
 import ShipCard from "../components/ShipCard";
 import { ShipImageWeb2 } from "../components/ShipImageWeb2";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import type { FleetShipListItemData } from "../components/FleetShipListPanel";
 
 export interface BuildFleetShipListItemsWeb2Params {

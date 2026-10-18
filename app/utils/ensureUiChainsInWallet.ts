@@ -1,5 +1,5 @@
 import { numberToHex } from "viem";
-import { getChainById, type SupportedChain } from "../config/networks";
+import { type SupportedChain } from "../config/networks";
 
 export type Eip1193Requester = {
   request: (args: { method: string; params?: unknown }) => Promise<unknown>;

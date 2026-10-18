@@ -10,12 +10,6 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-declare global {
-  // No-op declaration so this module can augment global JSON at runtime
-  // without affecting the TypeScript lib types.
-  interface JSON {}
-}
-
 (() => {
   if (typeof JSON === "undefined" || typeof JSON.stringify !== "function") {
     return;

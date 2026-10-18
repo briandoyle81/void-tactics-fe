@@ -44,26 +44,6 @@ export interface ShipData {
   timestampDestroyed: bigint;
 }
 
-export type ShipTuple = [
-  string, // name
-  bigint, // id
-  ShipEquipment, // equipment
-  ShipTraits, // traits
-  ShipData, // shipData
-  Address // owner
-];
-
-export function tupleToShip(tuple: ShipTuple): Ship {
-  return {
-    name: tuple[0],
-    id: tuple[1],
-    equipment: tuple[2],
-    traits: tuple[3],
-    shipData: tuple[4],
-    owner: tuple[5],
-  };
-}
-
 // Equipment enum mappings based on actual contract enums. Verified
 // 2026-08-28 via `cast call` against the live RenderMetadata contract on
 // Base Sepolia (mainWeaponNames(1, slot)) — "Missile"/"Plasma" were
@@ -276,18 +256,6 @@ export interface Attributes {
   statusEffects: number[];
 }
 
-export interface GameData {
-  gameId: bigint;
-  lobbyId: bigint;
-  creator: Address;
-  joiner: Address;
-  creatorFleetId: bigint;
-  joinerFleetId: bigint;
-  creatorGoesFirst: boolean;
-  startedAt: bigint;
-  currentTurn: Address;
-}
-
 export interface GameMetadata {
   gameId: bigint;
   lobbyId: bigint;
@@ -314,16 +282,6 @@ export interface GameGridDimensions {
   gridHeight: number;
 }
 
-// Tuple types for contract return values
-export type FleetTuple = [
-  bigint, // id
-  bigint, // lobbyId
-  Address, // owner
-  bigint[], // shipIds
-  bigint, // totalCost
-  boolean // isComplete
-];
-
 export type PlayerLobbyStateTuple = [
   bigint, // activeLobbyId
   bigint, // activeLobbiesCount
@@ -332,30 +290,6 @@ export type PlayerLobbyStateTuple = [
   bigint, // lastKickTime
   bigint // activeAILobbiesCount
 ];
-
-export type GameDataTuple = [
-  bigint, // gameId
-  bigint, // lobbyId
-  Address, // creator
-  Address, // joiner
-  bigint, // creatorFleetId
-  bigint, // joinerFleetId
-  boolean, // creatorGoesFirst
-  bigint, // startedAt
-  Address // currentTurn
-];
-
-// Helper functions to convert tuples to objects
-export function tupleToFleet(tuple: FleetTuple): Fleet {
-  return {
-    id: tuple[0],
-    lobbyId: tuple[1],
-    owner: tuple[2],
-    shipIds: tuple[3],
-    totalCost: tuple[4],
-    isComplete: tuple[5],
-  };
-}
 
 export function tupleToPlayerLobbyState(
   tuple: PlayerLobbyStateTuple
@@ -367,20 +301,6 @@ export function tupleToPlayerLobbyState(
     kickCount: tuple[3],
     lastKickTime: tuple[4],
     activeAILobbiesCount: tuple[5],
-  };
-}
-
-export function tupleToGameData(tuple: GameDataTuple): GameData {
-  return {
-    gameId: tuple[0],
-    lobbyId: tuple[1],
-    creator: tuple[2],
-    joiner: tuple[3],
-    creatorFleetId: tuple[4],
-    joinerFleetId: tuple[5],
-    creatorGoesFirst: tuple[6],
-    startedAt: tuple[7],
-    currentTurn: tuple[8],
   };
 }
 
@@ -455,13 +375,6 @@ export enum Archetype {
   Support,
   Turtle,
   Rammer,
-}
-
-// SinglePlayerMatch.aiShipInfo(shipId)
-export interface AIShipInfo {
-  archetype: Archetype;
-  variant: number;
-  special: number;
 }
 
 // NodeMap.getAllNodes()/.getNode(nodeId) — the campaign graph. No display

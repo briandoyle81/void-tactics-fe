@@ -17,6 +17,7 @@ import { useRoguelikeRosterHP } from "../hooks/useRoguelikeRun";
 import { useRepairCostPerHP, useRoguelikeResupply, ROGUELIKE_RESUPPLY_ADDRESS } from "../hooks/useRoguelikeResupply";
 import { RoguelikeRun, RoguelikeNode } from "../types/roguelike";
 import { DUPLICATE_SHIP_ID_TOAST } from "../utils/fleetShipIds";
+import { RoguelikeResupplyView } from "./operations/RoguelikeResupplyView";
 
 const UTC_APPROVE_ABI = [
   {
@@ -37,6 +38,11 @@ interface RoguelikeResupplyPanelProps {
   onDone: () => void;
 }
 
+/**
+ * Web3's resupply screen (see RoguelikeResupplyView): roster HP from the run
+ * contract, repairs as a UTC approve then resupplyRepair, roster changes as
+ * resupplyModifyRoster transactions.
+ */
 export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyPanelProps) {
   const { address } = useAccount();
   const { ships: ownedShips, isLoading: shipsLoading, refetch: refetchOwnedShips } = useOwnedShips(
@@ -44,8 +50,6 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
   );
   const { resupplyModifyRoster } = useRoguelikeResupply();
   const { data: repairCostPerHP } = useRepairCostPerHP();
-  const [selectedForRepair, setSelectedForRepair] = React.useState<Set<string>>(new Set());
-  const [isModifyingRoster, setIsModifyingRoster] = React.useState(false);
 
   const rosterIdSet = React.useMemo(
     () => new Set(run.rosterShipIds.map((id) => id.toString())),
@@ -93,21 +97,6 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
     [attributesMap, hpByShipId],
   );
 
-  const missingHPFor = (shipId: bigint) => {
-    const { current, max } = shipEffectiveHP(shipId);
-    return Math.max(0, max - current);
-  };
-
-  const totalMissingHP = React.useMemo(
-    () =>
-      Array.from(selectedForRepair).reduce(
-        (sum, idStr) => sum + missingHPFor(BigInt(idStr)),
-        0,
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedForRepair, hpByShipId, attributesMap],
-  );
-  const repairCost = (repairCostPerHP ?? 0n) * BigInt(totalMissingHP);
 
   const contractAddresses = getContractAddresses(baseSepolia.id);
   const { data: utcBalance } = useReadContract({
@@ -126,20 +115,9 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
     chainId: baseSepolia.id,
     query: { enabled: !!address },
   });
-  const utcApproved = (utcAllowance as bigint | undefined) != null && (utcAllowance as bigint) >= repairCost;
-
-  const toggleRepairSelection = (shipId: bigint) => {
-    setSelectedForRepair((prev) => {
-      const next = new Set(prev);
-      const key = shipId.toString();
-      if (next.has(key)) next.delete(key);
-      else if (missingHPFor(shipId) > 0) next.add(key);
-      return next;
-    });
-  };
+  const costFor = (missingHP: number) => (repairCostPerHP ?? 0n) * BigInt(missingHP);
 
   const handleAddShip = async (shipId: bigint) => {
-    setIsModifyingRoster(true);
     try {
       await resupplyModifyRoster([shipId], []);
       toast.success("Ship added to roster");
@@ -163,13 +141,10 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
       } else {
         toast.error(`Failed to add ship: ${message}`);
       }
-    } finally {
-      setIsModifyingRoster(false);
     }
   };
 
   const handleRemoveShip = async (shipId: bigint) => {
-    setIsModifyingRoster(true);
     try {
       await resupplyModifyRoster([], [shipId]);
       toast.success("Ship removed from roster");
@@ -187,191 +162,106 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
       } else {
         toast.error(`Failed to remove ship: ${message}`);
       }
-    } finally {
-      setIsModifyingRoster(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-6 border-2 border-cyan p-6 font-mono" style={{ borderRadius: 0 }}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-cyan">[RESUPPLY — NODE #{node.id.toString()}]</h3>
-        <button
-          type="button"
-          onClick={onDone}
-          className="border-2 border-steel px-4 py-2 text-xs font-bold uppercase tracking-wider text-text-secondary transition-colors hover:border-cyan hover:text-cyan"
-          style={{ borderRadius: 0 }}
-        >
-          [CONTINUE]
-        </button>
-      </div>
-
-      <div>
-        <h4 className="mb-2 text-xs uppercase tracking-wider text-text-muted">Repair Roster</h4>
-        {shipsLoading ? (
-          <p className="text-sm text-text-muted">Loading roster…</p>
+    <RoguelikeResupplyView
+      nodeLabel={node.id.toString()}
+      costCapLabel={run.currentCostCap.toString()}
+      isLoading={shipsLoading}
+      roster={rosterShips.map((ship) => {
+        const { current, max } = shipEffectiveHP(ship.id);
+        return {
+          key: ship.id.toString(),
+          name: ship.name || `Ship #${ship.id}`,
+          image: <ShipImage ship={ship} className="h-full w-full" showLoadingState={false} />,
+          currentHP: current,
+          maxHP: max,
+        };
+      })}
+      available={availableShips.map((ship) => ({
+        key: ship.id.toString(),
+        card: (
+          <ShipCard
+            ship={toShipCardData(ship)}
+            shipImage={<ShipImage ship={ship} className="h-full w-full" showLoadingState={false} />}
+            isStarred={false}
+            onToggleStar={() => {}}
+            isSelected={false}
+            onToggleSelection={() => {}}
+            onRecycleClick={() => {}}
+            showInGameProperties={false}
+            hideRecycle
+            hideCheckbox
+          />
+        ),
+      }))}
+      onAdd={(key) => handleAddShip(BigInt(key))}
+      onRemove={(key) => handleRemoveShip(BigInt(key))}
+      repairCostLabel={(missingHP) => `Repair cost: ${formatEther(costFor(missingHP))} UTC (${missingHP} HP)`}
+      renderRepairButton={({ keys, missingHP, onRepaired }) => {
+        const repairCost = costFor(missingHP);
+        const utcApproved = (utcAllowance as bigint | undefined) != null && (utcAllowance as bigint) >= repairCost;
+        return !utcApproved ? (
+          <TransactionButton
+            transactionId={`approve-utc-roguelike-repair-${address}`}
+            contractAddress={contractAddresses.UNIVERSAL_CREDITS as `0x${string}`}
+            abi={UTC_APPROVE_ABI as Abi}
+            functionName="approve"
+            args={[ROGUELIKE_RESUPPLY_ADDRESS, repairCost]}
+            className="border-2 border-cyan px-4 py-2 text-xs font-bold uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={(utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost}
+            loadingText="[APPROVING...]"
+            errorText="[ERROR APPROVING]"
+            onSuccess={async () => {
+              await refetchAllowance();
+              toast.success("UTC approved!");
+            }}
+            onError={(error) => {
+              console.error("Failed to approve UTC:", error);
+              toast.error("Failed to approve UTC transfer");
+            }}
+            validateBeforeTransaction={() => {
+              if (!address) return "Please connect your wallet";
+              if ((utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost) {
+                return "Insufficient UTC balance";
+              }
+              return true;
+            }}
+          >
+            [APPROVE {formatEther(repairCost)} UTC]
+          </TransactionButton>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {rosterShips.map((ship) => {
-              const { current, max } = shipEffectiveHP(ship.id);
-              const missing = Math.max(0, max - current);
-              const isSelected = selectedForRepair.has(ship.id.toString());
-              return (
-                <button
-                  key={ship.id.toString()}
-                  type="button"
-                  disabled={missing === 0}
-                  onClick={() => toggleRepairSelection(ship.id)}
-                  className={`flex flex-col gap-1 border-2 p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                    isSelected ? "border-cyan bg-cyan/10" : "border-gunmetal"
-                  }`}
-                  style={{ borderRadius: 0 }}
-                >
-                  <div className="aspect-square w-full overflow-hidden" style={{ backgroundColor: "var(--color-slate)" }}>
-                    <ShipImage ship={ship} className="h-full w-full" showLoadingState={false} />
-                  </div>
-                  <span className="truncate text-[10px] uppercase tracking-wider text-text-secondary">
-                    {ship.name || `Ship #${ship.id}`}
-                  </span>
-                  <span className={`text-[10px] ${missing > 0 ? "text-warning-red" : "text-phosphor-green"}`}>
-                    HP {current}/{max}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {totalMissingHP > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 border border-cyan/40 bg-cyan/10 p-3 text-xs">
-            <span className="text-cyan">
-              Repair cost: {formatEther(repairCost)} UTC ({totalMissingHP} HP)
-            </span>
-            {!utcApproved ? (
-              <TransactionButton
-                transactionId={`approve-utc-roguelike-repair-${address}`}
-                contractAddress={contractAddresses.UNIVERSAL_CREDITS as `0x${string}`}
-                abi={UTC_APPROVE_ABI as Abi}
-                functionName="approve"
-                args={[ROGUELIKE_RESUPPLY_ADDRESS, repairCost]}
-                className="border-2 border-cyan px-4 py-2 text-xs font-bold uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={
-                  (utcBalance as bigint | undefined) == null ||
-                  (utcBalance as bigint) < repairCost
-                }
-                loadingText="[APPROVING...]"
-                errorText="[ERROR APPROVING]"
-                onSuccess={async () => {
-                  await refetchAllowance();
-                  toast.success("UTC approved!");
-                }}
-                onError={(error) => {
-                  console.error("Failed to approve UTC:", error);
-                  toast.error("Failed to approve UTC transfer");
-                }}
-                validateBeforeTransaction={() => {
-                  if (!address) return "Please connect your wallet";
-                  if ((utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost) {
-                    return "Insufficient UTC balance";
-                  }
-                  return true;
-                }}
-              >
-                [APPROVE {formatEther(repairCost)} UTC]
-              </TransactionButton>
-            ) : (
-              <TransactionButton
-                transactionId={`repair-roguelike-roster-${address}`}
-                contractAddress={ROGUELIKE_RESUPPLY_ADDRESS}
-                abi={CONTRACT_ABIS.ROGUELIKE_RESUPPLY as Abi}
-                functionName="resupplyRepair"
-                args={[Array.from(selectedForRepair).map((id) => BigInt(id))]}
-                className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
-                loadingText="[REPAIRING...]"
-                errorText="[ERROR REPAIRING]"
-                onSuccess={async () => {
-                  await refetchHP();
-                  setSelectedForRepair(new Set());
-                  toast.success("Repair complete!");
-                }}
-                onError={(error) => {
-                  console.error("Failed to repair roster:", error);
-                  const message = error instanceof Error ? error.message : String(error);
-                  if (message.includes("ActiveGameInProgress")) {
-                    toast.error(
-                      "A match is still in progress. Return to it or let it finish before repairing.",
-                    );
-                  } else {
-                    toast.error("Failed to repair roster");
-                  }
-                }}
-              >
-                [REPAIR {totalMissingHP} HP]
-              </TransactionButton>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <h4 className="mb-2 text-xs uppercase tracking-wider text-text-muted">
-          Roster ({rosterShips.length}) — cost cap {run.currentCostCap.toString()}
-        </h4>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {rosterShips.map((ship) => (
-            <div key={ship.id.toString()} className="flex flex-col gap-1">
-              <div
-                className="aspect-square w-full overflow-hidden border border-gunmetal"
-                style={{ backgroundColor: "var(--color-slate)" }}
-              >
-                <ShipImage ship={ship} className="h-full w-full" showLoadingState={false} />
-              </div>
-              <button
-                type="button"
-                disabled={isModifyingRoster}
-                onClick={() => void handleRemoveShip(ship.id)}
-                className="border border-warning-red px-1 py-0.5 text-[9px] uppercase tracking-wider text-warning-red hover:bg-warning-red/10 disabled:opacity-50"
-              >
-                [REMOVE]
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {availableShips.length > 0 && (
-          <>
-            <h4 className="mb-2 mt-4 text-xs uppercase tracking-wider text-text-muted">
-              Available Ships
-            </h4>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {availableShips.map((ship) => (
-                <div key={ship.id.toString()} className="flex flex-col gap-1">
-                  <ShipCard
-                    ship={toShipCardData(ship)}
-                    shipImage={<ShipImage ship={ship} className="h-full w-full" showLoadingState={false} />}
-                    isStarred={false}
-                    onToggleStar={() => {}}
-                    isSelected={false}
-                    onToggleSelection={() => {}}
-                    onRecycleClick={() => {}}
-                    showInGameProperties={false}
-                    hideRecycle
-                    hideCheckbox
-                  />
-                  <button
-                    type="button"
-                    disabled={isModifyingRoster}
-                    onClick={() => void handleAddShip(ship.id)}
-                    className="border border-phosphor-green px-1 py-0.5 text-[9px] uppercase tracking-wider text-phosphor-green hover:bg-phosphor-green/10 disabled:opacity-50"
-                  >
-                    [ADD]
-                  </button>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+          <TransactionButton
+            transactionId={`repair-roguelike-roster-${address}`}
+            contractAddress={ROGUELIKE_RESUPPLY_ADDRESS}
+            abi={CONTRACT_ABIS.ROGUELIKE_RESUPPLY as Abi}
+            functionName="resupplyRepair"
+            args={[keys.map((id) => BigInt(id))]}
+            className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
+            loadingText="[REPAIRING...]"
+            errorText="[ERROR REPAIRING]"
+            onSuccess={async () => {
+              await refetchHP();
+              onRepaired();
+              toast.success("Repair complete!");
+            }}
+            onError={(error) => {
+              console.error("Failed to repair roster:", error);
+              const message = error instanceof Error ? error.message : String(error);
+              if (message.includes("ActiveGameInProgress")) {
+                toast.error("A match is still in progress. Return to it or let it finish before repairing.");
+              } else {
+                toast.error("Failed to repair roster");
+              }
+            }}
+          >
+            [REPAIR {missingHP} HP]
+          </TransactionButton>
+        );
+      }}
+      onDone={onDone}
+    />
   );
 }

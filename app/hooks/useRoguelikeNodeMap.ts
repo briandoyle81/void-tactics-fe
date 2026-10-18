@@ -27,19 +27,6 @@ export function useRoguelikeNodeMapContract() {
   };
 }
 
-/** `getNode` already embeds `children` (child node ids) — no separate `getChildren` call needed for the common case. */
-export function useGetRoguelikeNode(nodeId: bigint | undefined) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "getNode",
-    args: nodeId != null ? [nodeId] : undefined,
-    query: { enabled: nodeId != null },
-  });
-  return { ...result, data: result.data as RoguelikeNode | undefined };
-}
-
 export function useCampaignAutoHealPercent(campaignId: bigint | undefined) {
   const result = useReadContract({
     address: ROGUELIKE_NODE_MAP_ADDRESS,

@@ -45,13 +45,3 @@ export interface Web2Lobby {
   gameConfig: Web2LobbyGameConfig;
   state: Web2LobbyState;
 }
-
-export interface Web2Fleet {
-  id: number;
-  lobbyId: number;
-  owner: string;
-  shipIds: number[];
-  totalCost: number;
-  isComplete: boolean;
-  startingPositions?: Array<{ row: number; col: number }>;
-}

@@ -11,7 +11,7 @@ import { apiMutate } from "../lib/apiMutate";
 import { constructAllShipsWeb2 } from "../utils/constructShipsWeb2";
 import ShipCard from "./ShipCard";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { navyFilterSecondaryOptionsWeb2, filterAndSortShipsWeb2 } from "../utils/navyFiltersWeb2";
 import { useNavyFilterState } from "../hooks/useNavyFilterState";
 import { useStarredShips } from "../hooks/useStarredShips";

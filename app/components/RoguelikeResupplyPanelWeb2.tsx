@@ -10,7 +10,7 @@ import { useRoguelikeResupplyWeb2 } from "../hooks/useRoguelikeResupplyWeb2";
 import type { RoguelikeRunWeb2, RoguelikeNodeWeb2 } from "../hooks/useRoguelikeWeb2";
 import ShipCard from "./ShipCard";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
+import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 
 interface RoguelikeResupplyPanelWeb2Props {
   run: RoguelikeRunWeb2;

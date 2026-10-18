@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useReadContract, useReadContracts, useWriteContract, useAccount } from "wagmi";
+import { useReadContract, useReadContracts, useAccount } from "wagmi";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import type { Abi } from "viem";
 import { getSelectedChainId } from "../config/networks";
@@ -60,19 +60,6 @@ export function useMapsRead(
   });
 }
 
-// Hook for writing to contract with proper typing
-export function useMapsWrite() {
-  return useWriteContract();
-}
-
-// Type-safe contract function names
-export type MapsReadFunction =
-  | "mapCount"
-  | "getAllPresetMaps"
-  | "getPresetMap"
-  | "getPresetScoringMap"
-  | "mapExists";
-
 // Specific hooks for common functions
 export function useMapCount() {
   return useMapsRead("mapCount", undefined, { chainSource: "picker" });
@@ -132,15 +119,6 @@ export function useMapExists(mapId: number) {
   return useMapsRead("mapExists", enabled ? [BigInt(mapId)] : undefined, {
     query: { enabled },
   });
-}
-
-export function useMapMode(mapId: number, readOptions?: { chainSource?: "wallet" | "picker" }) {
-  const enabled = isValidPositiveInt(mapId);
-  const result = useMapsRead("mapMode", enabled ? [BigInt(mapId)] : undefined, {
-    query: { enabled },
-    chainSource: readOptions?.chainSource ?? "picker",
-  });
-  return { ...result, data: result.data as MapMode | undefined };
 }
 
 // Batched mode lookup for a whole map list (picker filtering, admin badges)

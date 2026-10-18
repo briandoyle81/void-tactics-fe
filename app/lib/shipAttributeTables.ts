@@ -118,6 +118,3 @@ export const DEFAULT_ATTRIBUTE_TABLES_BY_VARIANT: Record<number, ShipAttributeTa
 export function defaultAttributeTablesForVariant(variant: number): ShipAttributeTables {
   return DEFAULT_ATTRIBUTE_TABLES_BY_VARIANT[variant] ?? DEFAULT_ATTRIBUTE_TABLES_V1;
 }
-
-// Back-compat alias for any lingering variant-1-only call sites.
-export const DEFAULT_ATTRIBUTE_TABLES = DEFAULT_ATTRIBUTE_TABLES_V1;

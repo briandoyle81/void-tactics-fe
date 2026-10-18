@@ -27,8 +27,3 @@ export interface GridShipPosition {
 export interface GridShip extends ShipVisual {
   id: number;
 }
-
-export interface GridTargetRef {
-  shipId: number;
-  position: { row: number; col: number };
-}

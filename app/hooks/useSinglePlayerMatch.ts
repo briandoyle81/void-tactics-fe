@@ -1,11 +1,9 @@
 "use client";
-
 import { useCallback } from "react";
 import { useReadContract, useWriteContract } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
-import { AIShipInfo, Archetype } from "../types/types";
 
 // SinglePlayerMatch is Base Sepolia only today — pin to that chain directly
 // rather than following the connected wallet/picker chain, same pattern as
@@ -35,14 +33,6 @@ const TAKE_AI_TURN_GAS_LIMIT = 2_500_000n;
 // from the limit isn't spent, just capped), so one generously-padded
 // constant covers every node rather than trying to track per-map costs.
 const START_NODE_MATCH_GAS_LIMIT = 5_500_000n;
-
-export function useSinglePlayerMatchContract() {
-  return {
-    address: SINGLE_PLAYER_MATCH_ADDRESS,
-    abi: SINGLE_PLAYER_MATCH_ABI,
-    chainId: CHAIN_ID,
-  };
-}
 
 export function useSinglePlayerMatch() {
   const { writeContractAsync } = useWriteContract();
@@ -117,23 +107,4 @@ export function useGameIdToNodeId(gameId: bigint | undefined) {
     },
   });
   return { ...result, data: result.data as bigint | undefined };
-}
-
-// aiShipInfo(uint256) returns three separate named outputs (archetype,
-// variant, special), not a single struct — viem/wagmi decode that as a
-// positional tuple, not an object, so map it explicitly.
-export function useAIShipInfo(shipId: bigint | undefined) {
-  const result = useReadContract({
-    address: SINGLE_PLAYER_MATCH_ADDRESS,
-    abi: SINGLE_PLAYER_MATCH_ABI,
-    chainId: CHAIN_ID,
-    functionName: "aiShipInfo",
-    args: shipId != null ? [shipId] : undefined,
-    query: { enabled: shipId != null },
-  });
-  const raw = result.data as readonly [Archetype, number, number] | undefined;
-  const data: AIShipInfo | undefined = raw
-    ? { archetype: raw[0], variant: raw[1], special: raw[2] }
-    : undefined;
-  return { ...result, data };
 }

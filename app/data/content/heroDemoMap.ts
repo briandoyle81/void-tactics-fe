@@ -3,15 +3,6 @@ import type {
   ContractScoringPositions,
 } from "../../utils/mapGridUtils";
 
-// Terrain for the website hero's battle preview (TacticalTargetingPreview):
-// a snapshot of preset map 14, "Debris Ring — Sector 14", read from the
-// Maps contract on Base Sepolia on 2026-10-13. Shipped with the site so the
-// homepage needs no RPC calls. It doesn't follow later edits to map 14; to
-// refresh it, re-read getPresetMap / getPresetScoringMap /
-// getPresetMapImpassable(14) and paste the results here.
-
-export const HERO_DEMO_MAP_ID = 14;
-
 /** Line-of-sight blocking tiles (getPresetMap). */
 export const HERO_DEMO_BLOCKED: ContractBlockedPositions = [
   { row: 0, col: 8 },

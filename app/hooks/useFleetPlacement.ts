@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GRID_DIMENSIONS, Ship } from "../types/types";
+import type { Web2Ship } from "../types/web2Ship";
 import {
   type FleetFilters,
   DEFAULT_FLEET_FILTERS,
@@ -9,8 +10,23 @@ import {
 } from "../utils/fleetFilters";
 import { MAX_SHIPS_PER_FLEET } from "../utils/lobbyFormatters";
 
-export interface FleetPlacementParams {
-  ships: Ship[];
+/** The ship fields fleet placement reads, beyond its id (any id type). */
+interface FleetPlacementShip<Id> {
+  id: Id;
+  traits: { variant: number; accuracy: number; hull: number; speed: number };
+  equipment: { mainWeapon: number; shields: number; special: number };
+  shipData: { shiny: boolean; constructed: boolean; inFleet: boolean };
+}
+
+/** A ship's numbers, read at the mode's adapter (web3 converts its bigints here). */
+interface FleetPlacementShipNumbers {
+  cost: number;
+  costsVersion: number;
+  isDestroyed: boolean;
+}
+
+interface FleetPlacementParams<S> {
+  ships: S[];
   costLimit: number;
   /** Global ship-attributes costs version, or null if not yet known (skips the staleness check). */
   costsVersion: number | null;
@@ -40,31 +56,31 @@ const CREATOR_ZONE = { colMin: 0, colMax: 3 } as const;
 const JOINER_ZONE = { colMin: 13, colMax: 16 } as const;
 
 // Shared ship-picking state/handlers for any "build a fleet on a grid" flow
-// — PvP lobby creation (either side) and single-player node matches alike.
-// Previously PvP (Lobbies.tsx) and single-player (useNodeFleetSelection.ts)
-// each had their own copy of this logic; a chain-scoping fix landing in one
-// and not the other is exactly the kind of drift a single shared
-// implementation prevents. See feedback_no_parallel_components memory.
-export function useFleetPlacement({
+// — PvP lobby creation (either side) and single-player matches alike, web3
+// and web2 (useFleetPlacement / useFleetPlacementWeb2 below). Ids are
+// opaque here (bigint or number, whatever the mode uses); each mode's
+// wrapper supplies the ship's numbers. A fix lands in both modes at once.
+function useFleetPlacementCore<Id extends bigint | number, S extends FleetPlacementShip<Id>>({
   ships,
   costLimit,
   costsVersion,
   isCreatorSide,
   requiredVariant,
   zoneTiles,
-}: FleetPlacementParams) {
+  shipNumbers,
+}: FleetPlacementParams<S> & { shipNumbers: (ship: S) => FleetPlacementShipNumbers }) {
   const required =
     requiredVariant != null && requiredVariant > 0 ? requiredVariant : null;
   const zone = isCreatorSide ? CREATOR_ZONE : JOINER_ZONE;
   const hasCustomZone = !!zoneTiles && zoneTiles.length > 0;
 
-  const [selectedShips, setSelectedShips] = useState<bigint[]>([]);
+  const [selectedShips, setSelectedShips] = useState<Id[]>([]);
   const [shipPositions, setShipPositions] = useState<
-    Array<{ shipId: bigint; row: number; col: number }>
+    Array<{ shipId: Id; row: number; col: number }>
   >([]);
-  const [selectedShipId, setSelectedShipId] = useState<bigint | null>(null);
+  const [selectedShipId, setSelectedShipId] = useState<Id | null>(null);
   const [fleetFilters, setFleetFilters] = useState<FleetFilters>(DEFAULT_FLEET_FILTERS);
-  const [draggedShipId, setDraggedShipId] = useState<bigint | null>(null);
+  const [draggedShipId, setDraggedShipId] = useState<Id | null>(null);
   const [dragOverPosition, setDragOverPosition] = useState<
     { row: number; col: number } | null
   >(null);
@@ -159,9 +175,9 @@ export function useFleetPlacement({
   // same render's shipPositions every time, so every ship got the same
   // "next free" tile (roguelike combat seeds its whole roster this way).
   const addShips = useCallback(
-    (shipIds: bigint[]) => {
+    (shipIds: Id[]) => {
       const placed = [...shipPositions];
-      const added: Array<{ shipId: bigint; row: number; col: number }> = [];
+      const added: Array<{ shipId: Id; row: number; col: number }> = [];
       for (const shipId of shipIds) {
         if (placed.some((p) => p.shipId === shipId)) continue;
         const ship = ships.find((s) => s.id === shipId);
@@ -179,16 +195,16 @@ export function useFleetPlacement({
     [shipPositions, findNextPosition, ships, lockedVariant],
   );
 
-  const addShip = useCallback((shipId: bigint) => addShips([shipId]), [addShips]);
+  const addShip = useCallback((shipId: Id) => addShips([shipId]), [addShips]);
 
-  const removeShip = useCallback((shipId: bigint) => {
+  const removeShip = useCallback((shipId: Id) => {
     setSelectedShips((prev) => prev.filter((id) => id !== shipId));
     setShipPositions((prev) => prev.filter((p) => p.shipId !== shipId));
     setSelectedShipId((prev) => (prev === shipId ? null : prev));
   }, []);
 
   const moveShip = useCallback(
-    (shipId: bigint, row: number, col: number) => {
+    (shipId: Id, row: number, col: number) => {
       const inZone = hasCustomZone
         ? zoneTiles!.some((t) => t.row === row && t.col === col)
         : row >= 0 && row < GRID_DIMENSIONS.HEIGHT && col >= zone.colMin && col <= zone.colMax;
@@ -220,7 +236,7 @@ export function useFleetPlacement({
   }, []);
 
   const resolveShip = useCallback(
-    (shipId: bigint): Ship | undefined => ships.find((s) => s.id === shipId),
+    (shipId: Id): S | undefined => ships.find((s) => s.id === shipId),
     [ships],
   );
 
@@ -228,8 +244,7 @@ export function useFleetPlacement({
     () =>
       ships.filter((ship) => {
         const costsVersionOk =
-          costsVersion === null ||
-          Number(ship.shipData.costsVersion) === costsVersion;
+          costsVersion === null || shipNumbers(ship).costsVersion === costsVersion;
 
         if (selectedShips.includes(ship.id)) return costsVersionOk;
         if (!costsVersionOk) return false;
@@ -239,13 +254,13 @@ export function useFleetPlacement({
 
         return matchesFleetFilters(
           {
-            cost: Number(ship.shipData.cost),
+            cost: shipNumbers(ship).cost,
             isShiny: ship.shipData.shiny,
             accuracy: ship.traits.accuracy,
             hull: ship.traits.hull,
             speed: ship.traits.speed,
             isConstructed: ship.shipData.constructed,
-            isDestroyed: ship.shipData.timestampDestroyed > 0n,
+            isDestroyed: shipNumbers(ship).isDestroyed,
             inFleet: ship.shipData.inFleet,
             mainWeapon: ship.equipment.mainWeapon,
             shields: ship.equipment.shields,
@@ -254,24 +269,24 @@ export function useFleetPlacement({
           fleetFilters,
         );
       }),
-    [ships, fleetFilters, costsVersion, selectedShips, selectedVariant],
+    [ships, fleetFilters, costsVersion, selectedShips, selectedVariant, shipNumbers],
   );
 
   const hasStaleCostsVersion = useMemo(() => {
     if (costsVersion === null) return false;
     return selectedShips.some((id) => {
       const ship = resolveShip(id);
-      return !ship || Number(ship.shipData.costsVersion) !== costsVersion;
+      return !ship || shipNumbers(ship).costsVersion !== costsVersion;
     });
-  }, [costsVersion, selectedShips, resolveShip]);
+  }, [costsVersion, selectedShips, resolveShip, shipNumbers]);
 
   const totalCost = useMemo(
     () =>
       selectedShips.reduce((sum, shipId) => {
         const ship = resolveShip(shipId);
-        return sum + (ship ? Number(ship.shipData.cost) : 0);
+        return sum + (ship ? shipNumbers(ship).cost : 0);
       }, 0),
-    [selectedShips, resolveShip],
+    [selectedShips, resolveShip, shipNumbers],
   );
   const isOverLimit = totalCost > costLimit;
   const isUnder90Percent = totalCost < costLimit * 0.9;
@@ -315,4 +330,24 @@ export function useFleetPlacement({
   };
 }
 
-export type FleetPlacement = ReturnType<typeof useFleetPlacement>;
+const web3ShipNumbers = (ship: Ship): FleetPlacementShipNumbers => ({
+  cost: Number(ship.shipData.cost),
+  costsVersion: Number(ship.shipData.costsVersion),
+  isDestroyed: ship.shipData.timestampDestroyed > 0n,
+});
+
+const web2ShipNumbers = (ship: Web2Ship): FleetPlacementShipNumbers => ({
+  cost: ship.shipData.cost,
+  costsVersion: ship.shipData.costsVersion,
+  isDestroyed: ship.shipData.timestampDestroyed > 0,
+});
+
+/** Fleet placement for web3 ships (bigint ids). */
+export function useFleetPlacement(params: FleetPlacementParams<Ship>) {
+  return useFleetPlacementCore<bigint, Ship>({ ...params, shipNumbers: web3ShipNumbers });
+}
+
+/** Fleet placement for web2 ships (number ids). */
+export function useFleetPlacementWeb2(params: FleetPlacementParams<Web2Ship>) {
+  return useFleetPlacementCore<number, Web2Ship>({ ...params, shipNumbers: web2ShipNumbers });
+}

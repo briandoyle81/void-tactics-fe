@@ -8,13 +8,20 @@ import {
   computeLabelTargets,
   computeHoverValidTargets,
   computeHoverShootingRange,
+  computeValidTargets,
   findRamStagingTile,
 } from "../utils/gameGridRangesWeb2";
 import { hasLineOfSight, buildEnemyOccupiedGrid } from "../utils/gameGridRanges";
 import { resolveActionRange } from "../utils/requireShipValue";
-import { isRepairDronesSpecial, shipHasActivatableSpecial } from "../utils/specialConfigWeb2";
+import { shipHasActivatableSpecial } from "../utils/specialConfigWeb2";
 import { useResetSelectionOnTurnChange } from "./useResetSelectionOnTurnChange";
-import { useRetreatModeCancellationWeb2 } from "./useRetreatModeCancellationWeb2";
+import { useRetreatModeCancellation } from "./useRetreatModeCancellation";
+import {
+  buildDisplayGrid,
+  computeActionType,
+  computeConfirmWidgetLabel,
+  computeIsShowingProposedMove,
+} from "../utils/gameplayDerived";
 
 const EMPTY_RANGE_CELLS: { row: number; col: number }[] = [];
 const EMPTY_TARGET_REFS: { shipId: number; position: { row: number; col: number } }[] = [];
@@ -41,14 +48,6 @@ export interface GameplayShip {
   owner: string;
   equipment: { mainWeapon: number; armor: number; shields: number; special: number };
   traits: { variant: number };
-}
-
-export interface GameplayHoveredCell {
-  shipId: number;
-  row: number;
-  col: number;
-  isCreator: boolean;
-  fromFleet?: boolean;
 }
 
 export interface GameplayActionPayload {
@@ -278,7 +277,7 @@ export function useGameplayInteraction({
     setActionOverride(retreatExplicitByShipId[selectedShipId.toString()] ? ActionType.Retreat : null);
   }, [selectedShipId, selectedHull, retreatExplicitByShipId]);
 
-  useRetreatModeCancellationWeb2({
+  useRetreatModeCancellation({
     actionOverride,
     targetShipId,
     previewPosition,
@@ -431,81 +430,28 @@ export function useGameplayInteraction({
     }
   }, [isResolverRamMode, selectedShipId, targetShipId, selectedShipFactionAbilityRange, aliveShipPositions, isEnemyDisabledShipId, ramMoveTiles, previewPosition]);
 
-  const validTargets = useMemo(() => {
-    if (!selectedShipId || shipMap.size === 0) return EMPTY_TARGET_REFS;
-    if (isRammingMovePreview) return EMPTY_TARGET_REFS;
-    const attributes = getShipAttributes(selectedShipId);
-    if (!attributes || attributes.hullPoints === 0) return EMPTY_TARGET_REFS;
-
-    const shootRange = resolveActionRange({
-      selectedWeaponType,
-      specialRange,
-      factionAbilityRange: selectedShipFactionAbilityRange,
-      gunRange: attributes.range,
-    });
-    if (shootRange === undefined) return EMPTY_TARGET_REFS;
-    const currentPosition = aliveShipPositions.find((pos) => pos.shipId === selectedShipId);
-    if (!currentPosition) return EMPTY_TARGET_REFS;
-
-    const startRow = previewPosition ? previewPosition.row : currentPosition.position.row;
-    const startCol = previewPosition ? previewPosition.col : currentPosition.position.col;
-    const targets: { shipId: number; position: { row: number; col: number } }[] = [];
-
-    aliveShipPositions.forEach((shipPosition) => {
-      const ship = shipMap.get(shipPosition.shipId);
-      if (!ship) return;
-
-      if (selectedWeaponType === "special") {
-        const selectedVariant = selectedShip?.traits.variant ?? 1;
-        if (specialType === 3) {
-          if (shipPosition.shipId === selectedShipId) return;
-        } else if (specialType === 1) {
-          if (ship.owner === playerAddress) return;
-        } else if (isRepairDronesSpecial(selectedVariant, specialType)) {
-          if (ship.owner !== playerAddress) return;
-        } else {
-          if (ship.owner === playerAddress) return;
-        }
-      } else if (selectedWeaponType === "ram") {
-        if (!isFactionAbilitySupported) return;
-        const targetHp = getShipAttributes(shipPosition.shipId)?.hullPoints;
-        const isHeal = selectedShipFactionAbilityIsHeal;
-        const isValid = isHeal
-          ? ship.owner === playerAddress
-          : ship.owner !== playerAddress && targetHp === 0;
-        if (!isValid) return;
-      } else {
-        if (ship.owner === playerAddress) return;
-      }
-
-      const selectedVariant = selectedShip?.traits.variant ?? 1;
-      const isSelfHealAction =
-        (selectedWeaponType === "special" &&
-          isRepairDronesSpecial(selectedVariant, specialType)) ||
-        (selectedWeaponType === "ram" && selectedShipFactionAbilityIsHeal);
-      const targetRow =
-        isSelfHealAction && shipPosition.shipId === selectedShipId && previewPosition
-          ? previewPosition.row
-          : shipPosition.position.row;
-      const targetCol =
-        isSelfHealAction && shipPosition.shipId === selectedShipId && previewPosition
-          ? previewPosition.col
-          : shipPosition.position.col;
-      const distance = Math.abs(targetRow - startRow) + Math.abs(targetCol - startCol);
-      const canShoot = distance === 1 || distance <= shootRange;
-      const isSelfRepair = isSelfHealAction && shipPosition.shipId === selectedShipId && distance === 0;
-
-      if ((canShoot && distance > 0) || isSelfRepair) {
-        const shouldCheckLineOfSight =
-          distance > 1 && (selectedWeaponType !== "special" || (specialType !== 1 && specialType !== 2 && specialType !== 3));
-        if (!shouldCheckLineOfSight || hasLineOfSight(startRow, startCol, targetRow, targetCol, blockedGrid, selectedEnemyOccupiedGrid)) {
-          targets.push({ shipId: shipPosition.shipId, position: { row: targetRow, col: targetCol } });
-        }
-      }
-    });
-
-    return targets;
-  }, [selectedShipId, previewPosition, shipMap, playerAddress, getShipAttributes, blockedGrid, aliveShipPositions, selectedWeaponType, specialRange, specialType, isRammingMovePreview, isFactionAbilitySupported, selectedShipFactionAbilityRange, selectedShipFactionAbilityIsHeal, selectedEnemyOccupiedGrid, selectedShip]);
+  const validTargets = useMemo(
+    () =>
+      computeValidTargets({
+        selectedShipId,
+        previewPosition,
+        isRammingMovePreview,
+        shipPositions: aliveShipPositions,
+        shipMap,
+        playerAddress,
+        getShipAttributes,
+        selectedWeaponType,
+        specialRange,
+        specialType,
+        shipVariant: selectedShip?.traits.variant,
+        isFactionAbilitySupported,
+        factionAbilityRange: selectedShipFactionAbilityRange,
+        factionAbilityIsHeal: selectedShipFactionAbilityIsHeal,
+        blockedGrid,
+        enemyOccupiedGrid: selectedEnemyOccupiedGrid,
+      }),
+    [selectedShipId, previewPosition, shipMap, playerAddress, getShipAttributes, blockedGrid, aliveShipPositions, selectedWeaponType, specialRange, specialType, isRammingMovePreview, isFactionAbilitySupported, selectedShipFactionAbilityRange, selectedShipFactionAbilityIsHeal, selectedEnemyOccupiedGrid, selectedShip],
+  );
 
   const labelTargets = useMemo(
     () =>
@@ -734,20 +680,20 @@ export function useGameplayInteraction({
     ],
   );
 
-  const isShowingProposedMove = useMemo(() => {
-    if (selectedShipId === null) return false;
-    if (!isShipOwnedByCurrentPlayer(selectedShipId)) return false;
-    // A submitted proposal stays up (locked, button pending) until its tx
-    // settles, even though the board already shows the ship as moved.
-    if (isSubmitting) return true;
-    if (movedShipIdsSet.has(selectedShipId)) {
-      const attrs = getShipAttributes(selectedShipId);
-      const isDisabled = attrs && attrs.hullPoints === 0;
-      if (!isDisabled) return false;
-    }
-    if (!isCurrentPlayerTurn && !isSubmitting) return false;
-    return true;
-  }, [selectedShipId, isShipOwnedByCurrentPlayer, movedShipIdsSet, getShipAttributes, isCurrentPlayerTurn, isSubmitting]);
+  const isShowingProposedMove = useMemo(
+    () =>
+      computeIsShowingProposedMove({
+        hasSelection: selectedShipId !== null,
+        isOwnShip: selectedShipId !== null && isShipOwnedByCurrentPlayer(selectedShipId),
+        // A submitted proposal stays up (locked, button pending) until its tx
+        // settles, even though the board already shows the ship as moved.
+        isSubmitting,
+        isMyTurn: isCurrentPlayerTurn,
+        hasMoved: selectedShipId !== null && movedShipIdsSet.has(selectedShipId),
+        isDisabled: selectedShipId !== null && getShipAttributes(selectedShipId)?.hullPoints === 0,
+      }),
+    [selectedShipId, isShipOwnedByCurrentPlayer, movedShipIdsSet, getShipAttributes, isCurrentPlayerTurn, isSubmitting],
+  );
 
   const retreatPrepShipId = actionOverride === ActionType.Retreat && selectedShipId != null && isShipOwnedByCurrentPlayer(selectedShipId) ? selectedShipId : null;
   const retreatPrepIsCreator = retreatPrepShipId != null ? (shipMap.get(retreatPrepShipId) ? aliveShipPositions.find((p) => p.shipId === retreatPrepShipId)?.isCreator ?? null : null) : null;
@@ -762,19 +708,14 @@ export function useGameplayInteraction({
   // its own engine's ActionType.FactionAbility handler.
   const computedActionType = useMemo(
     () =>
-      actionOverride != null
-        ? actionOverride
-        : isRammingMovePreview
-          ? ActionType.Pass
-          : selectedWeaponType === "ram" && isFactionAbilitySupported && targetShipId != null && targetShipId !== 0
-            ? ActionType.FactionAbility
-            : targetShipId !== null && targetShipId !== 0
-              ? selectedWeaponType === "special"
-                ? ActionType.Special
-                : ActionType.Shoot
-              : targetShipId === 0 && selectedWeaponType === "special" && specialType === 3
-                ? ActionType.Special
-                : ActionType.Pass,
+      computeActionType({
+        actionOverride,
+        isRammingMovePreview,
+        targetShipId,
+        selectedWeaponType,
+        specialType,
+        isFactionAbilitySupported,
+      }),
     [actionOverride, isRammingMovePreview, targetShipId, selectedWeaponType, specialType, isFactionAbilitySupported],
   );
 
@@ -814,23 +755,14 @@ export function useGameplayInteraction({
     isShowingProposedMove &&
     (actionOverride === ActionType.Retreat || previewPosition !== null || targetShipId !== null);
 
-  const confirmWidgetLabel =
-    computedActionType === ActionType.Retreat
-      ? "RETREAT"
-      : computedActionType === ActionType.Pass
-        ? "HOLD FIRE"
-        : computedActionType === ActionType.FactionAbility
-            ? (selectedShipFactionAbilityIsHeal ? "REPAIR" : "RAM")
-            : selectedWeaponType === "special" &&
-                isRepairDronesSpecial(
-                  selectedShip?.traits.variant ?? 1,
-                  specialType,
-                ) &&
-                targetShipId != null
-              ? "REPAIR"
-              : targetShipId != null && targetShipId !== 0
-                ? "FIRE"
-                : "SUBMIT";
+  const confirmWidgetLabel = computeConfirmWidgetLabel({
+    actionType: computedActionType,
+    selectedWeaponType,
+    shipVariant: selectedShip?.traits.variant ?? 1,
+    specialType,
+    targetShipId,
+    factionAbilityIsHeal: selectedShipFactionAbilityIsHeal,
+  });
 
   const buildActionPayload = useCallback((): GameplayActionPayload | null => {
     if (!selectedShipId) return null;
@@ -908,63 +840,32 @@ export function useGameplayInteraction({
   }, [allShipPositions]);
 
   const displayGrid: (GridShipPosition | null)[][] = useMemo(() => {
-    const newGrid: (GridShipPosition | null)[][] = Array(gridHeight)
-      .fill(null)
-      .map(() => Array(gridWidth).fill(null));
-
-    aliveShipPositions.forEach((shipPosition) => {
-      const { position } = shipPosition;
-
-      if (position.row >= 0 && position.row < gridHeight && position.col >= 0 && position.col < gridWidth) {
-        newGrid[position.row][position.col] = shipPosition;
-        // No proposal ghost while submitting: the board shows the predicted result.
-        if (selectedShipId === shipPosition.shipId && previewPosition && !isSubmitting) {
-          newGrid[previewPosition.row][previewPosition.col] = {
-            ...shipPosition,
-            position: { row: previewPosition.row, col: previewPosition.col },
-            isPreview: true,
-          };
-        }
-      }
+    // The last move shows when nothing is selected and no move is being proposed.
+    const isProposingNow =
+      selectedShipId !== null &&
+      currentTurn === playerAddress &&
+      previewPosition !== null &&
+      shipMap.get(selectedShipId)?.owner === playerAddress;
+    return buildDisplayGrid({
+      gridWidth,
+      gridHeight,
+      aliveShipPositions,
+      allShipPositions,
+      selectedShipId,
+      previewPosition,
+      hidePreview: isSubmitting,
+      lastMove: lastMove
+        ? {
+            shipId: lastMove.shipId,
+            oldRow: lastMove.oldRow,
+            oldCol: lastMove.oldCol,
+            actionType: lastMove.actionType,
+            targetShipId: lastMove.targetShipId,
+          }
+        : null,
+      showLastMove:
+        !isGameOver && lastMove != null && lastMove.shipId !== 0 && selectedShipId === null && !isProposingNow,
     });
-
-    const isMyTurnNow = currentTurn === playerAddress;
-    const shouldShowLastMoveNow = !isGameOver && lastMove != null && lastMove.shipId !== 0 && selectedShipId === null;
-    const isShowingProposedMoveNow = (() => {
-      if (selectedShipId === null || !isMyTurnNow || previewPosition === null) return false;
-      const ship = shipMap.get(selectedShipId);
-      return ship ? ship.owner === playerAddress : false;
-    })();
-    const canShowLastMove = shouldShowLastMoveNow && !isShowingProposedMoveNow;
-
-    if (canShowLastMove && lastMove) {
-      const lastMoveShipPosition = aliveShipPositions.find((pos) => pos.shipId === lastMove.shipId);
-      if (lastMoveShipPosition) {
-        const oldPos = { row: lastMove.oldRow, col: lastMove.oldCol };
-        // Where the ship is now, not lastMove's recorded tile: a Ram ends on
-        // the victim's tile (see ramLastMove.ts), even when it rammed
-        // without moving first.
-        const newPos = lastMoveShipPosition.position;
-        if (oldPos.row !== newPos.row || oldPos.col !== newPos.col) {
-          if (oldPos.row >= 0 && oldPos.row < gridHeight && oldPos.col >= 0 && oldPos.col < gridWidth && !newGrid[oldPos.row][oldPos.col]) {
-            newGrid[oldPos.row][oldPos.col] = { ...lastMoveShipPosition, position: oldPos, isPreview: true };
-          }
-        }
-      }
-
-      const isTargetingLastMove = lastMove.actionType === ActionType.Shoot || lastMove.actionType === ActionType.Special;
-      if (isTargetingLastMove && lastMove.targetShipId !== 0) {
-        const destroyedTargetShipPosition = allShipPositions.find((sp) => sp.shipId === lastMove.targetShipId && sp.status === 1);
-        if (destroyedTargetShipPosition) {
-          const { row, col } = destroyedTargetShipPosition.position;
-          if (row >= 0 && row < gridHeight && col >= 0 && col < gridWidth && !newGrid[row][col]) {
-            newGrid[row][col] = destroyedTargetShipPosition;
-          }
-        }
-      }
-    }
-
-    return newGrid;
   }, [aliveShipPositions, allShipPositions, selectedShipId, previewPosition, currentTurn, playerAddress, isGameOver, lastMove, shipMap, gridHeight, gridWidth, isSubmitting]);
 
   return {
