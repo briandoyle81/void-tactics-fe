@@ -2,12 +2,16 @@
 
 import React from "react";
 import { toast } from "react-hot-toast";
+import {
+  RoguelikeCombatFleetModal,
+  positionsInRosterOrder,
+  useSeedCombatRoster,
+} from "./operations/RoguelikeCombatFleetModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { waitForPlayerGameWeb2 } from "../utils/waitForPlayerGame";
 import { navigateToGameWeb2 } from "../utils/navigateToGame";
-import { FleetSelectionModal } from "./FleetSelectionModal";
 import { MapDisplayWeb2 } from "./MapDisplayWeb2";
 import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacement";
 import { useShipAttributesByIdsWeb2 } from "../hooks/useShipAttributesByIdsWeb2";
@@ -51,9 +55,7 @@ export function RoguelikeCombatModalWeb2({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isWarping, setIsWarping] = React.useState(false);
   const { userId } = useCurrentUser();
-  const [filtersExpanded, setFiltersExpanded] = React.useState(false);
   const [showInGameProperties, setShowInGameProperties] = React.useState(true);
-  const seededRef = React.useRef(false);
 
   const rosterShips: Web2Ship[] = React.useMemo(() => run.roster.map((r) => r.ship), [run.roster]);
 
@@ -71,14 +73,7 @@ export function RoguelikeCombatModalWeb2({
     zoneTiles: creatorZone,
   });
 
-  React.useEffect(() => {
-    if (seededRef.current || rosterShips.length === 0) return;
-    // Wait for the hook to pick up the roster's faction lock first.
-    if (fleet.selectedVariant !== rosterVariant) return;
-    seededRef.current = true;
-    fleet.addShips(rosterShips.map((s) => s.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rosterShips, rosterVariant, fleet.selectedVariant]);
+  useSeedCombatRoster(fleet, rosterShips);
 
   const { data: placements } = useQuery({
     queryKey: ["ai-map-placements", targetNode.mapId],
@@ -107,15 +102,14 @@ export function RoguelikeCombatModalWeb2({
     try {
       // The enter-combat route pairs startingPositions[i] with run.roster[i],
       // so send them in roster order, not the order ships were placed.
-      const positionByShipId = new Map(
-        fleet.shipPositions.map((p) => [p.shipId, { row: p.row, col: p.col }]),
+      const startingPositions = positionsInRosterOrder(
+        run.roster.map((r) => r.shipId),
+        fleet.shipPositions,
       );
-      const positions = run.roster.map((r) => positionByShipId.get(r.shipId));
-      if (positions.some((p) => !p)) {
+      if (!startingPositions) {
         toast.error("Every roster ship needs a starting position.");
         return;
       }
-      const startingPositions = positions as Array<{ row: number; col: number }>;
       const { gameId } = await enterCombatNode(targetNode.id, startingPositions);
       // Open the new game directly, once the Games tab's cached list has it
       // (mirrors the web3 launch modals' waitForPlayerGame).
@@ -210,53 +204,20 @@ export function RoguelikeCombatModalWeb2({
   );
 
   return (
-    <FleetSelectionModal
-      participantHasFleet={false}
-      opponentHasFleet={true}
-      onGoToGames={onLaunched}
-      createButtonState={{
-        isBusy: isSubmitting,
-        busyLabel: isWarping ? "WARPING..." : "LAUNCHING...",
-        selectedCount: fleet.selectedShips.length,
-        maxShips: rosterShips.length,
-        isOverLimit: false,
-        costLimit: 0,
-        isUnder90Percent: false,
-        hasMovedShip: fleet.hasMovedShip,
-        hasStaleCosts: false,
-        readyLabel: `LAUNCH MISSION (${fleet.selectedShips.length})`,
-      }}
-      onCreateFleet={() => void handleLaunch()}
-      onCancel={onClose}
-      filtersExpanded={filtersExpanded}
-      onToggleFilters={() => setFiltersExpanded((v) => !v)}
-      loadFleetMenu={null}
-      onClearFleetSelection={() => {}}
-      isBusy={isSubmitting}
-      totalCost={fleet.totalCost}
-      costLimit={0}
-      isOverLimit={false}
-      isUnder90Percent={false}
-      onClose={onClose}
-      showFirstFleetHint={false}
-      fleetFilters={fleet.fleetFilters}
-      onFleetFiltersChange={fleet.setFleetFilters}
-      shownCount={fleet.filteredShips.length}
-      totalCount={fleet.ships.filter((s) => s.traits.variant === fleet.selectedVariant).length}
+    <RoguelikeCombatFleetModal
+      fleet={fleet}
+      rosterSize={rosterShips.length}
+      isSubmitting={isSubmitting}
+      isWarping={isWarping}
+      shipsLoading={false}
+      isAttributesFromCache={isAttributesFromCache}
       showInGameProperties={showInGameProperties}
       onToggleInGameProperties={setShowInGameProperties}
-      isAttributesFromCache={isAttributesFromCache}
-      shipsLoading={false}
-      isCreator={true}
       shipListItems={shipListItems}
       mapDisplay={mapDisplay}
-      onDropShip={() => {
-        // Roster is fixed for combat entry — same as web3, only repositioning
-        // via the grid is meaningful here.
-      }}
-      selectedVariant={fleet.selectedVariant}
-      onSelectVariant={fleet.setSelectedVariant}
-      variantLocked={fleet.variantLocked}
+      onLaunch={() => void handleLaunch()}
+      onClose={onClose}
+      onLaunched={onLaunched}
     />
   );
 }

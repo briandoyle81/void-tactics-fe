@@ -2,7 +2,7 @@
 
 import React from "react";
 import { toast } from "react-hot-toast";
-import { RoguelikeNodeKind, type RoguelikeNode } from "../types/roguelike";
+import type { RoguelikeNode } from "../types/roguelike";
 import { MapMode } from "../types/types";
 import { useRoguelikeNodeMapAdmin } from "../hooks/useRoguelikeNodeMapAdmin";
 import {
@@ -23,8 +23,8 @@ import {
   useWinEffectAddresses,
   useRoguelikeNodeWinEffects,
 } from "../hooks/useWinEffects";
-import { MapPickerModal, type MapPickerMap } from "./MapPickerModal";
-import { MapPreviewCard } from "./MapPreviewCard";
+import type { MapPickerMap } from "./MapPickerModal";
+import { RoguelikeNodeEditForm } from "./operations/RoguelikeNodeEditForm";
 import { MapEditScreen } from "./MapEditScreen";
 import { useAccount } from "wagmi";
 import { MAP_ADMIN_ADDRESS } from "../config/alpha";
@@ -35,9 +35,6 @@ import { aiConfigToPreviewShip, ARCHETYPE_LABEL } from "../utils/aiShipConfig";
 import { ShipImage } from "./ShipImage";
 import ShipCard from "./ShipCard";
 import { toShipCardData } from "../utils/toShipCardData";
-
-// Placeholder defaults for a freshly-created node — see CampaignNodeEditPanel.tsx's matching note.
-const NEW_NODE_DEFAULTS = { turnTime: 120n, maxScore: 1000n, costCapOverride: 700n };
 
 interface RoguelikeNodeEditPanelProps {
   mode: "create" | "edit";
@@ -53,12 +50,11 @@ interface RoguelikeNodeEditPanelProps {
   onCancelCreate: () => void;
 }
 
-// Roguelike counterpart to CampaignNodeEditPanel.tsx — same layout/flow,
-// backed by useRoguelikeNodeMapAdmin instead of useNodeMapAdmin. Kept
-// separate rather than shared for the same reason as the original
-// campaign's web2/web3 split: different admin hooks, plus the extra
-// kind (Combat/Resupply) field-graying this system needs that the
-// original campaign has no equivalent of.
+/**
+ * Web3's node panel (see RoguelikeNodeEditForm): RoguelikeNodeMap
+ * transactions, maps from the Maps contract, win effects by resolver
+ * address, node text read-only (it ships with the app). Bigints convert here.
+ */
 export function RoguelikeNodeEditPanel({
   mode,
   node,
@@ -74,49 +70,17 @@ export function RoguelikeNodeEditPanel({
   const { data: allMapsData, refetch: refetchAllMaps } = useGetAllPresetMaps();
   const { address } = useAccount();
   const isMapAdmin = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
-  const [showMapEditor, setShowMapEditor] = React.useState(false);
   const { data: allConfigs } = useGetAllAIShipConfigs();
   const { isEditor: isEncounterEditor, isLoading: isEncounterEditorLoading } =
     useIsEncounterEditor();
   const winEffectAddresses = useWinEffectAddresses();
-  const {
-    data: currentWinEffects,
-    refetch: refetchWinEffects,
-  } = useRoguelikeNodeWinEffects(node?.id);
-
-  const [kind, setKind] = React.useState<RoguelikeNodeKind>(node?.kind ?? RoguelikeNodeKind.Combat);
-  const [mapId, setMapId] = React.useState<bigint>(node?.mapId ?? 0n);
-  const [turnTime, setTurnTime] = React.useState(node?.turnTime ?? NEW_NODE_DEFAULTS.turnTime);
-  const [maxScore, setMaxScore] = React.useState(node?.maxScore ?? NEW_NODE_DEFAULTS.maxScore);
-  const [creatorGoesFirst, setCreatorGoesFirst] = React.useState(node?.creatorGoesFirst ?? true);
-  const [costCapOverride, setCostCapOverride] = React.useState(
-    node?.costCapOverride ?? NEW_NODE_DEFAULTS.costCapOverride,
-  );
-  const [showMapPicker, setShowMapPicker] = React.useState(false);
-  const [showFleetEditor, setShowFleetEditor] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
-
+  const { data: currentWinEffects, refetch: refetchWinEffects } = useRoguelikeNodeWinEffects(node?.id);
 
   const [selectedWinEffects, setSelectedWinEffects] = React.useState<string[]>([]);
   const [isSavingWinEffects, setIsSavingWinEffects] = React.useState(false);
   React.useEffect(() => {
     setSelectedWinEffects((currentWinEffects ?? []).map((a) => a.toLowerCase()));
   }, [currentWinEffects]);
-
-  const seededNodeIdRef = React.useRef<bigint | null>(null);
-  React.useEffect(() => {
-    const key = node?.id ?? null;
-    if (seededNodeIdRef.current === key) return;
-    seededNodeIdRef.current = key;
-    setKind(node?.kind ?? RoguelikeNodeKind.Combat);
-    setMapId(node?.mapId ?? 0n);
-    setTurnTime(node?.turnTime ?? NEW_NODE_DEFAULTS.turnTime);
-    setMaxScore(node?.maxScore ?? NEW_NODE_DEFAULTS.maxScore);
-    setCreatorGoesFirst(node?.creatorGoesFirst ?? true);
-    setCostCapOverride(node?.costCapOverride ?? NEW_NODE_DEFAULTS.costCapOverride);
-  }, [node]);
-
-  const isCombat = kind === RoguelikeNodeKind.Combat;
 
   const allMapIds = React.useMemo(() => {
     if (!allMapsData) return [];
@@ -148,91 +112,17 @@ export function RoguelikeNodeEditPanel({
     () => maps.filter((m) => (modeByMapId.get(m.id) ?? MapMode.Both) !== MapMode.PvP),
     [maps, modeByMapId],
   );
-  const selectedMapPreview = React.useMemo(
-    () => (mapId === 0n ? undefined : maps.find((m) => m.id === Number(mapId))),
-    [maps, mapId],
-  );
 
-  const handleEditEnemyFleet = () => {
-    if (mapId === 0n) {
-      toast.error("Select a map before editing the enemy fleet.");
-      return;
-    }
-    if (!address) {
-      toast.error("Connect the Enemy Fleet Editor wallet to edit placements.");
-      return;
-    }
-    if (isEncounterEditorLoading) {
-      toast.error("Checking Enemy Fleet Editor permission...");
-      return;
-    }
-    if (!isEncounterEditor) {
-      toast.error(
-        "This wallet is not an Enemy Fleet Editor. Ask an admin to grant isEncounterEditor.",
-      );
-      return;
-    }
-    setShowFleetEditor(true);
-  };
-
-  const handleSaveDetails = async () => {
-    if (isCombat && mapId === 0n) {
-      toast.error("Select a map before saving.");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const effectiveMapId = isCombat ? mapId : 0n;
-      const effectiveCostCapOverride = isCombat ? 0n : costCapOverride;
-      if (mode === "create") {
-        const hash = await admin.createNode(
-          campaignId,
-          kind,
-          effectiveMapId,
-          turnTime,
-          maxScore,
-          creatorGoesFirst,
-          effectiveCostCapOverride,
-        );
-        toast.success(`Node created. (tx: ${hash.slice(0, 10)}…)`);
-        onCreated();
-      } else if (node) {
-        const hash = await admin.updateNode(
-          node.id,
-          node.campaignId,
-          kind,
-          effectiveMapId,
-          turnTime,
-          maxScore,
-          creatorGoesFirst,
-          effectiveCostCapOverride,
-        );
-        toast.success(`Node #${node.id} updated. (tx: ${hash.slice(0, 10)}…)`);
-        onSaved();
-      }
-    } catch (error) {
-      console.error("Failed to save node:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save node");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const toggleWinEffect = (address: string) => {
-    const lower = address.toLowerCase();
-    setSelectedWinEffects((prev) =>
-      prev.includes(lower) ? prev.filter((a) => a !== lower) : [...prev, lower],
-    );
+  const toggleWinEffect = (addr: string) => {
+    const lower = addr.toLowerCase();
+    setSelectedWinEffects((prev) => (prev.includes(lower) ? prev.filter((a) => a !== lower) : [...prev, lower]));
   };
 
   const handleSaveWinEffects = async () => {
     if (!node) return;
     setIsSavingWinEffects(true);
     try {
-      const hash = await admin.setNodeWinEffects(
-        node.id,
-        selectedWinEffects as `0x${string}`[],
-      );
+      const hash = await admin.setNodeWinEffects(node.id, selectedWinEffects as `0x${string}`[]);
       await refetchWinEffects();
       toast.success(`Win effects updated. (tx: ${hash.slice(0, 10)}…)`);
     } catch (error) {
@@ -243,275 +133,105 @@ export function RoguelikeNodeEditPanel({
     }
   };
 
-  const handleRemoveChild = async (childId: bigint) => {
-    if (!node) return;
-    try {
-      await admin.removeChild(node.id, childId);
-      onSaved();
-    } catch (error) {
-      console.error("Failed to remove child edge:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to remove child edge");
-    }
-  };
-
-  if (!node && mode === "edit") return null;
+  const formNode = React.useMemo(
+    () =>
+      node
+        ? {
+            id: Number(node.id),
+            kind: node.kind,
+            mapId: Number(node.mapId),
+            turnTime: Number(node.turnTime),
+            maxScore: Number(node.maxScore),
+            creatorGoesFirst: node.creatorGoesFirst,
+            costCapOverride: Number(node.costCapOverride),
+            childIds: node.children.map((c) => Number(c)),
+          }
+        : null,
+    [node],
+  );
 
   return (
-    <div
-      className="grid grid-cols-1 gap-8 border-2 border-amber p-6 font-mono md:grid-cols-2"
-      style={{ borderRadius: 0 }}
-    >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-amber">
-            {mode === "create" ? "[NEW NODE]" : `[EDIT NODE #${node!.id.toString()}]`}
-          </h3>
-          {mode === "create" && (
-            <button
-              type="button"
-              onClick={onCancelCreate}
-              className="text-amber hover:text-amber/80 text-xl font-bold leading-none"
-              aria-label="Cancel"
-            >
-              ×
-            </button>
-          )}
-        </div>
-
-        <label className="flex flex-col gap-1 text-xs text-text-muted">
-          Kind
-          <select
-            value={kind}
-            onChange={(e) => setKind(Number(e.target.value) as RoguelikeNodeKind)}
-            className="px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-            style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
-          >
-            <option value={RoguelikeNodeKind.Combat}>Combat</option>
-            <option value={RoguelikeNodeKind.Resupply}>Resupply</option>
-          </select>
-        </label>
-
-        {mode === "edit" && <NodeContentReadOnly node={node} />}
-
-        {isCombat ? (
-          <>
-            <label className="flex flex-col gap-1 text-xs text-text-muted">
-              Map
-              <button
-                type="button"
-                onClick={() => setShowMapPicker(true)}
-                className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10"
-                style={{ borderRadius: 0 }}
-              >
-                {mapId === 0n
-                  ? "[SELECT MAP]"
-                  : `[CHANGE MAP] ${mapTitleLabel(Number(mapId), nameByMapId)}`}
-              </button>
-              <span className="text-[10px] text-text-muted">
-                Draft until you Save Details.
-              </span>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1 text-xs text-text-muted">
-                Max Score
-                <input
-                  type="number"
-                  value={maxScore.toString()}
-                  onChange={(e) => setMaxScore(BigInt(Math.max(0, Number(e.target.value) || 0)))}
-                  className="px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                  style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
-                />
-              </label>
-              <label className="flex items-center gap-2 text-xs text-text-muted self-end pb-2">
-                <input
-                  type="checkbox"
-                  checked={creatorGoesFirst}
-                  onChange={(e) => setCreatorGoesFirst(e.target.checked)}
-                />
-                Creator goes first
-              </label>
-            </div>
-          </>
-        ) : (
-          <label className="flex flex-col gap-1 text-xs text-text-muted">
-            Cost Cap Override (0 = no change)
-            <input
-              type="number"
-              value={costCapOverride.toString()}
-              onChange={(e) => setCostCapOverride(BigInt(Math.max(0, Number(e.target.value) || 0)))}
-              className="px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-              style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
-            />
-          </label>
-        )}
-
-        <button
-          type="button"
-          disabled={isSaving}
-          onClick={() => void handleSaveDetails()}
-          className="self-start border-2 border-phosphor-green px-4 py-2 text-sm font-bold uppercase tracking-wider text-phosphor-green hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
-          style={{ borderRadius: 0 }}
-        >
-          {isSaving ? "[SAVING...]" : mode === "create" ? "[CREATE NODE]" : "[SAVE DETAILS]"}
-        </button>
-
-        {isCombat && (
+    <RoguelikeNodeEditForm
+      mode={mode}
+      node={formNode}
+      maps={maps}
+      pickerMaps={pickerMaps}
+      canEditMap={isMapAdmin}
+      contentSection={mode === "edit" ? <NodeContentReadOnly node={node} /> : undefined}
+      winEffectsSection={
+        <>
+          <div className="flex flex-col gap-1">
+            {WIN_EFFECT_CATALOG.map(({ key, label }) => {
+              const addr = winEffectAddresses[key];
+              const checked = !!addr && selectedWinEffects.includes(addr.toLowerCase());
+              return (
+                <label key={key} className="flex items-center gap-2 text-xs text-text-secondary">
+                  <input type="checkbox" checked={checked} disabled={!addr} onChange={() => addr && toggleWinEffect(addr)} />
+                  {label}
+                  {!addr && <span className="text-warning-red">(not deployed on this chain)</span>}
+                </label>
+              );
+            })}
+          </div>
           <button
             type="button"
-            onClick={handleEditEnemyFleet}
-            className="self-start border-2 border-warning-red px-4 py-2 text-xs font-bold uppercase tracking-wider text-warning-red hover:bg-warning-red/10"
+            disabled={isSavingWinEffects}
+            onClick={() => void handleSaveWinEffects()}
+            className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
             style={{ borderRadius: 0 }}
           >
-            [EDIT ENEMY FLEET]
+            {isSavingWinEffects ? "[SAVING...]" : "[SAVE WIN EFFECTS]"}
           </button>
-        )}
-
-        {mode === "edit" && node && isCombat && (
-          <div className="flex flex-col gap-2 border-t border-steel pt-4">
-            <label className="text-xs text-text-muted">
-              Win effects — run in order after every win at this node, on top of the
-              campaign&apos;s ordinary auto-heal floor
-            </label>
-            <div className="flex flex-col gap-1">
-              {WIN_EFFECT_CATALOG.map(({ key, label }) => {
-                const address = winEffectAddresses[key];
-                const checked = !!address && selectedWinEffects.includes(address.toLowerCase());
-                return (
-                  <label
-                    key={key}
-                    className="flex items-center gap-2 text-xs text-text-secondary"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={!address}
-                      onChange={() => address && toggleWinEffect(address)}
-                    />
-                    {label}
-                    {!address && (
-                      <span className="text-warning-red">(not deployed on this chain)</span>
-                    )}
-                  </label>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              disabled={isSavingWinEffects}
-              onClick={() => void handleSaveWinEffects()}
-              className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderRadius: 0 }}
-            >
-              {isSavingWinEffects ? "[SAVING...]" : "[SAVE WIN EFFECTS]"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {mode === "edit" && node && (
-        <div className="border-t border-steel pt-4 md:border-t-0 md:border-l md:pl-8 md:pt-0">
-          <h4 className="text-xs uppercase tracking-wider text-text-muted mb-2">Children</h4>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {node.children.length === 0 && (
-              <span className="text-xs text-text-muted">
-                None — clearing this node ends the run.
-              </span>
-            )}
-            {node.children.map((childId) => (
-              <span
-                key={childId.toString()}
-                className="flex items-center gap-1.5 px-2 py-1 text-xs border border-cyan/40 text-cyan"
-              >
-                #{childId.toString()} →
-                <button
-                  type="button"
-                  onClick={() => void handleRemoveChild(childId)}
-                  className="text-warning-red hover:text-warning-red/70"
-                  aria-label={`Remove child ${childId}`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          {connectModeActive ? (
-            <button
-              type="button"
-              onClick={onCancelConnectMode}
-              className="border-2 border-warning-red px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-warning-red hover:bg-warning-red/10"
-              style={{ borderRadius: 0 }}
-            >
-              [CANCEL LINKING]
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onStartConnectMode(node.id)}
-              className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10"
-              style={{ borderRadius: 0 }}
-            >
-              [+ LINK CHILD]
-            </button>
-          )}
-
-          {isCombat && mapId !== 0n && (
-            <div className="mt-6">
-              <RoguelikeEnemyFleetPreviewFor mapId={mapId} configs={allConfigs ?? []} />
-            </div>
-          )}
-
-          {isCombat && selectedMapPreview && (
-            <div className="mt-6 border-t border-steel pt-4">
-              <MapPreviewCard
-                map={selectedMapPreview}
-                modeLabel={selectedMapPreview.modeLabel}
-                onSelect={() => setShowMapPicker(true)}
-                onEdit={isMapAdmin ? () => setShowMapEditor(true) : undefined}
-              />
-            </div>
-          )}
-        </div>
+        </>
+      }
+      renderEnemyFleetPreview={(mapId) => (
+        <RoguelikeEnemyFleetPreviewFor mapId={BigInt(mapId)} configs={allConfigs ?? []} />
       )}
-
-      {showMapEditor && selectedMapPreview && (
-        // Full-screen so the grid editor has room; same screen as the Maps tab.
-        <div className="fixed inset-0 z-[600] overflow-y-auto bg-near-black/95 p-4">
-          <div className="mx-auto max-w-5xl">
-            <MapEditScreen
-              mapId={selectedMapPreview.id}
-              initialBlockedPositions={selectedMapPreview.blockedPositions}
-              initialScoringPositions={selectedMapPreview.scoringPositions}
-              onSaved={() => {
-                setShowMapEditor(false);
-                void refetchAllMaps();
-              }}
-              onCancel={() => setShowMapEditor(false)}
-            />
-          </div>
-        </div>
-      )}
-
-      {showMapPicker && (
-        <MapPickerModal
-          maps={pickerMaps}
-          selectedMapId={mapId === 0n ? null : Number(mapId)}
-          onSelect={(id) => {
-            setMapId(BigInt(id));
-            setShowMapPicker(false);
+      renderMapEditor={(map, close) => (
+        <MapEditScreen
+          mapId={map.id}
+          initialBlockedPositions={map.blockedPositions}
+          initialScoringPositions={map.scoringPositions}
+          onSaved={() => {
+            close();
+            void refetchAllMaps();
           }}
-          onClose={() => setShowMapPicker(false)}
+          onCancel={close}
         />
       )}
-
-      {showFleetEditor && isCombat && mapId !== 0n && isEncounterEditor && (
-        <MapPlacementsEditor
-          mapId={mapId}
-          configs={allConfigs ?? []}
-          startOpen
-          onClose={() => setShowFleetEditor(false)}
-        />
-      )}
-    </div>
+      renderFleetEditor={(mapId, close) =>
+        isEncounterEditor ? (
+          <MapPlacementsEditor mapId={BigInt(mapId)} configs={allConfigs ?? []} startOpen onClose={close} />
+        ) : null
+      }
+      fleetEditorBlockedReason={() => {
+        if (!address) return "Connect the Enemy Fleet Editor wallet to edit placements.";
+        if (isEncounterEditorLoading) return "Checking Enemy Fleet Editor permission...";
+        if (!isEncounterEditor) return "This wallet is not an Enemy Fleet Editor. Ask an admin to grant isEncounterEditor.";
+        return null;
+      }}
+      onSubmit={async (f) => {
+        const mapId = f.isCombat ? BigInt(f.mapId) : 0n;
+        const costCap = f.isCombat ? 0n : BigInt(f.costCapOverride);
+        if (mode === "create") {
+          const hash = await admin.createNode(
+            campaignId, f.kind, mapId, BigInt(f.turnTime), BigInt(f.maxScore), f.creatorGoesFirst, costCap,
+          );
+          return `Node created. (tx: ${hash.slice(0, 10)}…)`;
+        }
+        const hash = await admin.updateNode(
+          node!.id, node!.campaignId, f.kind, mapId, BigInt(f.turnTime), BigInt(f.maxScore), f.creatorGoesFirst, costCap,
+        );
+        return `Node #${node!.id} updated. (tx: ${hash.slice(0, 10)}…)`;
+      }}
+      onRemoveChild={(childId) => admin.removeChild(node!.id, BigInt(childId))}
+      connectModeActive={connectModeActive}
+      onStartConnectMode={(id) => onStartConnectMode(BigInt(id))}
+      onCancelConnectMode={onCancelConnectMode}
+      onSaved={onSaved}
+      onCreated={onCreated}
+      onCancelCreate={onCancelCreate}
+    />
   );
 }
 

@@ -1,15 +1,11 @@
 "use client";
 
 import React from "react";
+import { toast } from "react-hot-toast";
 import { MissionBriefing } from "./MissionBriefing";
 import { MissionDossier } from "./MissionDossier";
 import { useRoguelikeVictoryEffectsWeb2 } from "../hooks/useRoguelikeVictoryEffects";
-import {
-  roguelikeCombatDossierRows,
-  roguelikeResupplyDossierRows,
-} from "../utils/missionDossierRows";
-import type { NodeContentStatus } from "../hooks/useNodeContent";
-import { toast } from "react-hot-toast";
+import { roguelikeCombatDossierRows, roguelikeResupplyDossierRows } from "../utils/missionDossierRows";
 import { RoguelikeNodeKind } from "../types/roguelike";
 import {
   useRoguelikeCampaignNodesWeb2WithContent,
@@ -22,96 +18,58 @@ import {
 import { useRoguelikeAdminWeb2 } from "../hooks/useRoguelikeAdminWeb2";
 import { useWeb2Admin } from "../hooks/useWeb2Admin";
 import { useMapEnemyThreatWeb2 } from "../hooks/useMapEnemyThreatWeb2";
-import { buildRoguelikePrerequisites } from "../utils/roguelikeGraphLayout";
-import { CampaignGraphCanvas } from "./CampaignGraphCanvas";
-import { RoguelikeNodeCard, type RoguelikeNodeCardNode } from "./RoguelikeNodeCard";
 import { RoguelikeCombatModalWeb2 } from "./RoguelikeCombatModalWeb2";
 import { RoguelikeResupplyPanelWeb2 } from "./RoguelikeResupplyPanelWeb2";
 import { RoguelikeNodeEditPanelWeb2 } from "./RoguelikeNodeEditPanelWeb2";
 import { RoguelikeSettingsModalWeb2 } from "./RoguelikeSettingsModalWeb2";
-import { CampaignEditModeToggle } from "./CampaignEditModeToggle";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { OperationsMap, type MissionPeek } from "./operations/OperationsMap";
-import { ART_SLOTS } from "../config/art";
 import { MissionDrawerContent } from "./operations/MissionDrawerContent";
-import { RunActionBar } from "./operations/RunActionBar";
-import { NodeEditorModal } from "./operations/NodeEditorModal";
-import { RetreatRunConfirmModal } from "./operations/RetreatRunConfirmModal";
+import { RunMap, type RunMapNode } from "./operations/RunMap";
 import { useRunRosterHullWeb2 } from "../hooks/useRunRosterHull";
-import { getRunMapAction, isCurrentNodeCleared } from "../utils/runMapAction";
 import { aiConfigToPreviewShipWeb2 } from "../utils/aiShipConfigWeb2";
-import { useUrlSelectedNode } from "../hooks/useUrlSelectedNode";
-import { CLIENT_TAB_SLUGS } from "../utils/clientNavigation";
-import {
-  TUTORIAL_PRELUDE_CANVAS_NODE,
-  TUTORIAL_PRELUDE_NODE_ID,
-  withTutorialPrelude,
-} from "../utils/tutorialPrelude";
-import { TUTORIAL_PRELUDE_PEEK, TutorialPreludeDrawer } from "./operations/TutorialPreludeDrawer";
 import { trackRunRetreated } from "../utils/analytics/gameEvents";
 
 const DEFAULT_ROGUELIKE_CAMPAIGN_ID = 1;
-const ADD_NODE_SENTINEL_ID = Number.MAX_SAFE_INTEGER;
 const MISSION_EDIT_MODE_KEY = "mission-edit-mode-web2";
 const MISSION_SELECTED_NODE_KEY = "mission-selected-node-web2";
 const NO_ROSTER: RoguelikeRosterEntryWeb2[] = [];
-const OPS_TOOLBAR_BUTTON =
-  "border border-solid px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
-interface RoguelikeGraphWeb2Props {
-  /** Null when the player has no run — see RoguelikeGraph.tsx's matching prop doc. */
-  run: RoguelikeRunWeb2 | null;
-  onRunEnded: () => void;
-  /** Run-less preview only: opens fleet selection to start a run. */
-  onStartRun?: () => void;
-  /** See RoguelikeGraph.tsx's matching prop. */
-  tutorial?: { onStart: () => void; onSkip: () => void };
-  /** The player has played or skipped the tutorial: First Contact stays on the map, cleared. */
-  tutorialDone?: boolean;
-}
+const toRunMapNode = (n: RoguelikeNodeWeb2WithContent): RunMapNode => ({
+  id: n.id,
+  kind: n.kind as RoguelikeNodeKind,
+  title: n.title,
+  titleStatus: n.titleStatus,
+  description: n.description,
+  descriptionStatus: n.descriptionStatus,
+  childIds: n.childEdges.map((e) => e.childId),
+});
 
-interface RoguelikeCanvasNode extends RoguelikeNodeCardNode {
-  prerequisites: number[];
-  title: string;
-  titleStatus: NodeContentStatus;
-  editMode: boolean;
-  connectHighlight: "source" | "candidate" | "invalid" | undefined;
-}
-
-// Web2 counterpart to RoguelikeGraph.tsx — same full-map CampaignGraphCanvas
-// view, number-native instead of bigint-native, same Edit Mode/browse-mode
-// support. One real difference (unchanged from before this feature):
-// web2 has no persisted branch-lockout (no equivalent of
-// RoguelikeRun.isNodeLocked), so "unlocked" here means "adjacent to your
-// current position" rather than "not locked out for this run" — see the
-// original doc-comment this file carried before Edit Mode was added.
+/**
+ * Web2's Operations map (see RunMap): the campaign and run from the API.
+ * Web2 keeps no branch lockout on the run, so a node is open when it's the
+ * current node or one of its children.
+ */
 export function RoguelikeGraphWeb2({
   run,
   onRunEnded,
   onStartRun,
   tutorial,
   tutorialDone = false,
-}: RoguelikeGraphWeb2Props) {
+}: {
+  /** Null when the player has no run (a preview; see RunMap). */
+  run: RoguelikeRunWeb2 | null;
+  onRunEnded: () => void;
+  onStartRun?: () => void;
+  tutorial?: { onStart: () => void; onSkip: () => void };
+  tutorialDone?: boolean;
+}) {
   const { retreatRun, enterResupplyNode } = useRoguelikeMatchWeb2();
   const isEditor = useWeb2Admin();
   const admin = useRoguelikeAdminWeb2();
-  const [combatTargetNodeId, setCombatTargetNodeId] = React.useState<number | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = React.useState<number | null>(null);
-  const [enteringResupply, setEnteringResupply] = React.useState<number | null>(null);
-  const [isRetreating, setIsRetreating] = React.useState(false);
-  const [editMode, setEditModeState] = React.useState(false);
-  const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: number } | null>(null);
-  const [showSettings, setShowSettings] = React.useState(false);
-  // The mission drawer opens on selection; closing it gives the chart the
-  // full width until another node is picked.
-  const [drawerOpen, setDrawerOpen] = React.useState(true);
-  // Edit Mode opens the selected node in a full-screen editor instead.
-  const [editorOpen, setEditorOpen] = React.useState(false);
-  const [showRetreatConfirm, setShowRetreatConfirm] = React.useState(false);
-
   const isBrowseMode = run == null;
   const campaignId = run?.campaignId ?? DEFAULT_ROGUELIKE_CAMPAIGN_ID;
 
+  const [editMode, setEditModeState] = React.useState(false);
   React.useEffect(() => {
     setEditModeState(localStorage.getItem(MISSION_EDIT_MODE_KEY) === "1");
   }, []);
@@ -127,188 +85,23 @@ export function RoguelikeGraphWeb2({
   const { nodes: campaignNodes, isLoading: nodesLoading, refetch: refetchNodes } =
     useRoguelikeCampaignNodesWeb2WithContent(campaignId);
   const { campaign, refetch: refetchCampaign } = useRoguelikeCampaignWeb2(campaignId);
-  const rootNodeId = campaign?.rootNodeId ?? null;
 
-  const byId = React.useMemo(
-    () => new Map(campaignNodes.map((n) => [n.id, n])),
-    [campaignNodes],
+  const nodes = React.useMemo(() => campaignNodes.map(toRunMapNode), [campaignNodes]);
+  const nodeById = React.useMemo(() => new Map(campaignNodes.map((n) => [n.id, n])), [campaignNodes]);
+  const currentNode = run ? nodeById.get(run.currentNodeId) : undefined;
+  const isLocked = React.useCallback(
+    (id: number) =>
+      !!run && id !== run.currentNodeId && !currentNode?.childEdges.some((e) => e.childId === id),
+    [run, currentNode],
   );
-  const currentNode = isBrowseMode ? undefined : byId.get(run.currentNodeId);
+  const defeated = React.useMemo(() => new Set(run?.defeatedNodeIds ?? []), [run]);
+  const isDefeated = React.useCallback((id: number) => defeated.has(id), [defeated]);
 
-  const defeatedSet = React.useMemo(
-    () => new Set(isBrowseMode ? [] : run.defeatedNodeIds),
-    [isBrowseMode, run],
-  );
-  // Next missions open only once the current one is won (mirrors
-  // RoguelikeGraph.tsx).
-  const currentCleared =
-    !isBrowseMode &&
-    !!currentNode &&
-    isCurrentNodeCleared({
-      kind: currentNode.kind === RoguelikeNodeKind.Combat ? "combat" : "resupply",
-      isDefeated: defeatedSet.has(currentNode.id),
-      hasActiveGame: run.activeLobbyId != null,
-    });
-
-  const isCreatingNode = selectedNodeId === ADD_NODE_SENTINEL_ID;
-
-  const prerequisitesById = React.useMemo(
-    () =>
-      buildRoguelikePrerequisites(
-        campaignNodes.map((n) => ({
-          id: n.id,
-          children: n.childEdges.map((e) => ({ childId: e.childId })),
-        })),
-      ),
-    [campaignNodes],
-  );
-
-  const canvasNodes: RoguelikeCanvasNode[] = React.useMemo(
-    () =>
-      campaignNodes.map((n) => {
-        const isCurrent = !isBrowseMode && n.id === run.currentNodeId;
-        const isNextStop = !!currentNode?.childEdges.some((e) => e.childId === n.id);
-        const isAdjacent = isCurrent || isNextStop;
-        const isConnectSource = connectMode?.sourceNodeId === n.id;
-        const isCompleted = n.kind === RoguelikeNodeKind.Combat ? defeatedSet.has(n.id) : false;
-        return {
-          id: n.id,
-          kind: n.kind as RoguelikeNodeKind,
-          prerequisites: prerequisitesById.get(n.id) ?? [],
-          completed: isCompleted,
-          unlocked: isBrowseMode ? editMode || n.id === rootNodeId : isAdjacent,
-          isCurrent,
-          // Only nodes the player has reached open the mission drawer.
-          // With no run, only the root node (where a run starts).
-          selectable: isBrowseMode
-            ? editMode || n.id === rootNodeId
-            : editMode || isCurrent || isCompleted || (isNextStop && currentCleared),
-          title: n.title,
-          titleStatus: n.titleStatus,
-          editMode,
-          connectHighlight: !connectMode ? undefined : isConnectSource ? "source" : "candidate",
-        };
-      }),
-    [campaignNodes, isBrowseMode, run, currentNode, rootNodeId, defeatedSet, currentCleared, prerequisitesById, editMode, connectMode],
-  );
-  // First Contact on the map: the pending first mission (no run yet), or
-  // cleared once played or skipped. Not in Edit Mode (the real graph only).
-  const showTutorialPrelude = isBrowseMode && !editMode && !!tutorial;
-  const showClearedPrelude = !editMode && !showTutorialPrelude && tutorialDone;
-  const mapNodes: RoguelikeCanvasNode[] = editMode
-    ? [
-        ...canvasNodes,
-        {
-          id: ADD_NODE_SENTINEL_ID,
-          kind: RoguelikeNodeKind.Combat,
-          prerequisites: [],
-          completed: false,
-          unlocked: true,
-          isCurrent: false,
-          selectable: true,
-          title: "+ ADD NODE",
-          titleStatus: "ok",
-          editMode: true,
-          connectHighlight: connectMode ? "invalid" : undefined,
-        },
-      ]
-    : showTutorialPrelude || showClearedPrelude
-      ? withTutorialPrelude<RoguelikeCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE, {
-          done: showClearedPrelude,
-        })
-      : canvasNodes;
-  const isTutorialPreludeSelected =
-    (showTutorialPrelude || showClearedPrelude) && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
-
-  // Same as RoguelikeGraph.tsx: snap to the run's current node (or the
-  // root, with no run) only when that position or the mode changes, never on
-  // the player's own selection.
-  const currentRunNodeId = run ? run.currentNodeId : null;
-  // The first snap after a load takes the node the URL names instead (a
-  // refresh keeps the player's selection; see useUrlSelectedNode).
-  // (The tutorial prelude isn't a real node, so it stays out of the URL.)
-  const takeInitialUrlNode = useUrlSelectedNode(
-    selectedNodeId === TUTORIAL_PRELUDE_NODE_ID ? null : selectedNodeId,
-    CLIENT_TAB_SLUGS.Mission,
-  );
-  React.useEffect(() => {
-    if (currentRunNodeId != null) {
-      setSelectedNodeId(takeInitialUrlNode() ?? currentRunNodeId);
-      return;
-    }
-    if (showTutorialPrelude) {
-      takeInitialUrlNode();
-      setSelectedNodeId(TUTORIAL_PRELUDE_NODE_ID);
-      return;
-    }
-    if (!editMode && rootNodeId != null) setSelectedNodeId(takeInitialUrlNode() ?? rootNodeId);
-  }, [currentRunNodeId, editMode, rootNodeId, takeInitialUrlNode, showTutorialPrelude]);
-  // A URL node that isn't on this map (stale link, a different campaign):
-  // fall back to the snap target.
-  React.useEffect(() => {
-    if (editMode || campaignNodes.length === 0 || selectedNodeId == null) return;
-    if (byId.has(selectedNodeId) || selectedNodeId === TUTORIAL_PRELUDE_NODE_ID) return;
-    const fallback = currentRunNodeId ?? rootNodeId;
-    if (fallback != null && fallback !== selectedNodeId) setSelectedNodeId(fallback);
-  }, [editMode, campaignNodes, selectedNodeId, byId, currentRunNodeId, rootNodeId]);
-
-  // Edit Mode without a run restores the last selected node (only fills an
-  // empty selection).
-  React.useEffect(() => {
-    if (!isBrowseMode || !editMode) return;
-    if (selectedNodeId !== null || campaignNodes.length === 0) return;
-    const saved = localStorage.getItem(MISSION_SELECTED_NODE_KEY);
-    const savedId = saved ? Number(saved) : NaN;
-    if (Number.isFinite(savedId) && byId.has(savedId)) {
-      setSelectedNodeId(savedId);
-    }
-  }, [isBrowseMode, editMode, campaignNodes, selectedNodeId, byId]);
-
-  React.useEffect(() => {
-    if (!editMode) {
-      setConnectMode(null);
-      if (isCreatingNode) setSelectedNodeId(isBrowseMode ? rootNodeId : run!.currentNodeId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editMode]);
-
-  const selectedNode: RoguelikeNodeWeb2WithContent | undefined =
-    !isCreatingNode && selectedNodeId != null ? byId.get(selectedNodeId) : undefined;
-  const isSelectedCurrentNode = !isBrowseMode && !!selectedNode && selectedNode.id === run.currentNodeId;
-  const isSelectedReachableChild =
-    !isBrowseMode &&
-    !!selectedNode &&
-    !!currentNode &&
-    currentNode.childEdges.some((e) => e.childId === selectedNode.id);
-  const isSelectedNodeDefeated = !!selectedNode && defeatedSet.has(selectedNode.id);
-
-  const isSelectedCombatNode = selectedNode?.kind === RoguelikeNodeKind.Combat;
-  const selectedVictoryEffects = useRoguelikeVictoryEffectsWeb2(
-    isSelectedCombatNode ? selectedNode.winEffects : undefined,
-  );
-  const { totalThreat: selectedNodeThreat, placements, isLoading: placementsLoading } =
-    useMapEnemyThreatWeb2(isSelectedCombatNode ? selectedNode.mapId : undefined);
-
-  const combatTargetNode = combatTargetNodeId != null ? byId.get(combatTargetNodeId) : undefined;
-
-  // Action bar: the run roster with hull, and fleet cost against the cap.
   const roster = run?.roster ?? NO_ROSTER;
   const hullByShipId = useRunRosterHullWeb2(roster);
 
-  const handleEnterResupply = async (nodeId: number) => {
-    setEnteringResupply(nodeId);
-    try {
-      await enterResupplyNode(nodeId);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to enter resupply node");
-    } finally {
-      setEnteringResupply(null);
-    }
-  };
-
   const handleRetreat = async () => {
-    if (isBrowseMode) return;
-    setIsRetreating(true);
+    if (!run) return;
     try {
       // Read before the call: retreating clears the run's open match.
       const midCombat = run.activeLobbyId != null;
@@ -318,131 +111,110 @@ export function RoguelikeGraphWeb2({
       onRunEnded();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to retreat");
-    } finally {
-      setIsRetreating(false);
     }
   };
 
-  const handleConnectTarget = async (
-    targetNode: RoguelikeNodeWeb2WithContent,
-    sourceNodeId: number,
-  ) => {
+  const handleEnterResupply = async (nodeId: number) => {
     try {
-      await admin.addChild(sourceNodeId, targetNode.id);
-      toast.success(`Node #${targetNode.id} linked as a child.`);
-      await refetchNodes();
-    } catch (error) {
-      console.error("Failed to add child edge:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to add child edge");
-    } finally {
-      setConnectMode(null);
+      await enterResupplyNode(nodeId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to enter resupply node");
     }
   };
 
-  const handleSelectNode = (id: number) => {
-    if (connectMode) {
-      if (id === connectMode.sourceNodeId || id === ADD_NODE_SENTINEL_ID) return;
-      const targetNode = byId.get(id);
-      if (targetNode) void handleConnectTarget(targetNode, connectMode.sourceNodeId);
-      return;
-    }
-    if (id === ADD_NODE_SENTINEL_ID) {
-      setSelectedNodeId(ADD_NODE_SENTINEL_ID);
-      setEditorOpen(true);
-      return;
-    }
-    setSelectedNodeId(id);
-    setDrawerOpen(true);
-    setEditorOpen(true);
-    if (isBrowseMode && editMode) {
-      localStorage.setItem(MISSION_SELECTED_NODE_KEY, String(id));
-    }
-  };
-
-  if (nodesLoading || (!isBrowseMode && !currentNode)) {
-    return (
-      <div className="border-2 border-cyan p-6 font-mono text-sm text-text-muted" style={{ borderRadius: 0 }}>
-        Loading run position…
-      </div>
-    );
-  }
-
-  if (!isBrowseMode && !editMode && currentNode!.kind === RoguelikeNodeKind.Resupply) {
-    return <RoguelikeResupplyPanelWeb2 run={run} node={currentNode!} onDone={() => {}} />;
-  }
-
-  const mapAction = getRunMapAction({
-    isBrowseMode,
-    canStartRun: isBrowseMode && !editMode && !!onStartRun,
-    tutorialPending: showTutorialPrelude,
-    isTutorialPrelude: isTutorialPreludeSelected,
-    selectedKind: !selectedNode
-      ? null
-      : selectedNode.kind === RoguelikeNodeKind.Combat
-        ? "combat"
-        : "resupply",
-    isCurrentNode: isSelectedCurrentNode,
-    isReachableChild: isSelectedReachableChild,
-    isDefeated: isSelectedNodeDefeated,
-    // Web2 doesn't track a live match on the run; launching resumes it.
-    hasActiveGame: false,
-    currentCleared,
-    isEnteringResupply: !!selectedNode && enteringResupply === selectedNode.id,
-  });
-
-  const handleMapAction = () => {
-    if (mapAction.type === "start") {
-      onStartRun?.();
-      return;
-    }
-    if (mapAction.type === "tutorial") {
-      tutorial?.onStart();
-      return;
-    }
-    if (!selectedNode || isBrowseMode) return;
-    if (mapAction.type === "warp") setCombatTargetNodeId(selectedNode.id);
-    else if (mapAction.type === "resupply") void handleEnterResupply(selectedNode.id);
-  };
-
-  const nodeEditor = (
-    <RoguelikeNodeEditPanelWeb2
-      mode={isCreatingNode ? "create" : "edit"}
-      node={selectedNode ?? null}
-      campaignId={campaignId}
-      connectModeActive={!!selectedNode && connectMode?.sourceNodeId === selectedNode.id}
-      onStartConnectMode={(sourceNodeId) => setConnectMode({ sourceNodeId })}
-      onCancelConnectMode={() => setConnectMode(null)}
-      onSaved={() => void refetchNodes()}
-      onCreated={() => {
-        setEditorOpen(false);
-        setSelectedNodeId(isBrowseMode ? rootNodeId : run!.currentNodeId);
-        void refetchNodes();
+  return (
+    <RunMap
+      run={run ? { currentNodeId: run.currentNodeId, hasActiveGame: run.activeLobbyId != null } : null}
+      nodes={nodes}
+      nodesLoading={nodesLoading}
+      refetchNodes={refetchNodes}
+      rootNodeId={campaign?.rootNodeId ?? null}
+      isLocked={isLocked}
+      isDefeated={isDefeated}
+      isEditor={isEditor}
+      editMode={editMode}
+      setEditMode={setEditMode}
+      selectedNodeStorageKey={MISSION_SELECTED_NODE_KEY}
+      roster={roster.map((entry) => ({
+        key: String(entry.shipId),
+        name: entry.ship.name || `Ship #${entry.shipId}`,
+        image: <ShipImageWeb2 ship={entry.ship} className="h-full w-full" showLoadingState={false} />,
+        hullPercent: hullByShipId.get(String(entry.shipId)) ?? 100,
+      }))}
+      fleetCost={isBrowseMode ? null : roster.reduce((sum, entry) => sum + entry.ship.shipData.cost, 0)}
+      costCap={isBrowseMode ? null : run.currentCostCap}
+      onStartRun={onStartRun}
+      tutorial={tutorial}
+      tutorialDone={tutorialDone}
+      onRetreat={handleRetreat}
+      onEnterResupply={handleEnterResupply}
+      onAddChild={(parent, child) => admin.addChild(parent, child)}
+      renderDrawer={(node, { isCleared }) => {
+        const full = nodeById.get(node.id);
+        return full ? (
+          <Web2MissionDrawer
+            node={full}
+            isCleared={isCleared}
+            costCap={run ? run.currentCostCap : null}
+            autoHealPercent={campaign?.autoHealPercent ?? 0}
+          />
+        ) : null;
       }}
-      onCancelCreate={() => {
-        setEditorOpen(false);
-        setSelectedNodeId(isBrowseMode ? rootNodeId : run!.currentNodeId);
+      renderNodeEditor={(args) => (
+        <RoguelikeNodeEditPanelWeb2
+          {...args}
+          node={args.node ? (nodeById.get(args.node.id) ?? null) : null}
+          campaignId={campaignId}
+        />
+      )}
+      renderCombatModal={(nodeId, close) => {
+        const target = nodeById.get(nodeId);
+        return run && target ? <RoguelikeCombatModalWeb2 run={run} targetNode={target} onClose={close} onLaunched={close} /> : null;
       }}
+      renderResupplyPanel={() =>
+        run && currentNode ? <RoguelikeResupplyPanelWeb2 run={run} node={currentNode} onDone={() => {}} /> : null
+      }
+      renderSettings={(close) =>
+        campaign ? (
+          <RoguelikeSettingsModalWeb2 campaign={campaign} onClose={close} onSaved={() => void refetchCampaign()} />
+        ) : null
+      }
     />
   );
+}
 
-  const drawer = editMode ? null : isTutorialPreludeSelected ? (
-    <TutorialPreludeDrawer completed={showClearedPrelude} />
-  ) : selectedNode ? (
+/** The selected node's mission drawer: briefing, enemy fleet and dossier. */
+function Web2MissionDrawer({
+  node,
+  isCleared,
+  costCap,
+  autoHealPercent,
+}: {
+  node: RoguelikeNodeWeb2WithContent;
+  isCleared: boolean;
+  costCap: number | null;
+  autoHealPercent: number;
+}) {
+  const isCombat = node.kind === RoguelikeNodeKind.Combat;
+  const victoryEffects = useRoguelikeVictoryEffectsWeb2(isCombat ? node.winEffects : undefined);
+  const { totalThreat, placements, isLoading } = useMapEnemyThreatWeb2(isCombat ? node.mapId : undefined);
+
+  return (
     <MissionDrawerContent
-      title={selectedNode.title}
-      titleStatus={selectedNode.titleStatus}
-      kindLabel={selectedNode.kind === RoguelikeNodeKind.Combat ? "Combat" : "Resupply"}
+      title={node.title}
+      titleStatus={node.titleStatus}
+      kindLabel={isCombat ? "Combat" : "Resupply"}
       briefing={
         <MissionBriefing
-          mission={{ kind: "roguelike", nodeId: selectedNode.id }}
-          text={selectedNode.description}
-          status={selectedNode.descriptionStatus}
+          mission={{ kind: "roguelike", nodeId: node.id }}
+          text={node.description}
+          status={node.descriptionStatus}
           compact
         />
       }
       enemyFleet={
-        isSelectedCombatNode
-          ? placementsLoading
+        isCombat
+          ? isLoading
             ? null
             : placements.map((placement) => {
                 const ship = aiConfigToPreviewShipWeb2(placement.config);
@@ -457,174 +229,28 @@ export function RoguelikeGraphWeb2({
       dossier={
         <MissionDossier
           forces={
-            isSelectedCombatNode
+            isCombat
               ? {
-                  enemyShips: placementsLoading ? null : placements.length,
-                  enemy: placementsLoading ? null : selectedNodeThreat,
-                  yours: isBrowseMode ? null : run.currentCostCap,
+                  enemyShips: isLoading ? null : placements.length,
+                  enemy: isLoading ? null : totalThreat,
+                  yours: costCap,
                   yoursLabel: "Your cost cap",
                 }
               : undefined
           }
           rows={
-            isSelectedCombatNode
+            isCombat
               ? roguelikeCombatDossierRows({
-                  maxScore: selectedNode.maxScore ?? 0,
-                  creatorGoesFirst: selectedNode.creatorGoesFirst ?? true,
-                  autoHealPercent: campaign?.autoHealPercent ?? 0,
-                  victoryEffects: selectedVictoryEffects,
-                  isCleared: isSelectedNodeDefeated,
+                  maxScore: node.maxScore ?? 0,
+                  creatorGoesFirst: node.creatorGoesFirst ?? true,
+                  autoHealPercent,
+                  victoryEffects,
+                  isCleared,
                 })
-              : roguelikeResupplyDossierRows({ costCapOverride: selectedNode.costCapOverride ?? 0 })
+              : roguelikeResupplyDossierRows({ costCapOverride: node.costCapOverride ?? 0 })
           }
         />
       }
     />
-  ) : null;
-
-  const missionPeek: MissionPeek | null = editMode
-    ? null
-    : isTutorialPreludeSelected
-      ? TUTORIAL_PRELUDE_PEEK
-      : selectedNode
-        ? {
-            title: selectedNode.title,
-            kindLabel: selectedNode.kind === RoguelikeNodeKind.Combat ? "Combat" : "Resupply",
-            teaser: selectedNode.descriptionStatus === "ok" ? selectedNode.description : undefined,
-          }
-        : null;
-
-  return (
-    <>
-      <OperationsMap
-        toolbar={
-          isEditor || !isBrowseMode ? (
-            <>
-              <CampaignEditModeToggle
-                isEditor={isEditor}
-                editMode={editMode}
-                onToggle={() => setEditMode((v) => !v)}
-              />
-              {editMode && (
-                <button
-                  type="button"
-                  onClick={() => setShowSettings(true)}
-                  className={`${OPS_TOOLBAR_BUTTON} border-amber text-amber hover:bg-amber/10`}
-                >
-                  Campaign settings
-                </button>
-              )}
-              {!isBrowseMode && (
-                <button
-                  type="button"
-                  disabled={isRetreating}
-                  onClick={() => setShowRetreatConfirm(true)}
-                  className={`${OPS_TOOLBAR_BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10`}
-                >
-                  {isRetreating ? "Retreating…" : "Retreat run"}
-                </button>
-              )}
-            </>
-          ) : null
-        }
-        banner={
-          connectMode && (
-            <div className="flex items-center justify-between border-b-2 border-amber px-4 py-3 font-mono text-sm text-amber">
-              <span>Click the node this one leads to (node #{connectMode.sourceNodeId}).</span>
-              <button
-                type="button"
-                onClick={() => setConnectMode(null)}
-                className="border border-amber px-3 py-1 text-xs uppercase tracking-wider hover:bg-amber/10"
-              >
-                Cancel
-              </button>
-            </div>
-          )
-        }
-        canvas={
-          <CampaignGraphCanvas
-            bare
-            backdropSrc={ART_SLOTS.runMapBackdrop.src}
-            nodes={mapNodes}
-            selectedNodeId={selectedNodeId}
-            onSelectNode={handleSelectNode}
-            renderNode={(node, isSelected, onSelect) => (
-              <RoguelikeNodeCard
-                node={node}
-                isSelected={isSelected}
-                onSelect={onSelect}
-                title={node.title}
-                titleStatus={node.titleStatus}
-                editMode={node.editMode}
-                connectHighlight={node.connectHighlight}
-              />
-            )}
-          />
-        }
-        drawer={drawer}
-        drawerOpen={drawerOpen}
-        onDrawerOpenChange={setDrawerOpen}
-        peek={missionPeek}
-        actionBar={
-          editMode ? undefined : (
-            <RunActionBar
-              roster={roster.map((entry) => ({
-                key: String(entry.shipId),
-                name: entry.ship.name || `Ship #${entry.shipId}`,
-                image: <ShipImageWeb2 ship={entry.ship} className="h-full w-full" showLoadingState={false} />,
-                hullPercent: hullByShipId.get(String(entry.shipId)) ?? 100,
-              }))}
-              fleetCost={isBrowseMode ? null : roster.reduce((sum, entry) => sum + entry.ship.shipData.cost, 0)}
-              costCap={isBrowseMode ? null : run.currentCostCap}
-              action={mapAction}
-              onAction={handleMapAction}
-              onSecondaryAction={tutorial?.onSkip}
-            />
-          )
-        }
-      />
-
-      {/* Hidden while connecting so the target node can be clicked on the
-          map; it reopens on the same node once the link is made. */}
-      {editMode && editorOpen && !connectMode && (isCreatingNode || selectedNode) && (
-        <NodeEditorModal
-          title={
-            isCreatingNode
-              ? "New node"
-              : `Node #${String(selectedNode!.id)} · ${selectedNode!.title}`
-          }
-          onClose={() => setEditorOpen(false)}
-        >
-          {nodeEditor}
-        </NodeEditorModal>
-      )}
-
-      {showRetreatConfirm && !isBrowseMode && (
-        <RetreatRunConfirmModal
-          isRetreating={isRetreating}
-          onCancel={() => setShowRetreatConfirm(false)}
-          onConfirm={() => {
-            void handleRetreat().finally(() => setShowRetreatConfirm(false));
-          }}
-        />
-      )}
-
-      {combatTargetNodeId != null && combatTargetNode && !isBrowseMode && (
-        <RoguelikeCombatModalWeb2
-          run={run}
-          targetNode={combatTargetNode}
-          onClose={() => setCombatTargetNodeId(null)}
-          onLaunched={() => setCombatTargetNodeId(null)}
-        />
-      )}
-
-      {showSettings && campaign && (
-        <RoguelikeSettingsModalWeb2
-          campaign={campaign}
-          onClose={() => setShowSettings(false)}
-          onSaved={() => void refetchCampaign()}
-        />
-      )}
-    </>
   );
 }
