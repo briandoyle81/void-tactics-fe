@@ -46,6 +46,8 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
+import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
+import { LandscapeBattleHeader, LandscapeRailTabs, LandscapeShipSheet, LandscapeStagedMove } from "./LandscapeBattleRail";
 import { TutorialTarget } from "./TutorialTarget";
 import { useConstructAfterMint } from "../hooks/useConstructAfterMint";
 import {
@@ -80,6 +82,7 @@ import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import {
   GAME_VIEW_SIDE_ROOT_CLASS,
   useGameViewChromeLayout,
+  gameViewSideChrome,
 } from "../hooks/useGameViewChromeLayout";
 import { useSpecialRange } from "../hooks/useSpecialRange";
 import {
@@ -134,6 +137,7 @@ import {
   TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING,
   type TutorialGridPanelConfig,
 } from "./TutorialGridPanelConfigs";
+import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 
 const TUTORIAL_DIALOG_MISSION: DialogMission = { kind: "tutorial" };
 
@@ -571,7 +575,6 @@ export function SimulatedGameDisplay({
     "tutorial" | "status" | "actions" | "events"
   >("tutorial");
   const [isMobileFleetModalOpen, setIsMobileFleetModalOpen] = useState(false);
-  const [isMobileWeaponMenuOpen, setIsMobileWeaponMenuOpen] = useState(false);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = useState(false);
   const mobileTutorialScrollRef = useRef<HTMLDivElement | null>(null);
   const mobileTutorialContentRef = useRef<HTMLDivElement | null>(null);
@@ -580,7 +583,6 @@ export function SimulatedGameDisplay({
     // Keep mobile tutorial chrome aligned with desktop: each step starts on the
     // tutorial briefing tab to avoid stale tab-specific highlights/copy.
     setMobileLeftPanelTab("tutorial");
-    setIsMobileWeaponMenuOpen(false);
   }, [currentStepIndex]);
 
   const gameViewRootRef = React.useRef<HTMLDivElement | null>(null);
@@ -590,7 +592,7 @@ export function SimulatedGameDisplay({
     gridContainerRef,
   );
   const chromeOnSide = chromeLayout === "side";
-  const { isLandscapeMobile, requiresLandscapeMode } = useLandscapeMode();
+  const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
 
   React.useEffect(() => {
     if (!isLandscapeMobile) return;
@@ -605,6 +607,7 @@ export function SimulatedGameDisplay({
   }, [isLandscapeMobile]);
 
   const useSideLayout = chromeOnSide && !isLandscapeMobile;
+  const sideChrome = gameViewSideChrome(isPortraitTablet);
   const proposedMoveTargetListClass = useSideLayout
     ? "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
     : "flex flex-wrap gap-2 min-h-[5rem]";
@@ -1602,7 +1605,8 @@ export function SimulatedGameDisplay({
       }
       // Weapons + Anvil targeted: the cue moves to the EMP choice itself —
       // the Proposed Move panel's dropdown on the narrow layout, the confirm
-      // widget's EMP button on the wide one (tutorialWeaponOption below).
+      // widget's EMP button on the wide one and the board's weapon picker on
+      // a phone held sideways (tutorialWeaponOption below).
       if (
         selectedWeaponType === "weapon" &&
         targetShipId?.toString() === "2002"
@@ -3113,7 +3117,6 @@ export function SimulatedGameDisplay({
     ? gameState.creatorScore.toString()
     : gameState.joinerScore.toString();
   const maxScore = gameState.maxScore.toString();
-  const mobileTurnLabel = isMyTurn ? "YOUR TURN" : "OPPONENT'S TURN";
   const mobileSelectedShipAttributes =
     selectedShip ? getShipAttributes(selectedShip.id) : null;
   const mobileSelectedShipPosition =
@@ -3122,11 +3125,6 @@ export function SimulatedGameDisplay({
           (position) => position.shipId === selectedShip.id.toString(),
         )
       : undefined;
-  const mobileCanUseSpecial = Boolean(
-    selectedShip &&
-      shipHasActivatableSpecial(selectedShip) &&
-      (mobileSelectedShipAttributes?.hullPoints ?? 0) > 0,
-  );
   const mobileReactorCriticalStatus: "none" | "warning" | "critical" =
     mobileSelectedShipAttributes &&
     mobileSelectedShipAttributes.reactorCriticalTimer > 0 &&
@@ -3191,6 +3189,48 @@ export function SimulatedGameDisplay({
     holdNewLines: !isMyTurn,
     persist: false,
   });
+  // Tablets held upright dock the tutorial card in the rail under the score
+  // (gameViewSideChrome stacks the rail under the board there), so it
+  // doesn't cover the top of the map.
+  const dockTutorialPanel = isPortraitTablet && useSideLayout;
+  const renderTutorialTaskPanel = (docked: boolean) =>
+    tutorialGridPanelConfig ? (
+      <TutorialGridTaskPanel
+        docked={docked}
+        title={tutorialGridPanelConfig.title}
+        brief={tutorialGridPanelConfig.brief}
+        tasks={tutorialGridPanelConfig.tasks}
+        tasksSectionLabel={tutorialGridPanelConfig.tasksSectionLabel}
+        primaryCta={tutorialGridPanelConfig.primaryCta}
+        panelAnchor={tutorialTaskPanelAnchor}
+        panelVerticalAnchor={
+          currentStep?.id === "rescue" ? "bottom" : "top"
+        }
+        panelBottomRowExclusive={
+          tutorialGridPanelConfig.panelBottomRowExclusive
+        }
+        panelFitToContent={tutorialGridPanelConfig.panelFitToContent}
+        compactPreset={currentStep?.id === "welcome" ? "welcome" : undefined}
+        displayStepNumber={displayStepNumber}
+        displayTotalSteps={displayTotalSteps}
+        currentStepIndex={currentStepIndex}
+        isVisibleLastStep={isVisibleLastStep}
+        isStepComplete={isStepComplete}
+        onNext={() => nextStep()}
+        onPrevious={() => previousStep()}
+        onReset={() => resetTutorial()}
+        onQuit={onBack}
+        quitLabel={exitLabel}
+        tutorialRewardCacheDebug={
+          isTutorialCompletionStep
+            ? {
+                onClear: handleClearTutorialRewardCache,
+                disabled: !address,
+              }
+            : undefined
+        }
+      />
+    ) : null;
   const missionDialogOverlay =
     missionDialog.current || missionDialog.log.length > 0 ? (
       <MissionDialogPanel
@@ -3204,7 +3244,9 @@ export function SimulatedGameDisplay({
         unreadCount={missionDialog.unreadCount}
         onLogOpened={missionDialog.markLogSeen}
         className={
-          tutorialGridPanelConfig && tutorialTaskPanelAnchor === "left" ? "ml-auto" : ""
+          tutorialGridPanelConfig && !dockTutorialPanel && tutorialTaskPanelAnchor === "left"
+            ? "ml-auto"
+            : ""
         }
       />
     ) : null;
@@ -3372,88 +3414,90 @@ export function SimulatedGameDisplay({
 
   if (requiresLandscapeMode) {
     return (
-      <div className="mx-auto flex min-h-[70vh] w-full max-w-4xl items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md border-2 bg-near-black/85 p-6 text-center" style={{ borderColor: "var(--color-cyan)" }}>
-          <div className="flex justify-center mb-4">
-            <div
-              className="animate-phone-rotate"
-              style={{
-                width: "2rem",
-                height: "3.4rem",
-                border: "2px solid var(--color-cyan)",
-                borderRadius: "4px",
-                position: "relative",
-                opacity: 0.8,
-              }}
-            >
-              <div style={{
-                position: "absolute",
-                top: "4px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "0.6rem",
-                height: "2px",
-                backgroundColor: "var(--color-cyan)",
-                borderRadius: "1px",
-              }} />
-            </div>
-          </div>
-          <h2
-            className="text-xl font-bold uppercase tracking-wider text-cyan"
-            style={STYLE_LABEL}
-          >
-            Rotate to Landscape
-          </h2>
-          <p className="mt-3 text-sm text-text-secondary">
-            The tutorial battle view requires landscape mode on mobile. Rotate
-            your device to continue.
-          </p>
-          {onBack && (
-            <button
-              type="button"
-              onClick={onBack}
-              className="mt-5 border border-steel px-4 py-2 text-sm font-semibold uppercase tracking-wider text-text-primary transition-colors hover:border-cyan hover:text-cyan"
-              style={{ borderRadius: 0 }}
-            >
-              Back
-            </button>
-          )}
-        </div>
-      </div>
+      <RotateToLandscapePrompt
+        title="First Contact"
+        round={gameState.turnState.currentRound}
+        turnLabel={rotatePromptTurnLabel(null, isMyTurn)}
+        turnTone={isMyTurn ? "mine" : "theirs"}
+        onBack={onBack}
+      />
     );
   }
 
-  // The staged move's panel (Submit/Cancel, weapon, targets, Retreat):
-  // the stacked layout's panel, and the top of the landscape ship panel.
-  const renderProposedMovePanel = (): React.ReactNode => (
-    <div
-      className={
-        chromeOnSide
-          ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border border-solid p-3"
-          : "min-h-0 flex-1 border border-solid p-3"
-      }
-      style={{
-        backgroundColor: "var(--color-near-black)",
-        borderColor: "var(--color-gunmetal)",
-        borderTopColor: "var(--color-steel)",
-        borderLeftColor: "var(--color-steel)",
-        borderRadius: 0,
-      }}
-    >
-      <div
-        className={
-          chromeOnSide
-            ? "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
-            : "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
+  // The staged move's panel (Submit/Cancel, weapon, targets, Retreat) in
+  // the stacked and side layouts (matches GameDisplay's
+  // renderProposedMoveActivePanel). The landscape ship sheet uses
+  // LandscapeStagedMove instead, with this Submit/Cancel row in its footer.
+  const proposedMoveButtonSize = isLandscapeMobile
+    ? "px-1 py-1.5 text-xs tracking-normal"
+    : "px-4 py-1.5 text-sm tracking-wider";
+  const handleChooseRetreat = () => {
+    if (selectedShipId != null) {
+      setRetreatExplicitByShipId((prev) => ({
+        ...prev,
+        [selectedShipId.toString()]: true,
+      }));
+    }
+    setTargetShipId(null);
+    setPreviewPosition(null);
+  };
+  // The landscape ship sheet's staged move (shared LandscapeStagedMove, as
+  // in GameDisplay); the Hammer target keeps its tutorial frame.
+  const renderLandscapeStagedMove = (): React.ReactNode => {
+    if (selectedShipId == null) return null;
+    const currentPos = gameState.shipPositions.find(
+      (pos) => pos.shipId === selectedShipId.toString(),
+    );
+    const from = { row: currentPos?.position.row ?? 0, col: currentPos?.position.col ?? 0 };
+    return (
+      <LandscapeStagedMove
+        from={from}
+        to={previewPosition ?? from}
+        retreating={isSelectedShipDisabled || actionOverride === ActionType.Retreat}
+        weaponLabel={mobileWeaponDisplayName}
+        targets={validTargets.map((target) => ({
+          id: BigInt(target.shipId).toString(),
+          name: shipMap.get(BigInt(target.shipId))?.name || `#${BigInt(target.shipId).toString()}`,
+        }))}
+        selectedTargetId={targetShipId != null ? targetShipId.toString() : null}
+        repair={
+          selectedWeaponType === "special" &&
+          isRepairDronesSpecial(Number(selectedShip?.traits.variant ?? 1), specialType)
         }
-      >
-        <div className="relative flex w-full min-w-0 shrink-0 flex-row gap-2 pt-8">
+        onSelectTarget={(id) => setTargetShipId(BigInt(id))}
+        wrapTarget={(id, button) => (
+          <TutorialTarget
+            active={
+              currentStep?.id === "shoot" &&
+              previewPosition !== null &&
+              targetShipId === null &&
+              id === "2001"
+            }
+            pointer="inline"
+            inside
+          >
+            {button}
+          </TutorialTarget>
+        )}
+      />
+    );
+  };
+  const renderProposedMoveSubmitRow = (): React.ReactNode => (
+    <>
+        {/* The top padding leaves room for the Submit pointer, which the
+            scrolling landscape panel would clip; there it's only added
+            while the pointer shows. */}
+        <div
+          className={`relative flex w-full min-w-0 shrink-0 flex-row gap-2 ${
+            !isLandscapeMobile ? "pt-8" : ""
+          }`}
+        >
           <TutorialTarget active={shouldPulseSubmitMoveButton} className="min-w-0 flex-[2]">
             <button
               type="button"
               onClick={handleSubmitMove}
               disabled={isConfirmingMove}
-              className={`w-full px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 min-w-0 `}
+              className={`w-full ${proposedMoveButtonSize} uppercase font-semibold transition-colors duration-150 min-w-0 `}
               style={{
                 ...STYLE_LABEL,
                 borderColor: "var(--color-phosphor-green)",
@@ -3472,7 +3516,7 @@ export function SimulatedGameDisplay({
           <button
             type="button"
             onClick={handleCancelMove}
-            className="min-w-0 flex-[1] px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150"
+            className={`min-w-0 flex-[1] ${proposedMoveButtonSize} uppercase font-semibold transition-colors duration-150`}
             style={{
               ...STYLE_LABEL,
               borderColor: "var(--color-gunmetal)",
@@ -3488,10 +3532,39 @@ export function SimulatedGameDisplay({
             Cancel
           </button>
         </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+    </>
+  );
+  const renderProposedMovePanel = (): React.ReactNode => (
+    <div
+      className={
+        isLandscapeMobile
+          ? "flex min-h-0 min-w-0 flex-1 flex-col border border-solid p-1"
+          : chromeOnSide
+          ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border border-solid p-3"
+          : "min-h-0 flex-1 border border-solid p-3"
+      }
+      style={{
+        backgroundColor: "var(--color-near-black)",
+        borderColor: "var(--color-gunmetal)",
+        borderTopColor: "var(--color-steel)",
+        borderLeftColor: "var(--color-steel)",
+        borderRadius: 0,
+      }}
+    >
+      <div
+        className={
+          isLandscapeMobile
+            ? "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 p-1"
+            : "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
+        }
+      >
+        {renderProposedMoveSubmitRow()}
+        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${isLandscapeMobile ? "gap-2" : "gap-4"}`}>
           <div
             className={
-              chromeOnSide
+              isLandscapeMobile
+                ? "flex min-h-0 min-w-0 flex-1 flex-col gap-2"
+                : chromeOnSide
                 ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4"
                 : "flex min-h-0 min-w-0 flex-1 flex-row items-stretch gap-6"
             }
@@ -3517,7 +3590,7 @@ export function SimulatedGameDisplay({
                     <div className="text-sm font-semibold text-white">
                       {name}
                     </div>
-                    <div className="text-sm font-mono text-text-secondary">
+                    <div className={`font-mono text-text-secondary ${isLandscapeMobile ? "text-xs" : "text-sm"}`}>
                       ({fromRow}, {fromCol}) → ({toRow}, {toCol})
                     </div>
                   </div>
@@ -3525,7 +3598,7 @@ export function SimulatedGameDisplay({
               })()}
               {/* Weapon / Special selector, mirroring main game UI */}
               {(() => {
-                if (isSelectedShipDisabled) return null;
+                if (isSelectedShipDisabled || isLandscapeMobile) return null;
                 if (!selectedShipId) return null;
                 const ship = shipMap.get(selectedShipId);
                 if (!ship || !shipHasActivatableSpecial(ship)) return null;
@@ -3671,16 +3744,7 @@ export function SimulatedGameDisplay({
           </div>
           <button
             type="button"
-            onClick={() => {
-              if (selectedShipId != null) {
-                setRetreatExplicitByShipId((prev) => ({
-                  ...prev,
-                  [selectedShipId.toString()]: true,
-                }));
-              }
-              setTargetShipId(null);
-              setPreviewPosition(null);
-            }}
+            onClick={handleChooseRetreat}
             className="w-full shrink-0 px-3 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150"
             style={{
               ...STYLE_LABEL,
@@ -3747,105 +3811,28 @@ export function SimulatedGameDisplay({
             }`}
           >
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">
-              <div
-                className="mb-2 border border-solid px-1.5 py-1"
-                style={{
-                  backgroundColor: "color-mix(in srgb, var(--color-near-black) 96%, transparent)",
-                  borderColor: "var(--color-gunmetal)",
-                  borderTopColor: "var(--color-steel)",
-                  borderLeftColor: "var(--color-steel)",
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  {onBack ? (
-                    <button
-                      onClick={onBack}
-                      className="shrink-0 px-1.5 py-0.5 border border-solid text-[10px] uppercase font-semibold tracking-wider"
-                      style={{
-                        ...STYLE_LABEL,
-                        borderColor: "var(--color-gunmetal)",
-                        color: "var(--color-text-secondary)",
-                        backgroundColor: "var(--color-steel)",
-                        borderRadius: 0,
-                      }}
-                    >
-                      Back
-                    </button>
-                  ) : null}
-                  <div className="min-w-0 flex-1 text-center">
-                    <p className="truncate text-[10px] uppercase tracking-wider text-text-secondary">
-                      Game 0 | Round {gameState.turnState.currentRound.toString()}
-                    </p>
-                    <p
-                      className="truncate text-[10px] uppercase tracking-wider"
-                      style={{
-                        color: isMyTurn
-                          ? "var(--color-cyan)"
-                          : "var(--color-warning-red)",
-                      }}
-                    >
-                      {mobileTurnLabel}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {}}
-                    className="shrink-0 px-1.5 py-0.5 border border-solid text-[10px] uppercase font-semibold tracking-wider"
-                    style={{
-                      ...STYLE_LABEL,
-                      borderColor: "var(--color-cyan)",
-                      color: "var(--color-cyan)",
-                      backgroundColor: "var(--color-near-black)",
-                      borderRadius: 0,
-                    }}
-                  >
-                    Sync
-                  </button>
-                </div>
-              </div>
+              <LandscapeBattleHeader
+                onBack={onBack}
+                round={gameState.turnState.currentRound}
+                turnLabel={rotatePromptTurnLabel(null, isMyTurn, true)}
+                turnTone={isMyTurn ? "mine" : "theirs"}
+                myScore={Number(myScore)}
+                opponentScore={Number(opponentScore)}
+                maxScore={Number(maxScore)}
+                menuItems={[
+                  { label: "Reset tutorial", onClick: () => resetTutorial(), tone: "warn" },
+                  ...(onBack ? [{ label: exitLabel, onClick: onBack }] : []),
+                ]}
+              />
 
-              <div className="mb-2 flex flex-wrap gap-1">
-                {(["tutorial", "status", "actions", "events"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setMobileLeftPanelTab(tab)}
-                    className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
-                    style={{
-                      ...STYLE_LABEL,
-                      borderColor:
-                        mobileLeftPanelTab === tab
-                          ? "var(--color-cyan)"
-                          : "var(--color-gunmetal)",
-                      color:
-                        mobileLeftPanelTab === tab
-                          ? "var(--color-cyan)"
-                          : "var(--color-text-secondary)",
-                      backgroundColor:
-                        mobileLeftPanelTab === tab
-                          ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                          : "var(--color-steel)",
-                      borderRadius: 0,
-                    }}
-                  >
-                    {tab === "tutorial" ? "brief" : tab}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setIsMobileFleetModalOpen(true)}
-                  className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-phosphor-green)",
-                    color: "var(--color-phosphor-green)",
-                    backgroundColor: "var(--color-steel)",
-                    borderRadius: 0,
-                  }}
-                >
-                  Fleets
-                </button>
-              </div>
+              <LandscapeRailTabs
+                tabs={["tutorial", "status", "actions", "events", "fleets"]}
+                active={mobileLeftPanelTab}
+                onSelect={(tab) => {
+                  if (tab === "fleets") setIsMobileFleetModalOpen(true);
+                  else setMobileLeftPanelTab(tab);
+                }}
+              />
 
               <div
                 className={`min-h-0 flex-1 ${
@@ -3997,7 +3984,7 @@ export function SimulatedGameDisplay({
                           type="button"
                           onClick={() => previousStep()}
                           disabled={currentStepIndex === 0}
-                          className="px-2 py-1 border border-solid text-[10px] uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-10 px-2 border border-solid text-xs uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{
                             borderColor: "var(--color-gunmetal)",
                             color: "var(--color-text-secondary)",
@@ -4014,7 +4001,7 @@ export function SimulatedGameDisplay({
                               type="button"
                               onClick={() => nextStep()}
                               disabled={!isStepComplete}
-                              className="w-full px-2 py-1 border border-solid text-[10px] uppercase tracking-wider disabled:cursor-not-allowed"
+                              className="h-10 w-full px-2 border border-solid text-xs uppercase tracking-wider disabled:cursor-not-allowed"
                               style={{
                                 borderColor: isStepComplete ? "var(--color-phosphor-green)" : "var(--color-gunmetal)",
                                 color: isStepComplete ? "var(--color-phosphor-green)" : "var(--color-text-muted)",
@@ -4028,32 +4015,6 @@ export function SimulatedGameDisplay({
                         ) : (
                           <div />
                         )}
-                        <button
-                          type="button"
-                          onClick={() => resetTutorial()}
-                          className="px-2 py-1 border border-solid text-[10px] uppercase tracking-wider"
-                          style={{
-                            borderColor: "var(--color-amber)",
-                            color: "var(--color-amber)",
-                            backgroundColor: "var(--color-steel)",
-                            borderRadius: 0,
-                          }}
-                        >
-                          Reset
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onBack?.()}
-                          className="px-2 py-1 border border-solid text-[10px] uppercase tracking-wider"
-                          style={{
-                            borderColor: "var(--color-gunmetal)",
-                            color: "var(--color-text-secondary)",
-                            backgroundColor: "var(--color-slate)",
-                            borderRadius: 0,
-                          }}
-                        >
-                          {exitLabel}
-                        </button>
                       </div>
                     </div>
                   ) : isReportOnlyStep(currentStep?.id) ? null : (
@@ -4134,124 +4095,42 @@ export function SimulatedGameDisplay({
               </div>
 
               {selectedShip ? (
-                <div
-                  className="absolute inset-0 z-[260] overflow-y-auto px-1 pb-1 pt-0.5"
-                  style={{
-                    backgroundColor: "color-mix(in srgb, var(--color-near-black) 97%, transparent)",
-                  }}
-                >
-                  {/* This panel covers the tutorial card, so keep the step in
-                      view: its title and progress. Close returns to the card. */}
-                  {tutorialGridPanelConfig ? (
-                    <div className="mb-1 flex items-baseline justify-between gap-2 border-l-2 border-cyan pl-1.5 font-mono text-[11px] uppercase tracking-wide text-cyan">
-                      <span className="truncate">{tutorialGridPanelConfig.title}</span>
-                      <span className="shrink-0 text-text-muted">
-                        {displayStepNumber}/{displayTotalSteps}
-                      </span>
-                    </div>
-                  ) : null}
-                  <div className="mb-1 flex items-center justify-between">
-                    <TutorialTarget active={shouldHighlightSpecialEmpWeaponDropdown} className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => setIsMobileWeaponMenuOpen((prev) => !prev)}
-                        disabled={!selectedShip || !shipHasActivatableSpecial(selectedShip)}
-                        className={`flex min-w-[7.5rem] max-w-[10.5rem] items-center justify-between gap-2 border border-solid px-2 py-1 text-[10px] uppercase tracking-wider text-cyan disabled:opacity-50 disabled:cursor-default bg-black/40`}
-                        style={{
-                          borderColor: "var(--color-gunmetal)",
-                          backgroundColor: "rgba(0, 0, 0, 0.4)",
-                          borderRadius: 0,
-                        }}
-                      >
-                        <span className="truncate">{mobileWeaponDisplayName}</span>
-                        {selectedShip && shipHasActivatableSpecial(selectedShip) && (
-                          <span>{isMobileWeaponMenuOpen ? "▲" : "▼"}</span>
-                        )}
-                      </button>
-                      {isMobileWeaponMenuOpen ? (
-                        <div
-                          className="absolute left-0 top-[calc(100%+4px)] z-[270] w-full border border-solid bg-[var(--color-near-black)]"
-                          style={{
-                            borderColor: "var(--color-gunmetal)",
-                            borderRadius: 0,
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWeaponTypeFromGrid("weapon");
-                              setIsMobileWeaponMenuOpen(false);
-                            }}
-                            className="flex w-full items-center justify-between border-b border-solid px-2 py-1 text-left text-[10px] uppercase tracking-wider"
-                            style={{
-                              borderColor: "var(--color-gunmetal)",
-                              color:
-                                selectedWeaponType === "weapon"
-                                  ? "var(--color-cyan)"
-                                  : "var(--color-text-secondary)",
-                              backgroundColor:
-                                selectedWeaponType === "weapon"
-                                  ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                                  : "transparent",
-                            }}
-                          >
-                            <span className="truncate">
-                              {selectedShip
-                                ? getMainWeaponName(selectedShip.equipment.mainWeapon, selectedShipVariant)
-                                : "Weapon"}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!mobileCanUseSpecial}
-                            onClick={() => {
-                              if (!mobileCanUseSpecial) return;
-                              setWeaponTypeFromGrid("special");
-                              setIsMobileWeaponMenuOpen(false);
-                            }}
-                            className="flex w-full items-center justify-between px-2 py-1 text-left text-[10px] uppercase tracking-wider disabled:opacity-40"
-                            style={{
-                              color:
-                                selectedWeaponType === "special"
-                                  ? "var(--color-cyan)"
-                                  : "var(--color-text-secondary)",
-                              backgroundColor:
-                                selectedWeaponType === "special"
-                                  ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                                  : "transparent",
-                            }}
-                          >
-                            <span className="truncate">
-                              {selectedShip
-                                ? getSpecialName(selectedShip.equipment.special, selectedShipVariant)
-                                : "Special"}
-                            </span>
-                          </button>
-                        </div>
-                      ) : null}
-                    </TutorialTarget>
+                <LandscapeShipSheet
+                  above={
+                    // This sheet covers the tutorial card, so keep the step
+                    // in view: its title and progress. Close returns to it.
+                    tutorialGridPanelConfig ? (
+                      <div className="mb-1.5 flex shrink-0 items-baseline justify-between gap-2 border-l-2 border-cyan pl-1.5 font-mono text-[11px] uppercase tracking-wide text-cyan">
+                        <span className="truncate">{tutorialGridPanelConfig.title}</span>
+                        <span className="shrink-0 text-text-muted">
+                          {displayStepNumber}/{displayTotalSteps}
+                        </span>
+                      </div>
+                    ) : null
+                  }
+                  shipImage={<ShipImage ship={selectedShip} className="h-full w-full" />}
+                  shipName={selectedShip.name || `Ship #${selectedShip.id.toString()}`}
+                  hullPercent={
+                    mobileSelectedShipAttributes && mobileSelectedShipAttributes.maxHullPoints > 0
+                      ? (mobileSelectedShipAttributes.hullPoints / mobileSelectedShipAttributes.maxHullPoints) * 100
+                      : undefined
+                  }
+                  menuItems={
+                    isShowingProposedMove && !isSelectedShipDisabled
+                      ? [{ label: "Retreat", onClick: handleChooseRetreat, tone: "danger" }]
+                      : []
+                  }
+                  onClose={() => setSelectedShipId(null)}
+                  wrapClose={(button) => (
                     <TutorialTarget active={shouldHighlightMobileCloseButton} pointer="below">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsMobileWeaponMenuOpen(false);
-                          setSelectedShipId(null);
-                        }}
-                        className={`px-1.5 py-0.5 text-[10px] uppercase border border-solid `}
-                        style={{
-                          borderColor: "var(--color-gunmetal)",
-                          color: "var(--color-text-secondary)",
-                          backgroundColor: "var(--color-steel)",
-                          borderRadius: 0,
-                        }}
-                      >
-                        Close
-                      </button>
+                      {button}
                     </TutorialTarget>
-                  </div>
+                  )}
+                  footer={isShowingProposedMove ? renderProposedMoveSubmitRow() : null}
+                >
                   <div className="space-y-0.5">
-                    {/* Same as GameDisplay: a staged move's full panel first. */}
-                    {isShowingProposedMove ? renderProposedMovePanel() : null}
+                    {/* Same as GameDisplay: the staged move first. */}
+                    {isShowingProposedMove ? renderLandscapeStagedMove() : null}
                     <div className="origin-top scale-[0.9] transform-gpu">
                       <ShipCard
                         ship={toShipCardData(selectedShip)}
@@ -4278,7 +4157,7 @@ export function SimulatedGameDisplay({
                       />
                     </div>
                   </div>
-                </div>
+                </LandscapeShipSheet>
               ) : null}
             </div>
           </div>
@@ -4292,7 +4171,7 @@ export function SimulatedGameDisplay({
             }`}
             style={{
               aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`,
-              height: `min(100%, calc((100vw - 12.5rem) * ${GRID_HEIGHT} / ${GRID_WIDTH}))`,
+              height: LANDSCAPE_BOARD_HEIGHT,
             }}
           >
             <div
@@ -4362,7 +4241,8 @@ export function SimulatedGameDisplay({
                       retreatPrepIsCreator={retreatPrepIsCreator}
                       tutorialHighlightCells={tutorialHighlightCells}
                       tutorialWeaponOption={
-                        useSideLayout && shouldHighlightSpecialEmpWeaponDropdown ? "special" : undefined
+                        // The board's weapon picker is the only one here.
+                        shouldHighlightSpecialEmpWeaponDropdown ? "special" : undefined
                       }
                       onGridRightClickDeselect={handleGridRightClickDeselect}
                       setSelectedShipId={setSelectedShipIdForDisplay}
@@ -4561,7 +4441,7 @@ export function SimulatedGameDisplay({
       <div
         className={
           chromeOnSide
-            ? "flex min-h-0 min-w-0 flex-row items-stretch gap-4 pt-3"
+            ? sideChrome.row
             : "flex flex-col gap-6 pt-3"
         }
       >
@@ -4569,12 +4449,10 @@ export function SimulatedGameDisplay({
         <div
           className={
             chromeOnSide
-              ? "flex min-h-0 self-stretch w-[min(18rem,34vw)] max-w-[20rem] shrink-0 flex-col gap-3 overflow-hidden pl-2 pr-1"
+              ? sideChrome.rail
               : "flex items-start justify-between gap-6"
           }
-          style={chromeOnSide ? {
-            maxHeight: "calc((100vw - min(18rem, 34vw) - 2.625rem) * 11 / 17 + 1rem)"
-          } : undefined}
+          style={chromeOnSide ? sideChrome.railMaxHeight : undefined}
         >
           <div
             className={
@@ -4680,6 +4558,7 @@ export function SimulatedGameDisplay({
               </div>
               </TutorialTarget>
             </div>
+            {dockTutorialPanel && renderTutorialTaskPanel(true)}
           </div>
 
           {/* Proposed Move panel: Submit/Cancel on top; below that, ship + targets.
@@ -4739,7 +4618,7 @@ export function SimulatedGameDisplay({
 
         <div
           className={
-            chromeOnSide ? "relative min-h-0 min-w-0 flex-1" : "relative w-full"
+            chromeOnSide ? sideChrome.board : "relative w-full"
           }
         >
           <GameBoardLayout
@@ -4856,42 +4735,7 @@ export function SimulatedGameDisplay({
                   }
                 />
               </div>
-              {tutorialGridPanelConfig && (
-                <TutorialGridTaskPanel
-                  title={tutorialGridPanelConfig.title}
-                  brief={tutorialGridPanelConfig.brief}
-                  tasks={tutorialGridPanelConfig.tasks}
-                  tasksSectionLabel={tutorialGridPanelConfig.tasksSectionLabel}
-                  primaryCta={tutorialGridPanelConfig.primaryCta}
-                  panelAnchor={tutorialTaskPanelAnchor}
-                  panelVerticalAnchor={
-                    currentStep?.id === "rescue" ? "bottom" : "top"
-                  }
-                  panelBottomRowExclusive={
-                    tutorialGridPanelConfig.panelBottomRowExclusive
-                  }
-                  panelFitToContent={tutorialGridPanelConfig.panelFitToContent}
-                  compactPreset={currentStep?.id === "welcome" ? "welcome" : undefined}
-                  displayStepNumber={displayStepNumber}
-                  displayTotalSteps={displayTotalSteps}
-                  currentStepIndex={currentStepIndex}
-                  isVisibleLastStep={isVisibleLastStep}
-                  isStepComplete={isStepComplete}
-                  onNext={() => nextStep()}
-                  onPrevious={() => previousStep()}
-                  onReset={() => resetTutorial()}
-                  onQuit={onBack}
-                  quitLabel={exitLabel}
-                  tutorialRewardCacheDebug={
-                    isTutorialCompletionStep
-                      ? {
-                          onClear: handleClearTutorialRewardCache,
-                          disabled: !address,
-                        }
-                      : undefined
-                  }
-                />
-              )}
+              {!dockTutorialPanel && renderTutorialTaskPanel(false)}
               <div className="absolute bottom-0 right-0 z-[220] pointer-events-none">
                 <div className="pointer-events-auto">
                   {isLastMovePanelMinimized ? (

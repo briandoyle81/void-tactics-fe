@@ -514,7 +514,10 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                 type="button"
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-                className="w-5 h-5 flex items-center justify-center border text-cyan hover:bg-cyan/10 transition-colors font-bold text-xs"
+                // A tap toggles it on touch screens, which have no hover.
+                onClick={() => setShowTooltip((open) => !open)}
+                aria-expanded={showTooltip}
+                className="w-5 h-5 flex items-center justify-center border text-cyan hover:bg-cyan/10 transition-colors font-bold text-xs pointer-coarse:h-8 pointer-coarse:w-8"
                 style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
                 aria-label="Ship modification help"
               >
@@ -522,7 +525,9 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
               </button>
               {showTooltip && (
                 <div
-                  className="absolute left-0 top-full z-50 mt-2 max-h-[80vh] w-[min(700px,92vw)] overflow-y-auto border-2 bg-near-black p-3 text-sm font-mono text-cyan md:w-[700px] md:p-4"
+                  // Phones: pinned across the screen rather than anchored to
+                  // the button, which sits mid-line and pushed it off the right.
+                  className="z-50 max-h-[80dvh] overflow-y-auto border-2 bg-near-black p-3 text-sm font-mono text-cyan max-md:fixed max-md:inset-x-2 max-md:top-16 md:absolute md:left-0 md:top-full md:mt-2 md:w-[700px] md:p-4"
                   style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
                   onMouseEnter={() => setShowTooltip(true)}
                   onMouseLeave={() => setShowTooltip(false)}

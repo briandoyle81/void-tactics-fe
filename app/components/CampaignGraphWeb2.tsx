@@ -5,6 +5,7 @@ import type { NodeContentStatus } from "../hooks/useNodeContent";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { useCampaignGraphWeb2WithContent } from "../hooks/useCampaignWeb2";
+import { useDebugMode } from "../hooks/useDebugMode";
 import { useCampaignAdminWeb2 } from "../hooks/useCampaignAdminWeb2";
 import { useWeb2Admin } from "../hooks/useWeb2Admin";
 import { CampaignNodeCard } from "./CampaignNodeCard";
@@ -48,7 +49,8 @@ export function CampaignGraphWeb2() {
       setIsResettingCache(false);
     }
   };
-  const debugResetButton = (
+  const debugMode = useDebugMode();
+  const debugResetButton = debugMode ? (
     <button
       type="button"
       onClick={() => void handleResetCache()}
@@ -62,7 +64,7 @@ export function CampaignGraphWeb2() {
     >
       {isResettingCache ? "[RESETTING CACHE...]" : "[DEBUG: RESET CAMPAIGN CACHE]"}
     </button>
-  );
+  ) : null;
 
   const isCreatingNode = selectedNodeId === ADD_NODE_SENTINEL_ID;
   const selectedNode = React.useMemo(

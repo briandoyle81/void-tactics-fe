@@ -18,13 +18,14 @@ const NOOP = () => {};
  */
 export function SignedOutOperations({ onSignIn }: { onSignIn: () => void }) {
   return (
-    <div className="flex w-full flex-col gap-3 px-2 py-4 md:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="m-0 font-mono text-xs text-phosphor-green/70">&gt; No account needed to play.</p>
+    <div className="flex w-full flex-col gap-2 px-2 py-2 md:gap-3 md:px-6 md:py-4">
+      {/* One row on phones, so the chart starts near the top. */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="m-0 min-w-0 truncate font-mono text-xs text-phosphor-green/70">&gt; No account needed to play.</p>
         <button
           type="button"
           onClick={onSignIn}
-          className="border-2 border-solid border-cyan px-4 py-1.5 text-sm font-black uppercase tracking-wider text-cyan transition-colors duration-150 hover:bg-steel"
+          className="shrink-0 whitespace-nowrap border-2 border-solid border-cyan px-3 py-1.5 text-sm font-black uppercase tracking-wider text-cyan transition-colors duration-150 hover:bg-steel md:px-4"
           style={{ ...DISPLAY_FONT, borderRadius: 0 }}
         >
           [Sign up/Login]

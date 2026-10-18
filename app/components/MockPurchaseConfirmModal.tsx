@@ -39,9 +39,10 @@ export function MockPurchaseConfirmModal({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    // Above GameNav (z-250) so the bottom bar doesn't cover its buttons.
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[450] p-2">
       <div
-        className="bg-near-black border rounded-none p-6 max-w-md w-full mx-4"
+        className="bg-near-black border rounded-none p-4 md:p-6 max-w-md w-full max-h-[calc(100dvh-1rem)] overflow-y-auto"
         style={{ borderColor: "var(--color-cyan)" }}
       >
         <h3 className="text-xl font-bold text-cyan mb-4 font-mono tracking-widest text-center">

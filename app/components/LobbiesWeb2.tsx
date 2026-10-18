@@ -13,6 +13,7 @@ import { MapDisplayWeb2 } from "./MapDisplayWeb2";
 import { useFleetViewWeb2 } from "../hooks/useFleetViewWeb2";
 import { FleetViewModal } from "./FleetViewModal";
 import { FleetSelectionModal } from "./FleetSelectionModal";
+import { FleetThreatWarningModal } from "./FleetThreatWarningModal";
 import { LobbyCreateSection } from "./LobbyCreateSection";
 import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacementWeb2";
 import { buildFleetShipListItemsWeb2 } from "../utils/buildFleetShipListItemsWeb2";
@@ -1163,39 +1164,14 @@ const LobbiesWeb2: React.FC = () => {
 
       {/* Fleet Threat Confirmation Dialog */}
       {showFleetConfirmation && selectedLobby && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[420]">
-          <div className="bg-near-black border border-amber rounded-none p-6 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="text-amber text-2xl font-mono font-bold mb-4 tracking-widest">[!]</div>
-              <h3 className="text-xl font-bold text-amber mb-4">FLEET THREAT WARNING</h3>
-              <p className="text-text-secondary mb-6">
-                Your fleet threat ({fleet.totalCost}) is less than 90% of the maximum (
-                {selectedLobby.basic.costLimit}). You&apos;re only using{" "}
-                {Math.round((fleet.totalCost / selectedLobby.basic.costLimit) * 100)}% of your available
-                budget.
-              </p>
-              <p className="text-sm text-text-muted mb-6">
-                Consider adding more ships to maximize your fleet&apos;s potential, or proceed with your
-                current selection.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowFleetConfirmation(false)}
-                  className="flex-1 px-4 py-2 border border-gunmetal text-text-muted rounded-none hover:bg-steel/20"
-                >
-                  GO BACK
-                </button>
-                <button
-                  onClick={() => createFleetWithConfirmation(selectedLobby.basic.id)}
-                  disabled={busy || selectedShipIds.size > MAX_SHIPS_PER_FLEET}
-                  className="flex-1 px-4 py-2 border border-amber text-amber rounded-none hover:bg-amber/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {busy ? "CREATING..." : "CONFIRM FLEET"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <FleetThreatWarningModal
+          totalCost={fleet.totalCost}
+          costLimit={selectedLobby.basic.costLimit}
+          onBack={() => setShowFleetConfirmation(false)}
+          onConfirm={() => createFleetWithConfirmation(selectedLobby.basic.id)}
+          confirmDisabled={busy || selectedShipIds.size > MAX_SHIPS_PER_FLEET}
+          isCreating={busy}
+        />
       )}
 
       {/* Fleet View Modal */}

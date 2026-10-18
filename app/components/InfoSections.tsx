@@ -54,7 +54,7 @@ export function InfoHero({ actions }: { actions: React.ReactNode }) {
         </SectionLabel>
         <h1
           id="info-hero-heading"
-          className="text-5xl font-bold uppercase leading-[0.9] tracking-wide text-text-primary xl:text-6xl 2xl:text-7xl"
+          className="text-[clamp(2.25rem,12vw,3rem)] font-bold uppercase leading-[0.9] tracking-wide text-text-primary xl:text-6xl 2xl:text-7xl"
           style={DISPLAY_FONT}
         >
           Outmaneuver.

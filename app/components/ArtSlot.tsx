@@ -1,11 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { ART_SLOTS, type ArtSlotId } from "../config/art";
-
-const SHOW_SLOT_LABELS = process.env.NODE_ENV === "development";
+import { useDebugMode } from "../hooks/useDebugMode";
 
 /**
  * An image area filled from app/config/art.ts. Until the art exists it
- * draws a dark grid backdrop (labeled in development). Children render on
+ * draws a dark grid backdrop (labeled in debug mode). Children render on
  * top, e.g. a tile's title panel.
  */
 export function ArtSlot({
@@ -18,6 +19,7 @@ export function ArtSlot({
   children?: ReactNode;
 }) {
   const { label, src, position = "center" } = ART_SLOTS[slot];
+  const showSlotLabel = useDebugMode();
   return (
     <div
       className={`relative overflow-hidden ${className}`}
@@ -32,7 +34,7 @@ export function ArtSlot({
             }
       }
     >
-      {!src && SHOW_SLOT_LABELS && (
+      {!src && showSlotLabel && (
         <span className="pointer-events-none absolute left-2 top-2 border border-dashed border-text-muted/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted/70">
           Art · {label}
         </span>

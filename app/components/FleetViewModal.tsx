@@ -27,9 +27,9 @@ export function FleetViewModal({
   shipCards,
 }: FleetViewModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[400]">
-      <div className="bg-near-black border border-cyan rounded-none p-6 max-w-4xl w-full mx-4 h-[80vh] flex flex-col">
-        <div className="flex justify-between items-start mb-4">
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[400] p-2 md:p-4">
+      <div className="bg-near-black border border-cyan rounded-none p-3 md:p-6 max-w-4xl w-full h-[80dvh] max-h-[calc(100dvh-1rem)] flex flex-col">
+        <div className="flex justify-between items-start mb-2 md:mb-4">
           <h4 className="text-lg font-bold text-cyan">FLEET #{fleetIdLabel}</h4>
           <div className="flex gap-2">
             <button
@@ -41,7 +41,7 @@ export function FleetViewModal({
           </div>
         </div>
 
-        <div className="mb-4 p-3 bg-black/40 border border-gunmetal rounded-none">
+        <div className="mb-2 p-2 md:mb-4 md:p-3 bg-black/40 border border-gunmetal rounded-none">
           <p className="text-sm text-text-secondary">
             <span className="text-cyan">Owner:</span> {ownerLabel}
             {isOwnerMe && <span className="ml-2 text-cyan font-bold">(You)</span>}
@@ -54,7 +54,7 @@ export function FleetViewModal({
               &gt;&gt; ACQUIRING FLEET DATA...
             </div>
           ) : shipCards.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 min-[500px]:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
               {shipCards}
             </div>
           ) : (

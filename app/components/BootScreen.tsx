@@ -111,12 +111,12 @@ export function BootScreen({
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-[11px] uppercase tracking-wider text-text-muted">
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-text-muted">
           <HeaderDiscordLink compact />
           <HeaderXLink compact />
-          <Link href="/privacy" className="hover:text-cyan">Privacy</Link>
-          <Link href="/terms" className="hover:text-cyan">Terms</Link>
-          <Link href="/audio-credits" className="hover:text-cyan">Audio credits</Link>
+          <Link href="/privacy" className="inline-flex min-h-8 items-center px-1 hover:text-cyan">Privacy</Link>
+          <Link href="/terms" className="inline-flex min-h-8 items-center px-1 hover:text-cyan">Terms</Link>
+          <Link href="/audio-credits" className="inline-flex min-h-8 items-center px-1 hover:text-cyan">Audio credits</Link>
         </div>
       </div>
     </ArtSlot>

@@ -110,6 +110,10 @@ export interface FleetSelectionModalProps {
   variantLocked?: boolean;
 }
 
+// Phones show the ship list below the map in two columns, so more than
+// one ship is in view; desktop keeps the single-column sidebar.
+const SHIP_LIST_COLS = "grid-cols-2 gap-2 md:grid-cols-1 md:gap-4";
+
 export function FleetSelectionModal({
   participantHasFleet,
   opponentHasFleet,
@@ -181,8 +185,9 @@ export function FleetSelectionModal({
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[400]">
       {/* Phones (below md): the map on top, the ship list scrolling below it.
-          dvh so the bottom isn't under a mobile browser's toolbar. */}
-      <div className="bg-near-black border border-cyan rounded-none p-3 md:p-6 w-[100vw] h-[100dvh] flex flex-col">
+          dvh so the bottom isn't under a mobile browser's toolbar, and the
+          notch insets pad it on a phone held sideways. */}
+      <div className="bg-near-black border border-cyan rounded-none p-3 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:p-6 w-[100vw] h-[100dvh] flex flex-col">
         <div className="mb-2 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
             <h4 className="text-lg font-bold text-cyan whitespace-nowrap">
@@ -345,6 +350,7 @@ export function FleetSelectionModal({
                 {!participantHasFleet && (
                   <FleetShipListPanel
                     widthClass="order-2 w-full min-h-0 flex-1 max-md:h-auto md:order-none md:w-1/4 md:flex-none"
+                    gridColsClassName={SHIP_LIST_COLS}
                     items={shipListItems}
                     onDropShip={onDropShip}
                     header={factionPicker}
@@ -366,6 +372,7 @@ export function FleetSelectionModal({
                 {!participantHasFleet && (
                   <FleetShipListPanel
                     widthClass="order-2 w-full min-h-0 flex-1 max-md:h-auto md:order-none md:w-1/4 md:flex-none"
+                    gridColsClassName={SHIP_LIST_COLS}
                     items={shipListItems}
                     onDropShip={onDropShip}
                     header={factionPicker}

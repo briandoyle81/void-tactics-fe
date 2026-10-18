@@ -225,5 +225,14 @@ export function useGridPanZoom() {
     applyGridTransform(gridContainerRef.current, zoomRef.current);
   }, [zoom]);
 
-  return { outerWrapperRef, gridContainerRef, zoom };
+  // Back to the whole board, for touch screens where pinching all the way
+  // out is fiddly (GameGrid shows a button for it while zoomed).
+  const resetZoom = useCallback(() => {
+    const next = { scale: 1, tx: 0, ty: 0 };
+    zoomRef.current = next;
+    applyGridTransform(gridContainerRef.current, next);
+    commitZoomState();
+  }, [commitZoomState]);
+
+  return { outerWrapperRef, gridContainerRef, zoom, resetZoom };
 }

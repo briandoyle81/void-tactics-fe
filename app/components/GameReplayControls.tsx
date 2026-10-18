@@ -47,7 +47,7 @@ export function GameReplayControls({
         type="button"
         onClick={onPrev}
         disabled={!canPrev}
-        className="px-2 py-0.5 text-[11px] uppercase tracking-wider border border-solid disabled:opacity-40"
+        className="px-2 py-0.5 pointer-coarse:min-h-8 pointer-coarse:min-w-10 pointer-coarse:px-3 text-[11px] uppercase tracking-wider border border-solid disabled:opacity-40"
         style={{ ...STYLE_LABEL, borderColor: "var(--color-steel)", color: "var(--color-cyan)", backgroundColor: "transparent", borderRadius: 0 }}
       >
         ◀ Prev
@@ -59,7 +59,7 @@ export function GameReplayControls({
         type="button"
         onClick={onNext}
         disabled={!canNext}
-        className="px-2 py-0.5 text-[11px] uppercase tracking-wider border border-solid disabled:opacity-40"
+        className="px-2 py-0.5 pointer-coarse:min-h-8 pointer-coarse:min-w-10 pointer-coarse:px-3 text-[11px] uppercase tracking-wider border border-solid disabled:opacity-40"
         style={{ ...STYLE_LABEL, borderColor: "var(--color-steel)", color: "var(--color-cyan)", backgroundColor: "transparent", borderRadius: 0 }}
       >
         Next ▶
@@ -68,7 +68,7 @@ export function GameReplayControls({
         type="button"
         onClick={onTogglePlay}
         disabled={!canNext}
-        className="px-2 py-0.5 text-[11px] uppercase tracking-wider border border-solid disabled:opacity-40"
+        className="px-2 py-0.5 pointer-coarse:min-h-8 pointer-coarse:min-w-10 pointer-coarse:px-3 text-[11px] uppercase tracking-wider border border-solid disabled:opacity-40"
         style={{
           ...STYLE_LABEL,
           borderColor: isPlaying ? "var(--color-cyan)" : "var(--color-steel)",
@@ -82,7 +82,7 @@ export function GameReplayControls({
       <button
         type="button"
         onClick={onExit}
-        className="px-2 py-0.5 text-[11px] uppercase tracking-wider border border-solid"
+        className="px-2 py-0.5 pointer-coarse:min-h-8 pointer-coarse:min-w-10 pointer-coarse:px-3 text-[11px] uppercase tracking-wider border border-solid"
         style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "transparent", borderRadius: 0 }}
       >
         ✕ Exit

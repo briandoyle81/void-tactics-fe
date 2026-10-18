@@ -6,6 +6,7 @@ import { shipHasActivatableSpecial } from "../utils/specialConfigWeb2";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { STYLE_LABEL } from "../styles/fontStyles";
 import { useFactionAbilityIsHeal } from "../hooks/useFactionAbilityIsHeal";
+import { TutorialTargetFrame } from "./TutorialTarget";
 import {
   selectedShipHasEffectLabel,
   SELF_EFFECT_LABEL_CLEARANCE_PX,
@@ -76,6 +77,9 @@ interface GameGridWeaponSelectorProps {
   onMoveVertical?: (side: "above" | "below") => void;
   clipRootRef?: React.RefObject<HTMLDivElement | null>;
   zoomScale?: number;
+  /** Tutorial: frames this choice as the thing to tap (phone landscape,
+   * where this selector is the only weapon picker). */
+  tutorialWeaponOption?: "weapon" | "special" | "ram";
 }
 
 /**
@@ -107,6 +111,7 @@ export const GameGridWeaponSelector = React.memo(function GameGridWeaponSelector
   onMoveVertical,
   clipRootRef,
   zoomScale = 1,
+  tutorialWeaponOption,
 }: GameGridWeaponSelectorProps) {
   // Resolved unconditionally (before the early `return null`s below) since
   // this is a hook call — rules-of-hooks requires it run on every render.
@@ -228,6 +233,7 @@ export const GameGridWeaponSelector = React.memo(function GameGridWeaponSelector
       onMoveVertical={onMoveVertical}
       clipRootRef={clipRootRef}
       zoomScale={zoomScale}
+      tutorialWeaponOption={tutorialWeaponOption}
     />
   );
 });
@@ -245,6 +251,7 @@ function WeaponSelectorChrome({
   onMoveVertical,
   clipRootRef,
   zoomScale,
+  tutorialWeaponOption,
 }: {
   weapons: { value: "weapon" | "special" | "ram"; label: string }[];
   selectedWeaponType: "weapon" | "special" | "ram";
@@ -258,6 +265,7 @@ function WeaponSelectorChrome({
   onMoveVertical?: (side: "above" | "below") => void;
   clipRootRef?: React.RefObject<HTMLDivElement | null>;
   zoomScale: number;
+  tutorialWeaponOption?: "weapon" | "special" | "ram";
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const autoSide: "above" | "below" = anchorRow === 0 ? "below" : "above";
@@ -381,7 +389,7 @@ function WeaponSelectorChrome({
                   setTargetShipId(null);
                 }
               }}
-              className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider transition-colors duration-100"
+              className="relative px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider transition-colors duration-100"
               style={{
                 fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
                 color: isActive ? "var(--color-cyan)" : "var(--color-text-muted)",
@@ -394,6 +402,7 @@ function WeaponSelectorChrome({
               }}
             >
               {label}
+              {tutorialWeaponOption === value && <TutorialTargetFrame inside />}
             </button>
           );
         })}

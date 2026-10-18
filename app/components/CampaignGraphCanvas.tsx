@@ -7,11 +7,14 @@ const MIN_COL_WIDTH = 230;
 const ROW_HEIGHT = 170;
 const CANVAS_PADDING = 56;
 const CANVAS_MIN_HEIGHT = 560;
-// Phones: tighter columns (nodes are 96px wide) and a shorter minimum height,
-// so the run map's action bar isn't pushed below the screen.
+// Phones: the route runs top to bottom instead (tiers become rows, so a
+// long chart scrolls the way the phone does), in a box capped at 60% of the
+// screen so the mission bar and the action stay on screen below it.
 const NARROW_WIDTH = 640;
-const NARROW_MIN_COL_WIDTH = 150;
-const NARROW_CANVAS_MIN_HEIGHT = 360;
+const VERTICAL_TIER_HEIGHT = 120;
+const VERTICAL_MIN_SLOT_WIDTH = 112;
+const VERTICAL_PADDING = 28;
+const VERTICAL_MAX_HEIGHT = "60dvh";
 
 export interface CampaignGraphCanvasNode {
   id: number;
@@ -23,6 +26,7 @@ export interface CampaignGraphCanvasNode {
 interface NodePosition {
   x: number;
   y: number;
+  /** Depth tier: a column, or a row when vertical. */
   col: number;
 }
 
@@ -31,6 +35,7 @@ interface GraphLayout<TNode extends CampaignGraphCanvasNode> {
   positions: Map<number, NodePosition>;
   width: number;
   height: number;
+  vertical: boolean;
 }
 
 // Depth = 1 + max(prerequisite depths), root nodes (no prerequisites) sit
@@ -92,7 +97,30 @@ function layoutGraph<TNode extends CampaignGraphCanvasNode>(
     });
   });
 
-  return { columns, positions, width: columns.length * colWidth, height: totalHeight };
+  return { columns, positions, width: columns.length * colWidth, height: totalHeight, vertical: false };
+}
+
+// Phones: tier 0 at the top, each tier a row, its nodes spread across the
+// width (wider than the box only when a tier has more nodes than fit).
+function layoutGraphVertical<TNode extends CampaignGraphCanvasNode>(
+  columns: TNode[][],
+  availableWidth: number,
+): GraphLayout<TNode> {
+  const maxPerTier = Math.max(1, ...columns.map((c) => (c ?? []).length));
+  const width = Math.max(availableWidth, maxPerTier * VERTICAL_MIN_SLOT_WIDTH);
+  const positions = new Map<number, NodePosition>();
+  columns.forEach((tier, tierIndex) => {
+    const list = tier ?? [];
+    const slot = width / Math.max(list.length, 1);
+    list.forEach((node, i) => {
+      positions.set(node.id, {
+        x: slot * i + slot / 2,
+        y: tierIndex * VERTICAL_TIER_HEIGHT + VERTICAL_TIER_HEIGHT / 2,
+        col: tierIndex,
+      });
+    });
+  });
+  return { columns, positions, width, height: columns.length * VERTICAL_TIER_HEIGHT, vertical: true };
 }
 
 // Starfield backdrop — two stacked CSS-only repeating radial-gradient
@@ -195,8 +223,10 @@ function JumpLanes({
       if (colSpan > 1) {
         const midX = (from.x + to.x) / 2;
         const midY = (fromY + toY) / 2;
-        const bow = midY < layout.height / 2 ? ROW_HEIGHT * 0.6 : -ROW_HEIGHT * 0.6;
-        const d = `M ${from.x} ${fromY} Q ${midX} ${midY + bow} ${to.x} ${toY}`;
+        // Bow across the tiers (sideways when the route runs down).
+        const d = layout.vertical
+          ? `M ${from.x} ${fromY} Q ${midX + (midX < layout.width / 2 ? 1 : -1) * CAMPAIGN_NODE_WIDTH * 0.8} ${midY} ${to.x} ${toY}`
+          : `M ${from.x} ${fromY} Q ${midX} ${midY + (midY < layout.height / 2 ? ROW_HEIGHT * 0.6 : -ROW_HEIGHT * 0.6)} ${to.x} ${toY}`;
         if (isSelectedRoute) {
           edges.push(<path key={`${key}-glow-outer`} d={d} {...glowOuterProps} />);
           edges.push(<path key={`${key}-glow-core`} d={d} {...glowCoreProps} />);
@@ -276,27 +306,45 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
     [nodes, manualColumnOverrides],
   );
   const isNarrow = containerWidth != null && containerWidth < NARROW_WIDTH;
-  const minColWidth = isNarrow ? NARROW_MIN_COL_WIDTH : MIN_COL_WIDTH;
-  const minHeight = isNarrow ? NARROW_CANVAS_MIN_HEIGHT : CANVAS_MIN_HEIGHT;
+  const padding = isNarrow ? VERTICAL_PADDING : CANVAS_PADDING;
   const colWidth = containerWidth
-    ? Math.max(minColWidth, (containerWidth - CANVAS_PADDING * 2 - 1) / Math.max(columns.length, 1))
+    ? Math.max(MIN_COL_WIDTH, (containerWidth - CANVAS_PADDING * 2 - 1) / Math.max(columns.length, 1))
     : MIN_COL_WIDTH;
-  const layout = React.useMemo(() => layoutGraph(columns, colWidth), [columns, colWidth]);
-  const canvasHeight = Math.max(layout.height + CANVAS_PADDING * 2, minHeight);
+  const layout = React.useMemo(
+    () =>
+      isNarrow
+        ? layoutGraphVertical(columns, containerWidth - VERTICAL_PADDING * 2)
+        : layoutGraph(columns, colWidth),
+    [columns, colWidth, isNarrow, containerWidth],
+  );
+  const canvasHeight = isNarrow
+    ? layout.height + padding * 2
+    : Math.max(layout.height + padding * 2, CANVAS_MIN_HEIGHT);
 
   // Keep the selected node (the current mission when a run opens) in view:
-  // a long chart is wider than a phone, and the current node was often
-  // off to the right with nothing pointing at it.
+  // a long chart is wider (or, on phones, taller) than the box, and the
+  // current node was often out of view with nothing pointing at it.
   const scrollRef = React.useRef<HTMLDivElement>(null);
-  const selectedX = selectedNodeId != null ? layout.positions.get(selectedNodeId)?.x : undefined;
+  const selectedPos = selectedNodeId != null ? layout.positions.get(selectedNodeId) : undefined;
+  const selectedX = selectedPos?.x;
+  const selectedY = selectedPos?.y;
+  const isVertical = layout.vertical;
   React.useEffect(() => {
     const box = scrollRef.current;
-    if (!box || selectedX == null || box.scrollWidth <= box.clientWidth) return;
-    const x = selectedX + CANVAS_PADDING;
+    if (!box || selectedX == null || selectedY == null) return;
     const margin = CAMPAIGN_NODE_WIDTH;
+    if (isVertical) {
+      if (box.scrollHeight <= box.clientHeight) return;
+      const y = selectedY + padding;
+      if (y - margin >= box.scrollTop && y + margin <= box.scrollTop + box.clientHeight) return;
+      box.scrollTo({ top: Math.max(0, y - box.clientHeight / 2), behavior: "smooth" });
+      return;
+    }
+    if (box.scrollWidth <= box.clientWidth) return;
+    const x = selectedX + padding;
     if (x - margin >= box.scrollLeft && x + margin <= box.scrollLeft + box.clientWidth) return;
     box.scrollTo({ left: Math.max(0, x - box.clientWidth / 2), behavior: "smooth" });
-  }, [selectedX]);
+  }, [selectedX, selectedY, isVertical, padding]);
   const contentTop = (canvasHeight - layout.height) / 2;
 
   if (nodes.length === 0) {
@@ -320,14 +368,25 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
       <div ref={containerRef} className="relative w-full">
         <div
           ref={scrollRef}
-          className={`relative w-full overflow-x-auto ${bare ? "" : "border-2"}`}
-          style={{ borderColor: "var(--color-steel)", borderRadius: 0, minHeight }}
+          className={`relative w-full ${
+            // Vertical: sideways scrolling only for a tier wider than the box
+            // (the vertical scrollbar's width alone shouldn't cause it).
+            isNarrow
+              ? `overflow-y-auto overscroll-contain ${layout.width > containerWidth - VERTICAL_PADDING * 2 ? "overflow-x-auto" : "overflow-x-hidden"}`
+              : "overflow-x-auto"
+          } ${bare ? "" : "border-2"}`}
+          style={{
+            borderColor: "var(--color-steel)",
+            borderRadius: 0,
+            minHeight: isNarrow ? undefined : CANVAS_MIN_HEIGHT,
+            maxHeight: isNarrow ? VERTICAL_MAX_HEIGHT : undefined,
+          }}
         >
-          <div className="relative" style={{ width: layout.width + CANVAS_PADDING * 2, height: canvasHeight }}>
+          <div className="relative" style={{ width: layout.width + padding * 2, height: canvasHeight }}>
             <Starfield backdropSrc={backdropSrc} />
             <div
               className="absolute"
-              style={{ left: CANVAS_PADDING, top: contentTop, width: layout.width, height: layout.height }}
+              style={{ left: padding, top: contentTop, width: layout.width, height: layout.height }}
             >
               <JumpLanes layout={layout} selectedNodeId={selectedNodeId} />
               {layout.columns.flat().map((node) => {

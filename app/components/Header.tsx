@@ -27,6 +27,7 @@ import { useFreeShipClaimStatus } from "../hooks/useFreeShipClaimStatus";
 import type { StoreSection } from "./storeSections";
 import { useGameMusic } from "../hooks/useGameMusic";
 import { useSoundEffectsSetting } from "../hooks/useSoundEffects";
+import { useDebugModeSetting } from "../hooks/useDebugMode";
 import { formatDec } from "../utils/formatDec";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useUserBalanceWeb2 } from "../hooks/useUserBalanceWeb2";
@@ -423,23 +424,28 @@ function ResourcePill({
   plus?: { title: string; onClick?: () => void; href?: string; disabled?: boolean };
   className?: string;
 }) {
+  // The + fills the pill's height (32px tall with the border) for a
+  // full-size tap target.
   const plusClass =
-    "flex h-7 w-7 shrink-0 items-center justify-center text-sm font-bold leading-none transition-colors duration-150 hover:bg-slate disabled:cursor-default disabled:opacity-40";
+    "flex w-8 shrink-0 self-stretch items-center justify-center text-sm font-bold leading-none transition-colors duration-150 hover:bg-slate disabled:cursor-default disabled:opacity-40";
   const plusStyle = {
     backgroundColor: "var(--color-steel)",
     color: "var(--color-phosphor-green)",
   };
   return (
     <div
-      className={`flex h-8 shrink-0 items-center gap-1.5 border border-solid pl-2 pr-1 ${className}`}
+      className={`flex h-8 shrink-0 items-center gap-1.5 border border-solid pl-2 ${plus ? "" : "pr-2"} ${className}`}
       style={{
         backgroundColor: "var(--color-near-black)",
         borderColor: "var(--color-gunmetal)",
       }}
       title={title}
     >
+      {/* Phones show a swatch in the resource's colour instead of the label
+          (the full name is in the title). */}
+      <span className="h-2 w-2 shrink-0 sm:hidden" style={{ backgroundColor: color }} aria-hidden />
       <span
-        className="text-[10px] font-bold uppercase tracking-wider"
+        className="hidden text-[10px] font-bold uppercase tracking-wider sm:inline"
         style={{ fontFamily: MONO_FONT, color }}
       >
         {label}
@@ -483,6 +489,50 @@ function ResourcePill({
             +
           </button>
         ))}
+    </div>
+  );
+}
+
+/**
+ * The HUD's resource pills, scrolling sideways when they don't fit (its
+ * scrollbar is hidden). The right edge fades while there's more to scroll
+ * to, so a cut-off pill reads as more rather than as the end.
+ */
+function HudPillRow({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [moreRight, setMoreRight] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setMoreRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    // The row resizing, and its pills changing (a balance update, a pill
+    // mounting), both change whether it overflows.
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(el);
+    const mutationObserver = new MutationObserver(update);
+    mutationObserver.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => {
+      el.removeEventListener("scroll", update);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className="flex min-w-0 items-center gap-1.5 overflow-x-auto md:gap-2 [scrollbar-width:none]"
+      style={
+        moreRight
+          ? {
+              maskImage: "linear-gradient(to right, black calc(100% - 1.5rem), transparent)",
+              WebkitMaskImage: "linear-gradient(to right, black calc(100% - 1.5rem), transparent)",
+            }
+          : undefined
+      }
+    >
+      {children}
     </div>
   );
 }
@@ -959,6 +1009,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
 
   const music = useGameMusic();
   const soundEffects = useSoundEffectsSetting();
+  const debugMode = useDebugModeSetting();
   const isSignedIn = showWeb2Panel || showWeb3Panel;
   const callsign = showWeb2Panel
     ? (web2Username ?? web2Email ?? "Commander")
@@ -1058,7 +1109,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
 
           {isHydrated && isSignedIn && (
             <>
-              <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto md:gap-2 [scrollbar-width:none]">
+              <HudPillRow>
                 <ResourcePill
                   label="UTC"
                   value={formatBalance(utcValue, UTC_DISPLAY_DECIMALS)}
@@ -1099,7 +1150,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                 )}
                 {/* Unmounted during a match so its reads and countdown stop. */}
                 {!matchViewOpen && <HudFreeShipsPill onOpen={openCommandDeck} />}
-              </div>
+              </HudPillRow>
 
               {yourTurnCount != null && (
                 <HudIconButton
@@ -1290,6 +1341,21 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                       Sound effects
                       <span className={soundEffects.enabled ? "text-phosphor-green" : "text-text-muted"}>
                         {soundEffects.enabled ? "On" : "Off"}
+                      </span>
+                    </button>
+
+                    <SettingsHeading>Developer</SettingsHeading>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={debugMode.enabled}
+                      onClick={debugMode.toggle}
+                      className={`${menuItemClass} justify-between text-cyan`}
+                      style={{ fontFamily: MONO_FONT }}
+                    >
+                      Debug mode
+                      <span className={debugMode.enabled ? "text-phosphor-green" : "text-text-muted"}>
+                        {debugMode.enabled ? "On" : "Off"}
                       </span>
                     </button>
 

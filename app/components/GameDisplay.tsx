@@ -20,6 +20,7 @@ import {
 import { shipHasActivatableSpecial } from "../utils/specialConfigWeb2";
 import { wouldDestroy, wouldEnterSos } from "../utils/calculateDamage";
 import { useShipsByIds } from "../hooks/useShipsByIds";
+import { useDebugMode } from "../hooks/useDebugMode";
 import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
@@ -29,6 +30,8 @@ import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
 import { gameFleetPanelLabel } from "../utils/gameFleetPanelLabel";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
+import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
+import { LandscapeBattleHeader, LandscapeRailTabs, LandscapeShipSheet, LandscapeStagedMove } from "./LandscapeBattleRail";
 import {
   TurnCountdownProvider,
   TurnCountdownText,
@@ -71,6 +74,7 @@ import { useTransaction } from "../providers/TransactionContext";
 import {
   GAME_VIEW_SIDE_ROOT_CLASS,
   useGameViewChromeLayout,
+  gameViewSideChrome,
 } from "../hooks/useGameViewChromeLayout";
 import {
   useSpecialRangeAt,
@@ -125,6 +129,7 @@ import { buildMapGridsFromContractMap, readGameMapState } from "../utils/mapGrid
 import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
+import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 
 // AI moves (takeAITurn) never set optimisticLastMove — only the human's own
 // submit does — so without this they rely entirely on an exact shipPositions
@@ -204,6 +209,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 }) => {
   // Debug mode toggle
   const [showDebug, setShowDebug] = React.useState(false);
+  // Settings › Developer › Debug mode: the debug panel and raw coordinates.
+  const debugMode = useDebugMode();
   // Tooltip disable toggle
   const [disableTooltips, setDisableTooltips] = React.useState(false);
   const { address } = useAccount();
@@ -260,17 +267,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     gridContainerRef,
   );
   const chromeOnSide = chromeLayout === "side";
-  const { isLandscapeMobile, requiresLandscapeMode } = useLandscapeMode();
+  const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const [isMobileFleetModalOpen, setIsMobileFleetModalOpen] = React.useState(false);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = React.useState(false);
-  const [isMobileWeaponMenuOpen, setIsMobileWeaponMenuOpen] = React.useState(false);
   const [mobileLeftPanelTab, setMobileLeftPanelTab] = React.useState<
     "status" | "actions" | "events"
   >("status");
-  const [mobileActivePanel, setMobileActivePanel] = React.useState<
-    "status" | "actions" | "fleet" | "events" | "none"
-  >("none");
   const useSideLayout = chromeOnSide && !isLandscapeMobile;
+  const sideChrome = gameViewSideChrome(isPortraitTablet);
 
   const proposedMoveTargetListClass = useSideLayout
     ? "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto"
@@ -1326,14 +1330,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     [shipMap, address],
   );
 
-  // Track if we're showing a proposed move (not last move)
-  React.useEffect(() => {
-    if (!isLandscapeMobile) return;
-    if (isShowingProposedMove && mobileActivePanel === "none") {
-      setMobileActivePanel("actions");
-    }
-  }, [isLandscapeMobile, isShowingProposedMove, mobileActivePanel]);
-
   React.useEffect(() => {
     if (!isLandscapeMobile) return;
     const previousBodyOverflow = document.body.style.overflow;
@@ -1549,7 +1545,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   }, [displayedLastMove, game.shipPositions]);
 
   const lastMoveTargetPositionDebugSuffix = React.useMemo(() => {
-    if (!displayedLastMove) return "";
+    if (!debugMode || !displayedLastMove) return "";
     if (displayedLastMove.targetShipId === 0n) return "";
 
     const targetPos = game.shipPositions.find(
@@ -1561,7 +1557,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     }
 
     return `[target shipPositions row,col: ${targetPos.position.row},${targetPos.position.col}]`;
-  }, [displayedLastMove, game.shipPositions]);
+  }, [debugMode, displayedLastMove, game.shipPositions]);
 
   // Round-start announcement — fires on the very first render (game start)
   // and again every time currentRound changes (new round). Gated on
@@ -2084,7 +2080,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   /** Top of proposed-move panel: 2/3 submit + 1/3 cancel (side), or horizontal row (wide). */
   const renderProposedMoveSubmitCancelRow = (): React.ReactNode => {
-    const isRail = useSideLayout;
+    // The phone landscape ship panel is a narrow column too, so it uses the
+    // rail's stacked layout with tighter buttons.
+    const isRail = useSideLayout || isLandscapeMobile;
+    const buttonSize = isLandscapeMobile
+      ? "px-1 py-1.5 text-xs tracking-normal"
+      : "px-4 py-1.5 text-sm tracking-wider";
     const isJoinerSide =
       !!address &&
       address.toLowerCase() === game.metadata.joiner.toLowerCase();
@@ -2132,7 +2133,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   ]}
                   allowWhenOtherPending
                   style={submitMoveButtonStyle}
-                  className={`px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150 ${
+                  className={`${buttonSize} uppercase font-semibold transition-colors duration-150 ${
                     isRail ? "min-w-0 flex-[2] h-full w-full" : ""
                   } ${isRail ? "order-2" : "order-2"}`}
                   loadingText="[...]"
@@ -2212,7 +2213,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             type="button"
             onClick={handleCancelMove}
             disabled={isProposalLocked}
-            className={`px-4 py-1.5 text-sm uppercase font-semibold tracking-wider transition-colors duration-150${
+            className={`${buttonSize} uppercase font-semibold transition-colors duration-150${
               isRail ? " min-w-0 flex-[1]" : ""
             } ${isRail ? "order-1" : "order-1"}${isProposalLocked ? " opacity-50 cursor-not-allowed" : ""}`}
             style={
@@ -2301,58 +2302,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   if (requiresLandscapeMode) {
     return (
-      <div
-        className="fixed inset-0 z-[500] flex items-center justify-center p-4"
-        style={{ backgroundColor: "var(--color-near-black)" }}
-      >
-        <div
-          className="border-2 bg-near-black/85 p-4 text-center sm:p-5"
-          style={{ width: "min(90vw, 22rem)", borderColor: "var(--color-cyan)" }}
-        >
-          <div className="flex justify-center mb-4">
-            <div
-              className="animate-phone-rotate"
-              style={{
-                width: "2rem",
-                height: "3.4rem",
-                border: "2px solid var(--color-cyan)",
-                borderRadius: "4px",
-                position: "relative",
-                opacity: 0.8,
-              }}
-            >
-              <div style={{
-                position: "absolute",
-                top: "4px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "0.6rem",
-                height: "2px",
-                backgroundColor: "var(--color-cyan)",
-                borderRadius: "1px",
-              }} />
-            </div>
-          </div>
-          <h2
-            className="text-lg font-bold uppercase tracking-wider text-cyan sm:text-xl"
-            style={STYLE_LABEL}
-          >
-            Rotate to Landscape
-          </h2>
-          <p className="mt-2 text-sm text-text-secondary sm:mt-3">
-            This battle view requires landscape mode on mobile. Rotate your
-            device to continue.
-          </p>
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-4 border border-steel px-4 py-2 text-sm font-semibold uppercase tracking-wider text-text-primary transition-colors hover:border-cyan hover:text-cyan sm:mt-5"
-            style={{ borderRadius: 0 }}
-          >
-            Back
-          </button>
-        </div>
-      </div>
+      <RotateToLandscapePrompt
+        title={gameTitleLabel}
+        round={game.turnState.currentRound}
+        turnLabel={rotatePromptTurnLabel(gameWinnerResult, isMyTurnEffective)}
+        turnTone={gameWinnerResult ? "over" : isMyTurnEffective ? "mine" : "theirs"}
+        clock={isVsAIGame ? undefined : { turnTimeSec, turnStartTimeMs }}
+        onBack={onBack}
+      />
     );
   }
 
@@ -2497,20 +2454,25 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     );
   }
 
+  // In the phone landscape ship panel (a 12rem column) it stacks like the
+  // side rail, with less padding, and leaves the weapon choice to the
+  // panel's own ▼ picker.
   const renderProposedMoveActivePanel = (): React.ReactNode => (
     <>
       <div
         className={
-          useSideLayout
-            ? "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
+          isLandscapeMobile
+            ? "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-2 p-1"
             : "flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 p-4"
         }
       >
         {renderProposedMoveSubmitCancelRow()}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+        <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${isLandscapeMobile ? "gap-2" : "gap-4"}`}>
           <div
             className={
-              useSideLayout
+              isLandscapeMobile
+                ? "flex min-h-0 min-w-0 flex-1 flex-col gap-2"
+                : useSideLayout
                 ? "flex min-h-0 min-w-0 flex-1 flex-col gap-4"
                 : "flex min-h-0 min-w-0 flex-1 flex-row items-stretch gap-6"
             }
@@ -2535,14 +2497,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   return (
               <div className="flex min-w-0 flex-col gap-0.5">
                 <div className="text-sm font-semibold text-white">{name}</div>
-                <div className="text-sm font-mono text-text-secondary">
+                <div className={`font-mono text-text-secondary ${isLandscapeMobile ? "text-xs" : "text-sm"}`}>
                   ({fromRow}, {fromCol}) → ({toRow}, {toCol})
                 </div>
               </div>
             );
           })()}
           {(() => {
-            if (isSelectedShipDisabled) return null;
+            if (isSelectedShipDisabled || isLandscapeMobile) return null;
             if (!selectedShipId) return null;
             const ship = shipMap.get(selectedShipId);
             if (!ship || !shipHasActivatableSpecial(ship)) return null;
@@ -2796,11 +2758,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       ? game.shipPositions.find((sp) => sp.shipId === selectedShipId) ?? null
       : null;
   const isMobileJoiner = address === game.metadata.joiner;
-  const mobileCanUseSpecial = Boolean(
-    selectedShip &&
-      shipHasActivatableSpecial(selectedShip) &&
-      (mobileSelectedShipAttributes?.hullPoints ?? 0) > 0,
-  );
   const mobileReactorCriticalStatus: "none" | "warning" | "critical" =
     mobileSelectedShipAttributes &&
     mobileSelectedShipAttributes.reactorCriticalTimer > 0 &&
@@ -2816,6 +2773,32 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       : selectedShip && selectedWeaponType === "special"
         ? getSpecialName(selectedShip.equipment.special, selectedShipVariant)
         : "Weapon";
+
+  // The ship sheet's staged move (LandscapeStagedMove, shared with web2 and
+  // the tutorial). Submit/Cancel are in the sheet's footer, Retreat in its
+  // ⋯ menu, and the weapon is picked on the board.
+  const renderLandscapeStagedMove = (): React.ReactNode => {
+    if (selectedShipId == null) return null;
+    const currentPos = game.shipPositions.find((pos) => pos.shipId === selectedShipId);
+    const from = { row: currentPos?.position.row ?? 0, col: currentPos?.position.col ?? 0 };
+    return (
+      <LandscapeStagedMove
+        from={from}
+        to={previewPosition ?? from}
+        retreating={isSelectedShipDisabled || computedActionType === ActionType.Retreat}
+        weaponLabel={selectedWeaponType === "ram" ? "Ram" : mobileWeaponDisplayName}
+        targets={validTargets.map((target) => ({
+          id: target.shipId.toString(),
+          name: shipMap.get(target.shipId)?.name || `#${target.shipId.toString()}`,
+        }))}
+        selectedTargetId={targetShipId != null ? targetShipId.toString() : null}
+        repair={selectedWeaponType === "special" && Number(selectedShipVariant) !== 2 && specialType === 2}
+        onSelectTarget={(id) => {
+          if (!proposalLockedRef.current) setTargetShipId(BigInt(id));
+        }}
+      />
+    );
+  };
 
   const renderFleetColumn = ({
       title,
@@ -3032,127 +3015,33 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             }`}
           >
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">
-            <div
-              className="mb-2 border border-solid px-1.5 py-1"
-              style={{
-                backgroundColor: "color-mix(in srgb, var(--color-near-black) 96%, transparent)",
-                borderColor: "var(--color-gunmetal)",
-                borderTopColor: "var(--color-steel)",
-                borderLeftColor: "var(--color-steel)",
-              }}
-            >
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={onBack}
-                  className="shrink-0 px-1.5 py-0.5 border border-solid text-[10px] uppercase font-semibold tracking-wider"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-gunmetal)",
-                    color: "var(--color-text-secondary)",
-                    backgroundColor: "var(--color-steel)",
-                    borderRadius: 0,
-                  }}
-                >
-                  Back
-                </button>
-                <div className="min-w-0 flex-1 text-center">
-                  <p className="truncate text-[10px] uppercase tracking-wider text-text-secondary">
-                    {gameTitleLabel} | Round{" "}
-                    {game.turnState.currentRound.toString()}
-                  </p>
-                  <p
-                    className="truncate text-[10px] uppercase tracking-wider"
-                    style={{
-                      color: isMyTurnEffective
-                        ? "var(--color-cyan)"
-                        : "var(--color-warning-red)",
-                    }}
-                  >
-                    {mobileTurnLabel}
-                    {!isVsAIGame && (
-                      <>
-                        {" | "}
-                        <TurnCountdownText />
-                      </>
-                    )}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    refetchGame();
-                  }}
-                  className="shrink-0 px-1.5 py-0.5 border border-solid text-[10px] uppercase font-semibold tracking-wider"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor: "var(--color-cyan)",
-                    color: "var(--color-cyan)",
-                    backgroundColor: "var(--color-near-black)",
-                    borderRadius: 0,
-                  }}
-                >
-                  Sync
-                </button>
-              </div>
-              {!isVsAIGame && (
-                <div className="mt-1 h-1 w-full overflow-hidden" style={{ backgroundColor: "var(--color-gunmetal)" }}>
-                  <TurnCountdownBar />
-                </div>
-              )}
-            </div>
+            <LandscapeBattleHeader
+              onBack={onBack}
+              round={game.turnState.currentRound}
+              turnLabel={rotatePromptTurnLabel(gameWinnerResult, isMyTurnEffective, true)}
+              turnTone={gameWinnerResult ? "over" : isMyTurnEffective ? "mine" : "theirs"}
+              showClock={!isVsAIGame}
+              myScore={Number(myScore)}
+              opponentScore={Number(opponentScore)}
+              maxScore={Number(maxScore)}
+              menuItems={[{ label: "Sync", onClick: () => refetchGame() }]}
+            />
 
-            <div className="mb-2 flex flex-wrap gap-1">
-              {(["status", "actions", "events"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setMobileLeftPanelTab(tab)}
-                  className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
-                  style={{
-                    ...STYLE_LABEL,
-                    borderColor:
-                      mobileLeftPanelTab === tab
-                        ? "var(--color-cyan)"
-                        : "var(--color-gunmetal)",
-                    color:
-                      mobileLeftPanelTab === tab
-                        ? "var(--color-cyan)"
-                        : "var(--color-text-secondary)",
-                    backgroundColor:
-                      mobileLeftPanelTab === tab
-                        ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                        : "var(--color-steel)",
-                    borderRadius: 0,
-                  }}
-                >
-                  {tab}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setIsMobileFleetModalOpen(true)}
-                className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
-                style={{
-                  ...STYLE_LABEL,
-                  borderColor: "var(--color-phosphor-green)",
-                  color: "var(--color-phosphor-green)",
-                  backgroundColor: "var(--color-steel)",
-                  borderRadius: 0,
-                }}
-              >
-                Fleets
-              </button>
-            </div>
+            <LandscapeRailTabs
+              tabs={["status", "actions", "events", "fleets"]}
+              active={mobileLeftPanelTab}
+              onSelect={(tab) => {
+                if (tab === "fleets") setIsMobileFleetModalOpen(true);
+                else if (tab === "status" || tab === "actions" || tab === "events") setMobileLeftPanelTab(tab);
+              }}
+            />
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               {mobileLeftPanelTab === "actions" ? (
-                isShowingProposedMove ? (
-                  renderProposedMoveActivePanel()
-                ) : (
-                  <div className="text-sm text-text-secondary">
-                    Select a ship and choose a destination to open actions.
-                  </div>
-                )
+                // A selected ship's orders open in the ship sheet over the rail.
+                <div className="text-sm text-text-secondary">
+                  Select a ship and choose a destination to open actions.
+                </div>
               ) : null}
               {mobileLeftPanelTab === "status" ? (
                 <div className="space-y-2">
@@ -3189,113 +3078,27 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             </div>
 
             {selectedShip ? (
-              <div
-                className="absolute inset-0 z-[260] overflow-y-auto pl-0.5 pr-1.5 pt-1 pb-2"
-                style={{
-                  backgroundColor: "color-mix(in srgb, var(--color-near-black) 97%, transparent)",
+              <LandscapeShipSheet
+                shipImage={<ShipImage ship={selectedShip} className="h-full w-full" />}
+                shipName={selectedShip.name || `Ship #${selectedShip.id.toString()}`}
+                hullPercent={
+                  mobileSelectedShipAttributes && mobileSelectedShipAttributes.maxHullPoints > 0
+                    ? (mobileSelectedShipAttributes.hullPoints / mobileSelectedShipAttributes.maxHullPoints) * 100
+                    : undefined
+                }
+                menuItems={
+                  isShowingProposedMove && !isSelectedShipDisabled
+                    ? [{ label: "Retreat", onClick: () => interaction.handleRetreatClick(), tone: "danger" }]
+                    : []
+                }
+                onClose={() => {
+                  if (!proposalLockedRef.current) setSelectedShipId(null);
                 }}
+                footer={isShowingProposedMove ? renderProposedMoveSubmitCancelRow() : null}
               >
-                <div className="mb-1 flex items-center justify-between">
-                  <div className="relative min-w-0">
-                    <button
-                      type="button"
-                      onClick={() => setIsMobileWeaponMenuOpen((prev) => !prev)}
-                      disabled={!selectedShip || !shipHasActivatableSpecial(selectedShip)}
-                      className="flex min-w-[7.5rem] max-w-[10.5rem] items-center justify-between gap-2 border border-solid bg-black/40 px-2 py-1 text-[10px] uppercase tracking-wider text-cyan disabled:opacity-50 disabled:cursor-default"
-                      style={{
-                        borderColor: "var(--color-gunmetal)",
-                        borderRadius: 0,
-                      }}
-                    >
-                      <span className="truncate">{mobileWeaponDisplayName}</span>
-                      {selectedShip && shipHasActivatableSpecial(selectedShip) && (
-                        <span>{isMobileWeaponMenuOpen ? "▲" : "▼"}</span>
-                      )}
-                    </button>
-                    {isMobileWeaponMenuOpen ? (
-                      <div
-                        className="absolute left-0 top-[calc(100%+4px)] z-[270] w-full border border-solid bg-[var(--color-near-black)]"
-                        style={{
-                          borderColor: "var(--color-gunmetal)",
-                          borderRadius: 0,
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setWeaponTypeFromGrid("weapon");
-                            setIsMobileWeaponMenuOpen(false);
-                          }}
-                          className="flex w-full items-center justify-between border-b border-solid px-2 py-1 text-left text-[10px] uppercase tracking-wider"
-                          style={{
-                            borderColor: "var(--color-gunmetal)",
-                            color:
-                              selectedWeaponType === "weapon"
-                                ? "var(--color-cyan)"
-                                : "var(--color-text-secondary)",
-                            backgroundColor:
-                              selectedWeaponType === "weapon"
-                                ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                                : "transparent",
-                          }}
-                        >
-                          <span className="truncate">
-                            {selectedShip
-                              ? getMainWeaponName(selectedShip.equipment.mainWeapon, selectedShipVariant)
-                              : "Weapon"}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!mobileCanUseSpecial}
-                          onClick={() => {
-                            if (!mobileCanUseSpecial) return;
-                            setWeaponTypeFromGrid("special");
-                            setIsMobileWeaponMenuOpen(false);
-                          }}
-                          className="flex w-full items-center justify-between px-2 py-1 text-left text-[10px] uppercase tracking-wider disabled:opacity-40"
-                          style={{
-                            color:
-                              selectedWeaponType === "special"
-                                ? "var(--color-cyan)"
-                                : "var(--color-text-secondary)",
-                            backgroundColor:
-                              selectedWeaponType === "special"
-                                ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                                : "transparent",
-                          }}
-                        >
-                          <span className="truncate">
-                            {selectedShip
-                              ? getSpecialName(selectedShip.equipment.special, selectedShipVariant)
-                              : "Special"}
-                          </span>
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMobileWeaponMenuOpen(false);
-                      if (!proposalLockedRef.current) setSelectedShipId(null);
-                    }}
-                    className="px-1.5 py-0.5 text-[10px] uppercase border border-solid"
-                    style={{
-                      borderColor: "var(--color-gunmetal)",
-                      color: "var(--color-text-secondary)",
-                      backgroundColor: "var(--color-steel)",
-                      borderRadius: 0,
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
                 <div className="space-y-1">
-                  {/* A staged move's full action panel (Submit/Cancel, the
-                      weapon, targets, Retreat) comes first, so it's on
-                      screen without scrolling past the ship card. */}
-                  {isShowingProposedMove ? renderProposedMoveActivePanel() : null}
+                  {/* The staged move (targets) first, then the ship's details. */}
+                  {isShowingProposedMove ? renderLandscapeStagedMove() : null}
                   <ShipCard
                     ship={toShipCardData(selectedShip)}
                     shipImage={<ShipImage ship={selectedShip} className="h-full w-full" />}
@@ -3321,7 +3124,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                     nameBlockMinHeightPx={gameViewNameBlockMinHeights[selectedShip.id.toString()]}
                   />
                 </div>
-              </div>
+              </LandscapeShipSheet>
             ) : null}
             </div>
           </div>
@@ -3335,7 +3138,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             }`}
             style={{
               aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`,
-              height: `min(100%, calc((100vw - 12.5rem) * ${GRID_HEIGHT} / ${GRID_WIDTH}))`,
+              height: LANDSCAPE_BOARD_HEIGHT,
               paddingRight: "2px",
               paddingTop: "2px",
             }}
@@ -3710,7 +3513,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <div
         className={
           useSideLayout
-            ? "flex min-h-0 min-w-0 flex-row items-stretch gap-4 pt-3"
+            ? sideChrome.row
             : "flex flex-col gap-6 pt-3"
         }
       >
@@ -3720,12 +3523,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           isLandscapeMobile
             ? "hidden"
             : useSideLayout
-            ? "flex min-h-0 self-stretch w-[min(18rem,34vw)] max-w-[20rem] shrink-0 flex-col gap-3 overflow-hidden pl-2 pr-1"
+            ? sideChrome.rail
             : "flex items-center justify-between"
         }
-        style={useSideLayout ? {
-          maxHeight: "calc((100vw - min(18rem, 34vw) - 2.625rem) * 11 / 17 + 1rem)"
-        } : undefined}
+        style={useSideLayout ? sideChrome.railMaxHeight : undefined}
       >
         <div
           className={
@@ -3923,7 +3724,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <div
         className={
           useSideLayout
-            ? "relative min-h-0 min-w-0 flex-1"
+            ? sideChrome.board
             : "relative w-full"
         }
       >
@@ -4011,12 +3812,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         />
             </div>
           {renderReplayOverlay()}
-          {/* Debug panel (dev only, top-right). */}
+          {/* Debug panel (debug mode only, top-right). */}
           <div className="absolute right-0 top-0 z-[225] pointer-events-none flex items-start justify-end">
             <div className="pointer-events-auto flex flex-col items-end pt-1 pr-1">
               {game.metadata.winner ===
                 "0x0000000000000000000000000000000000000000" &&
-                process.env.NODE_ENV === "development" &&
+                debugMode &&
                 (isDebugPanelMinimized ? (
                     <button
                       type="button"
@@ -4183,149 +3984,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       </div>
       </div>
 
-      {isLandscapeMobile && mobileActivePanel !== "none" && (
-        <div
-          className="fixed inset-x-0 bottom-11 z-[280] border-t border-solid p-2"
-          style={{
-            backgroundColor: "rgba(6, 10, 18, 0.98)",
-            borderColor: "var(--color-gunmetal)",
-            borderTopColor: "var(--color-cyan)",
-            maxHeight: "46vh",
-            overflowY: "auto",
-            borderRadius: 0,
-          }}
-        >
-          {mobileActivePanel === "actions" ? (
-            isShowingProposedMove ? (
-              renderProposedMoveActivePanel()
-            ) : (
-              <div className="text-sm text-text-secondary">
-                Select a ship and choose a destination to open actions.
-              </div>
-            )
-          ) : null}
-          {mobileActivePanel === "status" ? (
-            <div className="space-y-3">
-              {!isVsAIGame && (
-                <>
-                  <div className="text-xs uppercase tracking-wider text-text-muted">
-                    Turn Timer
-                  </div>
-                  <div
-                    className="text-base uppercase font-semibold tracking-wider"
-                    style={{
-                      ...STYLE_LABEL,
-                      color: isMyTurnEffective
-                        ? "var(--color-cyan)"
-                        : "var(--color-warning-red)",
-                    }}
-                  >
-                    {isMyTurnEffective ? "Your turn" : "Opponent turn"}{" "}
-                    | <TurnCountdownText />
-                  </div>
-                </>
-              )}
-              {canFlee &&
-              game.metadata.winner ===
-                "0x0000000000000000000000000000000000000000" ? (
-                <FleeSafetySwitch
-                  onFlee={async () => {
-                    toast.success("You have fled the battle!");
-                    setDidFlee(true);
-                    // Background sync only — the result screen is already showing.
-                    void Promise.resolve(refetchGame());
-                    void Promise.resolve(refetch?.());
-                  }}
-                  consequence={fleeConsequence}
-                  renderConfirmButton={(onSuccess) => (
-                    <FleeConfirmButtonWeb3
-                      gameId={game.metadata.gameId}
-                      onSuccess={onSuccess}
-                      isRoguelike={isRoguelikeGame}
-                    />
-                  )}
-                />
-              ) : (
-                <div className="text-sm text-text-primary">
-                  Result: {game.metadata.winner === address ? "Victory" : "Defeat"}
-                </div>
-              )}
-            </div>
-          ) : null}
-          {mobileActivePanel === "events" ? (
-            <GameEvents
-              lastMove={gameEventsLastMove}
-              shipMap={gameEventsShipMap}
-              address={address}
-              appendDestroyedText={appendDestroyedTextToLastMove}
-              debugSuffix={lastMoveTargetPositionDebugSuffix}
-            />
-          ) : null}
-        </div>
-      )}
-
-
-      {isLandscapeMobile && (
-        <div
-          className="fixed inset-x-0 bottom-0 z-[290] grid grid-cols-5 gap-1 border-t border-solid p-1"
-          style={{
-            backgroundColor: "rgba(5, 8, 16, 0.97)",
-            borderColor: "var(--color-gunmetal)",
-          }}
-        >
-          {(
-            [
-              ["status", "Status"],
-              ["actions", "Actions"],
-              ["fleet", "Fleet"],
-              ["events", "Events"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() =>
-                id === "fleet"
-                  ? setShowFleetModal(true)
-                  : setMobileActivePanel((prev) => (prev === id ? "none" : id))
-              }
-              className="px-1 py-1 text-[10px] uppercase font-semibold tracking-wider border border-solid"
-              style={{
-                ...STYLE_LABEL,
-                borderColor:
-                  mobileActivePanel === id
-                    ? "var(--color-cyan)"
-                    : "var(--color-gunmetal)",
-                color:
-                  mobileActivePanel === id
-                    ? "var(--color-cyan)"
-                    : "var(--color-text-secondary)",
-                backgroundColor:
-                  mobileActivePanel === id
-                    ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)"
-                    : "var(--color-steel)",
-                borderRadius: 0,
-              }}
-            >
-              {label}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setMobileActivePanel("none")}
-            className="px-1 py-1 text-[10px] uppercase font-semibold tracking-wider border border-solid"
-            style={{
-              ...STYLE_LABEL,
-              borderColor: "var(--color-gunmetal)",
-              color: "var(--color-text-secondary)",
-              backgroundColor: "var(--color-steel)",
-              borderRadius: 0,
-            }}
-          >
-            Map
-          </button>
-        </div>
-      )}
       {/* Fleet Details Modal */}
       {showFleetModal && (() => {
         const buildFleetDetailCards = (

@@ -28,6 +28,30 @@ const MIN_GAME_ROOT_WIDTH_PX = 200;
 export const GAME_VIEW_SIDE_ROOT_CLASS =
   "max-w-none min-w-0 box-border ml-[calc(50%-50vw)] lg:ml-[calc(50%-50vw+8px)]";
 
+/**
+ * Class names for the side layout's row, left rail and board column, shared
+ * by GameDisplay, GameDisplayWeb2 and SimulatedGameDisplay. `stacked` (a
+ * tablet held upright, see useLandscapeMode's isPortraitTablet) puts the
+ * board full width on top and the rail under it in two columns, so the
+ * board fills the screen's width and the rail uses the height below.
+ * `railMaxHeight` keeps the rail no taller than the board beside it.
+ */
+export function gameViewSideChrome(stacked: boolean) {
+  return stacked
+    ? {
+        row: "flex min-h-0 min-w-0 flex-col-reverse gap-3 pt-3",
+        rail: "grid w-full grid-cols-2 items-start gap-3 px-2",
+        railMaxHeight: undefined,
+        board: "relative w-full min-w-0",
+      }
+    : {
+        row: "flex min-h-0 min-w-0 flex-row items-stretch gap-4 pt-3",
+        rail: "flex min-h-0 self-stretch w-[min(18rem,34vw)] max-w-[20rem] shrink-0 flex-col gap-3 overflow-hidden pl-2 pr-1",
+        railMaxHeight: { maxHeight: "calc((100vw - min(18rem, 34vw) - 2.625rem) * 11 / 17 + 1rem)" },
+        board: "relative min-h-0 min-w-0 flex-1",
+      };
+}
+
 export function useGameViewChromeLayout(
   gameRootRef: RefObject<HTMLElement | null>,
   gridContainerRef: RefObject<HTMLElement | null>,

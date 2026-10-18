@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
 import { useCampaignGraphWithContent } from "../hooks/useNodeMap";
+import { useDebugMode } from "../hooks/useDebugMode";
 import { useIsNodeMapEditor } from "../hooks/useIsNodeMapEditor";
 import { useNodeMapAdmin } from "../hooks/useNodeMapAdmin";
 import { CampaignNodeCard } from "./CampaignNodeCard";
@@ -92,7 +93,8 @@ export function CampaignGraph() {
       setIsResettingCache(false);
     }
   };
-  const debugResetButton = (
+  const debugMode = useDebugMode();
+  const debugResetButton = debugMode ? (
     <button
       type="button"
       onClick={() => void handleResetCache()}
@@ -106,7 +108,7 @@ export function CampaignGraph() {
     >
       {isResettingCache ? "[RESETTING CACHE...]" : "[DEBUG: RESET CAMPAIGN CACHE]"}
     </button>
-  );
+  ) : null;
 
   const isCreatingNode = selectedNodeId != null && Number(selectedNodeId) === ADD_NODE_SENTINEL_ID;
   const selectedNode = React.useMemo(

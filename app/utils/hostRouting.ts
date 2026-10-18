@@ -19,6 +19,11 @@ export interface HostRoutingConfig {
 /** Paths that belong to the game client rather than the website. */
 const CLIENT_PATH = /^\/(?:play|admin|tournaments)(?:\/|$)|^\/\d+\/?$/;
 
+/** Whether `pathname` is a game client path (on a host that also serves the website). */
+export function isClientPathname(pathname: string): boolean {
+  return CLIENT_PATH.test(pathname);
+}
+
 /**
  * Old links kept the tab in the query (`/play?tab=operations`); it's in the
  * path now (`/play/operations`). Returns the new path and query for such a

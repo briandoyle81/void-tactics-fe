@@ -25,6 +25,7 @@ import {
   navyFilterSecondaryOptions,
   filterAndSortShips,
 } from "../utils/navyFilters";
+import { useDebugMode } from "../hooks/useDebugMode";
 import { useNavyFilterState } from "../hooks/useNavyFilterState";
 import { useStarredShips } from "../hooks/useStarredShips";
 import { NavyFilterToolbar } from "./NavyFilterToolbar";
@@ -432,7 +433,7 @@ const ManageNavy: React.FC = () => {
   }, [customizeShipId]);
   const SHIPS_PER_PAGE = 100;
   const filterState = useNavyFilterState(SHIPS_PER_PAGE);
-  const [showDebugButtons, setShowDebugButtons] = React.useState(false);
+  const showDebugButtons = useDebugMode();
   const [isMobileManageNavyLayout, setIsMobileManageNavyLayout] =
     React.useState(false);
   const [showInGameProperties, setShowInGameProperties] = React.useState(true);
@@ -913,29 +914,6 @@ const ManageNavy: React.FC = () => {
           >
             [MANAGE NAVY]
           </h3>
-          <label className="hidden cursor-pointer items-center gap-2 text-sm md:flex">
-            <input
-              type="checkbox"
-              checked={showDebugButtons}
-              onChange={(e) => setShowDebugButtons(e.target.checked)}
-              className="w-4 h-4"
-              style={{
-                accentColor: "var(--color-cyan)",
-                borderColor: "var(--color-cyan)",
-                backgroundColor: "var(--color-near-black)",
-                borderRadius: 0,
-                appearance: "none",
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-                width: "16px",
-                height: "16px",
-                border: "2px solid",
-              }}
-            />
-            <span style={{ color: "var(--color-text-secondary)" }}>
-              Debug Mode
-            </span>
-          </label>
         </div>
 
         {/* Real-time Status */}
@@ -970,7 +948,7 @@ const ManageNavy: React.FC = () => {
 
       {/* Action Buttons: same three-button row with or without tutorial; brief is absolute (no layout shift). When tutorial is on, stack above ship grid so art does not cover the panel. */}
       <div
-        className={`relative isolate mb-8 flex w-full flex-col items-stretch justify-center gap-4 overflow-visible md:flex-row md:flex-wrap md:items-center ${
+        className={`relative isolate mb-4 flex w-full md:mb-8 flex-col items-stretch justify-center gap-4 overflow-visible md:flex-row md:flex-wrap md:items-center ${
           showManageNavyTutorialChrome ? "z-[200]" : ""
         }`}
       >

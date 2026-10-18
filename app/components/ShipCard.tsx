@@ -242,8 +242,11 @@ const ShipCard: React.FC<ShipCardProps> = ({
           : "var(--color-warning-red)";
 
   return (
+    // A size container, so the header can stack when the card itself is
+    // narrow (a phone's two-column list, the battle ship panel) whatever the
+    // screen width.
     <div
-      className={`h-full ${
+      className={`@container h-full ${
         hideOuterFrame ? "" : "border border-solid p-4"
       } ${
         selectionMode && canSelect
@@ -428,7 +431,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
       </div>
 
       <div
-        className={`flex justify-between items-start ${
+        className={`flex justify-between items-start @max-[18rem]:flex-col @max-[18rem]:gap-1 ${
           useCompactStatGrid ? "mb-1.5" : "mb-3"
         }`}
       >
@@ -480,9 +483,9 @@ const ShipCard: React.FC<ShipCardProps> = ({
             {data.name || `Ship #${data.id}`}
           </h5>
         </div>
-        {/* Phones: the icons and chips wrap onto a second line rather than
-            squeezing the ship name into a narrow column. */}
-        <div className="flex max-w-[55%] shrink-0 flex-wrap items-center justify-end gap-1.5 sm:max-w-none sm:gap-2">
+        {/* On a narrow card the icons and chips go on a second row under the
+            name rather than squeezing it into a narrow column. */}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 @max-[18rem]:justify-start @max-[18rem]:gap-1.5">
           {onCustomizeClick && data.isConstructed && !data.isDestroyed && (
             <button
               type="button"
@@ -490,7 +493,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 e.stopPropagation();
                 onCustomizeClick();
               }}
-              className="p-2 text-cyan hover:text-cyan hover:bg-cyan/10 rounded-none transition-all duration-200 sm:p-1"
+              className="p-1 text-cyan hover:text-cyan hover:bg-cyan/10 rounded-none transition-all duration-200 pointer-coarse:p-2"
               title="Customize ship"
               aria-label="Customize ship"
             >
@@ -518,7 +521,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 onRecycleClick();
               }}
               disabled={data.inFleet}
-              className="p-2 text-warning-red hover:text-warning-red hover:bg-warning-red/10 rounded-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed sm:p-1"
+              className="p-1 text-warning-red hover:text-warning-red hover:bg-warning-red/10 rounded-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed pointer-coarse:p-2"
               title={
                 data.inFleet
                   ? "Cannot recycle ship in fleet"
@@ -601,10 +604,10 @@ const ShipCard: React.FC<ShipCardProps> = ({
           {/* Rank */}
           {data.isConstructed && !hideRankLabel && (
             <div className="relative group">
-              {/* Focusable so a tap shows the rank tooltip (hover-only before). */}
+              {/* Focusable so a tap shows the rank tooltip (hover-only before).
+                  The tap still reaches the card, so it selects it too. */}
               <span
                 tabIndex={0}
-                onClick={(e) => e.stopPropagation()}
                 className={`text-xs px-2 py-1 border border-solid uppercase font-semibold tracking-wider cursor-default outline-none focus-visible:ring-1 focus-visible:ring-cyan ${getRankColor(
                   data.rank,
                 )}`}

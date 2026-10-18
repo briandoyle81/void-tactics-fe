@@ -4,10 +4,19 @@ import { MissionBriefing } from "../MissionBriefing";
 import { MissionDossier } from "../MissionDossier";
 import { MissionDrawerContent } from "./MissionDrawerContent";
 import { TUTORIAL_PRELUDE } from "../../data/dialog/tutorial";
+import type { MissionPeek } from "./OperationsMap";
 
 // The run map drawer for the tutorial prelude node (see tutorialPrelude.ts).
 // Shared by RoguelikeGraph and RoguelikeGraphWeb2. `completed`: played or
 // skipped, shown cleared.
+
+/** The phone bar for the prelude node (OperationsMap's `peek`). */
+export const TUTORIAL_PRELUDE_PEEK: MissionPeek = {
+  title: TUTORIAL_PRELUDE.title,
+  kindLabel: "Combat",
+  teaser: TUTORIAL_PRELUDE.briefing,
+};
+
 export function TutorialPreludeDrawer({ completed = false }: { completed?: boolean }) {
   return (
     <MissionDrawerContent

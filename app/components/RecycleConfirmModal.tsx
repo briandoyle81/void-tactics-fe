@@ -34,8 +34,9 @@ export function RecycleConfirmModal({
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-near-black border border-warning-red rounded-none p-6 max-w-md mx-4">
+    // Above GameNav (z-250) so the bottom bar doesn't cover its buttons.
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[450] p-2">
+      <div className="bg-near-black border border-warning-red rounded-none p-4 md:p-6 max-w-md max-h-[calc(100dvh-1rem)] overflow-y-auto">
         <div className="text-center">
           <div className="text-warning-red text-2xl font-mono font-bold mb-4 tracking-widest">[✕]</div>
           {canRecycle ? (

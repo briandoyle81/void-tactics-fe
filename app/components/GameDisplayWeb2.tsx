@@ -8,6 +8,8 @@ import {
   ActionType,
   Attributes,
   GRID_DIMENSIONS,
+  getMainWeaponName,
+  getSpecialName,
 } from "../types/types";
 import type { Web2GameDataView } from "../types/web2Game";
 import { Web2Ship } from "../types/web2Ship";
@@ -31,6 +33,7 @@ import { resolveNodeContent, useNodeContentWeb2 } from "../hooks/useNodeContent"
 import { inferVictoryReason } from "../utils/victoryReason";
 import {
   useGameViewChromeLayout,
+  gameViewSideChrome,
   GAME_VIEW_SIDE_ROOT_CLASS,
 } from "../hooks/useGameViewChromeLayout";
 import { useLandscapeMode } from "../hooks/useLandscapeMode";
@@ -53,11 +56,14 @@ import { ShipImageWeb2 } from "./ShipImageWeb2";
 import { toShipCardDataWeb2 } from "../utils/toShipCardDataWeb2";
 import { GameScoreBox } from "./GameScoreBox";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
+import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
-  TurnCountdownProvider,
-  TurnCountdownText,
-  TurnCountdownBar,
-} from "./TurnCountdown";
+  LandscapeBattleHeader,
+  LandscapeRailTabs,
+  LandscapeShipSheet,
+  LandscapeStagedMove,
+} from "./LandscapeBattleRail";
+import { TurnCountdownProvider } from "./TurnCountdown";
 import { GridHoverProvider } from "./GridHover";
 import { GameFleetStatusCard } from "./GameFleetStatusCard";
 import { GameFleetStatusPanel } from "./GameFleetStatusPanel";
@@ -87,6 +93,7 @@ import { buildDialogSnapshot } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
+import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 
 // Web2-mode counterpart to `GameDisplay.tsx`. Genuinely playable (grid
 // interaction via the shared <GameGrid> and useGameplayInteraction hook,
@@ -136,16 +143,15 @@ function GameDisplayWeb2({
   const gridContainerRef = React.useRef<HTMLDivElement | null>(null);
   const chromeLayout = useGameViewChromeLayout(gameViewRootRef, gridContainerRef);
   const chromeOnSide = chromeLayout === "side";
-  const { isLandscapeMobile, requiresLandscapeMode } = useLandscapeMode();
+  const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const useSideLayout = chromeOnSide && !isLandscapeMobile;
+  const sideChrome = gameViewSideChrome(isPortraitTablet);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = useState(false);
   // Mirrors GameDisplay.tsx's mobileLeftPanelTab — landscape-mobile's narrow
   // left column switches between these instead of showing everything at
-  // once (there's no room). No "actions" tab: unlike web3, web2's move/
-  // weapon-selection/confirm flow lives entirely inline on <GameGrid> itself
-  // (see showConfirmWidget/onConfirmMove below), so there's no separate
-  // action panel to switch to.
-  const [mobileLeftPanelTab, setMobileLeftPanelTab] = useState<"status" | "events">("status");
+  // once (there's no room). A selected ship's orders open in the ship sheet
+  // over the column (LandscapeShipSheet), as in web3.
+  const [mobileLeftPanelTab, setMobileLeftPanelTab] = useState<"status" | "actions" | "events">("status");
 
   const gameId = Number(initialGame.metadata.gameId);
 
@@ -637,6 +643,7 @@ function GameDisplayWeb2({
     dragValidTargets,
     dragShootingRange,
     isRammingMovePreview,
+    isShowingProposedMove,
     isShipOwnedByCurrentPlayer,
     computedActionType,
     confirmWidgetLabel,
@@ -1328,72 +1335,21 @@ function GameDisplayWeb2({
     );
   })();
 
-  // Mirrors GameDisplay.tsx's rotate-to-landscape gate — this battle view
+  // Same rotate-to-landscape gate as GameDisplay.tsx: this battle view
   // needs landscape space on a phone-sized viewport to be usable at all.
   if (requiresLandscapeMode) {
     return (
-      <div
-        className="fixed inset-0 z-[500] flex items-center justify-center p-4"
-        style={{ backgroundColor: "var(--color-near-black)" }}
-      >
-        <div
-          className="border-2 bg-near-black/85 p-4 text-center sm:p-5"
-          style={{ width: "min(90vw, 22rem)", borderColor: "var(--color-cyan)" }}
-        >
-          <div className="flex justify-center mb-4">
-            <div
-              className="animate-phone-rotate"
-              style={{
-                width: "2rem",
-                height: "3.4rem",
-                border: "2px solid var(--color-cyan)",
-                borderRadius: "4px",
-                position: "relative",
-                opacity: 0.8,
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  top: "4px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  width: "0.6rem",
-                  height: "2px",
-                  backgroundColor: "var(--color-cyan)",
-                  borderRadius: "1px",
-                }}
-              />
-            </div>
-          </div>
-          <h2 className="text-lg font-bold uppercase tracking-wider text-cyan sm:text-xl" style={STYLE_LABEL}>
-            Rotate to Landscape
-          </h2>
-          <p className="mt-2 text-sm text-text-secondary sm:mt-3">
-            This battle view requires landscape mode on mobile. Rotate your device to continue.
-          </p>
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-4 border border-steel px-4 py-2 text-sm font-semibold uppercase tracking-wider text-text-primary transition-colors hover:border-cyan hover:text-cyan sm:mt-5"
-            style={{ borderRadius: 0 }}
-          >
-            Back
-          </button>
-        </div>
-      </div>
+      <RotateToLandscapePrompt
+        title={gameTitleLabel}
+        round={game.turnState.currentRound}
+        turnLabel={rotatePromptTurnLabel(gameWinnerResult, isCurrentPlayerTurn)}
+        turnTone={gameWinnerResult ? "over" : isCurrentPlayerTurn ? "mine" : "theirs"}
+        clock={isVsAIGame ? undefined : { turnTimeSec, turnStartTimeMs }}
+        onBack={onBack}
+      />
     );
   }
 
-  const mobileTurnLabel = gameWinnerResult
-    ? gameWinnerResult === "tie"
-      ? "Tie"
-      : gameWinnerResult === "me"
-        ? "Victory"
-        : "Defeat"
-    : isCurrentPlayerTurn
-      ? "Your turn"
-      : "Opponent turn";
 
   // Mirrors GameDisplay.tsx's own isLandscapeMobile early return: a narrow
   // scrollable left column (compact header + status/events tabs + Fleets
@@ -1531,6 +1487,112 @@ function GameDisplayWeb2({
     );
   };
 
+  // The ship sheet over the landscape rail (shared with GameDisplay and the
+  // tutorial): the ship, its staged move and targets, Retreat in its ⋯
+  // menu and Cancel/Submit pinned at the bottom. The board's confirm popup
+  // stays too, as in web3.
+  const landscapeShipSheet = (() => {
+    if (selectedShipId == null || !selectedShip) return null;
+    const attrs = getShipAttributes(selectedShipId);
+    const position = game.shipPositions.find((sp) => sp.shipId === selectedShipId);
+    const from = { row: position?.position.row ?? 0, col: position?.position.col ?? 0 };
+    const isOwn = isShipOwnedByCurrentPlayer(selectedShipId);
+    const isDisabled = attrs?.hullPoints === 0;
+    const isRetreating = isDisabled || computedActionType === ActionType.Retreat;
+    const weaponLabel =
+      selectedWeaponType === "ram"
+        ? selectedShipFactionAbility?.isHeal
+          ? "Repair"
+          : "Ram"
+        : selectedWeaponType === "special"
+          ? getSpecialName(selectedShip.equipment.special, selectedShip.traits.variant)
+          : getMainWeaponName(selectedShip.equipment.mainWeapon, selectedShip.traits.variant);
+    const showMove = isOwn && isShowingProposedMove;
+    return (
+      <LandscapeShipSheet
+        shipImage={<ShipImageWeb2 ship={selectedShip} className="h-full w-full" />}
+        shipName={selectedShip.name || `Ship #${selectedShipId}`}
+        hullPercent={attrs && attrs.maxHullPoints > 0 ? (attrs.hullPoints / attrs.maxHullPoints) * 100 : undefined}
+        menuItems={
+          showMove && !isRetreating
+            ? [{ label: "Retreat", onClick: handleRetreatClick, tone: "danger" }]
+            : []
+        }
+        onClose={() => setSelectedShipIdForInput(null)}
+        footer={
+          showMove ? (
+            <div className="flex w-full min-w-0 flex-row gap-2">
+              <button
+                type="button"
+                onClick={handleCancelMove}
+                disabled={isSubmitting}
+                className="min-w-0 flex-[1] border-2 border-solid px-1 py-1.5 text-xs font-semibold uppercase disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  ...STYLE_LABEL,
+                  borderColor: "var(--color-gunmetal)",
+                  borderTopColor: "var(--color-steel)",
+                  borderLeftColor: "var(--color-steel)",
+                  color: "var(--color-text-secondary)",
+                  backgroundColor: "var(--color-slate)",
+                  borderRadius: 0,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitMove}
+                disabled={isSubmitting}
+                className="min-w-0 flex-[2] border-2 border-solid px-1 py-1.5 text-xs font-semibold uppercase disabled:cursor-not-allowed"
+                style={{
+                  ...STYLE_LABEL,
+                  borderColor: "var(--color-phosphor-green)",
+                  color: "var(--color-phosphor-green)",
+                  backgroundColor: "var(--color-steel)",
+                  borderRadius: 0,
+                }}
+              >
+                {isSubmitting ? "[...]" : confirmWidgetLabel}
+              </button>
+            </div>
+          ) : null
+        }
+      >
+        <div className="space-y-1">
+          {showMove && (
+            <LandscapeStagedMove
+              from={from}
+              to={previewPosition ?? from}
+              retreating={isRetreating}
+              weaponLabel={weaponLabel}
+              targets={validTargets.map((target) => ({
+                id: String(target.shipId),
+                name: shipMap.get(target.shipId)?.name || `#${target.shipId}`,
+              }))}
+              selectedTargetId={targetShipId != null ? String(targetShipId) : null}
+              repair={
+                selectedWeaponType === "special" &&
+                isRepairDronesSpecial(Number(selectedShip.traits.variant), specialType)
+              }
+              onSelectTarget={(id) => setTargetShipId(Number(id))}
+            />
+          )}
+          {attrs && (
+            <GameFleetDetailShipCard
+              shipId={String(selectedShipId)}
+              ship={toShipCardDataWeb2(selectedShip)}
+              shipImage={<ShipImageWeb2 ship={selectedShip} className="h-full w-full" />}
+              attributes={attrs}
+              isCurrentPlayerShip={isOwn}
+              flipShip={Boolean(position?.isCreator)}
+              hasMoved={movedShipIdsSet.has(selectedShipId)}
+            />
+          )}
+        </div>
+      </LandscapeShipSheet>
+    );
+  })();
+
   if (isLandscapeMobile) {
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
@@ -1539,83 +1601,26 @@ function GameDisplayWeb2({
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
           <div className="flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center">
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">
-              <div
-                className="mb-2 border border-solid px-1.5 py-1"
-                style={{
-                  backgroundColor: "color-mix(in srgb, var(--color-near-black) 96%, transparent)",
-                  borderColor: "var(--color-gunmetal)",
-                  borderTopColor: "var(--color-steel)",
-                  borderLeftColor: "var(--color-steel)",
-                }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={onBack}
-                    className="shrink-0 px-1.5 py-0.5 border border-solid text-[10px] uppercase font-semibold tracking-wider"
-                    style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-steel)", borderRadius: 0 }}
-                  >
-                    Back
-                  </button>
-                  <div className="min-w-0 flex-1 text-center">
-                    <p className="truncate text-[10px] uppercase tracking-wider text-text-secondary">
-                      {gameTitleLabel} | Round {game.turnState.currentRound}
-                    </p>
-                    <p
-                      className="truncate text-[10px] uppercase tracking-wider"
-                      style={{ color: isCurrentPlayerTurn ? "var(--color-cyan)" : "var(--color-warning-red)" }}
-                    >
-                      {mobileTurnLabel}
-                      {!isVsAIGame && (
-                        <>
-                          {" | "}
-                          <TurnCountdownText />
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => refetchGame()}
-                    className="shrink-0 px-1.5 py-0.5 border border-solid text-[10px] uppercase font-semibold tracking-wider"
-                    style={{ ...STYLE_LABEL, borderColor: "var(--color-cyan)", color: "var(--color-cyan)", backgroundColor: "var(--color-near-black)", borderRadius: 0 }}
-                  >
-                    Sync
-                  </button>
-                </div>
-                {!isVsAIGame && (
-                  <div className="mt-1 h-1 w-full overflow-hidden" style={{ backgroundColor: "var(--color-gunmetal)" }}>
-                    <TurnCountdownBar />
-                  </div>
-                )}
-              </div>
+              <LandscapeBattleHeader
+                onBack={onBack}
+                round={game.turnState.currentRound}
+                turnLabel={rotatePromptTurnLabel(gameWinnerResult, isCurrentPlayerTurn, true)}
+                turnTone={gameWinnerResult ? "over" : isCurrentPlayerTurn ? "mine" : "theirs"}
+                showClock={!isVsAIGame}
+                myScore={Number(myScore)}
+                opponentScore={Number(opponentScore)}
+                maxScore={Number(maxScore)}
+                menuItems={[{ label: "Sync", onClick: () => refetchGame() }]}
+              />
 
-              <div className="mb-2 flex flex-wrap gap-1">
-                {(["status", "events"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setMobileLeftPanelTab(tab)}
-                    className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
-                    style={{
-                      ...STYLE_LABEL,
-                      borderColor: mobileLeftPanelTab === tab ? "var(--color-cyan)" : "var(--color-gunmetal)",
-                      color: mobileLeftPanelTab === tab ? "var(--color-cyan)" : "var(--color-text-secondary)",
-                      backgroundColor: mobileLeftPanelTab === tab ? "color-mix(in srgb, var(--color-cyan) 12%, transparent)" : "var(--color-steel)",
-                      borderRadius: 0,
-                    }}
-                  >
-                    {tab}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setShowFleetModal(true)}
-                  className="flex-auto px-0.5 py-2 text-[11px] min-h-[2.75rem] uppercase tracking-normal border border-solid"
-                  style={{ ...STYLE_LABEL, borderColor: "var(--color-phosphor-green)", color: "var(--color-phosphor-green)", backgroundColor: "var(--color-steel)", borderRadius: 0 }}
-                >
-                  Fleets
-                </button>
-              </div>
+              <LandscapeRailTabs
+                tabs={["status", "actions", "events", "fleets"]}
+                active={mobileLeftPanelTab}
+                onSelect={(tab) => {
+                  if (tab === "fleets") setShowFleetModal(true);
+                  else if (tab === "status" || tab === "actions" || tab === "events") setMobileLeftPanelTab(tab);
+                }}
+              />
 
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {mobileLeftPanelTab === "status" ? (
@@ -1631,38 +1636,12 @@ function GameDisplayWeb2({
                       </div>
                     </div>
                     {!isGameOver && renderTurnTimerPanel()}
-                    {selectedShipId != null && isShipOwnedByCurrentPlayer(selectedShipId) && computedActionType !== ActionType.Retreat && (
-                      <button
-                        type="button"
-                        onClick={handleRetreatClick}
-                        className="w-full px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
-                        style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "transparent", borderRadius: 0 }}
-                      >
-                        Retreat
-                      </button>
-                    )}
-                    {computedActionType === ActionType.Retreat && selectedShipId != null && (
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSubmitMove}
-                          disabled={isSubmitting}
-                          className="flex-1 px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
-                          style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "color-mix(in srgb, var(--color-warning-red) 10%, transparent)", borderRadius: 0 }}
-                        >
-                          {isSubmitting ? "[...]" : "Confirm Retreat"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCancelMove}
-                          disabled={isSubmitting}
-                          className="px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
-                          style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", color: "var(--color-text-secondary)", borderRadius: 0 }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
+                  </div>
+                ) : null}
+                {mobileLeftPanelTab === "actions" ? (
+                  // A selected ship's orders open in the ship sheet below.
+                  <div className="text-sm text-text-secondary">
+                    Select a ship and choose a destination to open actions.
                   </div>
                 ) : null}
                 {mobileLeftPanelTab === "events" ? (
@@ -1674,6 +1653,8 @@ function GameDisplayWeb2({
                   />
                 ) : null}
               </div>
+
+              {landscapeShipSheet}
             </div>
           </div>
 
@@ -1681,7 +1662,7 @@ function GameDisplayWeb2({
             // The board gives up width before the left column drops below
             // 12rem (small phones), shrinking to fit; see GameDisplay.
             className="relative min-h-0 shrink-0 self-center overflow-hidden"
-            style={{ aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`, paddingRight: "2px", paddingTop: "2px", height: `min(100%, calc((100vw - 12.5rem) * ${GRID_HEIGHT} / ${GRID_WIDTH}))` }}
+            style={{ aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}`, paddingRight: "2px", paddingTop: "2px", height: LANDSCAPE_BOARD_HEIGHT }}
           >
             <div className="h-full max-h-full" style={{ height: "calc(100% - 2px)", width: "auto", aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}` }}>
               <GameBoardLayout isCurrentPlayerTurn={isCurrentPlayerTurn} containerRef={gridContainerRef} onBoardChromeMouseDown={handleCancelMove} overlay={missionDialogOverlay}>
@@ -1717,7 +1698,7 @@ function GameDisplayWeb2({
       <div
         className={
           useSideLayout
-            ? "flex min-h-0 min-w-0 flex-row items-stretch gap-4 pt-3"
+            ? sideChrome.row
             : "flex flex-col gap-4 pt-3"
         }
       >
@@ -1725,7 +1706,7 @@ function GameDisplayWeb2({
         <div
           className={
             useSideLayout
-              ? "flex min-h-0 self-stretch w-[min(18rem,34vw)] max-w-[20rem] shrink-0 flex-col gap-3 overflow-hidden pl-2 pr-1"
+              ? sideChrome.rail
               : "flex flex-col gap-3 px-2"
           }
         >
@@ -1835,7 +1816,7 @@ function GameDisplayWeb2({
         </div>
 
         {/* Game grid */}
-        <div className="relative min-h-0 min-w-0 flex-1">
+        <div className={useSideLayout ? sideChrome.board : "relative min-h-0 min-w-0 flex-1"}>
           <GameBoardLayout isCurrentPlayerTurn={isCurrentPlayerTurn} containerRef={gridContainerRef} onBoardChromeMouseDown={handleCancelMove} overlay={missionDialogOverlay}>
             <div className="relative w-full [contain:layout]" style={{ aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}` }}>
               <div className="absolute inset-0 min-h-0 overflow-hidden">

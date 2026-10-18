@@ -11,6 +11,7 @@ import React, {
 import { DialogPortrait } from "./DialogPortrait";
 import { useCrewReporter } from "./CrewReport";
 import { TutorialTarget } from "./TutorialTarget";
+import { useDebugMode } from "../hooks/useDebugMode";
 
 export interface TutorialGridTaskPanelProps {
   /** Step title shown in the panel header */
@@ -61,6 +62,12 @@ export interface TutorialGridTaskPanelProps {
   };
   /** Optional compact layout preset for specific steps (keeps text readable). */
   compactPreset?: "welcome";
+  /**
+   * Render in the page flow (full width, sized to its content) instead of
+   * over the board. Tablets held upright dock it in the rail under the
+   * score, where it doesn't cover the map.
+   */
+  docked?: boolean;
 }
 
 const mono = {
@@ -120,15 +127,21 @@ export function TutorialGridTaskPanel({
   quitLabel = "Quit",
   primaryCta,
   panelBottomRowExclusive: panelBottomRowExclusiveProp,
-  panelFitToContent = false,
+  panelFitToContent: panelFitToContentProp = false,
   panelAnchor = "right",
   panelVerticalAnchor = "top",
   tutorialRewardCacheDebug,
   compactPreset,
+  docked = false,
 }: TutorialGridTaskPanelProps) {
   const isCompactWelcome = compactPreset === "welcome";
+  // Docked, the panel has no board to size against, so it follows its content.
+  const panelFitToContent = panelFitToContentProp || docked;
   const speaker = useCrewReporter("adjutant");
-  const [debugEnabled, setDebugEnabled] = useState(false);
+  // The step-skip checkbox only exists in debug mode (Settings › Developer).
+  const debugMode = useDebugMode();
+  const [debugChecked, setDebugChecked] = useState(false);
+  const debugEnabled = debugMode && debugChecked;
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentMeasureRef = useRef<HTMLDivElement>(null);
   const [moreBelow, setMoreBelow] = useState(false);
@@ -261,9 +274,13 @@ export function TutorialGridTaskPanel({
     <div
       ref={panelFitToContent ? scrollRef : undefined}
       onScroll={panelFitToContent ? updateScrollHint : undefined}
-      className={`pointer-events-auto absolute ${
-        panelVerticalAnchor === "bottom" ? "bottom-2" : "top-2"
-      } ${panelAnchor === "left" ? "left-2" : "right-2"} z-[190] flex min-h-0 w-[min(117.5%,28.75rem)] flex-col border-2 ${
+      className={`pointer-events-auto ${
+        docked
+          ? "relative w-full"
+          : `absolute ${panelVerticalAnchor === "bottom" ? "bottom-2" : "top-2"} ${
+              panelAnchor === "left" ? "left-2" : "right-2"
+            } z-[190] w-[min(117.5%,28.75rem)]`
+      } flex min-h-0 flex-col border-2 ${
         isCompactWelcome ? "p-2.5" : "p-3"
       } ${
         panelFitToContent
@@ -274,7 +291,9 @@ export function TutorialGridTaskPanel({
         backgroundColor: "rgba(12, 17, 23, 0.94)",
         borderColor: "var(--color-cyan)",
         borderRadius: 0,
-        ...(panelFitToContent
+        ...(docked
+          ? {}
+          : panelFitToContent
           ? {
               maxHeight: maxHeightFromGrid,
               height: "auto",
@@ -395,11 +414,12 @@ export function TutorialGridTaskPanel({
         >
           ← Prev
         </button>
+        {debugMode && (
         <label className="flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
-            checked={debugEnabled}
-            onChange={(e) => setDebugEnabled(e.target.checked)}
+            checked={debugChecked}
+            onChange={(e) => setDebugChecked(e.target.checked)}
           />
           <span
             className={`font-mono text-text-secondary ${
@@ -409,7 +429,8 @@ export function TutorialGridTaskPanel({
             Debug
           </span>
         </label>
-        {tutorialRewardCacheDebug ? (
+        )}
+        {debugMode && tutorialRewardCacheDebug ? (
           <button
             type="button"
             disabled={tutorialRewardCacheDebug.disabled}

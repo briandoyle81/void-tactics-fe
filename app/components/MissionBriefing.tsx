@@ -26,7 +26,11 @@ export function MissionBriefing({
   mission: DialogMission;
   text: string;
   status: NodeContentStatus | undefined;
-  /** Smaller portrait, for narrow panels like the run map's mission drawer. */
+  /**
+   * Smaller portrait, for narrow panels like the run map's mission drawer.
+   * On phones the portrait and name sit in a row above the text instead, so
+   * the text gets the full width.
+   */
   compact?: boolean;
 }) {
   const speakerId = MISSION_BRIEFING_SPEAKERS.find((s) => isSameMission(s.mission, mission))
@@ -44,9 +48,25 @@ export function MissionBriefing({
   const color = character.textColor;
   return (
     <div className="border-l-2 bg-near-black/60 p-4" style={{ borderColor: color }}>
+      {compact && (
+        <div className="mb-3 flex items-center gap-3 sm:hidden">
+          <DialogPortrait character={character} name={character.name} color={color} sizeClass="h-14 w-14" />
+          <div className="flex min-w-0 flex-col gap-1">
+            <span
+              className="truncate text-sm font-bold uppercase leading-tight tracking-widest"
+              style={{ ...STYLE_LABEL, color }}
+            >
+              {character.name}
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.2em]" style={{ color }}>
+              {"// Incoming transmission"}
+            </span>
+          </div>
+        </div>
+      )}
       {/* Portrait floats so the transmission wraps around and then under it
           — no empty column beside a long briefing. */}
-      <div className={`float-left mb-2 mr-4 ${compact ? "w-20" : "w-24 sm:w-32"}`}>
+      <div className={`float-left mb-2 mr-4 ${compact ? "w-20 max-sm:hidden" : "w-24 sm:w-32"}`}>
         <DialogPortrait
           character={character}
           name={character.name}
@@ -65,7 +85,7 @@ export function MissionBriefing({
           </div>
         </div>
       </div>
-      <div className="mb-2 text-[10px] uppercase tracking-[0.2em]" style={{ color }}>
+      <div className={`mb-2 text-[10px] uppercase tracking-[0.2em] ${compact ? "max-sm:hidden" : ""}`} style={{ color }}>
         {"// Incoming transmission"}
       </div>
       <p className="whitespace-pre-line text-sm leading-relaxed text-text-primary">

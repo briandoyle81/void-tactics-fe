@@ -138,13 +138,101 @@ Fixes stay shared between GameDisplay, GameDisplayWeb2 and SimulatedGameDisplay 
 - Signed-in screens: check on a real phone after deploy (Fleet filters, Store checkout, Operations launch, live battle retreat and timeout).
 - Run `npx tsc --noEmit -p .`, `npx vitest run`, and lint on the changed files.
 
-## Re-audit (in progress)
-Seen in phone frames on the dev server:
-- **High: the website scrolls sideways at 360px** (the page is 390px wide).
-  - The header's right-hand group (Discord, X, [SIGN UP/LOGIN]) ends at x=390.
-  - The hero headline "OUTMANEUVER." runs to x=366.
-  - Fix: below about 380px, hide or shrink the social icons and shorten the button. Clamp the headline size.
-- **Fine at 360px:** the sign-in screen and the signed-out Operations map. "Begin First Contact" is on screen, and the star-chart nodes past the right edge scroll as intended.
-- **Small tap targets:** the footer links on the sign-in screen (17px tall) and "Skip tutorial" (18px).
+## Re-audit
+**How it was checked:**
+- **Browser:** phone frames on the dev server. Website, sign-in and the Operations map at 360×740. The tutorial battle in landscape at 932×430 and 667×340, from the round report through steps 2–7, including a staged move.
+- **Code:** a re-review of the three fix batches plus the signed-in screens.
+- **Labels:** **[seen]** means confirmed in a browser frame. **[code]** means found in code review.
 
-Still to do: the landscape tutorial walk-through at 932×430, 812×375 and 667×340, and the code re-review of the signed-in screens and of the regressions from batches 1–3.
+### Regressions from batches 1–3
+- **R1. Medium-high: the landscape board overflows on notched iPhones** [code]
+  - The board's height cap is `calc((100vw - 12.5rem) * 11/17)`. But body now has `env(safe-area-inset-left/right)` padding (from #21), which `100vw` still includes.
+  - On an 844×390 iPhone the 12rem column doesn't fit and the board's outer edge gets clipped.
+  - Files: `GameDisplay.tsx`, `SimulatedGameDisplay.tsx` and `GameDisplayWeb2.tsx` board containers.
+  - Fix: subtract both insets in the calc, or size the board from the row with container units (`100cqw`).
+- **R2. Medium: the staged-move panel is cramped in the landscape ship panel** [seen 667×340]
+  - It renders its wide stacked-desktop layout: `flex-row gap-6`, p-4 (plus the tutorial's own p-3 box) and `pt-8`.
+  - At 667×340, "CANCEL" spills out of its button, Submit and Cancel crowd each other, the coordinates wrap, and Retreat is pushed down. At 932×430 it fits but wastes about 330px of height.
+  - It also shows a second weapon picker (the panel's `<select>` next to the ▼ dropdown).
+  - Files: `renderProposedMoveActivePanel` in `GameDisplay.tsx` and `renderProposedMovePanel` in `SimulatedGameDisplay.tsx`.
+  - Fix: a compact variant in landscape (stacked, p-2, no `pt-8`, one weapon picker).
+- **R3. Medium: Command Deck layout A leaves an empty cell on phones** [code]
+  - With `grid-cols-2`, Tournaments sits alone in its row, because the next block spans two columns.
+  - The Store tile keeps its square featured-pack image, so the art-less Skirmish tile next to it stretches to match and is mostly empty.
+  - File: `commandDeck/CommandDeck.tsx`.
+  - Fix: Tournaments `col-span-2` on phones (or move it into the 2-column block), and shrink the featured-pack image on phones.
+- **R4. Low-medium: the ship card header fix doesn't reach landscape phones** [code]
+  - `max-w-[55%] … sm:max-w-none` keys off the viewport width, and landscape phones are wider than sm. So the 12rem battle ship panel still squeezes the name.
+  - The chips wrap inside the right-hand column rather than onto a second row.
+  - Tapping the rank chip no longer selects the card (its new stopPropagation).
+  - File: `ShipCard.tsx`.
+  - Fix: base it on the card's width with a container query, not the viewport.
+- **R5. Low: replay controls on phones** [code] have tap targets of about 20px (`GameReplayControls.tsx`). There's also no one-finger pan or reset once the board is pinch-zoomed.
+
+### New or still open
+- **High: the website scrolls sideways at 360px** [seen]
+  - The page is 390px wide. The header's right-hand group (Discord, X, [SIGN UP/LOGIN]) ends at x=390, and the hero headline "OUTMANEUVER." runs to x=366.
+  - Fix: below about 380px, hide or shrink the social icons and shorten the button. Clamp the headline size.
+- **Medium: fleet selection on a 390px phone shows only about one ship card** [code]
+  - The list is one column, with `gap-4` and `mb-6`, and the map cells are about 21px.
+  - Fix: a 2-column list below md; drop the `mb-6`.
+- **Medium: HUD pills** [code]: still partial.
+  - The text labels still show on phones.
+  - There's no edge fade on the row, which hides its scrollbar.
+  - The + buttons are 28px rather than 32px.
+- **Medium: FleetViewModal** [code] (`FleetViewModal.tsx:31`) uses `p-6 h-[80vh]`, with Close only at the top. Fix: `p-3 md:p-6`, `max-h-[90dvh]`.
+- **Medium: the Lobbies confirm modal** [code] (`Lobbies.tsx:2477`) uses `p-6` with no height cap or scrolling.
+- **Medium, tablet only: the ship filter popover** [code] still uses the anchored desktop popover from 768 to 1023px wide, and it can run off the right edge.
+- **Low: small tap targets on the sign-in screen** [seen]: the footer links are 17px tall and "Skip tutorial" is 18px.
+- **Low: fixed full-width layers run under the notch in landscape** [code], for example the landscape fleet modal and GameNav at 667–767px wide.
+- **Still open from before:**
+  - the tablet portrait layout height
+  - the first-frame desktop flash
+  - dead `mobileActivePanel` branches
+  - the rest of the Low list: LobbyCreateSection, ManageNavy and RoguelikeRunStart padding; RecycleConfirmModal and MockPurchaseConfirmModal z-50; the ShipConstructor help popover; the Profile address
+
+### Checked and fine
+- **Browser:**
+  - At 360px: the sign-in screen and the signed-out Operations map (the action bar is on screen, and the chart scrolls to the current mission).
+  - In the tutorial at 932×430 and 667×340: the round report fits with Acknowledged on screen, nothing is off screen through steps 2–7, the step strip shows in the ship panel, and the disabled Next is gray.
+- **Code:**
+  - The extracted render functions are declared in the right order, with no use-before-definition.
+  - The countdown context reaches the landscape timer panel.
+  - The `[@media(max-height:500px)]` variants are valid Tailwind 4.
+  - The flee confirm portal is SSR-safe, and its z-index sits above the other overlays.
+  - The pinch-zoom listener flags are right, and one-finger ship drags still work.
+  - The Operations action bar sticks as intended: no ancestor sets overflow.
+  - The 110% font rule and `formatBalanceCompact` are correct.
+
+### Suggested fix order
+1. The website overflow at 360px, then R1, R2 and R3.
+2. Fleet selection list density, then R4.
+3. HUD pills, FleetViewModal, Lobbies confirm modal.
+4. The Low items.
+
+### Re-audit fixes (2026-10-17)
+- **Website at 360px:** the social links hide below 400px, the header button is tighter, and the headline is clamped (`clamp(2.25rem, 12vw, 3rem)`). Checked at 360px: no sideways scroll.
+- **R1:** the board height is one shared value, `LANDSCAPE_BOARD_HEIGHT` (`app/utils/landscapeBoard.ts`), which subtracts both notch insets. Used by all three battle views.
+- **R2:** the staged-move panel has a compact landscape variant in GameDisplay and SimulatedGameDisplay: stacked, p-1, smaller buttons and coordinates, and no second weapon picker (the ▼ picker stays). The tutorial keeps the top padding only while the Submit pointer shows. Checked at 667×340.
+- **R3:** on phones the Command Deck uses dense grid flow (Tournaments moves up beside Skirmish), the Store spans both columns, and the pack art is smaller.
+- **R4:** the ShipCard header stacks based on the card's own width (an `@container` query, under 18rem). Icon tap sizes go by pointer type (`pointer-coarse:`), and tapping the rank chip selects the card again.
+- **R5:** replay buttons are at least 32px tall on touch screens, and a Reset zoom button shows while the board is zoomed.
+- **Fleet selection:** the ship list is two columns below md, and the bottom margin is smaller.
+- **HUD pills:** phones show a colour swatch instead of the label, the + fills the pill's height, and the row fades on the right while there's more to scroll.
+- **FleetViewModal:** uses dvh, a height cap, phone padding, and two columns from 500px.
+- **Lobbies confirm modal:** now one shared `FleetThreatWarningModal` for web3 and web2, capped to the screen and scrolling.
+- **Ship filter:** the bottom sheet is used below 1024px, and the desktop anchor math accounts for the wrapper padding and the scrollbar.
+- **Low list:**
+  - Sign-in footer links and Skip Tutorial are 32px tall.
+  - GameNav and the full-screen fleet modal are padded for the notch.
+  - RecycleConfirmModal and MockPurchaseConfirmModal are z-[450] and capped.
+  - LobbyCreateSection, ManageNavy and RoguelikeRunStart have less padding on phones.
+  - The ShipConstructor help opens on tap and is pinned across the screen on phones.
+  - Profile shows a shortened address on phones.
+  - The dead `mobileActivePanel` code is removed from GameDisplay.
+- **Tablet portrait:** a tablet held upright (portrait, up to 1024px wide, not a phone; `isPortraitTablet` in `useLandscapeMode`) gets the side layout stacked. The board is full width on top, and the rail is below it in two columns (header and score, fleet status). The classes are shared by all three views through `gameViewSideChrome` (`useGameViewChromeLayout.ts`). Checked in the tutorial:
+  - 768×1024: the board is 758×490, up from about 480×310.
+  - 1024×1366: the board is 972×639.
+  - Held sideways (1024×768): it switches back to the side-by-side layout.
+  - The tutorial card (`TutorialGridTaskPanel`, new `docked` prop) moves out of the board into the rail under the score, sized to its content. At 768×1024 it stays inside the screen on every step I checked (tallest 301px, bottom at 1022). Held sideways, it goes back over the board.
+- **First-frame flash:** `useLandscapeMode` now reads the media queries during render (`useSyncExternalStore`) instead of in an effect after paint, so a battle view opening on a phone draws the phone layout from its first frame. Checked at 812×375 by watching every DOM change while the tutorial opened: the desktop rail never appeared. It still appears at 1280×800 and goes away after resizing back to 812×375.

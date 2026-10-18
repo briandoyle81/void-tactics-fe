@@ -102,7 +102,11 @@ const Profile: React.FC = () => {
       {address && (
         <div className="mb-6 flex items-center justify-center gap-2">
           <span className="text-xs uppercase tracking-wider text-text-muted">Address</span>
-          <span className="min-w-0 break-all text-sm text-text-primary select-all">{address}</span>
+          {/* Phones show it shortened; the copy button copies all of it. */}
+          <span className="text-sm text-text-primary sm:hidden" title={address}>
+            {`${address.slice(0, 6)}…${address.slice(-4)}`}
+          </span>
+          <span className="hidden min-w-0 break-all text-sm text-text-primary select-all sm:inline">{address}</span>
           <CopyAddressButton address={address} />
         </div>
       )}

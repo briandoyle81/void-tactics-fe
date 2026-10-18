@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { useOwnedShipsWeb2 } from "../hooks/useOwnedShipsWeb2";
 import { useShipAttributesByIdsWeb2 } from "../hooks/useShipAttributesByIdsWeb2";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useDebugMode } from "../hooks/useDebugMode";
 import { Web2Ship } from "../types/web2Ship";
 import { apiMutate } from "../lib/apiMutate";
 import { constructAllShipsWeb2 } from "../utils/constructShipsWeb2";
@@ -99,7 +100,7 @@ const ManageNavyWeb2: React.FC = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, [customizeShipId]);
   const [busy, setBusy] = useState(false);
-  const [showDebugButtons, setShowDebugButtons] = useState(false);
+  const showDebugButtons = useDebugMode();
   const [showRecycleModal, setShowRecycleModal] = useState(false);
   const [shipToRecycle, setShipToRecycle] = useState<Web2Ship | null>(null);
   const filterState = useNavyFilterState(SHIPS_PER_PAGE);
@@ -466,15 +467,6 @@ const ManageNavyWeb2: React.FC = () => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="hidden cursor-pointer items-center gap-2 text-sm md:flex">
-          <input
-            type="checkbox"
-            checked={showDebugButtons}
-            onChange={(e) => setShowDebugButtons(e.target.checked)}
-            className="w-4 h-4"
-          />
-          <span style={{ color: "var(--color-text-secondary)" }}>Debug Mode</span>
-        </label>
         {showDebugButtons && (
           <button
             onClick={() => {

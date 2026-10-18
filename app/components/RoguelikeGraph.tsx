@@ -35,7 +35,7 @@ import { RoguelikeNodeEditPanel } from "./RoguelikeNodeEditPanel";
 import { RoguelikeSettingsModal } from "./RoguelikeSettingsModal";
 import { CampaignEditModeToggle } from "./CampaignEditModeToggle";
 import { ShipImage } from "./ShipImage";
-import { OperationsMap } from "./operations/OperationsMap";
+import { OperationsMap, type MissionPeek } from "./operations/OperationsMap";
 import { ART_SLOTS } from "../config/art";
 import { MissionDrawerContent } from "./operations/MissionDrawerContent";
 import { RunActionBar } from "./operations/RunActionBar";
@@ -52,7 +52,7 @@ import {
   TUTORIAL_PRELUDE_NODE_ID,
   withTutorialPrelude,
 } from "../utils/tutorialPrelude";
-import { TutorialPreludeDrawer } from "./operations/TutorialPreludeDrawer";
+import { TUTORIAL_PRELUDE_PEEK, TutorialPreludeDrawer } from "./operations/TutorialPreludeDrawer";
 import { trackRunRetreated } from "../utils/analytics/gameEvents";
 
 const NO_SHIP_IDS: bigint[] = [];
@@ -623,36 +623,50 @@ export function RoguelikeGraph({
     />
   ) : null;
 
+  const missionPeek: MissionPeek | null = editMode
+    ? null
+    : isTutorialPreludeSelected
+      ? TUTORIAL_PRELUDE_PEEK
+      : selectedNode
+        ? {
+            title: selectedNode.title,
+            kindLabel: selectedNode.kind === RoguelikeNodeKind.Combat ? "Combat" : "Resupply",
+            teaser: selectedNode.descriptionStatus === "ok" ? selectedNode.description : undefined,
+          }
+        : null;
+
   return (
     <>
       <OperationsMap
         toolbar={
-          <>
-            <CampaignEditModeToggle
-              isEditor={isEditor}
-              editMode={editMode}
-              onToggle={() => setEditMode((v) => !v)}
-            />
-            {editMode && (
-              <button
-                type="button"
-                onClick={() => setShowSettings(true)}
-                className={`${OPS_TOOLBAR_BUTTON} border-amber text-amber hover:bg-amber/10`}
-              >
-                Campaign settings
-              </button>
-            )}
-            {!isBrowseMode && (
-              <button
-                type="button"
-                disabled={isRetreating}
-                onClick={() => setShowRetreatConfirm(true)}
-                className={`${OPS_TOOLBAR_BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10`}
-              >
-                {isRetreating ? "Retreating…" : "Retreat run"}
-              </button>
-            )}
-          </>
+          isEditor || !isBrowseMode ? (
+            <>
+              <CampaignEditModeToggle
+                isEditor={isEditor}
+                editMode={editMode}
+                onToggle={() => setEditMode((v) => !v)}
+              />
+              {editMode && (
+                <button
+                  type="button"
+                  onClick={() => setShowSettings(true)}
+                  className={`${OPS_TOOLBAR_BUTTON} border-amber text-amber hover:bg-amber/10`}
+                >
+                  Campaign settings
+                </button>
+              )}
+              {!isBrowseMode && (
+                <button
+                  type="button"
+                  disabled={isRetreating}
+                  onClick={() => setShowRetreatConfirm(true)}
+                  className={`${OPS_TOOLBAR_BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10`}
+                >
+                  {isRetreating ? "Retreating…" : "Retreat run"}
+                </button>
+              )}
+            </>
+          ) : null
         }
         banner={
           connectMode && (
@@ -691,6 +705,7 @@ export function RoguelikeGraph({
         drawer={drawer}
         drawerOpen={drawerOpen}
         onDrawerOpenChange={setDrawerOpen}
+        peek={missionPeek}
         actionBar={
           editMode ? undefined : (
             <RunActionBar

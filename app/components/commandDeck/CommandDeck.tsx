@@ -162,9 +162,9 @@ function Tile({
 function FeaturedPackPreview({ pack }: { pack: FeaturedPackSummary }) {
   const [lead, ...rest] = pack.previewShipImages;
   return (
-    <div className="flex min-h-40 flex-1 items-end justify-center gap-1 bg-black/20 p-2">
+    <div className="flex flex-1 items-end justify-center gap-1 bg-black/20 p-2 md:min-h-40">
       <div className="flex min-w-0 flex-1 items-end justify-center">
-        <div className="aspect-square w-full max-w-56">{lead}</div>
+        <div className="aspect-square w-full max-w-32 md:max-w-56">{lead}</div>
       </div>
       {rest.length > 0 && (
         <div className="flex shrink-0 flex-col justify-end gap-0.5">
@@ -215,12 +215,129 @@ function ComingSoon({
   );
 }
 
+function Chevron() {
+  return (
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 3 L11 8 L6 13" />
+    </svg>
+  );
+}
+
+function DeckListRow({
+  label,
+  detail,
+  labelClass = "text-text-primary",
+  onClick,
+  soon = false,
+}: {
+  label: string;
+  detail?: string;
+  labelClass?: string;
+  onClick: () => void;
+  soon?: boolean;
+}) {
+  if (soon) {
+    return (
+      <div className="flex h-12 items-center gap-2.5 px-3.5 text-text-muted" aria-disabled="true">
+        <span className="flex-1 text-base font-bold uppercase tracking-wider" style={DISPLAY_FONT}>
+          {label}
+        </span>
+        <span className="border border-gunmetal px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em]">Soon</span>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-[3.375rem] w-full items-center gap-2.5 border-b border-gunmetal/60 px-3.5 py-2 text-left text-text-secondary transition-colors hover:bg-steel"
+    >
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className={`text-lg font-bold uppercase leading-tight tracking-wider ${labelClass}`} style={DISPLAY_FONT}>
+          {label}
+        </span>
+        {detail && <span className="truncate font-mono text-[11px] text-text-secondary">{detail}</span>}
+      </span>
+      <Chevron />
+    </button>
+  );
+}
+
+/**
+ * Layout A on phones: what's waiting on you first (battles on your turn),
+ * then Operations, the free-ship claim, and one compact list for the other
+ * modes, with Tournaments last while it's closed.
+ */
+function PhoneDeck({ operations, yourTurnCount, openTournamentCount, featuredPack, onOpen }: Omit<CommandDeckProps, "layout">) {
+  return (
+    <div className="flex flex-col gap-2.5">
+      {yourTurnCount > 0 && (
+        <button
+          type="button"
+          onClick={() => onOpen("battles")}
+          className="flex items-center gap-3 border-2 border-phosphor-green bg-phosphor-green/[0.07] px-3.5 py-3 text-left text-phosphor-green"
+        >
+          <span className="text-[40px] font-bold leading-none" style={DISPLAY_FONT}>
+            {yourTurnCount}
+          </span>
+          <span className="flex-1 text-[17px] font-bold uppercase leading-tight tracking-wider text-text-primary" style={DISPLAY_FONT}>
+            {yourTurnCount === 1 ? "Battle waiting on you" : "Battles waiting on you"}
+          </span>
+          <Chevron />
+        </button>
+      )}
+
+      <Tile borderColor="var(--color-cyan)">
+        <div className="flex items-baseline justify-between gap-3 px-3.5 pb-2 pt-3">
+          <span className="text-3xl font-bold uppercase leading-none tracking-wider text-cyan" style={DISPLAY_FONT}>
+            Operations
+          </span>
+          {operations.missionTitle && (
+            <span className="truncate text-[15px] font-semibold uppercase tracking-wider text-amber" style={DISPLAY_FONT}>
+              {operations.missionTitle}
+            </span>
+          )}
+        </div>
+        <ArtSlot slot="operations" className="h-28" />
+        <div className="grid gap-2.5 p-3.5">
+          <RunPips pips={operations.pips} />
+          <DeckButton solid onClick={() => onOpen("operations")} className="h-[3.25rem] w-full text-lg">
+            {operationsCta(operations)}
+          </DeckButton>
+        </div>
+      </Tile>
+
+      <FreeShipsCard />
+
+      <div className="flex flex-col border-2 border-solid border-gunmetal bg-black/40">
+        <DeckListRow label="Skirmish - PvP" onClick={() => onOpen("skirmish")} />
+        <DeckListRow
+          label="Store"
+          labelClass="text-amber"
+          detail={
+            featuredPack
+              ? `Featured: ${featuredPack.callout.replace(/\s+pack$/i, "")} - ${featuredPack.shipCount} Ships · ${featuredPack.priceLabel}`
+              : "Ship packs"
+          }
+          onClick={() => onOpen("store")}
+        />
+        {yourTurnCount === 0 && <DeckListRow label="Battles" onClick={() => onOpen("battles")} />}
+        <DeckListRow
+          label="Tournaments"
+          detail={openTournamentCount > 0 ? `${openTournamentCount} open` : undefined}
+          onClick={() => onOpen("tournaments")}
+          soon={!TOURNAMENTS_ENABLED}
+        />
+      </div>
+    </div>
+  );
+}
+
 function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack, onOpen }: Omit<CommandDeckProps, "layout">) {
   return (
     // Sized to the window on desktop (70vh, 30–52rem) so the tiles fill the
-    // screen; rows never shrink below 14rem. Phones: Operations full width,
-    // the other tiles two to a row without their art, to keep it short.
-    <div className="grid grid-cols-2 gap-3 md:h-[clamp(30rem,70vh,52rem)] md:grid-cols-[1.35fr_1fr_15rem] md:grid-rows-[minmax(14rem,1fr)_minmax(14rem,1fr)] md:gap-4 xl:grid-cols-[1.35fr_1fr_18rem]">
+    // screen; rows never shrink below 14rem. Phones get PhoneDeck instead.
+    <div className="hidden grid-flow-row-dense grid-cols-2 gap-3 md:grid md:grid-flow-row md:h-[clamp(30rem,70vh,52rem)] md:grid-cols-[1.35fr_1fr_15rem] md:grid-rows-[minmax(14rem,1fr)_minmax(14rem,1fr)] md:gap-4 xl:grid-cols-[1.35fr_1fr_18rem]">
       <Tile borderColor="var(--color-cyan)" className="col-span-2 md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 p-4">
           <span className="text-4xl font-bold uppercase leading-none tracking-wider text-cyan md:text-5xl" style={DISPLAY_FONT}>
@@ -251,7 +368,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
         </div>
       </Tile>
 
-      <Tile borderColor="var(--color-amber)" className="md:col-start-3 md:row-start-1">
+      <Tile borderColor="var(--color-amber)" className="col-span-2 md:col-span-1 md:col-start-3 md:row-start-1">
         {featuredPack ? (
           <>
             <div className="px-3 pt-3 text-lg font-bold uppercase tracking-wider text-amber" style={DISPLAY_FONT}>
@@ -406,7 +523,16 @@ function LayoutB({ operations, yourTurnCount, openTournamentCount, onOpen }: Omi
 export function CommandDeck({ layout, ...props }: CommandDeckProps) {
   return (
     <section aria-label="Command Deck" className="w-full">
-      {layout === "B" ? <LayoutB {...props} /> : <LayoutA {...props} />}
+      {layout === "B" ? (
+        <LayoutB {...props} />
+      ) : (
+        <>
+          <div className="md:hidden">
+            <PhoneDeck {...props} />
+          </div>
+          <LayoutA {...props} />
+        </>
+      )}
     </section>
   );
 }

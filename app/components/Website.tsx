@@ -50,7 +50,7 @@ function PlayLink({
 
 function SiteHeader() {
   return (
-    <header className="mx-auto flex w-full max-w-7xl items-center gap-3 px-5 py-5 md:px-12">
+    <header className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-5 sm:px-5 md:px-12">
       <Link href="/" aria-label="Void Tactics home" className="relative shrink-0">
         <span
           className="text-2xl font-black uppercase leading-none tracking-[0.06em] md:text-3xl"
@@ -70,13 +70,16 @@ function SiteHeader() {
         <HeaderAlphaBadge compact />
       </span>
       <div className="ml-auto flex items-center gap-2">
-        <HeaderDiscordLink compact />
-        <HeaderXLink compact />
+        {/* The social links drop out on the narrowest phones so the row fits. */}
+        <span className="hidden items-center gap-2 min-[400px]:flex">
+          <HeaderDiscordLink compact />
+          <HeaderXLink compact />
+        </span>
         <PlayLink
           surface="header"
           href={`${PLAY_PATH}?signin=1`}
           label="[SIGN UP/LOGIN]"
-          className="h-8 px-4 text-sm"
+          className="h-8 whitespace-nowrap px-3 text-sm sm:px-4"
         />
       </div>
     </header>

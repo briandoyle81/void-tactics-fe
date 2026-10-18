@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePlayerGames } from "../hooks/usePlayerGames";
+import { useDebugMode } from "../hooks/useDebugMode";
 import GameDisplay from "./GameDisplay";
 import { BattlesInbox, type BattleInboxItem } from "./BattlesInbox";
 import { resolveNodeContent, useWeb3NodeContent } from "../hooks/useNodeContent";
@@ -34,6 +35,7 @@ const Games: React.FC = () => {
   });
   const queryClient = useQueryClient();
   const [isResettingCache, setIsResettingCache] = useState(false);
+  const debugMode = useDebugMode();
 
   // Debug affordance: the games list is read through wagmi/TanStack Query,
   // which caches by (address, chainId, args) and only refetches in the
@@ -289,6 +291,7 @@ const Games: React.FC = () => {
       onShowPveChange={setShowPve}
       hiddenPveCount={sortedGames.length - visibleGames.length}
       headerExtra={
+        debugMode && (
         <button
           type="button"
           onClick={() => void handleResetCache()}
@@ -302,6 +305,7 @@ const Games: React.FC = () => {
         >
           {isResettingCache ? "[RESETTING CACHE...]" : "[DEBUG: RESET CACHE]"}
         </button>
+        )
       }
     />
   );

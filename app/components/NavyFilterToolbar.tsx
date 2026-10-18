@@ -57,8 +57,11 @@ export function NavyFilterToolbar(props: NavyFilterToolbarProps) {
           type="button"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            const windowWidth = Math.min(window.innerWidth * 0.96, 72 * 16);
-            const left = Math.min(Math.max(12, rect.left), Math.max(0, window.innerWidth - windowWidth));
+            // The popover's width plus its wrapper's p-2, kept inside the
+            // page's width (clientWidth leaves out a scrollbar).
+            const viewportWidth = document.documentElement.clientWidth;
+            const windowWidth = Math.min(window.innerWidth * 0.96, 72 * 16) + 16;
+            const left = Math.min(Math.max(12, rect.left), Math.max(0, viewportWidth - windowWidth));
             onOpenFilterWindow({ top: rect.bottom + 8, left });
           }}
           className="px-3 py-1 border-2 border-solid uppercase font-semibold tracking-wider text-sm transition-colors duration-150"

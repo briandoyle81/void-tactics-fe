@@ -78,7 +78,7 @@ export function RunActionBar({
         <button
           type="button"
           onClick={onSecondaryAction}
-          className="self-center font-mono text-xs uppercase tracking-wider text-text-muted underline-offset-4 hover:text-text-primary hover:underline md:ml-auto"
+          className="min-h-8 self-center px-1 font-mono text-xs uppercase tracking-wider text-text-muted underline-offset-4 hover:text-text-primary hover:underline md:ml-auto"
         >
           {action.secondary.label}
         </button>

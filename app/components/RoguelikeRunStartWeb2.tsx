@@ -199,7 +199,7 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
       });
 
   return (
-    <div className="flex flex-col gap-4 border-2 border-cyan p-6 font-mono" style={{ borderRadius: 0 }}>
+    <div className="flex flex-col gap-4 border-2 border-cyan p-3 font-mono md:p-6" style={{ borderRadius: 0 }}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-xl font-bold text-cyan">[SELECT YOUR FLEET]</h3>
         {/* The step's one action, in the Start run spot. */}

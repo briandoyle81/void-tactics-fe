@@ -843,7 +843,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
   const widgetMovementRange = submittedProposal ? submittedProposal.movementRange : movementRange;
   const setHoveredCell = useSetGridHoveredCell();
   const setHoveredMoveTile = useSetGridDestHoveredTile();
-  const { outerWrapperRef, gridContainerRef, zoom } = useGridPanZoom();
+  const { outerWrapperRef, gridContainerRef, zoom, resetZoom } = useGridPanZoom();
   /** The bordered CSS grid (cells); tracks are inset by border — use for cell math vs overlay. */
   const gridLayoutRef = useRef<HTMLDivElement>(null);
   // Track last drag over cell to prevent excessive state updates
@@ -1076,9 +1076,24 @@ const GameGridBoard = React.memo(function GameGridBoard({
       {/* Map Grid */}
       <div
         ref={outerWrapperRef}
-        className="w-full h-full min-h-0 px-0 lg:px-2 overflow-hidden"
+        className="relative w-full h-full min-h-0 px-0 lg:px-2 overflow-hidden"
         onContextMenu={handleGridContextMenu}
       >
+        {zoom.scale > 1 && (
+          <button
+            type="button"
+            onClick={resetZoom}
+            className="absolute bottom-1 right-1 z-[240] min-h-8 border border-solid px-2 font-mono text-[11px] uppercase tracking-wider"
+            style={{
+              borderColor: "var(--color-steel)",
+              color: "var(--color-cyan)",
+              backgroundColor: "color-mix(in srgb, var(--color-near-black) 88%, transparent)",
+              borderRadius: 0,
+            }}
+          >
+            Reset zoom
+          </button>
+        )}
         <div
           ref={gridContainerRef}
           key="game-grid"
@@ -1191,6 +1206,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
             onMoveVertical={setConfirmWidgetVertical}
             clipRootRef={outerWrapperRef}
             zoomScale={zoom.scale}
+            tutorialWeaponOption={showConfirmWidget ? undefined : tutorialWeaponOption}
           />
 
           {showConfirmWidget &&

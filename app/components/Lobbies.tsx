@@ -39,6 +39,7 @@ import { LobbyCard } from "./LobbyCard";
 import { FleetViewModal } from "./FleetViewModal";
 import { LoadFleetMenu } from "./LoadFleetMenu";
 import { FleetSelectionModal } from "./FleetSelectionModal";
+import { FleetThreatWarningModal } from "./FleetThreatWarningModal";
 import { LobbyCreateForm, LobbyTurnOrderNote } from "./LobbyCreateForm";
 import { LobbyCreateSection } from "./LobbyCreateSection";
 import { LobbyCreateButton } from "./LobbyCreateButton";
@@ -2465,56 +2466,21 @@ const Lobbies: React.FC = () => {
         })()}
 
       {/* Fleet Threat Confirmation Dialog */}
-      {showFleetConfirmation &&
-        selectedLobby &&
-        (() => {
-          const totalCost = fleet.totalCost;
-          const costLimit = costLimitForSelected;
-          const confirmationOverLimit = fleet.isOverLimit;
-
-          return (
-            <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[420]">
-              <div className="bg-near-black border border-amber rounded-none p-6 max-w-md w-full mx-4">
-                <div className="text-center">
-                  <div className="text-amber text-2xl font-mono font-bold mb-4 tracking-widest">[!]</div>
-                  <h3 className="text-xl font-bold text-amber mb-4">
-                    FLEET THREAT WARNING
-                  </h3>
-                  <p className="text-text-secondary mb-6">
-                    Your fleet threat ({totalCost}) is less than 90% of the
-                    maximum ({costLimit}). You&apos;re only using{" "}
-                    {Math.round((totalCost / costLimit) * 100)}% of your
-                    available budget.
-                  </p>
-                  <p className="text-sm text-text-muted mb-6">
-                    Consider adding more ships to maximize your fleet&apos;s
-                    potential, or proceed with your current selection.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowFleetConfirmation(false)}
-                      className="flex-1 px-4 py-2 border border-gunmetal text-text-muted rounded-none hover:bg-steel/20"
-                    >
-                      GO BACK
-                    </button>
-                    <button
-                      onClick={() => createFleetWithConfirmation(selectedLobby)}
-                      disabled={
-                        isCreatingFleet ||
-                        confirmationOverLimit ||
-                        selectedFleetHasStaleCostsVersion ||
-                        selectedShips.length > MAX_SHIPS_PER_FLEET
-                      }
-                      className="flex-1 px-4 py-2 border border-amber text-amber rounded-none hover:bg-amber/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isCreatingFleet ? "CREATING..." : "CONFIRM FLEET"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+      {showFleetConfirmation && selectedLobby && (
+        <FleetThreatWarningModal
+          totalCost={fleet.totalCost}
+          costLimit={costLimitForSelected}
+          onBack={() => setShowFleetConfirmation(false)}
+          onConfirm={() => createFleetWithConfirmation(selectedLobby)}
+          confirmDisabled={
+            isCreatingFleet ||
+            fleet.isOverLimit ||
+            selectedFleetHasStaleCostsVersion ||
+            selectedShips.length > MAX_SHIPS_PER_FLEET
+          }
+          isCreating={isCreatingFleet}
+        />
+      )}
 
       {/* Fleet View Modal */}
       {showFleetView && viewingFleetId && viewingFleetOwner && (

@@ -71,7 +71,7 @@ export function FleetShipListPanel({
       }}
     >
       {header ? <div className="shrink-0">{header}</div> : null}
-      <div className={`grid ${gridColsClassName} min-h-0 flex-1 overflow-y-auto content-start mb-6`}>
+      <div className={`grid ${gridColsClassName} min-h-0 flex-1 overflow-y-auto content-start mb-2 md:mb-6`}>
         {items.map((item) => (
           <div
             key={item.key}

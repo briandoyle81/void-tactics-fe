@@ -1,11 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
+import { usePathname } from "next/navigation";
+import { isClientPathname } from "../utils/hostRouting";
 
 /** Matches Tailwind `md` (768px): show only below that width. */
 const MOBILE_MAX_WIDTH_QUERY = "(max-width: 767px)";
 
 const SESSION_DISMISS_KEY = "void-tactics-mobile-alpha-notice-dismissed";
+
+/**
+ * The notice is about the game client, so it only opens there, not over the
+ * website: everywhere on the play host (NEXT_PUBLIC_PLAY_URL, which serves
+ * the client at "/"), and on client paths (/play, /<gameId>, ...) elsewhere.
+ */
+function isInGameClient(pathname: string | null): boolean {
+  const playUrl = process.env.NEXT_PUBLIC_PLAY_URL;
+  if (playUrl) {
+    try {
+      if (window.location.host === new URL(playUrl).host) return true;
+    } catch {
+      // malformed URL: fall back to the path
+    }
+  }
+  return pathname != null && isClientPathname(pathname);
+}
 
 function isDismissedThisSession(): boolean {
   try {
@@ -25,13 +44,14 @@ function setDismissedThisSession() {
 
 export default function MobileAlphaNoticeModal() {
   const titleId = useId();
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
 
   const syncVisibility = useCallback(() => {
     if (typeof window === "undefined") return;
     const mq = window.matchMedia(MOBILE_MAX_WIDTH_QUERY);
-    setVisible(mq.matches && !isDismissedThisSession());
-  }, []);
+    setVisible(mq.matches && isInGameClient(pathname) && !isDismissedThisSession());
+  }, [pathname]);
 
   useEffect(() => {
     syncVisibility();

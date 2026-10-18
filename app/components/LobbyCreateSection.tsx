@@ -60,7 +60,7 @@ export function LobbyCreateSection({
 
       {shipsLoading && (
         <div
-          className="mb-8 flex flex-col items-center justify-center border border-cyan/50 bg-black/50 px-6 py-16 text-center"
+          className="mb-4 flex flex-col items-center justify-center border border-cyan/50 bg-black/50 px-4 py-8 text-center md:mb-8 md:px-6 md:py-16"
           style={{ borderRadius: 0 }}
         >
           <p className="text-sm font-bold uppercase tracking-wider text-cyan/90">
@@ -74,7 +74,7 @@ export function LobbyCreateSection({
 
       {needsShips && (
         <div
-          className="mb-8 border-2 border-cyan/35 bg-black/55 px-4 py-10 text-center sm:px-12 sm:py-12"
+          className="mb-4 border-2 border-cyan/35 bg-black/55 px-3 py-6 text-center sm:px-12 sm:py-12 md:mb-8"
           style={{ borderRadius: 0 }}
         >
           <p
@@ -101,7 +101,7 @@ export function LobbyCreateSection({
 
       {needsConstruct && (
         <div
-          className="mb-8 border-2 border-amber/35 bg-black/55 px-4 py-10 text-center sm:px-12 sm:py-12"
+          className="mb-4 border-2 border-amber/35 bg-black/55 px-3 py-6 text-center sm:px-12 sm:py-12 md:mb-8"
           style={{ borderRadius: 0 }}
         >
           <p
