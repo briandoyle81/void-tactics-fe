@@ -34,17 +34,18 @@ model User {
   createdAt           DateTime  @default(now())
 
   ships                   Ship[]
-  lobbiesCreated          Lobby[]                  @relation("LobbyCreator")
-  lobbiesJoined           Lobby[]                  @relation("LobbyJoiner")
-  lobbiesReserved         Lobby[]                  @relation("LobbyReservedJoiner")
-  gamesAsPlayer1          Game[]                   @relation("GamePlayer1")
-  gamesAsPlayer2          Game[]                   @relation("GamePlayer2")
+  shipGrantAwards         RoguelikeShipGrantAward[]
+  lobbiesCreated          Lobby[]                   @relation("LobbyCreator")
+  lobbiesJoined           Lobby[]                   @relation("LobbyJoiner")
+  lobbiesReserved         Lobby[]                   @relation("LobbyReservedJoiner")
+  gamesAsPlayer1          Game[]                    @relation("GamePlayer1")
+  gamesAsPlayer2          Game[]                    @relation("GamePlayer2")
   fleets                  Fleet[]
   stats                   PlayerStats?
-  tournamentsCreated      Tournament[]             @relation("TournamentCreator")
+  tournamentsCreated      Tournament[]              @relation("TournamentCreator")
   tournamentRegistrations TournamentRegistrant[]
-  tournamentMatchesAsP1   TournamentMatch[]        @relation("TournamentMatchPlayer1")
-  tournamentMatchesAsP2   TournamentMatch[]        @relation("TournamentMatchPlayer2")
+  tournamentMatchesAsP1   TournamentMatch[]         @relation("TournamentMatchPlayer1")
+  tournamentMatchesAsP2   TournamentMatch[]         @relation("TournamentMatchPlayer2")
   campaignNodeCompletions CampaignNodeCompletion[]
   roguelikeRuns           RoguelikeRun[]
 }
@@ -362,8 +363,37 @@ model RoguelikeNode {
   childEdges  RoguelikeEdge[]       @relation("RoguelikeEdgeParent")
   parentEdges RoguelikeEdge[]       @relation("RoguelikeEdgeChild")
   defeats     RoguelikeNodeDefeat[]
+  shipGrant   RoguelikeShipGrant?
 
   @@index([campaignId])
+}
+
+/// Web2 counterpart to ShipGrantWinEffect.setGrant: the ship a win at this
+/// node mints, constructed (docs/frontend-handoff-2026-10-19.md §2). `grant`
+/// is app/utils/shipGrant.ts's ShipGrantSpec. Only runs when the node's
+/// winEffects include SHIP_GRANT_WIN_EFFECT.
+model RoguelikeShipGrant {
+  nodeId    Int           @id
+  node      RoguelikeNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  grant     Json
+  updatedAt DateTime      @updatedAt
+}
+
+/// One reward ship minted by a roguelike win (web2's ShipGranted event).
+/// countsAsClaim: the grant was once per player when it minted and the
+/// claim hasn't been reset (web2's hasClaimed / resetClaim).
+model RoguelikeShipGrantAward {
+  id            Int      @id @default(autoincrement())
+  nodeId        Int
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  shipId        Int
+  lobbyId       Int
+  countsAsClaim Boolean
+  createdAt     DateTime @default(now())
+
+  @@index([nodeId, userId])
+  @@index([lobbyId])
 }
 
 model RoguelikeEdge {

@@ -53,7 +53,8 @@ import { GameResultModal, type MissionLossReason } from "./GameResultModal";
 import { resolveNodeContent, useWeb3NodeContent } from "../hooks/useNodeContent";
 import { inferVictoryReason } from "../utils/victoryReason";
 import { RoundStartModal } from "./RoundStartModal";
-import { ConstructRewardShips } from "./ConstructRewardShips";
+import { RewardShipReceived } from "./rewardShips/RewardShipReceived";
+import { useRewardClaimedBeforeWin } from "../hooks/useShipGrants";
 import { useOpeningLineReport } from "./useOpeningLineReport";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { useMissionDialog } from "../hooks/useMissionDialog";
@@ -913,6 +914,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   );
   const roguelikeNodeIdForGame =
     isRoguelikeGame && roguelikeRunForGame ? Number(roguelikeRunForGame.currentNodeId) : 0;
+  // A once-only reward ship mints only if it wasn't claimed before this
+  // win: read while the game is live, for the result screen.
+  const rewardClaimedBeforeWin = useRewardClaimedBeforeWin(
+    isRoguelikeGame && roguelikeNodeIdForGame > 0 ? roguelikeNodeIdForGame : undefined,
+    !isGameOver,
+  );
   const roguelikeMissionNodeIds = React.useMemo(
     () => (roguelikeNodeIdForGame > 0 ? [BigInt(roguelikeNodeIdForGame)] : []),
     [roguelikeNodeIdForGame],
@@ -2688,10 +2695,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // Roguelike: a win returns to the run map; any loss has already ended the
   // run on chain, so "Quit" drops the cached run and lands on the Mission
   // tab's start-a-run screen.
-  // A won mission can grant a ship, minted unconstructed at game end: offer
-  // to build it before the player moves on (ConstructRewardShips).
+  // A won roguelike mission can mint the node's reward ship, already
+  // constructed (ShipGrantWinEffect): show it on the result screen.
   const resultRewardAction =
-    isVsAIGame && gameWinnerResult === "me" && !readOnly ? <ConstructRewardShips /> : undefined;
+    isRoguelikeGame && gameWinnerResult === "me" && !readOnly && roguelikeNodeIdForGame > 0 ? (
+      <RewardShipReceived nodeId={roguelikeNodeIdForGame} claimedBeforeWin={rewardClaimedBeforeWin} />
+    ) : undefined;
   const resultPrimaryActionLabel = isRoguelikeGame
     ? gameWinnerResult === "me"
       ? "Return to Run"

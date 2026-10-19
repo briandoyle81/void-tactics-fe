@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { requireWeb2Admin } from "@/app/lib/auth";
+import { getMapZone } from "@/app/lib/deploymentZoneWeb2";
+import { isDeploymentTile } from "@/app/utils/deploymentZone";
 
 // GET /api/admin/ai-map-placements?mapId=1 — list placements for a map.
 // PUT  { mapId, row, col, configId } — upsert a single placement (matches
@@ -9,6 +11,21 @@ import { requireWeb2Admin } from "@/app/lib/auth";
 // POST { mapId, placements: [{row, col, configId}] } — replace every
 // placement for a map in one call, matching web3's setMapPlacements (whole-
 // array replace) 1:1 — used by the map-placement editor's single "Save".
+//
+// Like AIEncounters (2026-10-19), a placement must be a tile of the map's
+// joiner zone (default columns 13–16 when the map has none); clearing one
+// always works.
+
+async function outOfZoneError(mapId: number, tiles: { row: number; col: number }[]) {
+  const zone = await getMapZone(mapId, false);
+  const bad = tiles.find((t) => !isDeploymentTile(t.row, t.col, false, zone));
+  return bad
+    ? NextResponse.json(
+        { error: `Tile (${bad.row}, ${bad.col}) is outside this map's joiner zone` },
+        { status: 400 },
+      )
+    : null;
+}
 
 export async function GET(req: NextRequest) {
   const { error } = await requireWeb2Admin();
@@ -44,6 +61,9 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Invalid configId" }, { status: 400 });
   }
 
+  const zoneError = await outOfZoneError(mapId, [{ row, col }]);
+  if (zoneError) return zoneError;
+
   const placement = await prisma.aIMapPlacement.upsert({
     where: { mapId_row_col: { mapId, row, col } },
     update: { configId },
@@ -71,6 +91,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Each placement needs row/col/configId" }, { status: 400 });
     }
   }
+
+  const zoneError = await outOfZoneError(mapId, placements);
+  if (zoneError) return zoneError;
 
   await prisma.$transaction(async (tx) => {
     await tx.aIMapPlacement.deleteMany({ where: { mapId } });

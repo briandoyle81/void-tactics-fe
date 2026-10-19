@@ -1,9 +1,6 @@
 import { prisma } from "./prisma";
 import { createTtlCache } from "./ttlCache";
-import { generateShip, calcShipCost } from "./shipGen";
-import { getCurrentCosts, getCurrentCostsByVariant } from "./getCurrentCosts";
-import { validSpecialsForVariant } from "../types/types";
-import type { Web2ShipEquipment } from "../types/web2Ship";
+import { grantRewardShip } from "./shipGrantsWeb2";
 import {
   WIN_EFFECT_KEYS,
   WIN_EFFECT_LABELS,
@@ -31,16 +28,12 @@ export type { WinEffectKey };
 
 export interface WinEffectsSettings {
   decBonusAmount: number;
-  shipGrantVariant: number; // 0-2, matches Web2ShipTraits.variant's roll range
-  shipGrantTier: number; // 0-3, minimum equipment level the grant guarantees
   healAboveFloorPercent: number; // applied in resolveRoguelikeRunIfApplicable, see module doc
   healCapPercent: number; // 100 = uncapped — caps every heal effect (Repair special, win-effect heals) at this % of max HP
 }
 
 export const DEFAULT_WIN_EFFECTS_SETTINGS: WinEffectsSettings = {
   decBonusAmount: 0,
-  shipGrantVariant: 0,
-  shipGrantTier: 0,
   healAboveFloorPercent: 100,
   healCapPercent: 100,
 };
@@ -56,53 +49,15 @@ export const getWinEffectsSettings = cache.get;
 export const invalidateWinEffectsSettingsCache = cache.invalidate;
 
 /**
- * Grants a freshly generated ship to `ownerId`. Web2 has no on-chain
- * "tier template" minting primitive (Ships.tierShips/tierPrices) to mirror
- * exactly, so this is a deliberate simplification: roll a normal random
- * ship via generateShip(), then force its variant to `variant` and raise
- * mainWeapon/its defense stat to at least `tier` (capped at 3) so the grant
- * always meets a minimum quality floor.
- */
-async function grantShip(ownerId: string, variant: number, tier: number): Promise<void> {
-  const rolled = generateShip(ownerId, Date.now() % 1000, await getCurrentCostsByVariant());
-
-  const clampedVariant = Math.min(2, Math.max(0, variant));
-  const clampedTier = Math.min(3, Math.max(0, tier));
-  const validSpecials = validSpecialsForVariant(clampedVariant);
-
-  const equipment: Web2ShipEquipment = {
-    ...rolled.equipment,
-    mainWeapon: Math.max(rolled.equipment.mainWeapon, clampedTier),
-    armor: rolled.equipment.armor > 0 ? Math.max(rolled.equipment.armor, clampedTier) : 0,
-    shields: rolled.equipment.shields > 0 ? Math.max(rolled.equipment.shields, clampedTier) : 0,
-    special: validSpecials.includes(rolled.equipment.special) ? rolled.equipment.special : validSpecials[0]!,
-  };
-  const traits = { ...rolled.traits, variant: clampedVariant };
-  // The grant forces `traits.variant` to `clampedVariant` AFTER generateShip
-  // already picked costs for whatever variant it happened to roll — refetch
-  // for the variant this ship actually ends up as.
-  const costs = await getCurrentCosts(clampedVariant);
-  const cost = calcShipCost(equipment, traits, costs);
-
-  await prisma.ship.create({
-    data: {
-      ownerId,
-      name: rolled.name,
-      equipment: equipment as object,
-      traits: traits as object,
-      cost,
-      costsVersion: costs.version,
-      constructed: true,
-      isFree: true,
-    },
-  });
-}
-
-/**
  * Applies a roguelike node's win effect keys to `winnerId`. Skips HEAL_ABOVE_FLOOR_WIN_EFFECT, which the
- * roguelike resolver applies itself — see module doc.
+ * roguelike resolver applies itself — see module doc. Like RoguelikeMatch's
+ * WinEffectFailed, an effect that fails is logged and the win still counts.
  */
-export async function applyWinEffects(effects: readonly string[], winnerId: string): Promise<void> {
+export async function applyWinEffects(
+  effects: readonly string[],
+  winnerId: string,
+  context: { nodeId: number; lobbyId: number },
+): Promise<void> {
   if (effects.length === 0) return;
   const settings = await getWinEffectsSettings();
 
@@ -114,6 +69,10 @@ export async function applyWinEffects(effects: readonly string[], winnerId: stri
   }
 
   if (effects.includes("SHIP_GRANT_WIN_EFFECT")) {
-    await grantShip(winnerId, settings.shipGrantVariant, settings.shipGrantTier);
+    try {
+      await grantRewardShip(context.nodeId, winnerId, context.lobbyId);
+    } catch (error) {
+      console.error(`Grant Ship failed for node ${context.nodeId}:`, error);
+    }
   }
 }

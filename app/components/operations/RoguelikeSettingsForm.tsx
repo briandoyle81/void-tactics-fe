@@ -2,6 +2,7 @@
 
 import React from "react";
 import { toast } from "react-hot-toast";
+import { rewardShipsAdminHref } from "../../config/routes";
 
 // The Operations campaign settings modal (Edit Mode › Campaign settings):
 // root node, auto-heal, required variant, initial cost cap, repair cost, the
@@ -19,8 +20,6 @@ export interface RoguelikeSettingsValues {
   repairCostPerHp: string;
   decBonusAmount: string;
   healAboveFloorPercent: number;
-  shipGrantVariant: number;
-  shipGrantTier: number;
 }
 
 export interface RoguelikeSettingsSaves {
@@ -32,7 +31,6 @@ export interface RoguelikeSettingsSaves {
   decBonusAmount: (value: string) => Promise<unknown>;
   /** Omitted where the effect isn't implemented (shown disabled). */
   healAboveFloorPercent?: (value: number) => Promise<unknown>;
-  shipGrant: (variant: number, tier: number) => Promise<unknown>;
 }
 
 const INPUT_CLASS =
@@ -54,7 +52,6 @@ export function RoguelikeSettingsForm({
   saves,
   repairCostLabel,
   decBonusLabel,
-  shipGrantLimits,
   onWithdraw,
   onSetEditor,
   onClose,
@@ -65,7 +62,6 @@ export function RoguelikeSettingsForm({
   saves: RoguelikeSettingsSaves;
   repairCostLabel: string;
   decBonusLabel: string;
-  shipGrantLimits: { variantMin: number; variantMax?: number; tierMax?: number };
   /** Web3 only: sweep accumulated resupply fees to an address. */
   onWithdraw?: (to: string) => Promise<unknown>;
   /** Web3 only: grant or revoke node + enemy-fleet editing together. */
@@ -83,8 +79,6 @@ export function RoguelikeSettingsForm({
   const [repairCostPerHp, setRepairCostPerHp] = useLoadedValue(values.repairCostPerHp, "0");
   const [decBonusAmount, setDecBonusAmount] = useLoadedValue(values.decBonusAmount, "0");
   const [healAbovePercent, setHealAbovePercent] = useLoadedValue(values.healAboveFloorPercent, 100);
-  const [shipGrantVariant, setShipGrantVariant] = useLoadedValue(values.shipGrantVariant, shipGrantLimits.variantMin);
-  const [shipGrantTier, setShipGrantTier] = useLoadedValue(values.shipGrantTier, 0);
   const [withdrawTo, setWithdrawTo] = React.useState("");
   const [editorAddress, setEditorAddress] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -288,39 +282,14 @@ export function RoguelikeSettingsForm({
               )}
             </SettingRow>
 
-            <SettingRow label="Grant Ship — variant / tier">
-              <input
-                type="number"
-                min={shipGrantLimits.variantMin}
-                max={shipGrantLimits.variantMax}
-                value={shipGrantVariant}
-                onChange={(e) =>
-                  setShipGrantVariant(
-                    clamp(
-                      Number(e.target.value) || shipGrantLimits.variantMin,
-                      shipGrantLimits.variantMin,
-                      shipGrantLimits.variantMax ?? Number.MAX_SAFE_INTEGER,
-                    ),
-                  )
-                }
-                className="w-20 px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                style={INPUT_STYLE}
-              />
-              <input
-                type="number"
-                min={0}
-                max={shipGrantLimits.tierMax}
-                value={shipGrantTier}
-                onChange={(e) =>
-                  setShipGrantTier(clamp(Number(e.target.value) || 0, 0, shipGrantLimits.tierMax ?? Number.MAX_SAFE_INTEGER))
-                }
-                className="w-20 px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                style={INPUT_STYLE}
-              />
-              <SaveButton
-                busy={busy === "shipGrant"}
-                onClick={() => run("shipGrant", () => saves.shipGrant(shipGrantVariant, shipGrantTier))}
-              />
+            <SettingRow label="Grant Ship">
+              <p className="text-xs text-text-secondary">
+                Each node sets its own reward ship in{" "}
+                <a href={rewardShipsAdminHref()} className="text-cyan underline hover:text-cyan/80">
+                  Ops Console › Reward Ships
+                </a>
+                .
+              </p>
             </SettingRow>
           </div>
         </div>

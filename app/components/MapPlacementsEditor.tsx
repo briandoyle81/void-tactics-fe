@@ -4,6 +4,8 @@ import React, { useMemo } from "react";
 import { AIShipConfig, MapPosition } from "../types/types";
 import { useAIEncountersAdmin } from "../hooks/useAIEncountersAdmin";
 import { useGetMapPlacements, useMaxPlacementsPerMap } from "../hooks/useAIEncountersContract";
+import { useJoinerZonePositions } from "../hooks/useMapsContract";
+import type { ZoneTile } from "../utils/deploymentZone";
 import { MapDisplay } from "./MapDisplay";
 import { ShipImage } from "./ShipImage";
 import ShipCard from "./ShipCard";
@@ -31,6 +33,14 @@ export function MapPlacementsEditor({
   const { setMapPlacements } = useAIEncountersAdmin();
   const { data: placementsData, refetch } = useGetMapPlacements(mapId);
   const { data: maxPlacementsData } = useMaxPlacementsPerMap();
+  const { data: joinerZoneData } = useJoinerZonePositions(Number(mapId));
+  const joinerZone = useMemo(
+    (): ZoneTile[] | undefined =>
+      Array.isArray(joinerZoneData)
+        ? (joinerZoneData as { row: number; col: number }[]).map((t) => ({ row: Number(t.row), col: Number(t.col) }))
+        : undefined,
+    [joinerZoneData],
+  );
 
   const savedPlacements = useMemo(
     () =>
@@ -85,6 +95,7 @@ export function MapPlacementsEditor({
       mapId={Number(mapId)}
       roster={roster}
       savedPlacements={savedPlacements}
+      joinerZone={joinerZone}
       maxPlacements={Number(maxPlacementsData ?? 8n)}
       startOpen={startOpen}
       onClose={onClose}

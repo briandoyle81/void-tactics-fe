@@ -1,6 +1,6 @@
 import type { MissionDossierRow } from "../components/MissionDossier";
 import { formatDec } from "./formatDec";
-import { getFactionName } from "../config/factions";
+import type { NodeRewardShip } from "./shipGrant";
 
 // Dossier rows for MissionNodePanel, shared by the web3 and web2 previews.
 // Number-native: callers convert bigint node fields before calling. Enemy
@@ -26,7 +26,8 @@ function combatRows(f: CombatFields): MissionDossierRow[] {
 export interface RoguelikeVictoryEffects {
   healAboveFloorPercent: number | null;
   decBonus: number | null;
-  shipGrant: { variant: number; tier: number } | null;
+  /** The node's reward ship; null when it has no Grant Ship effect or no grant set. */
+  shipGrant: NodeRewardShip | null;
 }
 
 export const NO_VICTORY_EFFECTS: RoguelikeVictoryEffects = {
@@ -53,8 +54,12 @@ export function roguelikeCombatDossierRows(
     rows.push({ label: "Reward", value: `+${formatDec(f.victoryEffects.decBonus)} DEC`, tone: "good" });
   }
   if (f.victoryEffects.shipGrant) {
-    const { variant, tier } = f.victoryEffects.shipGrant;
-    rows.push({ label: "Reward", value: `New ship: ${getFactionName(variant)}, tier ${tier}`, tone: "good" });
+    const { grant, claimed } = f.victoryEffects.shipGrant;
+    rows.push(
+      grant.oncePerAddress && claimed
+        ? { label: "Reward", value: `${grant.name} (already received)` }
+        : { label: "Reward", value: `New ship: ${grant.name}`, tone: "good" },
+    );
   }
   rows.push({ label: "Stakes", value: "Defeat or retreat ends the run", tone: "warning" });
   if (f.isCleared) rows.push({ label: "Status", value: "Cleared", tone: "good" });

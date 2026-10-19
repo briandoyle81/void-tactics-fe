@@ -74,7 +74,7 @@ export function useRoguelikeNodesWinEffects(nodeIds: bigint[]) {
     });
     return map;
   }, [nodeIds, result.data]);
-  return { effectsByNodeId, isLoading: result.isLoading, error: result.error };
+  return { effectsByNodeId, isLoading: result.isLoading, error: result.error, refetch: result.refetch };
 }
 
 export function useDECBonusAmount() {
@@ -99,30 +99,4 @@ export function useHealAboveFloorPercent() {
     functionName: "healToPercent",
   });
   return { ...result, data: result.data as number | undefined };
-}
-
-export function useShipGrantConfig() {
-  const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-    .SHIP_GRANT_WIN_EFFECT as Address;
-  const variantResult = useReadContract({
-    address,
-    abi: CONTRACT_ABIS.SHIP_GRANT_WIN_EFFECT as Abi,
-    chainId: CHAIN_ID,
-    functionName: "shipVariant",
-  });
-  const tierResult = useReadContract({
-    address,
-    abi: CONTRACT_ABIS.SHIP_GRANT_WIN_EFFECT as Abi,
-    chainId: CHAIN_ID,
-    functionName: "shipTier",
-  });
-  return {
-    variant: variantResult.data as number | undefined,
-    tier: tierResult.data as number | undefined,
-    isLoading: variantResult.isLoading || tierResult.isLoading,
-    refetch: () => {
-      void variantResult.refetch();
-      void tierResult.refetch();
-    },
-  };
 }

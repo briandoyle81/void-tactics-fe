@@ -14,3 +14,6 @@ export const FACTION_NAMES: Record<number, string> = {
 export function getFactionName(variant: number): string {
   return FACTION_NAMES[variant] ?? `Faction ${variant}`;
 }
+
+/** The highest faction variant (web2's Ships.maxVariant()). */
+export const MAX_FACTION_VARIANT = Math.max(...Object.keys(FACTION_NAMES).map(Number));

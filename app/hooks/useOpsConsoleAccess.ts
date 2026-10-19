@@ -8,12 +8,14 @@ import { useIsEncounterEditor } from "./useIsEncounterEditor";
 import { useIsNodeMapEditor } from "./useIsNodeMapEditor";
 import { useShipPurchasePricesAccess } from "./useShipPurchasePricesAccess";
 import { useWeb2Admin } from "./useWeb2Admin";
+import { useIsShipGrantOwner } from "./useShipGrants";
 
-export type OpsConsoleTab = "Maps" | "Admin" | "Ship Attributes" | "Purchase Prices";
+export type OpsConsoleTab = "Maps" | "Admin" | "Reward Ships" | "Ship Attributes" | "Purchase Prices";
 
 export const OPS_CONSOLE_TABS: readonly OpsConsoleTab[] = [
   "Maps",
   "Admin",
+  "Reward Ships",
   "Ship Attributes",
   "Purchase Prices",
 ];
@@ -32,6 +34,7 @@ export function useOpsConsoleAccess() {
   const { isEditor: isNodeMapEditor, isLoading: isNodeMapEditorLoading } =
     useIsNodeMapEditor();
   const { canAdminShipPurchasePrices } = useShipPurchasePricesAccess();
+  const { isOwner: isShipGrantOwner } = useIsShipGrantOwner();
   const isWeb2Admin = useWeb2Admin();
   const isMapAdmin = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
 
@@ -44,13 +47,16 @@ export function useOpsConsoleAccess() {
             return isMapAdmin;
           case "Admin":
             return isMapAdmin || isOwner || isEncounterEditor || isNodeMapEditor;
+          case "Reward Ships":
+            // Anyone who edits nodes can view; only the owner can write.
+            return isMapAdmin || isShipGrantOwner || isNodeMapEditor;
           case "Ship Attributes":
             return isOwner;
           case "Purchase Prices":
             return canAdminShipPurchasePrices;
         }
       }),
-    [isWeb2Admin, isMapAdmin, isOwner, isEncounterEditor, isNodeMapEditor, canAdminShipPurchasePrices],
+    [isWeb2Admin, isMapAdmin, isOwner, isEncounterEditor, isNodeMapEditor, isShipGrantOwner, canAdminShipPurchasePrices],
   );
 
   return {

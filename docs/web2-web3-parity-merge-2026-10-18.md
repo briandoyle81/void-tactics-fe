@@ -47,6 +47,11 @@ Resupply and Settings were committed in `9e5fdc5`. RunMap, the node edit form an
 - `useGamePolling`: web2 uses it with `isSinglePlayerGame: isVsAIGame`
 - `useFleetPlacement`: the generic core described above
 
+**Added 2026-10-19:**
+- `components/ship/ShipSpecControls.tsx`: the equipment, traits, colors and ship data sections, shared by `ShipConstructor`, `ShipConstructorWeb2` and the reward ship form. The rest of the constructor pair (loading, cost and the customize flow) is still separate.
+- Reward ships (`components/rewardShips/`): one shared admin view, form, drawer section and result-screen card, with web3 and web2 adapters.
+- The enemy placement editor checks the map's joiner zone in both modes.
+
 **Tutorial:** `SimulatedGameDisplay` now uses the shared range functions (plus its step filters) and `gameplayDerived`. The old copies in `gameGridRanges.ts` were removed and their tests point at the shared versions.
 
 ## What's left
@@ -65,6 +70,8 @@ These are the remaining pairs, by lines that are shared nearly word for word. Th
 | `navyFilters` | about 127 |
 
 There were 63 pairs in all, about 5,450 shared lines, before the run-map work. Remeasure before choosing the next one.
+
+Also still separate: the node editor's win-effect checkboxes. Web3 renders them inline in `RoguelikeNodeEditPanel`; web2 uses `WinEffectsPickerWeb2`.
 
 **Suggested order:** `RoguelikeRunStart` comes next, since it finishes Operations. Then `ManageNavy` and `navyFilters` together, then `Lobbies`, then `GameDisplay`. `GameDisplay` is the biggest and also falls under the parity rule with `SimulatedGameDisplay`, so any change to how it looks has to be applied to all three views.
 

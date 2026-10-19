@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Ship, getMainWeaponName, getSpecialName, validSpecialsForVariant } from "../types/types";
+import { Ship, validSpecialsForVariant } from "../types/types";
 import { renderShip } from "../utils/shipRenderer";
+import { ShipSpecControls } from "./ship/ShipSpecControls";
 import { toShipVisual } from "../utils/toShipVisual";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useAccount, useReadContract } from "wagmi";
@@ -703,335 +704,41 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
               controlsDisabled ? "opacity-50 pointer-events-none" : ""
             }`}
           >
-            {/* Equipment Section */}
-            <div
-              className="border border-gunmetal bg-steel p-3 md:p-4"
-              style={{
-                borderRadius: 0, // Square corners for industrial theme
+            <ShipSpecControls
+              value={{
+                name: shipName,
+                mainWeapon,
+                armor,
+                shields,
+                special,
+                accuracy,
+                hull,
+                speed,
+                variant,
+                colors: { h1, s1, l1 },
+                shiny,
               }}
-            >
-              <h3 className="text-lg font-bold text-cyan mb-4 font-mono">
-                EQUIPMENT
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Main Weapon
-                  </label>
-                  <select
-                    value={mainWeapon}
-                    onChange={(e) => setMainWeapon(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                    style={{
-                      borderRadius: 0, // Square corners for industrial theme
-                      borderColor: "var(--color-cyan)",
-                    }}
-                  >
-                    {[0, 1, 2, 3].map((v) => (
-                      <option key={v} value={v}>
-                        {getMainWeaponName(v, variant)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Defense Type
-                  </label>
-                  <div className="mb-3 flex flex-wrap gap-3 sm:gap-4">
-                    <label className="flex items-center gap-2 text-sm text-cyan cursor-pointer">
-                      <input
-                        type="radio"
-                        name="defenseType"
-                        checked={armor === 0 && shields === 0}
-                        onChange={() => {
-                          setArmor(0);
-                          setShields(0);
-                        }}
-                        className="w-4 h-4 text-cyan bg-black/60 border-cyan focus:ring-cyan focus:ring-2"
-                      />
-                      <span>None</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-cyan cursor-pointer">
-                      <input
-                        type="radio"
-                        name="defenseType"
-                        checked={armor > 0 && shields === 0}
-                        onChange={() => {
-                          if (armor === 0) setArmor(1);
-                          setShields(0);
-                        }}
-                        className="w-4 h-4 text-cyan bg-black/60 border-cyan focus:ring-cyan focus:ring-2"
-                      />
-                      <span>Armor</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-cyan cursor-pointer">
-                      <input
-                        type="radio"
-                        name="defenseType"
-                        checked={shields > 0 && armor === 0}
-                        onChange={() => {
-                          if (shields === 0) setShields(1);
-                          setArmor(0);
-                        }}
-                        className="w-4 h-4 text-cyan bg-black/60 border-cyan focus:ring-cyan focus:ring-2"
-                      />
-                      <span>Shields</span>
-                    </label>
-                  </div>
-                  {armor > 0 && (
-                    <div>
-                      <label className="block text-xs text-cyan mb-1">
-                        Armor Level
-                      </label>
-                      <select
-                        value={armor}
-                        onChange={(e) => {
-                          const newArmor = Number(e.target.value);
-                          setArmor(newArmor);
-                          if (newArmor > 0) setShields(0);
-                        }}
-                        className="w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                        style={{
-                          borderRadius: 0, // Square corners for industrial theme
-                          borderColor: "var(--color-cyan)",
-                        }}
-                      >
-                        <option value={1}>Light</option>
-                        <option value={2}>Medium</option>
-                        <option value={3}>Heavy</option>
-                      </select>
-                    </div>
-                  )}
-                  {shields > 0 && (
-                    <div>
-                      <label className="block text-xs text-cyan mb-1">
-                        Shield Level
-                      </label>
-                      <select
-                        value={shields}
-                        onChange={(e) => {
-                          const newShields = Number(e.target.value);
-                          setShields(newShields);
-                          if (newShields > 0) setArmor(0);
-                        }}
-                        className="w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                        style={{
-                          borderRadius: 0, // Square corners for industrial theme
-                          borderColor: "var(--color-cyan)",
-                        }}
-                      >
-                        <option value={1}>Basic</option>
-                        <option value={2}>Enhanced</option>
-                        <option value={3}>Advanced</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Special
-                  </label>
-                  <select
-                    value={special}
-                    onChange={(e) => setSpecial(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
-                    style={{
-                      borderRadius: 0, // Square corners for industrial theme
-                      borderColor: "var(--color-cyan)",
-                    }}
-                  >
-                    {(validSpecials.includes(special)
-                      ? validSpecials
-                      : [...validSpecials, special]
-                    ).map((v) => (
-                      <option key={v} value={v}>
-                        {getSpecialName(v, variant)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Traits Section */}
-            <div
-              className="border border-gunmetal bg-steel p-3 md:p-4"
-              style={{
-                borderRadius: 0, // Square corners for industrial theme
+              onChange={(patch) => {
+                if (patch.name !== undefined) setShipName(patch.name);
+                if (patch.mainWeapon !== undefined) setMainWeapon(patch.mainWeapon);
+                if (patch.armor !== undefined) setArmor(patch.armor);
+                if (patch.shields !== undefined) setShields(patch.shields);
+                if (patch.special !== undefined) setSpecial(patch.special);
+                if (patch.accuracy !== undefined) setAccuracy(patch.accuracy);
+                if (patch.hull !== undefined) setHull(patch.hull);
+                if (patch.speed !== undefined) setSpeed(patch.speed);
+                if (patch.variant !== undefined) setVariant(patch.variant);
+                if (patch.colors?.h1 !== undefined) setH1(patch.colors.h1);
+                if (patch.colors?.s1 !== undefined) setS1(patch.colors.s1);
+                if (patch.colors?.l1 !== undefined) setL1(patch.colors.l1);
+                if (patch.shiny !== undefined) setShiny(patch.shiny);
               }}
-            >
-              <h3 className="text-lg font-bold text-cyan mb-4 font-mono">
-                TRAITS
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Accuracy: {accuracy}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    value={accuracy}
-                    onChange={(e) => setAccuracy(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Hull: {hull}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    value={hull}
-                    onChange={(e) => setHull(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Speed: {speed}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    value={speed}
-                    onChange={(e) => setSpeed(Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Variant: {variant}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={variant}
-                    onChange={(e) => setVariant(Number(e.target.value))}
-                    disabled={isEditingExisting}
-                    className={`w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan ${
-                      isEditingExisting ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                    style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Colors Section */}
-            <div
-              className="border border-gunmetal bg-steel p-3 md:p-4"
-              style={{
-                borderRadius: 0, // Square corners for industrial theme
-              }}
-            >
-              <h3 className="text-lg font-bold text-cyan mb-4 font-mono">
-                COLORS (Primary)
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Hue 1: {h1}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="360"
-                    value={h1}
-                    onChange={(e) => setH1(Number(e.target.value))}
-                    disabled={isEditingExisting}
-                    className={`w-full ${isEditingExisting ? "opacity-50 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Saturation 1: {s1}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={s1}
-                    onChange={(e) => setS1(Number(e.target.value))}
-                    disabled={isEditingExisting}
-                    className={`w-full ${isEditingExisting ? "opacity-50 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-cyan mb-2">
-                    Lightness 1: {l1}
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={l1}
-                    onChange={(e) => setL1(Number(e.target.value))}
-                    disabled={isEditingExisting}
-                    className={`w-full ${isEditingExisting ? "opacity-50 cursor-not-allowed" : ""}`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Secondary colors currently unused; hide this section for now */}
-
-            {/* ShipData Section */}
-            <div
-              className="border border-gunmetal bg-steel p-3 md:p-4"
-              style={{
-                borderRadius: 0, // Square corners for industrial theme
-              }}
-            >
-              <h3 className="text-lg font-bold text-cyan mb-4 font-mono">
-                SHIP DATA
-              </h3>
-              <div className="space-y-3">
-                {mode === "customize" && (
-                  <div>
-                    <label className="block text-sm text-cyan mb-2">
-                      Ship Name
-                    </label>
-                    <input
-                      type="text"
-                      value={shipName}
-                      onChange={(e) => setShipName(e.target.value)}
-                      disabled={isEditingExisting}
-                      className={`w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan font-mono ${
-                        isEditingExisting ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                      style={{
-                        borderRadius: 0, // Square corners for industrial theme
-                        borderColor: "var(--color-cyan)",
-                      }}
-                      placeholder="Enter ship name"
-                    />
-                  </div>
-                )}
-                <label className="flex items-center gap-2 text-sm text-cyan cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={shiny}
-                    onChange={(e) => setShiny(e.target.checked)}
-                    className="w-4 h-4 text-cyan bg-black/60 border-cyan focus:ring-cyan focus:ring-2"
-                    style={{
-                      borderRadius: 0, // Square corners for industrial theme
-                    }}
-                  />
-                  <span>Shiny</span>
-                </label>
-              </div>
-            </div>
+              specials={validSpecials}
+              variantLocked={isEditingExisting}
+              colorsLocked={isEditingExisting}
+              showName={mode === "customize"}
+              nameLocked={isEditingExisting}
+            />
 
             {/* Approval and Customize Buttons (only in customize mode with selected ship) */}
             {mode === "customize" &&

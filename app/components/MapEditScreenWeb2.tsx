@@ -7,7 +7,8 @@ import { useWeb2Admin } from "../hooks/useWeb2Admin";
 import { MapEditor } from "./MapEditor";
 import { MapEditorHeader } from "./MapEditorHeader";
 import { MapMode, type MapPosition, type ScoringPosition } from "../types/types";
-import { parseZoneTiles } from "../utils/deploymentZone";
+import { JOINER_ZONE_CHANGED_NOTE, parseZoneTiles, sameTileSet } from "../utils/deploymentZone";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface MapEditScreenWeb2Map {
   id: number;
@@ -31,11 +32,14 @@ function Web2MapSaveButton({
   scoringPositions,
   creatorZonePositions,
   joinerZonePositions,
+  initialJoinerZonePositions,
   validationError,
   onSuccess,
 }: {
   creatorZonePositions: MapPosition[];
   joinerZonePositions: MapPosition[];
+  /** The joiner zone as loaded, to tell whether this save changes it. */
+  initialJoinerZonePositions: MapPosition[];
   isEditing: boolean;
   mapId?: number;
   name: string;
@@ -47,6 +51,7 @@ function Web2MapSaveButton({
   onSuccess: () => void;
 }) {
   const [isSaving, setIsSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleClick = async () => {
     if (validationError) {
@@ -80,6 +85,13 @@ function Web2MapSaveButton({
         });
       }
       toast.success(isEditing ? "Map updated" : "Map created");
+      if (isEditing && mapId !== undefined) {
+        // useMapWeb2 caches a map forever; the zone (and tiles) just changed.
+        await queryClient.invalidateQueries({ queryKey: ["mapWeb2", mapId] });
+        if (!sameTileSet(joinerZonePositions, initialJoinerZonePositions)) {
+          toast(JOINER_ZONE_CHANGED_NOTE, { duration: 8000 });
+        }
+      }
       onSuccess();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save map");
@@ -206,6 +218,7 @@ export function MapEditScreenWeb2({ map, onSaved, onCancel, onMapChanged }: MapE
           <Web2MapSaveButton
             creatorZonePositions={creatorZonePositions}
             joinerZonePositions={joinerZonePositions}
+            initialJoinerZonePositions={initialJoinerZone}
             isEditing={isEditing}
             mapId={map?.id}
             name={name}

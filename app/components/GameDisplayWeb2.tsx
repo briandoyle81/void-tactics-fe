@@ -29,6 +29,7 @@ import { RoundStartModal } from "./RoundStartModal";
 import { useOpeningLineReport } from "./useOpeningLineReport";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { GameResultModal, type MissionLossReason } from "./GameResultModal";
+import { RewardShipReceivedWeb2 } from "./rewardShips/RewardShipReceived";
 import { resolveNodeContent, useNodeContentWeb2 } from "../hooks/useNodeContent";
 import { inferVictoryReason } from "../utils/victoryReason";
 import {
@@ -1058,6 +1059,13 @@ function GameDisplayWeb2({
       }
       nodeContent={missionNodeContent}
       comms={missionDebriefNode}
+      rewardAction={
+        // Mirrors GameDisplay.tsx: a won roguelike mission can mint the
+        // node's reward ship, already constructed.
+        isRoguelikeGame && gameWinnerResult === "me" && !readOnly ? (
+          <RewardShipReceivedWeb2 lobbyId={game.metadata.lobbyId} nodeId={roguelikeDialogNodeId} />
+        ) : undefined
+      }
       onClose={() => setIsGameResultDismissed(true)}
       primaryActionLabel={
         isRoguelikeGame

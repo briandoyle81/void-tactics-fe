@@ -112,3 +112,16 @@ export function defaultStartingPositions(
   }
   return tiles.slice(0, count);
 }
+
+/** Whether two tile lists hold the same tiles, in any order. */
+export function sameTileSet(a: readonly ZoneTile[], b: readonly ZoneTile[]): boolean {
+  const key = (t: ZoneTile) => `${t.row},${t.col}`;
+  return a.length === b.length && a.map(key).sort().join("|") === b.map(key).sort().join("|");
+}
+
+/**
+ * Shown after a map's joiner zone changes: AI placements outside the new
+ * zone make the mission's start revert, so its enemy fleet needs a re-save.
+ */
+export const JOINER_ZONE_CHANGED_NOTE =
+  "Joiner zone changed: re-save this map's enemy fleet so every AI ship is inside it.";

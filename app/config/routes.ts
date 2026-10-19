@@ -13,6 +13,11 @@ export const PLAY_PATH = "/play";
 /** Admin tools: maps, AI encounters, ship attributes, purchase prices. */
 export const ADMIN_PATH = "/admin";
 
+/** Ops Console › Reward Ships, optionally opened on one roguelike node. */
+export function rewardShipsAdminHref(nodeId?: number): string {
+  return `${ADMIN_PATH}/reward-ships${nodeId != null ? `?node=${nodeId}` : ""}`;
+}
+
 /**
  * The website's home page, for links out of the game client. With a
  * separate play host (NEXT_PUBLIC_PLAY_URL), "/" there is the client, so

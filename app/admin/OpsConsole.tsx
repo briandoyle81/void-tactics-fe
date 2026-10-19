@@ -15,6 +15,8 @@ import EligibilityControls from "../components/EligibilityControls";
 import ShipAttributesWeb2 from "../components/ShipAttributesWeb2";
 import ShipPurchasePrices from "../components/ShipPurchasePrices";
 import ShipPurchasePricesWeb2 from "../components/ShipPurchasePricesWeb2";
+import { RewardShipsAdmin } from "../components/rewardShips/RewardShipsAdmin";
+import { RewardShipsAdminWeb2 } from "../components/rewardShips/RewardShipsAdminWeb2";
 import { useAppMode } from "../hooks/useAppMode";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
@@ -38,11 +40,12 @@ const panelStyle = { ...panelBorderStyle, backgroundColor: "var(--color-slate)" 
 const OPS_TAB_SLUGS: Record<OpsConsoleTab, string> = {
   Maps: "maps",
   Admin: "admin",
+  "Reward Ships": "reward-ships",
   "Ship Attributes": "ship-attributes",
   "Purchase Prices": "purchase-prices",
 };
-/** Params a tab's screen adds (Maps: the map being edited). */
-const OPS_CHILD_PARAMS = ["map"] as const;
+/** Params a tab's screen adds (Maps: the map being edited; Reward Ships: the node). */
+const OPS_CHILD_PARAMS = ["map", "node"] as const;
 
 function opsTabFromSlug(slug: string | null): OpsConsoleTab | null {
   const entry = (Object.entries(OPS_TAB_SLUGS) as [OpsConsoleTab, string][]).find(([, s]) => s === slug);
@@ -74,7 +77,8 @@ function ConsoleMessage({ children }: { children: React.ReactNode }) {
 
 /**
  * Ops Console: the admin tools that used to sit in the player tab bar (maps,
- * AI encounters and missions, ship attributes, purchase prices). Reached
+ * AI encounters and missions, roguelike reward ships, ship attributes,
+ * purchase prices). Reached
  * from the header [MENU] for admin roles.
  */
 export default function OpsConsolePage() {
@@ -162,12 +166,14 @@ export default function OpsConsolePage() {
               })}
             </div>
 
-            {activeTab === "Maps" || activeTab === "Admin" ? (
+            {activeTab === "Maps" || activeTab === "Admin" || activeTab === "Reward Ships" ? (
               <div className="border border-solid p-1" style={panelStyle}>
                 {activeTab === "Maps" &&
                   (appMode === "web2" ? <MapsWeb2 /> : <Maps />)}
                 {activeTab === "Admin" &&
                   (appMode === "web2" ? <AdminWeb2 /> : <Admin />)}
+                {activeTab === "Reward Ships" &&
+                  (appMode === "web2" ? <RewardShipsAdminWeb2 /> : <RewardShipsAdmin />)}
               </div>
             ) : (
               <div className="mx-auto max-w-7xl border-0 bg-transparent p-0 md:border md:border-solid md:bg-[var(--color-slate)] md:p-8" style={panelBorderStyle}>

@@ -295,6 +295,22 @@ exports.Prisma.RoguelikeNodeScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.RoguelikeShipGrantScalarFieldEnum = {
+  nodeId: 'nodeId',
+  grant: 'grant',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.RoguelikeShipGrantAwardScalarFieldEnum = {
+  id: 'id',
+  nodeId: 'nodeId',
+  userId: 'userId',
+  shipId: 'shipId',
+  lobbyId: 'lobbyId',
+  countsAsClaim: 'countsAsClaim',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.RoguelikeEdgeScalarFieldEnum = {
   id: 'id',
   parentId: 'parentId',
@@ -513,6 +529,8 @@ exports.Prisma.ModelName = {
   CampaignNodeCompletion: 'CampaignNodeCompletion',
   RoguelikeCampaign: 'RoguelikeCampaign',
   RoguelikeNode: 'RoguelikeNode',
+  RoguelikeShipGrant: 'RoguelikeShipGrant',
+  RoguelikeShipGrantAward: 'RoguelikeShipGrantAward',
   RoguelikeEdge: 'RoguelikeEdge',
   RoguelikeRun: 'RoguelikeRun',
   RoguelikeRosterShip: 'RoguelikeRosterShip',

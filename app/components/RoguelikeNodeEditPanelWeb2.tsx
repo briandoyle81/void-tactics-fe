@@ -24,6 +24,8 @@ import { ShipImageWeb2 } from "./ShipImageWeb2";
 import ShipCard from "./ShipCard";
 import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { parseZoneTiles } from "../utils/deploymentZone";
+import { useNodeRewardShipWeb2 } from "../hooks/useShipGrantsWeb2";
+import { NodeRewardShipSummary } from "./rewardShips/NodeRewardShipSummary";
 
 interface Web2Map {
   id: number;
@@ -70,6 +72,7 @@ export function RoguelikeNodeEditPanelWeb2({
 }) {
   const admin = useRoguelikeAdminWeb2();
   const isWeb2Admin = useWeb2Admin();
+  const rewardShip = useNodeRewardShipWeb2(mode === "edit" && node ? node.id : undefined);
   const { email, isLoggedIn, isLoading: isUserLoading } = useCurrentUser();
   const { data: web2Maps, refetch: refetchWeb2Maps } = useQuery({
     queryKey: ["maps", "web2"],
@@ -181,19 +184,26 @@ export function RoguelikeNodeEditPanelWeb2({
       }
       winEffectsSection={
         node ? (
-          <WinEffectsPickerWeb2
-            currentEffects={node.winEffects}
-            onSave={async (effects: WinEffectKey[]) => {
-              try {
-                await admin.setNodeWinEffects(node.id, effects);
-                toast.success("Win effects updated.");
-                onSaved();
-              } catch (error) {
-                console.error("Failed to save win effects:", error);
-                toast.error(error instanceof Error ? error.message : "Failed to save win effects");
-              }
-            }}
-          />
+          <>
+            <WinEffectsPickerWeb2
+              currentEffects={node.winEffects}
+              onSave={async (effects: WinEffectKey[]) => {
+                try {
+                  await admin.setNodeWinEffects(node.id, effects);
+                  toast.success("Win effects updated.");
+                  onSaved();
+                } catch (error) {
+                  console.error("Failed to save win effects:", error);
+                  toast.error(error instanceof Error ? error.message : "Failed to save win effects");
+                }
+              }}
+            />
+            <NodeRewardShipSummary
+              nodeId={node.id}
+              grant={rewardShip?.grant}
+              hasGrantEffect={node.winEffects.includes("SHIP_GRANT_WIN_EFFECT")}
+            />
+          </>
         ) : null
       }
       renderEnemyFleetPreview={(mapId) => <RoguelikeEnemyFleetPreviewWeb2For mapId={mapId} configs={configs ?? []} />}

@@ -1,5 +1,6 @@
 "use client";
 
+import { shipGrantToPreviewShipWeb2 } from "../utils/previewShips";
 import React from "react";
 import { toast } from "react-hot-toast";
 import { MissionBriefing } from "./MissionBriefing";
@@ -196,7 +197,7 @@ function Web2MissionDrawer({
   autoHealPercent: number;
 }) {
   const isCombat = node.kind === RoguelikeNodeKind.Combat;
-  const victoryEffects = useRoguelikeVictoryEffectsWeb2(isCombat ? node.winEffects : undefined);
+  const victoryEffects = useRoguelikeVictoryEffectsWeb2(isCombat ? node.id : undefined, isCombat ? node.winEffects : undefined);
   const { totalThreat, placements, isLoading } = useMapEnemyThreatWeb2(isCombat ? node.mapId : undefined);
 
   return (
@@ -225,6 +226,14 @@ function Web2MissionDrawer({
                 };
               })
           : undefined
+      }
+      rewardShip={
+        victoryEffects.shipGrant
+          ? {
+              reward: victoryEffects.shipGrant,
+              image: <ShipImageWeb2 ship={shipGrantToPreviewShipWeb2(victoryEffects.shipGrant.grant)} className="h-full w-full" showLoadingState={false} hideRankStars />,
+            }
+          : null
       }
       dossier={
         <MissionDossier

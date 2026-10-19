@@ -7,9 +7,9 @@ import {
 } from "@/app/lib/winEffectsWeb2";
 
 // GET/PUT /api/admin/win-effects-settings — admin-only read/write for the
-// global win-effect config (DEC bonus amount, grant-ship variant/tier, heal
-// cap %). Web2 counterpart to Game.setHealCapPercent and the
-// DECBonusWinEffect/ShipGrantWinEffect owner setters, gated on
+// global win-effect config (DEC bonus amount, heal above floor %, heal cap
+// %). Web2 counterpart to Game.setHealCapPercent and the DECBonusWinEffect/
+// HealAboveFloorWinEffect owner setters, gated on
 // WEB2_ADMIN_EMAILS instead of contract ownership. Any subset of fields may
 // be sent — omitted fields keep their current stored value (same merge
 // pattern as /api/admin/lobby-settings).
@@ -35,18 +35,6 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "decBonusAmount must be a non-negative number" }, { status: 400 });
     }
     next.decBonusAmount = body.decBonusAmount;
-  }
-  if (body.shipGrantVariant !== undefined) {
-    if (typeof body.shipGrantVariant !== "number" || body.shipGrantVariant < 0 || body.shipGrantVariant > 2) {
-      return NextResponse.json({ error: "shipGrantVariant must be 0-2" }, { status: 400 });
-    }
-    next.shipGrantVariant = body.shipGrantVariant;
-  }
-  if (body.shipGrantTier !== undefined) {
-    if (typeof body.shipGrantTier !== "number" || body.shipGrantTier < 0 || body.shipGrantTier > 3) {
-      return NextResponse.json({ error: "shipGrantTier must be 0-3" }, { status: 400 });
-    }
-    next.shipGrantTier = body.shipGrantTier;
   }
   if (body.healAboveFloorPercent !== undefined) {
     if (

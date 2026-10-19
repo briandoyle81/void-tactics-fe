@@ -13,6 +13,15 @@ import {
   type RoguelikeSeed,
   type SinglePlayerSeed,
 } from "../utils/missionSeedExport";
+import {
+  canWriteFiles,
+  downloadJson,
+  ensureWritable,
+  isAbort,
+  pickWritableDirectory,
+  writeJson,
+  type WritableDirectoryHandle,
+} from "../utils/jsonFileSave";
 
 // Seed file names in the contracts repo (ignition/data/), read by
 // ignition/modules/DeployAndConfig.ts. Where the browser can write files
@@ -25,49 +34,6 @@ const SEED_FILE_NAMES = {
   pvp: "pvpStarterContent.json",
 } as const;
 type SeedSlot = keyof typeof SEED_FILE_NAMES;
-
-function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([seedJson(data)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-// The parts of the File System Access API lib.dom doesn't type yet.
-type PermissionMode = { mode: "readwrite" };
-type WritableDirectoryHandle = FileSystemDirectoryHandle & {
-  queryPermission(options: PermissionMode): Promise<PermissionState>;
-  requestPermission(options: PermissionMode): Promise<PermissionState>;
-};
-type DirectoryPickerWindow = Window & {
-  showDirectoryPicker(options: PermissionMode & { id?: string }): Promise<WritableDirectoryHandle>;
-};
-
-function canWriteFiles(): boolean {
-  return typeof window !== "undefined" && "showDirectoryPicker" in window;
-}
-
-function seedJson(data: unknown): string {
-  // Same formatting as the checked-in seed files, so an unchanged export
-  // produces no diff.
-  return `${JSON.stringify(data, null, 2)}\n`;
-}
-
-async function writeJson(dir: WritableDirectoryHandle, filename: string, data: unknown) {
-  const handle = await dir.getFileHandle(filename);
-  const writable = await handle.createWritable();
-  await writable.write(seedJson(data));
-  await writable.close();
-}
-
-function isAbort(e: unknown): boolean {
-  return e instanceof DOMException && e.name === "AbortError";
-}
 
 /** Identify a seed file by shape, so a renamed copy still works. */
 function seedSlotOf(data: unknown): SeedSlot | null {
@@ -139,10 +105,7 @@ function MissionSeedExportPanel() {
     resetResult();
     let dir: WritableDirectoryHandle;
     try {
-      dir = await (window as unknown as DirectoryPickerWindow).showDirectoryPicker({
-        mode: "readwrite",
-        id: "vt-seed-data",
-      });
+      dir = await pickWritableDirectory("vt-seed-data");
     } catch (e) {
       if (!isAbort(e))
         setFileError(`Couldn't open the folder: ${e instanceof Error ? e.message : String(e)}`);
@@ -186,11 +149,9 @@ function MissionSeedExportPanel() {
       try {
         // The grant from the picker can lapse (e.g. after a reload of the
         // page's permissions); ask again rather than fail.
-        if ((await seedDir.queryPermission({ mode: "readwrite" })) !== "granted") {
-          if ((await seedDir.requestPermission({ mode: "readwrite" })) !== "granted") {
-            setFileError("Saving needs write access to the folder.");
-            return;
-          }
+        if (!(await ensureWritable(seedDir))) {
+          setFileError("Saving needs write access to the folder.");
+          return;
         }
         await writeJson(seedDir, SEED_FILE_NAMES.singlePlayer, files.singlePlayer);
         await writeJson(seedDir, SEED_FILE_NAMES.roguelike, files.roguelike);

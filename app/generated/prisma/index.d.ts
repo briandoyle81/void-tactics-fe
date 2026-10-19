@@ -89,6 +89,21 @@ export type RoguelikeCampaign = $Result.DefaultSelection<Prisma.$RoguelikeCampai
  */
 export type RoguelikeNode = $Result.DefaultSelection<Prisma.$RoguelikeNodePayload>
 /**
+ * Model RoguelikeShipGrant
+ * Web2 counterpart to ShipGrantWinEffect.setGrant: the ship a win at this
+ * node mints, constructed (docs/frontend-handoff-2026-10-19.md §2). `grant`
+ * is app/utils/shipGrant.ts's ShipGrantSpec. Only runs when the node's
+ * winEffects include SHIP_GRANT_WIN_EFFECT.
+ */
+export type RoguelikeShipGrant = $Result.DefaultSelection<Prisma.$RoguelikeShipGrantPayload>
+/**
+ * Model RoguelikeShipGrantAward
+ * One reward ship minted by a roguelike win (web2's ShipGranted event).
+ * countsAsClaim: the grant was once per player when it minted and the
+ * claim hasn't been reset (web2's hasClaimed / resetClaim).
+ */
+export type RoguelikeShipGrantAward = $Result.DefaultSelection<Prisma.$RoguelikeShipGrantAwardPayload>
+/**
  * Model RoguelikeEdge
  * 
  */
@@ -523,6 +538,26 @@ export class PrismaClient<
     * ```
     */
   get roguelikeNode(): Prisma.RoguelikeNodeDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.roguelikeShipGrant`: Exposes CRUD operations for the **RoguelikeShipGrant** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more RoguelikeShipGrants
+    * const roguelikeShipGrants = await prisma.roguelikeShipGrant.findMany()
+    * ```
+    */
+  get roguelikeShipGrant(): Prisma.RoguelikeShipGrantDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.roguelikeShipGrantAward`: Exposes CRUD operations for the **RoguelikeShipGrantAward** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more RoguelikeShipGrantAwards
+    * const roguelikeShipGrantAwards = await prisma.roguelikeShipGrantAward.findMany()
+    * ```
+    */
+  get roguelikeShipGrantAward(): Prisma.RoguelikeShipGrantAwardDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.roguelikeEdge`: Exposes CRUD operations for the **RoguelikeEdge** model.
@@ -1092,6 +1127,8 @@ export namespace Prisma {
     CampaignNodeCompletion: 'CampaignNodeCompletion',
     RoguelikeCampaign: 'RoguelikeCampaign',
     RoguelikeNode: 'RoguelikeNode',
+    RoguelikeShipGrant: 'RoguelikeShipGrant',
+    RoguelikeShipGrantAward: 'RoguelikeShipGrantAward',
     RoguelikeEdge: 'RoguelikeEdge',
     RoguelikeRun: 'RoguelikeRun',
     RoguelikeRosterShip: 'RoguelikeRosterShip',
@@ -1119,7 +1156,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "ship" | "fleet" | "lobby" | "game" | "gameTurn" | "map" | "aIShipConfig" | "aIMapPlacement" | "aIFleetShip" | "campaign" | "campaignNode" | "campaignNodeCompletion" | "roguelikeCampaign" | "roguelikeNode" | "roguelikeEdge" | "roguelikeRun" | "roguelikeRosterShip" | "roguelikeNodeDefeat" | "config" | "playerStats" | "tournament" | "tournamentRegistrant" | "tournamentMatch" | "nodeContent" | "flowFulfillment" | "gasGrant"
+      modelProps: "user" | "ship" | "fleet" | "lobby" | "game" | "gameTurn" | "map" | "aIShipConfig" | "aIMapPlacement" | "aIFleetShip" | "campaign" | "campaignNode" | "campaignNodeCompletion" | "roguelikeCampaign" | "roguelikeNode" | "roguelikeShipGrant" | "roguelikeShipGrantAward" | "roguelikeEdge" | "roguelikeRun" | "roguelikeRosterShip" | "roguelikeNodeDefeat" | "config" | "playerStats" | "tournament" | "tournamentRegistrant" | "tournamentMatch" | "nodeContent" | "flowFulfillment" | "gasGrant"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -2233,6 +2270,154 @@ export namespace Prisma {
           }
         }
       }
+      RoguelikeShipGrant: {
+        payload: Prisma.$RoguelikeShipGrantPayload<ExtArgs>
+        fields: Prisma.RoguelikeShipGrantFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.RoguelikeShipGrantFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.RoguelikeShipGrantFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>
+          }
+          findFirst: {
+            args: Prisma.RoguelikeShipGrantFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.RoguelikeShipGrantFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>
+          }
+          findMany: {
+            args: Prisma.RoguelikeShipGrantFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>[]
+          }
+          create: {
+            args: Prisma.RoguelikeShipGrantCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>
+          }
+          createMany: {
+            args: Prisma.RoguelikeShipGrantCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.RoguelikeShipGrantCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>[]
+          }
+          delete: {
+            args: Prisma.RoguelikeShipGrantDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>
+          }
+          update: {
+            args: Prisma.RoguelikeShipGrantUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>
+          }
+          deleteMany: {
+            args: Prisma.RoguelikeShipGrantDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.RoguelikeShipGrantUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.RoguelikeShipGrantUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>[]
+          }
+          upsert: {
+            args: Prisma.RoguelikeShipGrantUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantPayload>
+          }
+          aggregate: {
+            args: Prisma.RoguelikeShipGrantAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateRoguelikeShipGrant>
+          }
+          groupBy: {
+            args: Prisma.RoguelikeShipGrantGroupByArgs<ExtArgs>
+            result: $Utils.Optional<RoguelikeShipGrantGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.RoguelikeShipGrantCountArgs<ExtArgs>
+            result: $Utils.Optional<RoguelikeShipGrantCountAggregateOutputType> | number
+          }
+        }
+      }
+      RoguelikeShipGrantAward: {
+        payload: Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>
+        fields: Prisma.RoguelikeShipGrantAwardFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.RoguelikeShipGrantAwardFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.RoguelikeShipGrantAwardFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>
+          }
+          findFirst: {
+            args: Prisma.RoguelikeShipGrantAwardFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.RoguelikeShipGrantAwardFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>
+          }
+          findMany: {
+            args: Prisma.RoguelikeShipGrantAwardFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>[]
+          }
+          create: {
+            args: Prisma.RoguelikeShipGrantAwardCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>
+          }
+          createMany: {
+            args: Prisma.RoguelikeShipGrantAwardCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.RoguelikeShipGrantAwardCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>[]
+          }
+          delete: {
+            args: Prisma.RoguelikeShipGrantAwardDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>
+          }
+          update: {
+            args: Prisma.RoguelikeShipGrantAwardUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>
+          }
+          deleteMany: {
+            args: Prisma.RoguelikeShipGrantAwardDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.RoguelikeShipGrantAwardUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.RoguelikeShipGrantAwardUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>[]
+          }
+          upsert: {
+            args: Prisma.RoguelikeShipGrantAwardUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$RoguelikeShipGrantAwardPayload>
+          }
+          aggregate: {
+            args: Prisma.RoguelikeShipGrantAwardAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateRoguelikeShipGrantAward>
+          }
+          groupBy: {
+            args: Prisma.RoguelikeShipGrantAwardGroupByArgs<ExtArgs>
+            result: $Utils.Optional<RoguelikeShipGrantAwardGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.RoguelikeShipGrantAwardCountArgs<ExtArgs>
+            result: $Utils.Optional<RoguelikeShipGrantAwardCountAggregateOutputType> | number
+          }
+        }
+      }
       RoguelikeEdge: {
         payload: Prisma.$RoguelikeEdgePayload<ExtArgs>
         fields: Prisma.RoguelikeEdgeFieldRefs
@@ -3244,6 +3429,8 @@ export namespace Prisma {
     campaignNodeCompletion?: CampaignNodeCompletionOmit
     roguelikeCampaign?: RoguelikeCampaignOmit
     roguelikeNode?: RoguelikeNodeOmit
+    roguelikeShipGrant?: RoguelikeShipGrantOmit
+    roguelikeShipGrantAward?: RoguelikeShipGrantAwardOmit
     roguelikeEdge?: RoguelikeEdgeOmit
     roguelikeRun?: RoguelikeRunOmit
     roguelikeRosterShip?: RoguelikeRosterShipOmit
@@ -3337,6 +3524,7 @@ export namespace Prisma {
 
   export type UserCountOutputType = {
     ships: number
+    shipGrantAwards: number
     lobbiesCreated: number
     lobbiesJoined: number
     lobbiesReserved: number
@@ -3353,6 +3541,7 @@ export namespace Prisma {
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ships?: boolean | UserCountOutputTypeCountShipsArgs
+    shipGrantAwards?: boolean | UserCountOutputTypeCountShipGrantAwardsArgs
     lobbiesCreated?: boolean | UserCountOutputTypeCountLobbiesCreatedArgs
     lobbiesJoined?: boolean | UserCountOutputTypeCountLobbiesJoinedArgs
     lobbiesReserved?: boolean | UserCountOutputTypeCountLobbiesReservedArgs
@@ -3383,6 +3572,13 @@ export namespace Prisma {
    */
   export type UserCountOutputTypeCountShipsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: ShipWhereInput
+  }
+
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountShipGrantAwardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: RoguelikeShipGrantAwardWhereInput
   }
 
   /**
@@ -4188,6 +4384,7 @@ export namespace Prisma {
     tutorialPath?: boolean
     createdAt?: boolean
     ships?: boolean | User$shipsArgs<ExtArgs>
+    shipGrantAwards?: boolean | User$shipGrantAwardsArgs<ExtArgs>
     lobbiesCreated?: boolean | User$lobbiesCreatedArgs<ExtArgs>
     lobbiesJoined?: boolean | User$lobbiesJoinedArgs<ExtArgs>
     lobbiesReserved?: boolean | User$lobbiesReservedArgs<ExtArgs>
@@ -4255,6 +4452,7 @@ export namespace Prisma {
   export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "email" | "username" | "creditBalance" | "decBalance" | "droneCoreTier" | "purchasedShipCount" | "lobbiesCreatedCount" | "kickCount" | "kickTimeoutUntil" | "tutorialCompleted" | "tutorialPath" | "createdAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     ships?: boolean | User$shipsArgs<ExtArgs>
+    shipGrantAwards?: boolean | User$shipGrantAwardsArgs<ExtArgs>
     lobbiesCreated?: boolean | User$lobbiesCreatedArgs<ExtArgs>
     lobbiesJoined?: boolean | User$lobbiesJoinedArgs<ExtArgs>
     lobbiesReserved?: boolean | User$lobbiesReservedArgs<ExtArgs>
@@ -4277,6 +4475,7 @@ export namespace Prisma {
     name: "User"
     objects: {
       ships: Prisma.$ShipPayload<ExtArgs>[]
+      shipGrantAwards: Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>[]
       lobbiesCreated: Prisma.$LobbyPayload<ExtArgs>[]
       lobbiesJoined: Prisma.$LobbyPayload<ExtArgs>[]
       lobbiesReserved: Prisma.$LobbyPayload<ExtArgs>[]
@@ -4700,6 +4899,7 @@ export namespace Prisma {
   export interface Prisma__UserClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     ships<T extends User$shipsArgs<ExtArgs> = {}>(args?: Subset<T, User$shipsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ShipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    shipGrantAwards<T extends User$shipGrantAwardsArgs<ExtArgs> = {}>(args?: Subset<T, User$shipGrantAwardsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     lobbiesCreated<T extends User$lobbiesCreatedArgs<ExtArgs> = {}>(args?: Subset<T, User$lobbiesCreatedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LobbyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     lobbiesJoined<T extends User$lobbiesJoinedArgs<ExtArgs> = {}>(args?: Subset<T, User$lobbiesJoinedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LobbyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     lobbiesReserved<T extends User$lobbiesReservedArgs<ExtArgs> = {}>(args?: Subset<T, User$lobbiesReservedArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LobbyPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -5169,6 +5369,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: ShipScalarFieldEnum | ShipScalarFieldEnum[]
+  }
+
+  /**
+   * User.shipGrantAwards
+   */
+  export type User$shipGrantAwardsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    where?: RoguelikeShipGrantAwardWhereInput
+    orderBy?: RoguelikeShipGrantAwardOrderByWithRelationInput | RoguelikeShipGrantAwardOrderByWithRelationInput[]
+    cursor?: RoguelikeShipGrantAwardWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: RoguelikeShipGrantAwardScalarFieldEnum | RoguelikeShipGrantAwardScalarFieldEnum[]
   }
 
   /**
@@ -21133,6 +21357,7 @@ export namespace Prisma {
     childEdges?: boolean | RoguelikeNode$childEdgesArgs<ExtArgs>
     parentEdges?: boolean | RoguelikeNode$parentEdgesArgs<ExtArgs>
     defeats?: boolean | RoguelikeNode$defeatsArgs<ExtArgs>
+    shipGrant?: boolean | RoguelikeNode$shipGrantArgs<ExtArgs>
     _count?: boolean | RoguelikeNodeCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roguelikeNode"]>
 
@@ -21186,6 +21411,7 @@ export namespace Prisma {
     childEdges?: boolean | RoguelikeNode$childEdgesArgs<ExtArgs>
     parentEdges?: boolean | RoguelikeNode$parentEdgesArgs<ExtArgs>
     defeats?: boolean | RoguelikeNode$defeatsArgs<ExtArgs>
+    shipGrant?: boolean | RoguelikeNode$shipGrantArgs<ExtArgs>
     _count?: boolean | RoguelikeNodeCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type RoguelikeNodeIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -21205,6 +21431,7 @@ export namespace Prisma {
       childEdges: Prisma.$RoguelikeEdgePayload<ExtArgs>[]
       parentEdges: Prisma.$RoguelikeEdgePayload<ExtArgs>[]
       defeats: Prisma.$RoguelikeNodeDefeatPayload<ExtArgs>[]
+      shipGrant: Prisma.$RoguelikeShipGrantPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: number
@@ -21616,6 +21843,7 @@ export namespace Prisma {
     childEdges<T extends RoguelikeNode$childEdgesArgs<ExtArgs> = {}>(args?: Subset<T, RoguelikeNode$childEdgesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeEdgePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     parentEdges<T extends RoguelikeNode$parentEdgesArgs<ExtArgs> = {}>(args?: Subset<T, RoguelikeNode$parentEdgesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeEdgePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     defeats<T extends RoguelikeNode$defeatsArgs<ExtArgs> = {}>(args?: Subset<T, RoguelikeNode$defeatsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeNodeDefeatPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    shipGrant<T extends RoguelikeNode$shipGrantArgs<ExtArgs> = {}>(args?: Subset<T, RoguelikeNode$shipGrantArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -22147,6 +22375,25 @@ export namespace Prisma {
   }
 
   /**
+   * RoguelikeNode.shipGrant
+   */
+  export type RoguelikeNode$shipGrantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    where?: RoguelikeShipGrantWhereInput
+  }
+
+  /**
    * RoguelikeNode without action
    */
   export type RoguelikeNodeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -22162,6 +22409,2208 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: RoguelikeNodeInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model RoguelikeShipGrant
+   */
+
+  export type AggregateRoguelikeShipGrant = {
+    _count: RoguelikeShipGrantCountAggregateOutputType | null
+    _avg: RoguelikeShipGrantAvgAggregateOutputType | null
+    _sum: RoguelikeShipGrantSumAggregateOutputType | null
+    _min: RoguelikeShipGrantMinAggregateOutputType | null
+    _max: RoguelikeShipGrantMaxAggregateOutputType | null
+  }
+
+  export type RoguelikeShipGrantAvgAggregateOutputType = {
+    nodeId: number | null
+  }
+
+  export type RoguelikeShipGrantSumAggregateOutputType = {
+    nodeId: number | null
+  }
+
+  export type RoguelikeShipGrantMinAggregateOutputType = {
+    nodeId: number | null
+    updatedAt: Date | null
+  }
+
+  export type RoguelikeShipGrantMaxAggregateOutputType = {
+    nodeId: number | null
+    updatedAt: Date | null
+  }
+
+  export type RoguelikeShipGrantCountAggregateOutputType = {
+    nodeId: number
+    grant: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type RoguelikeShipGrantAvgAggregateInputType = {
+    nodeId?: true
+  }
+
+  export type RoguelikeShipGrantSumAggregateInputType = {
+    nodeId?: true
+  }
+
+  export type RoguelikeShipGrantMinAggregateInputType = {
+    nodeId?: true
+    updatedAt?: true
+  }
+
+  export type RoguelikeShipGrantMaxAggregateInputType = {
+    nodeId?: true
+    updatedAt?: true
+  }
+
+  export type RoguelikeShipGrantCountAggregateInputType = {
+    nodeId?: true
+    grant?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type RoguelikeShipGrantAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which RoguelikeShipGrant to aggregate.
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrants to fetch.
+     */
+    orderBy?: RoguelikeShipGrantOrderByWithRelationInput | RoguelikeShipGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: RoguelikeShipGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned RoguelikeShipGrants
+    **/
+    _count?: true | RoguelikeShipGrantCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: RoguelikeShipGrantAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: RoguelikeShipGrantSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: RoguelikeShipGrantMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: RoguelikeShipGrantMaxAggregateInputType
+  }
+
+  export type GetRoguelikeShipGrantAggregateType<T extends RoguelikeShipGrantAggregateArgs> = {
+        [P in keyof T & keyof AggregateRoguelikeShipGrant]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateRoguelikeShipGrant[P]>
+      : GetScalarType<T[P], AggregateRoguelikeShipGrant[P]>
+  }
+
+
+
+
+  export type RoguelikeShipGrantGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: RoguelikeShipGrantWhereInput
+    orderBy?: RoguelikeShipGrantOrderByWithAggregationInput | RoguelikeShipGrantOrderByWithAggregationInput[]
+    by: RoguelikeShipGrantScalarFieldEnum[] | RoguelikeShipGrantScalarFieldEnum
+    having?: RoguelikeShipGrantScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: RoguelikeShipGrantCountAggregateInputType | true
+    _avg?: RoguelikeShipGrantAvgAggregateInputType
+    _sum?: RoguelikeShipGrantSumAggregateInputType
+    _min?: RoguelikeShipGrantMinAggregateInputType
+    _max?: RoguelikeShipGrantMaxAggregateInputType
+  }
+
+  export type RoguelikeShipGrantGroupByOutputType = {
+    nodeId: number
+    grant: JsonValue
+    updatedAt: Date
+    _count: RoguelikeShipGrantCountAggregateOutputType | null
+    _avg: RoguelikeShipGrantAvgAggregateOutputType | null
+    _sum: RoguelikeShipGrantSumAggregateOutputType | null
+    _min: RoguelikeShipGrantMinAggregateOutputType | null
+    _max: RoguelikeShipGrantMaxAggregateOutputType | null
+  }
+
+  type GetRoguelikeShipGrantGroupByPayload<T extends RoguelikeShipGrantGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<RoguelikeShipGrantGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof RoguelikeShipGrantGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], RoguelikeShipGrantGroupByOutputType[P]>
+            : GetScalarType<T[P], RoguelikeShipGrantGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type RoguelikeShipGrantSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    nodeId?: boolean
+    grant?: boolean
+    updatedAt?: boolean
+    node?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["roguelikeShipGrant"]>
+
+  export type RoguelikeShipGrantSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    nodeId?: boolean
+    grant?: boolean
+    updatedAt?: boolean
+    node?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["roguelikeShipGrant"]>
+
+  export type RoguelikeShipGrantSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    nodeId?: boolean
+    grant?: boolean
+    updatedAt?: boolean
+    node?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["roguelikeShipGrant"]>
+
+  export type RoguelikeShipGrantSelectScalar = {
+    nodeId?: boolean
+    grant?: boolean
+    updatedAt?: boolean
+  }
+
+  export type RoguelikeShipGrantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"nodeId" | "grant" | "updatedAt", ExtArgs["result"]["roguelikeShipGrant"]>
+  export type RoguelikeShipGrantInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    node?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
+  }
+  export type RoguelikeShipGrantIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    node?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
+  }
+  export type RoguelikeShipGrantIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    node?: boolean | RoguelikeNodeDefaultArgs<ExtArgs>
+  }
+
+  export type $RoguelikeShipGrantPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "RoguelikeShipGrant"
+    objects: {
+      node: Prisma.$RoguelikeNodePayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      nodeId: number
+      grant: Prisma.JsonValue
+      updatedAt: Date
+    }, ExtArgs["result"]["roguelikeShipGrant"]>
+    composites: {}
+  }
+
+  type RoguelikeShipGrantGetPayload<S extends boolean | null | undefined | RoguelikeShipGrantDefaultArgs> = $Result.GetResult<Prisma.$RoguelikeShipGrantPayload, S>
+
+  type RoguelikeShipGrantCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<RoguelikeShipGrantFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: RoguelikeShipGrantCountAggregateInputType | true
+    }
+
+  export interface RoguelikeShipGrantDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['RoguelikeShipGrant'], meta: { name: 'RoguelikeShipGrant' } }
+    /**
+     * Find zero or one RoguelikeShipGrant that matches the filter.
+     * @param {RoguelikeShipGrantFindUniqueArgs} args - Arguments to find a RoguelikeShipGrant
+     * @example
+     * // Get one RoguelikeShipGrant
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends RoguelikeShipGrantFindUniqueArgs>(args: SelectSubset<T, RoguelikeShipGrantFindUniqueArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one RoguelikeShipGrant that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {RoguelikeShipGrantFindUniqueOrThrowArgs} args - Arguments to find a RoguelikeShipGrant
+     * @example
+     * // Get one RoguelikeShipGrant
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends RoguelikeShipGrantFindUniqueOrThrowArgs>(args: SelectSubset<T, RoguelikeShipGrantFindUniqueOrThrowArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first RoguelikeShipGrant that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantFindFirstArgs} args - Arguments to find a RoguelikeShipGrant
+     * @example
+     * // Get one RoguelikeShipGrant
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends RoguelikeShipGrantFindFirstArgs>(args?: SelectSubset<T, RoguelikeShipGrantFindFirstArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first RoguelikeShipGrant that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantFindFirstOrThrowArgs} args - Arguments to find a RoguelikeShipGrant
+     * @example
+     * // Get one RoguelikeShipGrant
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends RoguelikeShipGrantFindFirstOrThrowArgs>(args?: SelectSubset<T, RoguelikeShipGrantFindFirstOrThrowArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more RoguelikeShipGrants that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all RoguelikeShipGrants
+     * const roguelikeShipGrants = await prisma.roguelikeShipGrant.findMany()
+     * 
+     * // Get first 10 RoguelikeShipGrants
+     * const roguelikeShipGrants = await prisma.roguelikeShipGrant.findMany({ take: 10 })
+     * 
+     * // Only select the `nodeId`
+     * const roguelikeShipGrantWithNodeIdOnly = await prisma.roguelikeShipGrant.findMany({ select: { nodeId: true } })
+     * 
+     */
+    findMany<T extends RoguelikeShipGrantFindManyArgs>(args?: SelectSubset<T, RoguelikeShipGrantFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a RoguelikeShipGrant.
+     * @param {RoguelikeShipGrantCreateArgs} args - Arguments to create a RoguelikeShipGrant.
+     * @example
+     * // Create one RoguelikeShipGrant
+     * const RoguelikeShipGrant = await prisma.roguelikeShipGrant.create({
+     *   data: {
+     *     // ... data to create a RoguelikeShipGrant
+     *   }
+     * })
+     * 
+     */
+    create<T extends RoguelikeShipGrantCreateArgs>(args: SelectSubset<T, RoguelikeShipGrantCreateArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many RoguelikeShipGrants.
+     * @param {RoguelikeShipGrantCreateManyArgs} args - Arguments to create many RoguelikeShipGrants.
+     * @example
+     * // Create many RoguelikeShipGrants
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends RoguelikeShipGrantCreateManyArgs>(args?: SelectSubset<T, RoguelikeShipGrantCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many RoguelikeShipGrants and returns the data saved in the database.
+     * @param {RoguelikeShipGrantCreateManyAndReturnArgs} args - Arguments to create many RoguelikeShipGrants.
+     * @example
+     * // Create many RoguelikeShipGrants
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many RoguelikeShipGrants and only return the `nodeId`
+     * const roguelikeShipGrantWithNodeIdOnly = await prisma.roguelikeShipGrant.createManyAndReturn({
+     *   select: { nodeId: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends RoguelikeShipGrantCreateManyAndReturnArgs>(args?: SelectSubset<T, RoguelikeShipGrantCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a RoguelikeShipGrant.
+     * @param {RoguelikeShipGrantDeleteArgs} args - Arguments to delete one RoguelikeShipGrant.
+     * @example
+     * // Delete one RoguelikeShipGrant
+     * const RoguelikeShipGrant = await prisma.roguelikeShipGrant.delete({
+     *   where: {
+     *     // ... filter to delete one RoguelikeShipGrant
+     *   }
+     * })
+     * 
+     */
+    delete<T extends RoguelikeShipGrantDeleteArgs>(args: SelectSubset<T, RoguelikeShipGrantDeleteArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one RoguelikeShipGrant.
+     * @param {RoguelikeShipGrantUpdateArgs} args - Arguments to update one RoguelikeShipGrant.
+     * @example
+     * // Update one RoguelikeShipGrant
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends RoguelikeShipGrantUpdateArgs>(args: SelectSubset<T, RoguelikeShipGrantUpdateArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more RoguelikeShipGrants.
+     * @param {RoguelikeShipGrantDeleteManyArgs} args - Arguments to filter RoguelikeShipGrants to delete.
+     * @example
+     * // Delete a few RoguelikeShipGrants
+     * const { count } = await prisma.roguelikeShipGrant.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends RoguelikeShipGrantDeleteManyArgs>(args?: SelectSubset<T, RoguelikeShipGrantDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more RoguelikeShipGrants.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many RoguelikeShipGrants
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends RoguelikeShipGrantUpdateManyArgs>(args: SelectSubset<T, RoguelikeShipGrantUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more RoguelikeShipGrants and returns the data updated in the database.
+     * @param {RoguelikeShipGrantUpdateManyAndReturnArgs} args - Arguments to update many RoguelikeShipGrants.
+     * @example
+     * // Update many RoguelikeShipGrants
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more RoguelikeShipGrants and only return the `nodeId`
+     * const roguelikeShipGrantWithNodeIdOnly = await prisma.roguelikeShipGrant.updateManyAndReturn({
+     *   select: { nodeId: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends RoguelikeShipGrantUpdateManyAndReturnArgs>(args: SelectSubset<T, RoguelikeShipGrantUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one RoguelikeShipGrant.
+     * @param {RoguelikeShipGrantUpsertArgs} args - Arguments to update or create a RoguelikeShipGrant.
+     * @example
+     * // Update or create a RoguelikeShipGrant
+     * const roguelikeShipGrant = await prisma.roguelikeShipGrant.upsert({
+     *   create: {
+     *     // ... data to create a RoguelikeShipGrant
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the RoguelikeShipGrant we want to update
+     *   }
+     * })
+     */
+    upsert<T extends RoguelikeShipGrantUpsertArgs>(args: SelectSubset<T, RoguelikeShipGrantUpsertArgs<ExtArgs>>): Prisma__RoguelikeShipGrantClient<$Result.GetResult<Prisma.$RoguelikeShipGrantPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of RoguelikeShipGrants.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantCountArgs} args - Arguments to filter RoguelikeShipGrants to count.
+     * @example
+     * // Count the number of RoguelikeShipGrants
+     * const count = await prisma.roguelikeShipGrant.count({
+     *   where: {
+     *     // ... the filter for the RoguelikeShipGrants we want to count
+     *   }
+     * })
+    **/
+    count<T extends RoguelikeShipGrantCountArgs>(
+      args?: Subset<T, RoguelikeShipGrantCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], RoguelikeShipGrantCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a RoguelikeShipGrant.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends RoguelikeShipGrantAggregateArgs>(args: Subset<T, RoguelikeShipGrantAggregateArgs>): Prisma.PrismaPromise<GetRoguelikeShipGrantAggregateType<T>>
+
+    /**
+     * Group by RoguelikeShipGrant.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends RoguelikeShipGrantGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: RoguelikeShipGrantGroupByArgs['orderBy'] }
+        : { orderBy?: RoguelikeShipGrantGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, RoguelikeShipGrantGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetRoguelikeShipGrantGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the RoguelikeShipGrant model
+   */
+  readonly fields: RoguelikeShipGrantFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for RoguelikeShipGrant.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__RoguelikeShipGrantClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    node<T extends RoguelikeNodeDefaultArgs<ExtArgs> = {}>(args?: Subset<T, RoguelikeNodeDefaultArgs<ExtArgs>>): Prisma__RoguelikeNodeClient<$Result.GetResult<Prisma.$RoguelikeNodePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the RoguelikeShipGrant model
+   */
+  interface RoguelikeShipGrantFieldRefs {
+    readonly nodeId: FieldRef<"RoguelikeShipGrant", 'Int'>
+    readonly grant: FieldRef<"RoguelikeShipGrant", 'Json'>
+    readonly updatedAt: FieldRef<"RoguelikeShipGrant", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * RoguelikeShipGrant findUnique
+   */
+  export type RoguelikeShipGrantFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrant to fetch.
+     */
+    where: RoguelikeShipGrantWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrant findUniqueOrThrow
+   */
+  export type RoguelikeShipGrantFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrant to fetch.
+     */
+    where: RoguelikeShipGrantWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrant findFirst
+   */
+  export type RoguelikeShipGrantFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrant to fetch.
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrants to fetch.
+     */
+    orderBy?: RoguelikeShipGrantOrderByWithRelationInput | RoguelikeShipGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for RoguelikeShipGrants.
+     */
+    cursor?: RoguelikeShipGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RoguelikeShipGrants.
+     */
+    distinct?: RoguelikeShipGrantScalarFieldEnum | RoguelikeShipGrantScalarFieldEnum[]
+  }
+
+  /**
+   * RoguelikeShipGrant findFirstOrThrow
+   */
+  export type RoguelikeShipGrantFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrant to fetch.
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrants to fetch.
+     */
+    orderBy?: RoguelikeShipGrantOrderByWithRelationInput | RoguelikeShipGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for RoguelikeShipGrants.
+     */
+    cursor?: RoguelikeShipGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RoguelikeShipGrants.
+     */
+    distinct?: RoguelikeShipGrantScalarFieldEnum | RoguelikeShipGrantScalarFieldEnum[]
+  }
+
+  /**
+   * RoguelikeShipGrant findMany
+   */
+  export type RoguelikeShipGrantFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrants to fetch.
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrants to fetch.
+     */
+    orderBy?: RoguelikeShipGrantOrderByWithRelationInput | RoguelikeShipGrantOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing RoguelikeShipGrants.
+     */
+    cursor?: RoguelikeShipGrantWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrants from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrants.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RoguelikeShipGrants.
+     */
+    distinct?: RoguelikeShipGrantScalarFieldEnum | RoguelikeShipGrantScalarFieldEnum[]
+  }
+
+  /**
+   * RoguelikeShipGrant create
+   */
+  export type RoguelikeShipGrantCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * The data needed to create a RoguelikeShipGrant.
+     */
+    data: XOR<RoguelikeShipGrantCreateInput, RoguelikeShipGrantUncheckedCreateInput>
+  }
+
+  /**
+   * RoguelikeShipGrant createMany
+   */
+  export type RoguelikeShipGrantCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many RoguelikeShipGrants.
+     */
+    data: RoguelikeShipGrantCreateManyInput | RoguelikeShipGrantCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * RoguelikeShipGrant createManyAndReturn
+   */
+  export type RoguelikeShipGrantCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * The data used to create many RoguelikeShipGrants.
+     */
+    data: RoguelikeShipGrantCreateManyInput | RoguelikeShipGrantCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * RoguelikeShipGrant update
+   */
+  export type RoguelikeShipGrantUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * The data needed to update a RoguelikeShipGrant.
+     */
+    data: XOR<RoguelikeShipGrantUpdateInput, RoguelikeShipGrantUncheckedUpdateInput>
+    /**
+     * Choose, which RoguelikeShipGrant to update.
+     */
+    where: RoguelikeShipGrantWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrant updateMany
+   */
+  export type RoguelikeShipGrantUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update RoguelikeShipGrants.
+     */
+    data: XOR<RoguelikeShipGrantUpdateManyMutationInput, RoguelikeShipGrantUncheckedUpdateManyInput>
+    /**
+     * Filter which RoguelikeShipGrants to update
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * Limit how many RoguelikeShipGrants to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * RoguelikeShipGrant updateManyAndReturn
+   */
+  export type RoguelikeShipGrantUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * The data used to update RoguelikeShipGrants.
+     */
+    data: XOR<RoguelikeShipGrantUpdateManyMutationInput, RoguelikeShipGrantUncheckedUpdateManyInput>
+    /**
+     * Filter which RoguelikeShipGrants to update
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * Limit how many RoguelikeShipGrants to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * RoguelikeShipGrant upsert
+   */
+  export type RoguelikeShipGrantUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * The filter to search for the RoguelikeShipGrant to update in case it exists.
+     */
+    where: RoguelikeShipGrantWhereUniqueInput
+    /**
+     * In case the RoguelikeShipGrant found by the `where` argument doesn't exist, create a new RoguelikeShipGrant with this data.
+     */
+    create: XOR<RoguelikeShipGrantCreateInput, RoguelikeShipGrantUncheckedCreateInput>
+    /**
+     * In case the RoguelikeShipGrant was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<RoguelikeShipGrantUpdateInput, RoguelikeShipGrantUncheckedUpdateInput>
+  }
+
+  /**
+   * RoguelikeShipGrant delete
+   */
+  export type RoguelikeShipGrantDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+    /**
+     * Filter which RoguelikeShipGrant to delete.
+     */
+    where: RoguelikeShipGrantWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrant deleteMany
+   */
+  export type RoguelikeShipGrantDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which RoguelikeShipGrants to delete
+     */
+    where?: RoguelikeShipGrantWhereInput
+    /**
+     * Limit how many RoguelikeShipGrants to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * RoguelikeShipGrant without action
+   */
+  export type RoguelikeShipGrantDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrant
+     */
+    select?: RoguelikeShipGrantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrant
+     */
+    omit?: RoguelikeShipGrantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model RoguelikeShipGrantAward
+   */
+
+  export type AggregateRoguelikeShipGrantAward = {
+    _count: RoguelikeShipGrantAwardCountAggregateOutputType | null
+    _avg: RoguelikeShipGrantAwardAvgAggregateOutputType | null
+    _sum: RoguelikeShipGrantAwardSumAggregateOutputType | null
+    _min: RoguelikeShipGrantAwardMinAggregateOutputType | null
+    _max: RoguelikeShipGrantAwardMaxAggregateOutputType | null
+  }
+
+  export type RoguelikeShipGrantAwardAvgAggregateOutputType = {
+    id: number | null
+    nodeId: number | null
+    shipId: number | null
+    lobbyId: number | null
+  }
+
+  export type RoguelikeShipGrantAwardSumAggregateOutputType = {
+    id: number | null
+    nodeId: number | null
+    shipId: number | null
+    lobbyId: number | null
+  }
+
+  export type RoguelikeShipGrantAwardMinAggregateOutputType = {
+    id: number | null
+    nodeId: number | null
+    userId: string | null
+    shipId: number | null
+    lobbyId: number | null
+    countsAsClaim: boolean | null
+    createdAt: Date | null
+  }
+
+  export type RoguelikeShipGrantAwardMaxAggregateOutputType = {
+    id: number | null
+    nodeId: number | null
+    userId: string | null
+    shipId: number | null
+    lobbyId: number | null
+    countsAsClaim: boolean | null
+    createdAt: Date | null
+  }
+
+  export type RoguelikeShipGrantAwardCountAggregateOutputType = {
+    id: number
+    nodeId: number
+    userId: number
+    shipId: number
+    lobbyId: number
+    countsAsClaim: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type RoguelikeShipGrantAwardAvgAggregateInputType = {
+    id?: true
+    nodeId?: true
+    shipId?: true
+    lobbyId?: true
+  }
+
+  export type RoguelikeShipGrantAwardSumAggregateInputType = {
+    id?: true
+    nodeId?: true
+    shipId?: true
+    lobbyId?: true
+  }
+
+  export type RoguelikeShipGrantAwardMinAggregateInputType = {
+    id?: true
+    nodeId?: true
+    userId?: true
+    shipId?: true
+    lobbyId?: true
+    countsAsClaim?: true
+    createdAt?: true
+  }
+
+  export type RoguelikeShipGrantAwardMaxAggregateInputType = {
+    id?: true
+    nodeId?: true
+    userId?: true
+    shipId?: true
+    lobbyId?: true
+    countsAsClaim?: true
+    createdAt?: true
+  }
+
+  export type RoguelikeShipGrantAwardCountAggregateInputType = {
+    id?: true
+    nodeId?: true
+    userId?: true
+    shipId?: true
+    lobbyId?: true
+    countsAsClaim?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type RoguelikeShipGrantAwardAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which RoguelikeShipGrantAward to aggregate.
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrantAwards to fetch.
+     */
+    orderBy?: RoguelikeShipGrantAwardOrderByWithRelationInput | RoguelikeShipGrantAwardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: RoguelikeShipGrantAwardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrantAwards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrantAwards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned RoguelikeShipGrantAwards
+    **/
+    _count?: true | RoguelikeShipGrantAwardCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: RoguelikeShipGrantAwardAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: RoguelikeShipGrantAwardSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: RoguelikeShipGrantAwardMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: RoguelikeShipGrantAwardMaxAggregateInputType
+  }
+
+  export type GetRoguelikeShipGrantAwardAggregateType<T extends RoguelikeShipGrantAwardAggregateArgs> = {
+        [P in keyof T & keyof AggregateRoguelikeShipGrantAward]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateRoguelikeShipGrantAward[P]>
+      : GetScalarType<T[P], AggregateRoguelikeShipGrantAward[P]>
+  }
+
+
+
+
+  export type RoguelikeShipGrantAwardGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: RoguelikeShipGrantAwardWhereInput
+    orderBy?: RoguelikeShipGrantAwardOrderByWithAggregationInput | RoguelikeShipGrantAwardOrderByWithAggregationInput[]
+    by: RoguelikeShipGrantAwardScalarFieldEnum[] | RoguelikeShipGrantAwardScalarFieldEnum
+    having?: RoguelikeShipGrantAwardScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: RoguelikeShipGrantAwardCountAggregateInputType | true
+    _avg?: RoguelikeShipGrantAwardAvgAggregateInputType
+    _sum?: RoguelikeShipGrantAwardSumAggregateInputType
+    _min?: RoguelikeShipGrantAwardMinAggregateInputType
+    _max?: RoguelikeShipGrantAwardMaxAggregateInputType
+  }
+
+  export type RoguelikeShipGrantAwardGroupByOutputType = {
+    id: number
+    nodeId: number
+    userId: string
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
+    createdAt: Date
+    _count: RoguelikeShipGrantAwardCountAggregateOutputType | null
+    _avg: RoguelikeShipGrantAwardAvgAggregateOutputType | null
+    _sum: RoguelikeShipGrantAwardSumAggregateOutputType | null
+    _min: RoguelikeShipGrantAwardMinAggregateOutputType | null
+    _max: RoguelikeShipGrantAwardMaxAggregateOutputType | null
+  }
+
+  type GetRoguelikeShipGrantAwardGroupByPayload<T extends RoguelikeShipGrantAwardGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<RoguelikeShipGrantAwardGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof RoguelikeShipGrantAwardGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], RoguelikeShipGrantAwardGroupByOutputType[P]>
+            : GetScalarType<T[P], RoguelikeShipGrantAwardGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type RoguelikeShipGrantAwardSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    nodeId?: boolean
+    userId?: boolean
+    shipId?: boolean
+    lobbyId?: boolean
+    countsAsClaim?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["roguelikeShipGrantAward"]>
+
+  export type RoguelikeShipGrantAwardSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    nodeId?: boolean
+    userId?: boolean
+    shipId?: boolean
+    lobbyId?: boolean
+    countsAsClaim?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["roguelikeShipGrantAward"]>
+
+  export type RoguelikeShipGrantAwardSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    nodeId?: boolean
+    userId?: boolean
+    shipId?: boolean
+    lobbyId?: boolean
+    countsAsClaim?: boolean
+    createdAt?: boolean
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["roguelikeShipGrantAward"]>
+
+  export type RoguelikeShipGrantAwardSelectScalar = {
+    id?: boolean
+    nodeId?: boolean
+    userId?: boolean
+    shipId?: boolean
+    lobbyId?: boolean
+    countsAsClaim?: boolean
+    createdAt?: boolean
+  }
+
+  export type RoguelikeShipGrantAwardOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "nodeId" | "userId" | "shipId" | "lobbyId" | "countsAsClaim" | "createdAt", ExtArgs["result"]["roguelikeShipGrantAward"]>
+  export type RoguelikeShipGrantAwardInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type RoguelikeShipGrantAwardIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type RoguelikeShipGrantAwardIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $RoguelikeShipGrantAwardPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "RoguelikeShipGrantAward"
+    objects: {
+      user: Prisma.$UserPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: number
+      nodeId: number
+      userId: string
+      shipId: number
+      lobbyId: number
+      countsAsClaim: boolean
+      createdAt: Date
+    }, ExtArgs["result"]["roguelikeShipGrantAward"]>
+    composites: {}
+  }
+
+  type RoguelikeShipGrantAwardGetPayload<S extends boolean | null | undefined | RoguelikeShipGrantAwardDefaultArgs> = $Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload, S>
+
+  type RoguelikeShipGrantAwardCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<RoguelikeShipGrantAwardFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: RoguelikeShipGrantAwardCountAggregateInputType | true
+    }
+
+  export interface RoguelikeShipGrantAwardDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['RoguelikeShipGrantAward'], meta: { name: 'RoguelikeShipGrantAward' } }
+    /**
+     * Find zero or one RoguelikeShipGrantAward that matches the filter.
+     * @param {RoguelikeShipGrantAwardFindUniqueArgs} args - Arguments to find a RoguelikeShipGrantAward
+     * @example
+     * // Get one RoguelikeShipGrantAward
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends RoguelikeShipGrantAwardFindUniqueArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardFindUniqueArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one RoguelikeShipGrantAward that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {RoguelikeShipGrantAwardFindUniqueOrThrowArgs} args - Arguments to find a RoguelikeShipGrantAward
+     * @example
+     * // Get one RoguelikeShipGrantAward
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends RoguelikeShipGrantAwardFindUniqueOrThrowArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardFindUniqueOrThrowArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first RoguelikeShipGrantAward that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardFindFirstArgs} args - Arguments to find a RoguelikeShipGrantAward
+     * @example
+     * // Get one RoguelikeShipGrantAward
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends RoguelikeShipGrantAwardFindFirstArgs>(args?: SelectSubset<T, RoguelikeShipGrantAwardFindFirstArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first RoguelikeShipGrantAward that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardFindFirstOrThrowArgs} args - Arguments to find a RoguelikeShipGrantAward
+     * @example
+     * // Get one RoguelikeShipGrantAward
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends RoguelikeShipGrantAwardFindFirstOrThrowArgs>(args?: SelectSubset<T, RoguelikeShipGrantAwardFindFirstOrThrowArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more RoguelikeShipGrantAwards that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all RoguelikeShipGrantAwards
+     * const roguelikeShipGrantAwards = await prisma.roguelikeShipGrantAward.findMany()
+     * 
+     * // Get first 10 RoguelikeShipGrantAwards
+     * const roguelikeShipGrantAwards = await prisma.roguelikeShipGrantAward.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const roguelikeShipGrantAwardWithIdOnly = await prisma.roguelikeShipGrantAward.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends RoguelikeShipGrantAwardFindManyArgs>(args?: SelectSubset<T, RoguelikeShipGrantAwardFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a RoguelikeShipGrantAward.
+     * @param {RoguelikeShipGrantAwardCreateArgs} args - Arguments to create a RoguelikeShipGrantAward.
+     * @example
+     * // Create one RoguelikeShipGrantAward
+     * const RoguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.create({
+     *   data: {
+     *     // ... data to create a RoguelikeShipGrantAward
+     *   }
+     * })
+     * 
+     */
+    create<T extends RoguelikeShipGrantAwardCreateArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardCreateArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many RoguelikeShipGrantAwards.
+     * @param {RoguelikeShipGrantAwardCreateManyArgs} args - Arguments to create many RoguelikeShipGrantAwards.
+     * @example
+     * // Create many RoguelikeShipGrantAwards
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends RoguelikeShipGrantAwardCreateManyArgs>(args?: SelectSubset<T, RoguelikeShipGrantAwardCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many RoguelikeShipGrantAwards and returns the data saved in the database.
+     * @param {RoguelikeShipGrantAwardCreateManyAndReturnArgs} args - Arguments to create many RoguelikeShipGrantAwards.
+     * @example
+     * // Create many RoguelikeShipGrantAwards
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many RoguelikeShipGrantAwards and only return the `id`
+     * const roguelikeShipGrantAwardWithIdOnly = await prisma.roguelikeShipGrantAward.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends RoguelikeShipGrantAwardCreateManyAndReturnArgs>(args?: SelectSubset<T, RoguelikeShipGrantAwardCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a RoguelikeShipGrantAward.
+     * @param {RoguelikeShipGrantAwardDeleteArgs} args - Arguments to delete one RoguelikeShipGrantAward.
+     * @example
+     * // Delete one RoguelikeShipGrantAward
+     * const RoguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.delete({
+     *   where: {
+     *     // ... filter to delete one RoguelikeShipGrantAward
+     *   }
+     * })
+     * 
+     */
+    delete<T extends RoguelikeShipGrantAwardDeleteArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardDeleteArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one RoguelikeShipGrantAward.
+     * @param {RoguelikeShipGrantAwardUpdateArgs} args - Arguments to update one RoguelikeShipGrantAward.
+     * @example
+     * // Update one RoguelikeShipGrantAward
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends RoguelikeShipGrantAwardUpdateArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardUpdateArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more RoguelikeShipGrantAwards.
+     * @param {RoguelikeShipGrantAwardDeleteManyArgs} args - Arguments to filter RoguelikeShipGrantAwards to delete.
+     * @example
+     * // Delete a few RoguelikeShipGrantAwards
+     * const { count } = await prisma.roguelikeShipGrantAward.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends RoguelikeShipGrantAwardDeleteManyArgs>(args?: SelectSubset<T, RoguelikeShipGrantAwardDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more RoguelikeShipGrantAwards.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many RoguelikeShipGrantAwards
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends RoguelikeShipGrantAwardUpdateManyArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more RoguelikeShipGrantAwards and returns the data updated in the database.
+     * @param {RoguelikeShipGrantAwardUpdateManyAndReturnArgs} args - Arguments to update many RoguelikeShipGrantAwards.
+     * @example
+     * // Update many RoguelikeShipGrantAwards
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more RoguelikeShipGrantAwards and only return the `id`
+     * const roguelikeShipGrantAwardWithIdOnly = await prisma.roguelikeShipGrantAward.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends RoguelikeShipGrantAwardUpdateManyAndReturnArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one RoguelikeShipGrantAward.
+     * @param {RoguelikeShipGrantAwardUpsertArgs} args - Arguments to update or create a RoguelikeShipGrantAward.
+     * @example
+     * // Update or create a RoguelikeShipGrantAward
+     * const roguelikeShipGrantAward = await prisma.roguelikeShipGrantAward.upsert({
+     *   create: {
+     *     // ... data to create a RoguelikeShipGrantAward
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the RoguelikeShipGrantAward we want to update
+     *   }
+     * })
+     */
+    upsert<T extends RoguelikeShipGrantAwardUpsertArgs>(args: SelectSubset<T, RoguelikeShipGrantAwardUpsertArgs<ExtArgs>>): Prisma__RoguelikeShipGrantAwardClient<$Result.GetResult<Prisma.$RoguelikeShipGrantAwardPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of RoguelikeShipGrantAwards.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardCountArgs} args - Arguments to filter RoguelikeShipGrantAwards to count.
+     * @example
+     * // Count the number of RoguelikeShipGrantAwards
+     * const count = await prisma.roguelikeShipGrantAward.count({
+     *   where: {
+     *     // ... the filter for the RoguelikeShipGrantAwards we want to count
+     *   }
+     * })
+    **/
+    count<T extends RoguelikeShipGrantAwardCountArgs>(
+      args?: Subset<T, RoguelikeShipGrantAwardCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], RoguelikeShipGrantAwardCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a RoguelikeShipGrantAward.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends RoguelikeShipGrantAwardAggregateArgs>(args: Subset<T, RoguelikeShipGrantAwardAggregateArgs>): Prisma.PrismaPromise<GetRoguelikeShipGrantAwardAggregateType<T>>
+
+    /**
+     * Group by RoguelikeShipGrantAward.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {RoguelikeShipGrantAwardGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends RoguelikeShipGrantAwardGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: RoguelikeShipGrantAwardGroupByArgs['orderBy'] }
+        : { orderBy?: RoguelikeShipGrantAwardGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, RoguelikeShipGrantAwardGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetRoguelikeShipGrantAwardGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the RoguelikeShipGrantAward model
+   */
+  readonly fields: RoguelikeShipGrantAwardFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for RoguelikeShipGrantAward.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__RoguelikeShipGrantAwardClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the RoguelikeShipGrantAward model
+   */
+  interface RoguelikeShipGrantAwardFieldRefs {
+    readonly id: FieldRef<"RoguelikeShipGrantAward", 'Int'>
+    readonly nodeId: FieldRef<"RoguelikeShipGrantAward", 'Int'>
+    readonly userId: FieldRef<"RoguelikeShipGrantAward", 'String'>
+    readonly shipId: FieldRef<"RoguelikeShipGrantAward", 'Int'>
+    readonly lobbyId: FieldRef<"RoguelikeShipGrantAward", 'Int'>
+    readonly countsAsClaim: FieldRef<"RoguelikeShipGrantAward", 'Boolean'>
+    readonly createdAt: FieldRef<"RoguelikeShipGrantAward", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * RoguelikeShipGrantAward findUnique
+   */
+  export type RoguelikeShipGrantAwardFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrantAward to fetch.
+     */
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrantAward findUniqueOrThrow
+   */
+  export type RoguelikeShipGrantAwardFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrantAward to fetch.
+     */
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrantAward findFirst
+   */
+  export type RoguelikeShipGrantAwardFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrantAward to fetch.
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrantAwards to fetch.
+     */
+    orderBy?: RoguelikeShipGrantAwardOrderByWithRelationInput | RoguelikeShipGrantAwardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for RoguelikeShipGrantAwards.
+     */
+    cursor?: RoguelikeShipGrantAwardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrantAwards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrantAwards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RoguelikeShipGrantAwards.
+     */
+    distinct?: RoguelikeShipGrantAwardScalarFieldEnum | RoguelikeShipGrantAwardScalarFieldEnum[]
+  }
+
+  /**
+   * RoguelikeShipGrantAward findFirstOrThrow
+   */
+  export type RoguelikeShipGrantAwardFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrantAward to fetch.
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrantAwards to fetch.
+     */
+    orderBy?: RoguelikeShipGrantAwardOrderByWithRelationInput | RoguelikeShipGrantAwardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for RoguelikeShipGrantAwards.
+     */
+    cursor?: RoguelikeShipGrantAwardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrantAwards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrantAwards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RoguelikeShipGrantAwards.
+     */
+    distinct?: RoguelikeShipGrantAwardScalarFieldEnum | RoguelikeShipGrantAwardScalarFieldEnum[]
+  }
+
+  /**
+   * RoguelikeShipGrantAward findMany
+   */
+  export type RoguelikeShipGrantAwardFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * Filter, which RoguelikeShipGrantAwards to fetch.
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of RoguelikeShipGrantAwards to fetch.
+     */
+    orderBy?: RoguelikeShipGrantAwardOrderByWithRelationInput | RoguelikeShipGrantAwardOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing RoguelikeShipGrantAwards.
+     */
+    cursor?: RoguelikeShipGrantAwardWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` RoguelikeShipGrantAwards from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` RoguelikeShipGrantAwards.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of RoguelikeShipGrantAwards.
+     */
+    distinct?: RoguelikeShipGrantAwardScalarFieldEnum | RoguelikeShipGrantAwardScalarFieldEnum[]
+  }
+
+  /**
+   * RoguelikeShipGrantAward create
+   */
+  export type RoguelikeShipGrantAwardCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * The data needed to create a RoguelikeShipGrantAward.
+     */
+    data: XOR<RoguelikeShipGrantAwardCreateInput, RoguelikeShipGrantAwardUncheckedCreateInput>
+  }
+
+  /**
+   * RoguelikeShipGrantAward createMany
+   */
+  export type RoguelikeShipGrantAwardCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many RoguelikeShipGrantAwards.
+     */
+    data: RoguelikeShipGrantAwardCreateManyInput | RoguelikeShipGrantAwardCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * RoguelikeShipGrantAward createManyAndReturn
+   */
+  export type RoguelikeShipGrantAwardCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * The data used to create many RoguelikeShipGrantAwards.
+     */
+    data: RoguelikeShipGrantAwardCreateManyInput | RoguelikeShipGrantAwardCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * RoguelikeShipGrantAward update
+   */
+  export type RoguelikeShipGrantAwardUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * The data needed to update a RoguelikeShipGrantAward.
+     */
+    data: XOR<RoguelikeShipGrantAwardUpdateInput, RoguelikeShipGrantAwardUncheckedUpdateInput>
+    /**
+     * Choose, which RoguelikeShipGrantAward to update.
+     */
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrantAward updateMany
+   */
+  export type RoguelikeShipGrantAwardUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update RoguelikeShipGrantAwards.
+     */
+    data: XOR<RoguelikeShipGrantAwardUpdateManyMutationInput, RoguelikeShipGrantAwardUncheckedUpdateManyInput>
+    /**
+     * Filter which RoguelikeShipGrantAwards to update
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * Limit how many RoguelikeShipGrantAwards to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * RoguelikeShipGrantAward updateManyAndReturn
+   */
+  export type RoguelikeShipGrantAwardUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * The data used to update RoguelikeShipGrantAwards.
+     */
+    data: XOR<RoguelikeShipGrantAwardUpdateManyMutationInput, RoguelikeShipGrantAwardUncheckedUpdateManyInput>
+    /**
+     * Filter which RoguelikeShipGrantAwards to update
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * Limit how many RoguelikeShipGrantAwards to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * RoguelikeShipGrantAward upsert
+   */
+  export type RoguelikeShipGrantAwardUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * The filter to search for the RoguelikeShipGrantAward to update in case it exists.
+     */
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+    /**
+     * In case the RoguelikeShipGrantAward found by the `where` argument doesn't exist, create a new RoguelikeShipGrantAward with this data.
+     */
+    create: XOR<RoguelikeShipGrantAwardCreateInput, RoguelikeShipGrantAwardUncheckedCreateInput>
+    /**
+     * In case the RoguelikeShipGrantAward was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<RoguelikeShipGrantAwardUpdateInput, RoguelikeShipGrantAwardUncheckedUpdateInput>
+  }
+
+  /**
+   * RoguelikeShipGrantAward delete
+   */
+  export type RoguelikeShipGrantAwardDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
+    /**
+     * Filter which RoguelikeShipGrantAward to delete.
+     */
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+  }
+
+  /**
+   * RoguelikeShipGrantAward deleteMany
+   */
+  export type RoguelikeShipGrantAwardDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which RoguelikeShipGrantAwards to delete
+     */
+    where?: RoguelikeShipGrantAwardWhereInput
+    /**
+     * Limit how many RoguelikeShipGrantAwards to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * RoguelikeShipGrantAward without action
+   */
+  export type RoguelikeShipGrantAwardDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the RoguelikeShipGrantAward
+     */
+    select?: RoguelikeShipGrantAwardSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the RoguelikeShipGrantAward
+     */
+    omit?: RoguelikeShipGrantAwardOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: RoguelikeShipGrantAwardInclude<ExtArgs> | null
   }
 
 
@@ -36077,6 +38526,28 @@ export namespace Prisma {
   export type RoguelikeNodeScalarFieldEnum = (typeof RoguelikeNodeScalarFieldEnum)[keyof typeof RoguelikeNodeScalarFieldEnum]
 
 
+  export const RoguelikeShipGrantScalarFieldEnum: {
+    nodeId: 'nodeId',
+    grant: 'grant',
+    updatedAt: 'updatedAt'
+  };
+
+  export type RoguelikeShipGrantScalarFieldEnum = (typeof RoguelikeShipGrantScalarFieldEnum)[keyof typeof RoguelikeShipGrantScalarFieldEnum]
+
+
+  export const RoguelikeShipGrantAwardScalarFieldEnum: {
+    id: 'id',
+    nodeId: 'nodeId',
+    userId: 'userId',
+    shipId: 'shipId',
+    lobbyId: 'lobbyId',
+    countsAsClaim: 'countsAsClaim',
+    createdAt: 'createdAt'
+  };
+
+  export type RoguelikeShipGrantAwardScalarFieldEnum = (typeof RoguelikeShipGrantAwardScalarFieldEnum)[keyof typeof RoguelikeShipGrantAwardScalarFieldEnum]
+
+
   export const RoguelikeEdgeScalarFieldEnum: {
     id: 'id',
     parentId: 'parentId',
@@ -36489,6 +38960,7 @@ export namespace Prisma {
     tutorialPath?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     ships?: ShipListRelationFilter
+    shipGrantAwards?: RoguelikeShipGrantAwardListRelationFilter
     lobbiesCreated?: LobbyListRelationFilter
     lobbiesJoined?: LobbyListRelationFilter
     lobbiesReserved?: LobbyListRelationFilter
@@ -36519,6 +38991,7 @@ export namespace Prisma {
     tutorialPath?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     ships?: ShipOrderByRelationAggregateInput
+    shipGrantAwards?: RoguelikeShipGrantAwardOrderByRelationAggregateInput
     lobbiesCreated?: LobbyOrderByRelationAggregateInput
     lobbiesJoined?: LobbyOrderByRelationAggregateInput
     lobbiesReserved?: LobbyOrderByRelationAggregateInput
@@ -36552,6 +39025,7 @@ export namespace Prisma {
     tutorialPath?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     ships?: ShipListRelationFilter
+    shipGrantAwards?: RoguelikeShipGrantAwardListRelationFilter
     lobbiesCreated?: LobbyListRelationFilter
     lobbiesJoined?: LobbyListRelationFilter
     lobbiesReserved?: LobbyListRelationFilter
@@ -37642,6 +40116,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeListRelationFilter
     parentEdges?: RoguelikeEdgeListRelationFilter
     defeats?: RoguelikeNodeDefeatListRelationFilter
+    shipGrant?: XOR<RoguelikeShipGrantNullableScalarRelationFilter, RoguelikeShipGrantWhereInput> | null
   }
 
   export type RoguelikeNodeOrderByWithRelationInput = {
@@ -37660,6 +40135,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeOrderByRelationAggregateInput
     parentEdges?: RoguelikeEdgeOrderByRelationAggregateInput
     defeats?: RoguelikeNodeDefeatOrderByRelationAggregateInput
+    shipGrant?: RoguelikeShipGrantOrderByWithRelationInput
   }
 
   export type RoguelikeNodeWhereUniqueInput = Prisma.AtLeast<{
@@ -37681,6 +40157,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeListRelationFilter
     parentEdges?: RoguelikeEdgeListRelationFilter
     defeats?: RoguelikeNodeDefeatListRelationFilter
+    shipGrant?: XOR<RoguelikeShipGrantNullableScalarRelationFilter, RoguelikeShipGrantWhereInput> | null
   }, "id">
 
   export type RoguelikeNodeOrderByWithAggregationInput = {
@@ -37715,6 +40192,120 @@ export namespace Prisma {
     costCapOverride?: IntNullableWithAggregatesFilter<"RoguelikeNode"> | number | null
     winEffects?: StringNullableListFilter<"RoguelikeNode">
     createdAt?: DateTimeWithAggregatesFilter<"RoguelikeNode"> | Date | string
+  }
+
+  export type RoguelikeShipGrantWhereInput = {
+    AND?: RoguelikeShipGrantWhereInput | RoguelikeShipGrantWhereInput[]
+    OR?: RoguelikeShipGrantWhereInput[]
+    NOT?: RoguelikeShipGrantWhereInput | RoguelikeShipGrantWhereInput[]
+    nodeId?: IntFilter<"RoguelikeShipGrant"> | number
+    grant?: JsonFilter<"RoguelikeShipGrant">
+    updatedAt?: DateTimeFilter<"RoguelikeShipGrant"> | Date | string
+    node?: XOR<RoguelikeNodeScalarRelationFilter, RoguelikeNodeWhereInput>
+  }
+
+  export type RoguelikeShipGrantOrderByWithRelationInput = {
+    nodeId?: SortOrder
+    grant?: SortOrder
+    updatedAt?: SortOrder
+    node?: RoguelikeNodeOrderByWithRelationInput
+  }
+
+  export type RoguelikeShipGrantWhereUniqueInput = Prisma.AtLeast<{
+    nodeId?: number
+    AND?: RoguelikeShipGrantWhereInput | RoguelikeShipGrantWhereInput[]
+    OR?: RoguelikeShipGrantWhereInput[]
+    NOT?: RoguelikeShipGrantWhereInput | RoguelikeShipGrantWhereInput[]
+    grant?: JsonFilter<"RoguelikeShipGrant">
+    updatedAt?: DateTimeFilter<"RoguelikeShipGrant"> | Date | string
+    node?: XOR<RoguelikeNodeScalarRelationFilter, RoguelikeNodeWhereInput>
+  }, "nodeId">
+
+  export type RoguelikeShipGrantOrderByWithAggregationInput = {
+    nodeId?: SortOrder
+    grant?: SortOrder
+    updatedAt?: SortOrder
+    _count?: RoguelikeShipGrantCountOrderByAggregateInput
+    _avg?: RoguelikeShipGrantAvgOrderByAggregateInput
+    _max?: RoguelikeShipGrantMaxOrderByAggregateInput
+    _min?: RoguelikeShipGrantMinOrderByAggregateInput
+    _sum?: RoguelikeShipGrantSumOrderByAggregateInput
+  }
+
+  export type RoguelikeShipGrantScalarWhereWithAggregatesInput = {
+    AND?: RoguelikeShipGrantScalarWhereWithAggregatesInput | RoguelikeShipGrantScalarWhereWithAggregatesInput[]
+    OR?: RoguelikeShipGrantScalarWhereWithAggregatesInput[]
+    NOT?: RoguelikeShipGrantScalarWhereWithAggregatesInput | RoguelikeShipGrantScalarWhereWithAggregatesInput[]
+    nodeId?: IntWithAggregatesFilter<"RoguelikeShipGrant"> | number
+    grant?: JsonWithAggregatesFilter<"RoguelikeShipGrant">
+    updatedAt?: DateTimeWithAggregatesFilter<"RoguelikeShipGrant"> | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardWhereInput = {
+    AND?: RoguelikeShipGrantAwardWhereInput | RoguelikeShipGrantAwardWhereInput[]
+    OR?: RoguelikeShipGrantAwardWhereInput[]
+    NOT?: RoguelikeShipGrantAwardWhereInput | RoguelikeShipGrantAwardWhereInput[]
+    id?: IntFilter<"RoguelikeShipGrantAward"> | number
+    nodeId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    userId?: StringFilter<"RoguelikeShipGrantAward"> | string
+    shipId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    lobbyId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    countsAsClaim?: BoolFilter<"RoguelikeShipGrantAward"> | boolean
+    createdAt?: DateTimeFilter<"RoguelikeShipGrantAward"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }
+
+  export type RoguelikeShipGrantAwardOrderByWithRelationInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    userId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
+    countsAsClaim?: SortOrder
+    createdAt?: SortOrder
+    user?: UserOrderByWithRelationInput
+  }
+
+  export type RoguelikeShipGrantAwardWhereUniqueInput = Prisma.AtLeast<{
+    id?: number
+    AND?: RoguelikeShipGrantAwardWhereInput | RoguelikeShipGrantAwardWhereInput[]
+    OR?: RoguelikeShipGrantAwardWhereInput[]
+    NOT?: RoguelikeShipGrantAwardWhereInput | RoguelikeShipGrantAwardWhereInput[]
+    nodeId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    userId?: StringFilter<"RoguelikeShipGrantAward"> | string
+    shipId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    lobbyId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    countsAsClaim?: BoolFilter<"RoguelikeShipGrantAward"> | boolean
+    createdAt?: DateTimeFilter<"RoguelikeShipGrantAward"> | Date | string
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+  }, "id">
+
+  export type RoguelikeShipGrantAwardOrderByWithAggregationInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    userId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
+    countsAsClaim?: SortOrder
+    createdAt?: SortOrder
+    _count?: RoguelikeShipGrantAwardCountOrderByAggregateInput
+    _avg?: RoguelikeShipGrantAwardAvgOrderByAggregateInput
+    _max?: RoguelikeShipGrantAwardMaxOrderByAggregateInput
+    _min?: RoguelikeShipGrantAwardMinOrderByAggregateInput
+    _sum?: RoguelikeShipGrantAwardSumOrderByAggregateInput
+  }
+
+  export type RoguelikeShipGrantAwardScalarWhereWithAggregatesInput = {
+    AND?: RoguelikeShipGrantAwardScalarWhereWithAggregatesInput | RoguelikeShipGrantAwardScalarWhereWithAggregatesInput[]
+    OR?: RoguelikeShipGrantAwardScalarWhereWithAggregatesInput[]
+    NOT?: RoguelikeShipGrantAwardScalarWhereWithAggregatesInput | RoguelikeShipGrantAwardScalarWhereWithAggregatesInput[]
+    id?: IntWithAggregatesFilter<"RoguelikeShipGrantAward"> | number
+    nodeId?: IntWithAggregatesFilter<"RoguelikeShipGrantAward"> | number
+    userId?: StringWithAggregatesFilter<"RoguelikeShipGrantAward"> | string
+    shipId?: IntWithAggregatesFilter<"RoguelikeShipGrantAward"> | number
+    lobbyId?: IntWithAggregatesFilter<"RoguelikeShipGrantAward"> | number
+    countsAsClaim?: BoolWithAggregatesFilter<"RoguelikeShipGrantAward"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"RoguelikeShipGrantAward"> | Date | string
   }
 
   export type RoguelikeEdgeWhereInput = {
@@ -38601,6 +41192,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -38631,6 +41223,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -38661,6 +41254,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -38691,6 +41285,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -39794,6 +42389,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUncheckedCreateInput = {
@@ -39810,6 +42406,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUpdateInput = {
@@ -39825,6 +42422,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateInput = {
@@ -39841,6 +42439,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeCreateManyInput = {
@@ -39876,6 +42475,113 @@ export namespace Prisma {
     creatorGoesFirst?: NullableBoolFieldUpdateOperationsInput | boolean | null
     costCapOverride?: NullableIntFieldUpdateOperationsInput | number | null
     winEffects?: RoguelikeNodeUpdatewinEffectsInput | string[]
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantCreateInput = {
+    grant: JsonNullValueInput | InputJsonValue
+    updatedAt?: Date | string
+    node: RoguelikeNodeCreateNestedOneWithoutShipGrantInput
+  }
+
+  export type RoguelikeShipGrantUncheckedCreateInput = {
+    nodeId: number
+    grant: JsonNullValueInput | InputJsonValue
+    updatedAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantUpdateInput = {
+    grant?: JsonNullValueInput | InputJsonValue
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    node?: RoguelikeNodeUpdateOneRequiredWithoutShipGrantNestedInput
+  }
+
+  export type RoguelikeShipGrantUncheckedUpdateInput = {
+    nodeId?: IntFieldUpdateOperationsInput | number
+    grant?: JsonNullValueInput | InputJsonValue
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantCreateManyInput = {
+    nodeId: number
+    grant: JsonNullValueInput | InputJsonValue
+    updatedAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantUpdateManyMutationInput = {
+    grant?: JsonNullValueInput | InputJsonValue
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantUncheckedUpdateManyInput = {
+    nodeId?: IntFieldUpdateOperationsInput | number
+    grant?: JsonNullValueInput | InputJsonValue
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardCreateInput = {
+    nodeId: number
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
+    createdAt?: Date | string
+    user: UserCreateNestedOneWithoutShipGrantAwardsInput
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedCreateInput = {
+    id?: number
+    nodeId: number
+    userId: string
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
+    createdAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUpdateInput = {
+    nodeId?: IntFieldUpdateOperationsInput | number
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutShipGrantAwardsNestedInput
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedUpdateInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    nodeId?: IntFieldUpdateOperationsInput | number
+    userId?: StringFieldUpdateOperationsInput | string
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardCreateManyInput = {
+    id?: number
+    nodeId: number
+    userId: string
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
+    createdAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUpdateManyMutationInput = {
+    nodeId?: IntFieldUpdateOperationsInput | number
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedUpdateManyInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    nodeId?: IntFieldUpdateOperationsInput | number
+    userId?: StringFieldUpdateOperationsInput | string
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -40818,6 +43524,12 @@ export namespace Prisma {
     none?: ShipWhereInput
   }
 
+  export type RoguelikeShipGrantAwardListRelationFilter = {
+    every?: RoguelikeShipGrantAwardWhereInput
+    some?: RoguelikeShipGrantAwardWhereInput
+    none?: RoguelikeShipGrantAwardWhereInput
+  }
+
   export type LobbyListRelationFilter = {
     every?: LobbyWhereInput
     some?: LobbyWhereInput
@@ -40877,6 +43589,10 @@ export namespace Prisma {
   }
 
   export type ShipOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAwardOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -41985,6 +44701,11 @@ export namespace Prisma {
     none?: RoguelikeNodeDefeatWhereInput
   }
 
+  export type RoguelikeShipGrantNullableScalarRelationFilter = {
+    is?: RoguelikeShipGrantWhereInput | null
+    isNot?: RoguelikeShipGrantWhereInput | null
+  }
+
   export type RoguelikeEdgeOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -42053,6 +44774,74 @@ export namespace Prisma {
   export type RoguelikeNodeScalarRelationFilter = {
     is?: RoguelikeNodeWhereInput
     isNot?: RoguelikeNodeWhereInput
+  }
+
+  export type RoguelikeShipGrantCountOrderByAggregateInput = {
+    nodeId?: SortOrder
+    grant?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAvgOrderByAggregateInput = {
+    nodeId?: SortOrder
+  }
+
+  export type RoguelikeShipGrantMaxOrderByAggregateInput = {
+    nodeId?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type RoguelikeShipGrantMinOrderByAggregateInput = {
+    nodeId?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type RoguelikeShipGrantSumOrderByAggregateInput = {
+    nodeId?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAwardCountOrderByAggregateInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    userId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
+    countsAsClaim?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAwardAvgOrderByAggregateInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAwardMaxOrderByAggregateInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    userId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
+    countsAsClaim?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAwardMinOrderByAggregateInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    userId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
+    countsAsClaim?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type RoguelikeShipGrantAwardSumOrderByAggregateInput = {
+    id?: SortOrder
+    nodeId?: SortOrder
+    shipId?: SortOrder
+    lobbyId?: SortOrder
   }
 
   export type RoguelikeEdgeParentIdChildIdCompoundUniqueInput = {
@@ -42727,6 +45516,13 @@ export namespace Prisma {
     connect?: ShipWhereUniqueInput | ShipWhereUniqueInput[]
   }
 
+  export type RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput = {
+    create?: XOR<RoguelikeShipGrantAwardCreateWithoutUserInput, RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput> | RoguelikeShipGrantAwardCreateWithoutUserInput[] | RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput | RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput[]
+    createMany?: RoguelikeShipGrantAwardCreateManyUserInputEnvelope
+    connect?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+  }
+
   export type LobbyCreateNestedManyWithoutCreatorInput = {
     create?: XOR<LobbyCreateWithoutCreatorInput, LobbyUncheckedCreateWithoutCreatorInput> | LobbyCreateWithoutCreatorInput[] | LobbyUncheckedCreateWithoutCreatorInput[]
     connectOrCreate?: LobbyCreateOrConnectWithoutCreatorInput | LobbyCreateOrConnectWithoutCreatorInput[]
@@ -42822,6 +45618,13 @@ export namespace Prisma {
     connectOrCreate?: ShipCreateOrConnectWithoutOwnerInput | ShipCreateOrConnectWithoutOwnerInput[]
     createMany?: ShipCreateManyOwnerInputEnvelope
     connect?: ShipWhereUniqueInput | ShipWhereUniqueInput[]
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<RoguelikeShipGrantAwardCreateWithoutUserInput, RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput> | RoguelikeShipGrantAwardCreateWithoutUserInput[] | RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput | RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput[]
+    createMany?: RoguelikeShipGrantAwardCreateManyUserInputEnvelope
+    connect?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
   }
 
   export type LobbyUncheckedCreateNestedManyWithoutCreatorInput = {
@@ -42954,6 +45757,20 @@ export namespace Prisma {
     update?: ShipUpdateWithWhereUniqueWithoutOwnerInput | ShipUpdateWithWhereUniqueWithoutOwnerInput[]
     updateMany?: ShipUpdateManyWithWhereWithoutOwnerInput | ShipUpdateManyWithWhereWithoutOwnerInput[]
     deleteMany?: ShipScalarWhereInput | ShipScalarWhereInput[]
+  }
+
+  export type RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput = {
+    create?: XOR<RoguelikeShipGrantAwardCreateWithoutUserInput, RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput> | RoguelikeShipGrantAwardCreateWithoutUserInput[] | RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput | RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput[]
+    upsert?: RoguelikeShipGrantAwardUpsertWithWhereUniqueWithoutUserInput | RoguelikeShipGrantAwardUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: RoguelikeShipGrantAwardCreateManyUserInputEnvelope
+    set?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    disconnect?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    delete?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    connect?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    update?: RoguelikeShipGrantAwardUpdateWithWhereUniqueWithoutUserInput | RoguelikeShipGrantAwardUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: RoguelikeShipGrantAwardUpdateManyWithWhereWithoutUserInput | RoguelikeShipGrantAwardUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: RoguelikeShipGrantAwardScalarWhereInput | RoguelikeShipGrantAwardScalarWhereInput[]
   }
 
   export type LobbyUpdateManyWithoutCreatorNestedInput = {
@@ -43146,6 +45963,20 @@ export namespace Prisma {
     update?: ShipUpdateWithWhereUniqueWithoutOwnerInput | ShipUpdateWithWhereUniqueWithoutOwnerInput[]
     updateMany?: ShipUpdateManyWithWhereWithoutOwnerInput | ShipUpdateManyWithWhereWithoutOwnerInput[]
     deleteMany?: ShipScalarWhereInput | ShipScalarWhereInput[]
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<RoguelikeShipGrantAwardCreateWithoutUserInput, RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput> | RoguelikeShipGrantAwardCreateWithoutUserInput[] | RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput | RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput[]
+    upsert?: RoguelikeShipGrantAwardUpsertWithWhereUniqueWithoutUserInput | RoguelikeShipGrantAwardUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: RoguelikeShipGrantAwardCreateManyUserInputEnvelope
+    set?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    disconnect?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    delete?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    connect?: RoguelikeShipGrantAwardWhereUniqueInput | RoguelikeShipGrantAwardWhereUniqueInput[]
+    update?: RoguelikeShipGrantAwardUpdateWithWhereUniqueWithoutUserInput | RoguelikeShipGrantAwardUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: RoguelikeShipGrantAwardUpdateManyWithWhereWithoutUserInput | RoguelikeShipGrantAwardUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: RoguelikeShipGrantAwardScalarWhereInput | RoguelikeShipGrantAwardScalarWhereInput[]
   }
 
   export type LobbyUncheckedUpdateManyWithoutCreatorNestedInput = {
@@ -44287,6 +47118,12 @@ export namespace Prisma {
     connect?: RoguelikeNodeDefeatWhereUniqueInput | RoguelikeNodeDefeatWhereUniqueInput[]
   }
 
+  export type RoguelikeShipGrantCreateNestedOneWithoutNodeInput = {
+    create?: XOR<RoguelikeShipGrantCreateWithoutNodeInput, RoguelikeShipGrantUncheckedCreateWithoutNodeInput>
+    connectOrCreate?: RoguelikeShipGrantCreateOrConnectWithoutNodeInput
+    connect?: RoguelikeShipGrantWhereUniqueInput
+  }
+
   export type RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput = {
     create?: XOR<RoguelikeEdgeCreateWithoutParentInput, RoguelikeEdgeUncheckedCreateWithoutParentInput> | RoguelikeEdgeCreateWithoutParentInput[] | RoguelikeEdgeUncheckedCreateWithoutParentInput[]
     connectOrCreate?: RoguelikeEdgeCreateOrConnectWithoutParentInput | RoguelikeEdgeCreateOrConnectWithoutParentInput[]
@@ -44306,6 +47143,12 @@ export namespace Prisma {
     connectOrCreate?: RoguelikeNodeDefeatCreateOrConnectWithoutNodeInput | RoguelikeNodeDefeatCreateOrConnectWithoutNodeInput[]
     createMany?: RoguelikeNodeDefeatCreateManyNodeInputEnvelope
     connect?: RoguelikeNodeDefeatWhereUniqueInput | RoguelikeNodeDefeatWhereUniqueInput[]
+  }
+
+  export type RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput = {
+    create?: XOR<RoguelikeShipGrantCreateWithoutNodeInput, RoguelikeShipGrantUncheckedCreateWithoutNodeInput>
+    connectOrCreate?: RoguelikeShipGrantCreateOrConnectWithoutNodeInput
+    connect?: RoguelikeShipGrantWhereUniqueInput
   }
 
   export type RoguelikeNodeUpdatewinEffectsInput = {
@@ -44373,6 +47216,16 @@ export namespace Prisma {
     deleteMany?: RoguelikeNodeDefeatScalarWhereInput | RoguelikeNodeDefeatScalarWhereInput[]
   }
 
+  export type RoguelikeShipGrantUpdateOneWithoutNodeNestedInput = {
+    create?: XOR<RoguelikeShipGrantCreateWithoutNodeInput, RoguelikeShipGrantUncheckedCreateWithoutNodeInput>
+    connectOrCreate?: RoguelikeShipGrantCreateOrConnectWithoutNodeInput
+    upsert?: RoguelikeShipGrantUpsertWithoutNodeInput
+    disconnect?: RoguelikeShipGrantWhereInput | boolean
+    delete?: RoguelikeShipGrantWhereInput | boolean
+    connect?: RoguelikeShipGrantWhereUniqueInput
+    update?: XOR<XOR<RoguelikeShipGrantUpdateToOneWithWhereWithoutNodeInput, RoguelikeShipGrantUpdateWithoutNodeInput>, RoguelikeShipGrantUncheckedUpdateWithoutNodeInput>
+  }
+
   export type RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput = {
     create?: XOR<RoguelikeEdgeCreateWithoutParentInput, RoguelikeEdgeUncheckedCreateWithoutParentInput> | RoguelikeEdgeCreateWithoutParentInput[] | RoguelikeEdgeUncheckedCreateWithoutParentInput[]
     connectOrCreate?: RoguelikeEdgeCreateOrConnectWithoutParentInput | RoguelikeEdgeCreateOrConnectWithoutParentInput[]
@@ -44413,6 +47266,44 @@ export namespace Prisma {
     update?: RoguelikeNodeDefeatUpdateWithWhereUniqueWithoutNodeInput | RoguelikeNodeDefeatUpdateWithWhereUniqueWithoutNodeInput[]
     updateMany?: RoguelikeNodeDefeatUpdateManyWithWhereWithoutNodeInput | RoguelikeNodeDefeatUpdateManyWithWhereWithoutNodeInput[]
     deleteMany?: RoguelikeNodeDefeatScalarWhereInput | RoguelikeNodeDefeatScalarWhereInput[]
+  }
+
+  export type RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput = {
+    create?: XOR<RoguelikeShipGrantCreateWithoutNodeInput, RoguelikeShipGrantUncheckedCreateWithoutNodeInput>
+    connectOrCreate?: RoguelikeShipGrantCreateOrConnectWithoutNodeInput
+    upsert?: RoguelikeShipGrantUpsertWithoutNodeInput
+    disconnect?: RoguelikeShipGrantWhereInput | boolean
+    delete?: RoguelikeShipGrantWhereInput | boolean
+    connect?: RoguelikeShipGrantWhereUniqueInput
+    update?: XOR<XOR<RoguelikeShipGrantUpdateToOneWithWhereWithoutNodeInput, RoguelikeShipGrantUpdateWithoutNodeInput>, RoguelikeShipGrantUncheckedUpdateWithoutNodeInput>
+  }
+
+  export type RoguelikeNodeCreateNestedOneWithoutShipGrantInput = {
+    create?: XOR<RoguelikeNodeCreateWithoutShipGrantInput, RoguelikeNodeUncheckedCreateWithoutShipGrantInput>
+    connectOrCreate?: RoguelikeNodeCreateOrConnectWithoutShipGrantInput
+    connect?: RoguelikeNodeWhereUniqueInput
+  }
+
+  export type RoguelikeNodeUpdateOneRequiredWithoutShipGrantNestedInput = {
+    create?: XOR<RoguelikeNodeCreateWithoutShipGrantInput, RoguelikeNodeUncheckedCreateWithoutShipGrantInput>
+    connectOrCreate?: RoguelikeNodeCreateOrConnectWithoutShipGrantInput
+    upsert?: RoguelikeNodeUpsertWithoutShipGrantInput
+    connect?: RoguelikeNodeWhereUniqueInput
+    update?: XOR<XOR<RoguelikeNodeUpdateToOneWithWhereWithoutShipGrantInput, RoguelikeNodeUpdateWithoutShipGrantInput>, RoguelikeNodeUncheckedUpdateWithoutShipGrantInput>
+  }
+
+  export type UserCreateNestedOneWithoutShipGrantAwardsInput = {
+    create?: XOR<UserCreateWithoutShipGrantAwardsInput, UserUncheckedCreateWithoutShipGrantAwardsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutShipGrantAwardsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type UserUpdateOneRequiredWithoutShipGrantAwardsNestedInput = {
+    create?: XOR<UserCreateWithoutShipGrantAwardsInput, UserUncheckedCreateWithoutShipGrantAwardsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutShipGrantAwardsInput
+    upsert?: UserUpsertWithoutShipGrantAwardsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutShipGrantAwardsInput, UserUpdateWithoutShipGrantAwardsInput>, UserUncheckedUpdateWithoutShipGrantAwardsInput>
   }
 
   export type RoguelikeNodeCreateNestedOneWithoutChildEdgesInput = {
@@ -45301,6 +48192,33 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type RoguelikeShipGrantAwardCreateWithoutUserInput = {
+    nodeId: number
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
+    createdAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput = {
+    id?: number
+    nodeId: number
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
+    createdAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantAwardCreateOrConnectWithoutUserInput = {
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+    create: XOR<RoguelikeShipGrantAwardCreateWithoutUserInput, RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput>
+  }
+
+  export type RoguelikeShipGrantAwardCreateManyUserInputEnvelope = {
+    data: RoguelikeShipGrantAwardCreateManyUserInput | RoguelikeShipGrantAwardCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type LobbyCreateWithoutCreatorInput = {
     status?: $Enums.LobbyStatus
     costLimit?: number
@@ -45828,6 +48746,35 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"Ship"> | Date | string
   }
 
+  export type RoguelikeShipGrantAwardUpsertWithWhereUniqueWithoutUserInput = {
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+    update: XOR<RoguelikeShipGrantAwardUpdateWithoutUserInput, RoguelikeShipGrantAwardUncheckedUpdateWithoutUserInput>
+    create: XOR<RoguelikeShipGrantAwardCreateWithoutUserInput, RoguelikeShipGrantAwardUncheckedCreateWithoutUserInput>
+  }
+
+  export type RoguelikeShipGrantAwardUpdateWithWhereUniqueWithoutUserInput = {
+    where: RoguelikeShipGrantAwardWhereUniqueInput
+    data: XOR<RoguelikeShipGrantAwardUpdateWithoutUserInput, RoguelikeShipGrantAwardUncheckedUpdateWithoutUserInput>
+  }
+
+  export type RoguelikeShipGrantAwardUpdateManyWithWhereWithoutUserInput = {
+    where: RoguelikeShipGrantAwardScalarWhereInput
+    data: XOR<RoguelikeShipGrantAwardUpdateManyMutationInput, RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type RoguelikeShipGrantAwardScalarWhereInput = {
+    AND?: RoguelikeShipGrantAwardScalarWhereInput | RoguelikeShipGrantAwardScalarWhereInput[]
+    OR?: RoguelikeShipGrantAwardScalarWhereInput[]
+    NOT?: RoguelikeShipGrantAwardScalarWhereInput | RoguelikeShipGrantAwardScalarWhereInput[]
+    id?: IntFilter<"RoguelikeShipGrantAward"> | number
+    nodeId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    userId?: StringFilter<"RoguelikeShipGrantAward"> | string
+    shipId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    lobbyId?: IntFilter<"RoguelikeShipGrantAward"> | number
+    countsAsClaim?: BoolFilter<"RoguelikeShipGrantAward"> | boolean
+    createdAt?: DateTimeFilter<"RoguelikeShipGrantAward"> | Date | string
+  }
+
   export type LobbyUpsertWithWhereUniqueWithoutCreatorInput = {
     where: LobbyWhereUniqueInput
     update: XOR<LobbyUpdateWithoutCreatorInput, LobbyUncheckedUpdateWithoutCreatorInput>
@@ -46191,6 +49138,7 @@ export namespace Prisma {
     tutorialCompleted?: boolean
     tutorialPath?: string | null
     createdAt?: Date | string
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -46220,6 +49168,7 @@ export namespace Prisma {
     tutorialCompleted?: boolean
     tutorialPath?: string | null
     createdAt?: Date | string
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -46286,6 +49235,7 @@ export namespace Prisma {
     tutorialCompleted?: BoolFieldUpdateOperationsInput | boolean
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -46315,6 +49265,7 @@ export namespace Prisma {
     tutorialCompleted?: BoolFieldUpdateOperationsInput | boolean
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -46371,6 +49322,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -46400,6 +49352,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -46493,6 +49446,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -46522,6 +49476,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -46605,6 +49560,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
     gamesAsPlayer1?: GameCreateNestedManyWithoutPlayer1Input
@@ -46634,6 +49590,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
     gamesAsPlayer1?: GameUncheckedCreateNestedManyWithoutPlayer1Input
@@ -46668,6 +49625,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
     gamesAsPlayer1?: GameCreateNestedManyWithoutPlayer1Input
@@ -46697,6 +49655,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
     gamesAsPlayer1?: GameUncheckedCreateNestedManyWithoutPlayer1Input
@@ -46731,6 +49690,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     gamesAsPlayer1?: GameCreateNestedManyWithoutPlayer1Input
@@ -46760,6 +49720,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     gamesAsPlayer1?: GameUncheckedCreateNestedManyWithoutPlayer1Input
@@ -47000,6 +49961,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
     gamesAsPlayer1?: GameUpdateManyWithoutPlayer1NestedInput
@@ -47029,6 +49991,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
     gamesAsPlayer1?: GameUncheckedUpdateManyWithoutPlayer1NestedInput
@@ -47069,6 +50032,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
     gamesAsPlayer1?: GameUpdateManyWithoutPlayer1NestedInput
@@ -47098,6 +50062,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
     gamesAsPlayer1?: GameUncheckedUpdateManyWithoutPlayer1NestedInput
@@ -47138,6 +50103,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     gamesAsPlayer1?: GameUpdateManyWithoutPlayer1NestedInput
@@ -47167,6 +50133,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     gamesAsPlayer1?: GameUncheckedUpdateManyWithoutPlayer1NestedInput
@@ -47456,6 +50423,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -47485,6 +50453,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -47519,6 +50488,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -47548,6 +50518,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -47674,6 +50645,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -47703,6 +50675,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -47743,6 +50716,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -47772,6 +50746,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -48012,6 +50987,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUncheckedCreateWithoutMapInput = {
@@ -48027,6 +51003,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeCreateOrConnectWithoutMapInput = {
@@ -48608,6 +51585,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -48637,6 +51615,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -48712,6 +51691,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -48741,6 +51721,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -48803,6 +51784,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUncheckedCreateWithoutCampaignInput = {
@@ -48818,6 +51800,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeCreateOrConnectWithoutCampaignInput = {
@@ -49020,6 +52003,21 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type RoguelikeShipGrantCreateWithoutNodeInput = {
+    grant: JsonNullValueInput | InputJsonValue
+    updatedAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantUncheckedCreateWithoutNodeInput = {
+    grant: JsonNullValueInput | InputJsonValue
+    updatedAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantCreateOrConnectWithoutNodeInput = {
+    where: RoguelikeShipGrantWhereUniqueInput
+    create: XOR<RoguelikeShipGrantCreateWithoutNodeInput, RoguelikeShipGrantUncheckedCreateWithoutNodeInput>
+  }
+
   export type RoguelikeCampaignUpsertWithoutNodesInput = {
     update: XOR<RoguelikeCampaignUpdateWithoutNodesInput, RoguelikeCampaignUncheckedUpdateWithoutNodesInput>
     create: XOR<RoguelikeCampaignCreateWithoutNodesInput, RoguelikeCampaignUncheckedCreateWithoutNodesInput>
@@ -49160,6 +52158,241 @@ export namespace Prisma {
     nodeId?: IntFilter<"RoguelikeNodeDefeat"> | number
   }
 
+  export type RoguelikeShipGrantUpsertWithoutNodeInput = {
+    update: XOR<RoguelikeShipGrantUpdateWithoutNodeInput, RoguelikeShipGrantUncheckedUpdateWithoutNodeInput>
+    create: XOR<RoguelikeShipGrantCreateWithoutNodeInput, RoguelikeShipGrantUncheckedCreateWithoutNodeInput>
+    where?: RoguelikeShipGrantWhereInput
+  }
+
+  export type RoguelikeShipGrantUpdateToOneWithWhereWithoutNodeInput = {
+    where?: RoguelikeShipGrantWhereInput
+    data: XOR<RoguelikeShipGrantUpdateWithoutNodeInput, RoguelikeShipGrantUncheckedUpdateWithoutNodeInput>
+  }
+
+  export type RoguelikeShipGrantUpdateWithoutNodeInput = {
+    grant?: JsonNullValueInput | InputJsonValue
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantUncheckedUpdateWithoutNodeInput = {
+    grant?: JsonNullValueInput | InputJsonValue
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeNodeCreateWithoutShipGrantInput = {
+    kind: number
+    turnTimeSeconds?: number | null
+    maxScore?: number | null
+    creatorGoesFirst?: boolean | null
+    costCapOverride?: number | null
+    winEffects?: RoguelikeNodeCreatewinEffectsInput | string[]
+    createdAt?: Date | string
+    campaign: RoguelikeCampaignCreateNestedOneWithoutNodesInput
+    map?: MapCreateNestedOneWithoutRoguelikeNodesInput
+    childEdges?: RoguelikeEdgeCreateNestedManyWithoutParentInput
+    parentEdges?: RoguelikeEdgeCreateNestedManyWithoutChildInput
+    defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutNodeInput
+  }
+
+  export type RoguelikeNodeUncheckedCreateWithoutShipGrantInput = {
+    id?: number
+    campaignId: number
+    kind: number
+    mapId?: number | null
+    turnTimeSeconds?: number | null
+    maxScore?: number | null
+    creatorGoesFirst?: boolean | null
+    costCapOverride?: number | null
+    winEffects?: RoguelikeNodeCreatewinEffectsInput | string[]
+    createdAt?: Date | string
+    childEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput
+    parentEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutChildInput
+    defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutNodeInput
+  }
+
+  export type RoguelikeNodeCreateOrConnectWithoutShipGrantInput = {
+    where: RoguelikeNodeWhereUniqueInput
+    create: XOR<RoguelikeNodeCreateWithoutShipGrantInput, RoguelikeNodeUncheckedCreateWithoutShipGrantInput>
+  }
+
+  export type RoguelikeNodeUpsertWithoutShipGrantInput = {
+    update: XOR<RoguelikeNodeUpdateWithoutShipGrantInput, RoguelikeNodeUncheckedUpdateWithoutShipGrantInput>
+    create: XOR<RoguelikeNodeCreateWithoutShipGrantInput, RoguelikeNodeUncheckedCreateWithoutShipGrantInput>
+    where?: RoguelikeNodeWhereInput
+  }
+
+  export type RoguelikeNodeUpdateToOneWithWhereWithoutShipGrantInput = {
+    where?: RoguelikeNodeWhereInput
+    data: XOR<RoguelikeNodeUpdateWithoutShipGrantInput, RoguelikeNodeUncheckedUpdateWithoutShipGrantInput>
+  }
+
+  export type RoguelikeNodeUpdateWithoutShipGrantInput = {
+    kind?: IntFieldUpdateOperationsInput | number
+    turnTimeSeconds?: NullableIntFieldUpdateOperationsInput | number | null
+    maxScore?: NullableIntFieldUpdateOperationsInput | number | null
+    creatorGoesFirst?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    costCapOverride?: NullableIntFieldUpdateOperationsInput | number | null
+    winEffects?: RoguelikeNodeUpdatewinEffectsInput | string[]
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    campaign?: RoguelikeCampaignUpdateOneRequiredWithoutNodesNestedInput
+    map?: MapUpdateOneWithoutRoguelikeNodesNestedInput
+    childEdges?: RoguelikeEdgeUpdateManyWithoutParentNestedInput
+    parentEdges?: RoguelikeEdgeUpdateManyWithoutChildNestedInput
+    defeats?: RoguelikeNodeDefeatUpdateManyWithoutNodeNestedInput
+  }
+
+  export type RoguelikeNodeUncheckedUpdateWithoutShipGrantInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    campaignId?: IntFieldUpdateOperationsInput | number
+    kind?: IntFieldUpdateOperationsInput | number
+    mapId?: NullableIntFieldUpdateOperationsInput | number | null
+    turnTimeSeconds?: NullableIntFieldUpdateOperationsInput | number | null
+    maxScore?: NullableIntFieldUpdateOperationsInput | number | null
+    creatorGoesFirst?: NullableBoolFieldUpdateOperationsInput | boolean | null
+    costCapOverride?: NullableIntFieldUpdateOperationsInput | number | null
+    winEffects?: RoguelikeNodeUpdatewinEffectsInput | string[]
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    childEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput
+    parentEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutChildNestedInput
+    defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutNodeNestedInput
+  }
+
+  export type UserCreateWithoutShipGrantAwardsInput = {
+    id: string
+    email: string
+    username?: string | null
+    creditBalance?: number
+    decBalance?: number
+    droneCoreTier?: number
+    purchasedShipCount?: number
+    lobbiesCreatedCount?: number
+    kickCount?: number
+    kickTimeoutUntil?: Date | string | null
+    tutorialCompleted?: boolean
+    tutorialPath?: string | null
+    createdAt?: Date | string
+    ships?: ShipCreateNestedManyWithoutOwnerInput
+    lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
+    lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
+    lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
+    gamesAsPlayer1?: GameCreateNestedManyWithoutPlayer1Input
+    gamesAsPlayer2?: GameCreateNestedManyWithoutPlayer2Input
+    fleets?: FleetCreateNestedManyWithoutOwnerInput
+    stats?: PlayerStatsCreateNestedOneWithoutUserInput
+    tournamentsCreated?: TournamentCreateNestedManyWithoutCreatorInput
+    tournamentRegistrations?: TournamentRegistrantCreateNestedManyWithoutUserInput
+    tournamentMatchesAsP1?: TournamentMatchCreateNestedManyWithoutPlayer1Input
+    tournamentMatchesAsP2?: TournamentMatchCreateNestedManyWithoutPlayer2Input
+    campaignNodeCompletions?: CampaignNodeCompletionCreateNestedManyWithoutUserInput
+    roguelikeRuns?: RoguelikeRunCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutShipGrantAwardsInput = {
+    id: string
+    email: string
+    username?: string | null
+    creditBalance?: number
+    decBalance?: number
+    droneCoreTier?: number
+    purchasedShipCount?: number
+    lobbiesCreatedCount?: number
+    kickCount?: number
+    kickTimeoutUntil?: Date | string | null
+    tutorialCompleted?: boolean
+    tutorialPath?: string | null
+    createdAt?: Date | string
+    ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
+    lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
+    lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
+    gamesAsPlayer1?: GameUncheckedCreateNestedManyWithoutPlayer1Input
+    gamesAsPlayer2?: GameUncheckedCreateNestedManyWithoutPlayer2Input
+    fleets?: FleetUncheckedCreateNestedManyWithoutOwnerInput
+    stats?: PlayerStatsUncheckedCreateNestedOneWithoutUserInput
+    tournamentsCreated?: TournamentUncheckedCreateNestedManyWithoutCreatorInput
+    tournamentRegistrations?: TournamentRegistrantUncheckedCreateNestedManyWithoutUserInput
+    tournamentMatchesAsP1?: TournamentMatchUncheckedCreateNestedManyWithoutPlayer1Input
+    tournamentMatchesAsP2?: TournamentMatchUncheckedCreateNestedManyWithoutPlayer2Input
+    campaignNodeCompletions?: CampaignNodeCompletionUncheckedCreateNestedManyWithoutUserInput
+    roguelikeRuns?: RoguelikeRunUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutShipGrantAwardsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutShipGrantAwardsInput, UserUncheckedCreateWithoutShipGrantAwardsInput>
+  }
+
+  export type UserUpsertWithoutShipGrantAwardsInput = {
+    update: XOR<UserUpdateWithoutShipGrantAwardsInput, UserUncheckedUpdateWithoutShipGrantAwardsInput>
+    create: XOR<UserCreateWithoutShipGrantAwardsInput, UserUncheckedCreateWithoutShipGrantAwardsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutShipGrantAwardsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutShipGrantAwardsInput, UserUncheckedUpdateWithoutShipGrantAwardsInput>
+  }
+
+  export type UserUpdateWithoutShipGrantAwardsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    username?: NullableStringFieldUpdateOperationsInput | string | null
+    creditBalance?: IntFieldUpdateOperationsInput | number
+    decBalance?: IntFieldUpdateOperationsInput | number
+    droneCoreTier?: IntFieldUpdateOperationsInput | number
+    purchasedShipCount?: IntFieldUpdateOperationsInput | number
+    lobbiesCreatedCount?: IntFieldUpdateOperationsInput | number
+    kickCount?: IntFieldUpdateOperationsInput | number
+    kickTimeoutUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    tutorialCompleted?: BoolFieldUpdateOperationsInput | boolean
+    tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ships?: ShipUpdateManyWithoutOwnerNestedInput
+    lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
+    lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
+    lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
+    gamesAsPlayer1?: GameUpdateManyWithoutPlayer1NestedInput
+    gamesAsPlayer2?: GameUpdateManyWithoutPlayer2NestedInput
+    fleets?: FleetUpdateManyWithoutOwnerNestedInput
+    stats?: PlayerStatsUpdateOneWithoutUserNestedInput
+    tournamentsCreated?: TournamentUpdateManyWithoutCreatorNestedInput
+    tournamentRegistrations?: TournamentRegistrantUpdateManyWithoutUserNestedInput
+    tournamentMatchesAsP1?: TournamentMatchUpdateManyWithoutPlayer1NestedInput
+    tournamentMatchesAsP2?: TournamentMatchUpdateManyWithoutPlayer2NestedInput
+    campaignNodeCompletions?: CampaignNodeCompletionUpdateManyWithoutUserNestedInput
+    roguelikeRuns?: RoguelikeRunUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutShipGrantAwardsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    username?: NullableStringFieldUpdateOperationsInput | string | null
+    creditBalance?: IntFieldUpdateOperationsInput | number
+    decBalance?: IntFieldUpdateOperationsInput | number
+    droneCoreTier?: IntFieldUpdateOperationsInput | number
+    purchasedShipCount?: IntFieldUpdateOperationsInput | number
+    lobbiesCreatedCount?: IntFieldUpdateOperationsInput | number
+    kickCount?: IntFieldUpdateOperationsInput | number
+    kickTimeoutUntil?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    tutorialCompleted?: BoolFieldUpdateOperationsInput | boolean
+    tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
+    lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
+    lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
+    gamesAsPlayer1?: GameUncheckedUpdateManyWithoutPlayer1NestedInput
+    gamesAsPlayer2?: GameUncheckedUpdateManyWithoutPlayer2NestedInput
+    fleets?: FleetUncheckedUpdateManyWithoutOwnerNestedInput
+    stats?: PlayerStatsUncheckedUpdateOneWithoutUserNestedInput
+    tournamentsCreated?: TournamentUncheckedUpdateManyWithoutCreatorNestedInput
+    tournamentRegistrations?: TournamentRegistrantUncheckedUpdateManyWithoutUserNestedInput
+    tournamentMatchesAsP1?: TournamentMatchUncheckedUpdateManyWithoutPlayer1NestedInput
+    tournamentMatchesAsP2?: TournamentMatchUncheckedUpdateManyWithoutPlayer2NestedInput
+    campaignNodeCompletions?: CampaignNodeCompletionUncheckedUpdateManyWithoutUserNestedInput
+    roguelikeRuns?: RoguelikeRunUncheckedUpdateManyWithoutUserNestedInput
+  }
+
   export type RoguelikeNodeCreateWithoutChildEdgesInput = {
     kind: number
     turnTimeSeconds?: number | null
@@ -49172,6 +52405,7 @@ export namespace Prisma {
     map?: MapCreateNestedOneWithoutRoguelikeNodesInput
     parentEdges?: RoguelikeEdgeCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUncheckedCreateWithoutChildEdgesInput = {
@@ -49187,6 +52421,7 @@ export namespace Prisma {
     createdAt?: Date | string
     parentEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutChildInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeCreateOrConnectWithoutChildEdgesInput = {
@@ -49206,6 +52441,7 @@ export namespace Prisma {
     map?: MapCreateNestedOneWithoutRoguelikeNodesInput
     childEdges?: RoguelikeEdgeCreateNestedManyWithoutParentInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUncheckedCreateWithoutParentEdgesInput = {
@@ -49221,6 +52457,7 @@ export namespace Prisma {
     createdAt?: Date | string
     childEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutNodeInput
+    shipGrant?: RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeCreateOrConnectWithoutParentEdgesInput = {
@@ -49251,6 +52488,7 @@ export namespace Prisma {
     map?: MapUpdateOneWithoutRoguelikeNodesNestedInput
     parentEdges?: RoguelikeEdgeUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateWithoutChildEdgesInput = {
@@ -49266,6 +52504,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     parentEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUpsertWithoutParentEdgesInput = {
@@ -49291,6 +52530,7 @@ export namespace Prisma {
     map?: MapUpdateOneWithoutRoguelikeNodesNestedInput
     childEdges?: RoguelikeEdgeUpdateManyWithoutParentNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateWithoutParentEdgesInput = {
@@ -49306,6 +52546,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     childEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput
   }
 
   export type UserCreateWithoutRoguelikeRunsInput = {
@@ -49323,6 +52564,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -49352,6 +52594,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -49514,6 +52757,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -49543,6 +52787,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -49845,6 +53090,7 @@ export namespace Prisma {
     map?: MapCreateNestedOneWithoutRoguelikeNodesInput
     childEdges?: RoguelikeEdgeCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeCreateNestedManyWithoutChildInput
+    shipGrant?: RoguelikeShipGrantCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeUncheckedCreateWithoutDefeatsInput = {
@@ -49860,6 +53106,7 @@ export namespace Prisma {
     createdAt?: Date | string
     childEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutParentInput
     parentEdges?: RoguelikeEdgeUncheckedCreateNestedManyWithoutChildInput
+    shipGrant?: RoguelikeShipGrantUncheckedCreateNestedOneWithoutNodeInput
   }
 
   export type RoguelikeNodeCreateOrConnectWithoutDefeatsInput = {
@@ -49930,6 +53177,7 @@ export namespace Prisma {
     map?: MapUpdateOneWithoutRoguelikeNodesNestedInput
     childEdges?: RoguelikeEdgeUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUpdateManyWithoutChildNestedInput
+    shipGrant?: RoguelikeShipGrantUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateWithoutDefeatsInput = {
@@ -49945,6 +53193,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     childEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutChildNestedInput
+    shipGrant?: RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput
   }
 
   export type UserCreateWithoutStatsInput = {
@@ -49962,6 +53211,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -49991,6 +53241,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -50036,6 +53287,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -50065,6 +53317,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -50094,6 +53347,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -50123,6 +53377,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -50224,6 +53479,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -50253,6 +53509,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -50362,6 +53619,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -50391,6 +53649,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -50490,6 +53749,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -50519,6 +53779,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -50596,6 +53857,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -50625,6 +53887,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -50659,6 +53922,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyCreateNestedManyWithoutReservedJoinerInput
@@ -50688,6 +53952,7 @@ export namespace Prisma {
     tutorialPath?: string | null
     createdAt?: Date | string
     ships?: ShipUncheckedCreateNestedManyWithoutOwnerInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedCreateNestedManyWithoutUserInput
     lobbiesCreated?: LobbyUncheckedCreateNestedManyWithoutCreatorInput
     lobbiesJoined?: LobbyUncheckedCreateNestedManyWithoutJoinerInput
     lobbiesReserved?: LobbyUncheckedCreateNestedManyWithoutReservedJoinerInput
@@ -50835,6 +54100,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -50864,6 +54130,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -50904,6 +54171,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUpdateManyWithoutReservedJoinerNestedInput
@@ -50933,6 +54201,7 @@ export namespace Prisma {
     tutorialPath?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     ships?: ShipUncheckedUpdateManyWithoutOwnerNestedInput
+    shipGrantAwards?: RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserNestedInput
     lobbiesCreated?: LobbyUncheckedUpdateManyWithoutCreatorNestedInput
     lobbiesJoined?: LobbyUncheckedUpdateManyWithoutJoinerNestedInput
     lobbiesReserved?: LobbyUncheckedUpdateManyWithoutReservedJoinerNestedInput
@@ -51016,6 +54285,15 @@ export namespace Prisma {
     destroyed?: boolean
     shipsDestroyed?: number
     destroyedAt?: Date | string | null
+    createdAt?: Date | string
+  }
+
+  export type RoguelikeShipGrantAwardCreateManyUserInput = {
+    id?: number
+    nodeId: number
+    shipId: number
+    lobbyId: number
+    countsAsClaim: boolean
     createdAt?: Date | string
   }
 
@@ -51236,6 +54514,32 @@ export namespace Prisma {
     destroyed?: BoolFieldUpdateOperationsInput | boolean
     shipsDestroyed?: IntFieldUpdateOperationsInput | number
     destroyedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUpdateWithoutUserInput = {
+    nodeId?: IntFieldUpdateOperationsInput | number
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedUpdateWithoutUserInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    nodeId?: IntFieldUpdateOperationsInput | number
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type RoguelikeShipGrantAwardUncheckedUpdateManyWithoutUserInput = {
+    id?: IntFieldUpdateOperationsInput | number
+    nodeId?: IntFieldUpdateOperationsInput | number
+    shipId?: IntFieldUpdateOperationsInput | number
+    lobbyId?: IntFieldUpdateOperationsInput | number
+    countsAsClaim?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -52030,6 +55334,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateWithoutMapInput = {
@@ -52045,6 +55350,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateManyWithoutMapInput = {
@@ -52273,6 +55579,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateWithoutCampaignInput = {
@@ -52288,6 +55595,7 @@ export namespace Prisma {
     childEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutParentNestedInput
     parentEdges?: RoguelikeEdgeUncheckedUpdateManyWithoutChildNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutNodeNestedInput
+    shipGrant?: RoguelikeShipGrantUncheckedUpdateOneWithoutNodeNestedInput
   }
 
   export type RoguelikeNodeUncheckedUpdateManyWithoutCampaignInput = {

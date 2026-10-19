@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import { JOINER_ZONE_CHANGED_NOTE } from "../utils/deploymentZone";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import {
   useCreatorZonePositions,
@@ -266,6 +267,7 @@ function Web3MapSaveButton({
           await send("setJoinerZone", [BigInt(mapId), joinerZonePositions]);
         }
         toast.success("Map updated");
+        if (joinerZoneChanged) toast(JOINER_ZONE_CHANGED_NOTE, { duration: 8000 });
       }
       onSuccess();
     } catch (e) {

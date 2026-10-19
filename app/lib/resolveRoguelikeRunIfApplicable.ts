@@ -44,11 +44,23 @@ export async function resolveRoguelikeRunIfApplicable(
   });
   if (!run || run.status !== "ACTIVE") return;
 
+  // Claim this game's result before acting on it: clear activeLobbyId only
+  // if it still points at this game. Finishing routes check the game is
+  // active and then update it in separate steps, so two requests at once
+  // (a double-clicked timeout claim, two tabs) can both get here; only the
+  // one that claims it applies the result, so a win can't heal, pay its DEC
+  // bonus or mint its reward ship twice.
+  const claim = await prisma.roguelikeRun.updateMany({
+    where: { id: run.id, status: "ACTIVE", activeLobbyId: lobbyId },
+    data: { activeLobbyId: null },
+  });
+  if (claim.count === 0) return;
+
   if (winnerId === AI_USER_ID) {
     await prisma.$transaction([
       prisma.roguelikeRun.update({
         where: { id: run.id },
-        data: { status: "ENDED", endedAt: new Date(), activeLobbyId: null },
+        data: { status: "ENDED", endedAt: new Date() },
       }),
       prisma.ship.updateMany({
         where: { id: { in: run.roster.map((r) => r.shipId) } },
@@ -99,12 +111,8 @@ export async function resolveRoguelikeRunIfApplicable(
       update: {},
       create: { runId: run.id, nodeId: run.currentNodeId },
     }),
-    prisma.roguelikeRun.update({
-      where: { id: run.id },
-      data: { activeLobbyId: null },
-    }),
   ]);
 
   // Heal Above Floor was applied above; applyWinEffects handles the rest.
-  await applyWinEffects(winEffects, winnerId);
+  await applyWinEffects(winEffects, winnerId, { nodeId: run.currentNodeId, lobbyId });
 }

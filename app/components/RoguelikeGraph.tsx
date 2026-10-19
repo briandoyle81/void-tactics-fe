@@ -1,5 +1,6 @@
 "use client";
 
+import { shipGrantToPreviewShip } from "../utils/previewShips";
 import React from "react";
 import { useAccount } from "wagmi";
 import { toast } from "react-hot-toast";
@@ -286,6 +287,14 @@ function Web3MissionDrawer({
                 ];
               })
           : undefined
+      }
+      rewardShip={
+        victoryEffects.shipGrant
+          ? {
+              reward: victoryEffects.shipGrant,
+              image: <ShipImage ship={shipGrantToPreviewShip(victoryEffects.shipGrant.grant)} className="h-full w-full" showLoadingState={false} hideRankStars />,
+            }
+          : null
       }
       dossier={
         <MissionDossier

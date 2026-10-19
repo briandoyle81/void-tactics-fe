@@ -35,6 +35,8 @@ import { aiConfigToPreviewShip, ARCHETYPE_LABEL } from "../utils/aiShipConfig";
 import { ShipImage } from "./ShipImage";
 import ShipCard from "./ShipCard";
 import { toShipCardData } from "../utils/toShipCardData";
+import { SHIP_GRANT_ADDRESS, useShipGrants } from "../hooks/useShipGrants";
+import { NodeRewardShipSummary } from "./rewardShips/NodeRewardShipSummary";
 
 interface RoguelikeNodeEditPanelProps {
   mode: "create" | "edit";
@@ -76,6 +78,8 @@ export function RoguelikeNodeEditPanel({
   const winEffectAddresses = useWinEffectAddresses();
   const { data: currentWinEffects, refetch: refetchWinEffects } = useRoguelikeNodeWinEffects(node?.id);
 
+  const grantNodeIds = React.useMemo(() => (node ? [Number(node.id)] : []), [node]);
+  const { grantsByNodeId } = useShipGrants(grantNodeIds, mode === "edit");
   const [selectedWinEffects, setSelectedWinEffects] = React.useState<string[]>([]);
   const [isSavingWinEffects, setIsSavingWinEffects] = React.useState(false);
   React.useEffect(() => {
@@ -182,6 +186,13 @@ export function RoguelikeNodeEditPanel({
           >
             {isSavingWinEffects ? "[SAVING...]" : "[SAVE WIN EFFECTS]"}
           </button>
+          {node && (
+            <NodeRewardShipSummary
+              nodeId={Number(node.id)}
+              grant={grantsByNodeId.get(Number(node.id))}
+              hasGrantEffect={(currentWinEffects ?? []).some((a) => a.toLowerCase() === SHIP_GRANT_ADDRESS.toLowerCase())}
+            />
+          )}
         </>
       }
       renderEnemyFleetPreview={(mapId) => (

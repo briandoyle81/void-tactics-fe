@@ -44,8 +44,6 @@ export function RoguelikeSettingsModalWeb2({
         repairCostPerHp,
         decBonusAmount: settings?.decBonusAmount.toString(),
         healAboveFloorPercent: settings?.healAboveFloorPercent,
-        shipGrantVariant: settings?.shipGrantVariant,
-        shipGrantTier: settings?.shipGrantTier,
       }}
       saves={{
         rootNodeId: (v) => saveCampaign({ rootNodeId: Number(v) || null }),
@@ -54,11 +52,9 @@ export function RoguelikeSettingsModalWeb2({
         initialCostCap: (v) => saveCampaign({ initialCostCap: Number(v) || 0 }),
         repairCostPerHp: (v) => admin.setRepairCostPerHp(Math.max(0, Number(v) || 0)),
         decBonusAmount: (v) => winEffectsAdmin.update({ decBonusAmount: Math.max(0, Number(v) || 0) }),
-        shipGrant: (variant, tier) => winEffectsAdmin.update({ shipGrantVariant: variant, shipGrantTier: tier }),
       }}
       repairCostLabel="Repair cost per HP"
       decBonusLabel="DEC Bonus — amount credited per win"
-      shipGrantLimits={{ variantMin: 0, variantMax: 2, tierMax: 3 }}
       onClose={onClose}
       onSaved={onSaved}
     />

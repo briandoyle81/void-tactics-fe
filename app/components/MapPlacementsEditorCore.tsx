@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { FleetShipListPanel, type FleetShipListItemData } from "./FleetShipListPanel";
 import { getFactionName } from "../config/factions";
+import { isDeploymentTile, type ZoneTile } from "../utils/deploymentZone";
 
 // The enemy-placement editor for one map: a roster of AI ship configs on the
 // left, the map on the right; drag (or tap then tap a tile) to place, drag to
@@ -53,6 +54,7 @@ export function MapPlacementsEditorCore({
   mapId,
   roster,
   savedPlacements,
+  joinerZone,
   maxPlacements,
   onSave,
   renderMap,
@@ -63,6 +65,12 @@ export function MapPlacementsEditorCore({
   roster: PlacementRosterEntry[];
   /** The map's saved placements; undefined while loading. */
   savedPlacements: { configId: number; row: number; col: number }[] | undefined;
+  /**
+   * The map's custom joiner-zone tiles (empty = the default columns 13–16),
+   * or undefined while loading. AI ships may only be placed there: the
+   * contract's setMapPlacement(s) and Fleets.createFleet both check it.
+   */
+  joinerZone: readonly ZoneTile[] | undefined;
   maxPlacements: number;
   /** Saves and resolves to the success message (rejects to show an error). */
   onSave: (placements: { configId: number; row: number; col: number }[]) => Promise<string>;
@@ -179,6 +187,17 @@ export function MapPlacementsEditorCore({
     }
   };
 
+  // Placements outside the joiner zone: saved before the map's zone was
+  // edited. Saving them reverts, and the mission can't start until they're
+  // moved or removed.
+  const outOfZoneCount = useMemo(
+    () =>
+      joinerZone
+        ? placements.filter((p) => !isDeploymentTile(p.row, p.col, false, joinerZone)).length
+        : 0,
+    [placements, joinerZone],
+  );
+
   const totalThreat = useMemo(
     () => placements.reduce((sum, p) => sum + (rosterById.get(p.configId)?.cost ?? 0), 0),
     [placements, rosterById],
@@ -259,7 +278,8 @@ export function MapPlacementsEditorCore({
                 </button>
                 <button
                   type="button"
-                  disabled={!isDirty || saving}
+                  disabled={!isDirty || saving || outOfZoneCount > 0}
+                  title={outOfZoneCount > 0 ? "Move or remove the ships outside the joiner zone first" : undefined}
                   onClick={() => void handleSave()}
                   className="w-full px-4 py-2 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold text-sm tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto md:whitespace-nowrap"
                 >
@@ -279,8 +299,15 @@ export function MapPlacementsEditorCore({
             </div>
 
             <p className="mb-4 text-xs text-text-muted">
-              Drag a ship from the roster onto the highlighted zone, or click one then click a tile. Click a placed ship to select it (drag to move, or use Remove Selected above). Enemy placements are restricted to the map&apos;s joiner columns — the same zone AI ships occupy in a real match.
+              Drag a ship from the roster onto the highlighted zone, or click one then click a tile. Click a placed ship to select it (drag to move, or use Remove Selected above). Enemy placements are restricted to the map&apos;s joiner zone — the same tiles AI ships occupy in a real match.
             </p>
+            {outOfZoneCount > 0 && (
+              <p className="mb-4 border border-warning-red/60 bg-warning-red/10 px-3 py-2 text-xs text-warning-red">
+                {outOfZoneCount === 1 ? "1 ship is" : `${outOfZoneCount} ships are`} outside this map&apos;s joiner
+                zone, probably because the zone was edited after the fleet was saved. This mission won&apos;t start
+                until you move or remove {outOfZoneCount === 1 ? "it" : "them"} and save.
+              </p>
+            )}
 
             <div className="flex gap-4 flex-1 min-h-0">
               <div className="w-1/4 flex flex-col gap-2 min-h-0">

@@ -13,7 +13,6 @@ import { useAIEncountersAdmin } from "../hooks/useAIEncountersAdmin";
 import {
   useDECBonusAmount,
   useHealAboveFloorPercent,
-  useShipGrantConfig,
 } from "../hooks/useWinEffects";
 import { useWinEffectsAdmin } from "../hooks/useWinEffectsAdmin";
 import { RoguelikeSettingsForm } from "./operations/RoguelikeSettingsForm";
@@ -41,7 +40,6 @@ export function RoguelikeSettingsModal({
   const { data: costCap, refetch: refetchCostCap } = useRoguelikeCampaignInitialCostCap(campaignId);
   const { data: decBonus, refetch: refetchDecBonus } = useDECBonusAmount();
   const { data: healAbove, refetch: refetchHealAbove } = useHealAboveFloorPercent();
-  const { variant: grantVariant, tier: grantTier, refetch: refetchShipGrant } = useShipGrantConfig();
 
   return (
     <RoguelikeSettingsForm
@@ -52,8 +50,6 @@ export function RoguelikeSettingsModal({
         initialCostCap: costCap?.toString(),
         decBonusAmount: decBonus?.toString(),
         healAboveFloorPercent: healAbove ?? undefined,
-        shipGrantVariant: grantVariant ?? undefined,
-        shipGrantTier: grantTier ?? undefined,
       }}
       saves={{
         rootNodeId: async (v) => {
@@ -81,14 +77,9 @@ export function RoguelikeSettingsModal({
           await winEffectsAdmin.setHealAboveFloorPercent(v);
           await refetchHealAbove();
         },
-        shipGrant: async (variant, tier) => {
-          await winEffectsAdmin.setShipGrantConfig(variant, tier);
-          await refetchShipGrant();
-        },
       }}
       repairCostLabel="Repair cost per HP (wei)"
       decBonusLabel="DEC Bonus — amount minted per win"
-      shipGrantLimits={{ variantMin: 1 }}
       onWithdraw={(to) => admin.withdrawResupplyFees(to as Address)}
       onSetEditor={async (address, allowed) => {
         await admin.setNodeEditor(address as Address, allowed);

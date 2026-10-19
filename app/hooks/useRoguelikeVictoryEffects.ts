@@ -7,9 +7,10 @@ import {
   useDECBonusAmount,
   useHealAboveFloorPercent,
   useRoguelikeNodeWinEffects,
-  useShipGrantConfig,
   useWinEffectAddresses,
 } from "./useWinEffects";
+import { useNodeRewardShip } from "./useShipGrants";
+import { useNodeRewardShipWeb2 } from "./useShipGrantsWeb2";
 import {
   NO_VICTORY_EFFECTS,
   type RoguelikeVictoryEffects,
@@ -21,7 +22,7 @@ export function useRoguelikeVictoryEffects(nodeId: bigint | undefined): Roguelik
   const addressByKey = useWinEffectAddresses();
   const { data: decBonus } = useDECBonusAmount();
   const { data: healToPercent } = useHealAboveFloorPercent();
-  const shipGrant = useShipGrantConfig();
+  const rewardShip = useNodeRewardShip(nodeId != null ? Number(nodeId) : undefined);
 
   return useMemo(() => {
     if (!effectAddresses || effectAddresses.length === 0) return NO_VICTORY_EFFECTS;
@@ -31,26 +32,26 @@ export function useRoguelikeVictoryEffects(nodeId: bigint | undefined): Roguelik
       healAboveFloorPercent:
         has("HEAL_ABOVE_FLOOR_WIN_EFFECT") && healToPercent != null ? Number(healToPercent) : null,
       decBonus: has("DEC_BONUS_WIN_EFFECT") && decBonus != null ? Number(decBonus) : null,
-      shipGrant:
-        has("SHIP_GRANT_WIN_EFFECT") && shipGrant.variant != null && shipGrant.tier != null
-          ? { variant: Number(shipGrant.variant), tier: Number(shipGrant.tier) }
-          : null,
+      // Only when the node runs Grant Ship: a grant on a node without the
+      // effect never mints.
+      shipGrant: has("SHIP_GRANT_WIN_EFFECT") ? rewardShip : null,
     };
-  }, [effectAddresses, addressByKey, decBonus, healToPercent, shipGrant.variant, shipGrant.tier]);
+  }, [effectAddresses, addressByKey, decBonus, healToPercent, rewardShip]);
 }
 
 interface PublicWinEffectsSettings {
   decBonusAmount: number;
   healAboveFloorPercent: number;
-  shipGrantVariant: number;
-  shipGrantTier: number;
 }
 
 /** Web2: a roguelike node's win effects (keys from RoguelikeNode.winEffects) with current values. */
 export function useRoguelikeVictoryEffectsWeb2(
+  nodeId: number | undefined,
   winEffects: readonly string[] | undefined,
 ): RoguelikeVictoryEffects {
   const hasAny = !!winEffects && winEffects.length > 0;
+  const hasGrantEffect = !!winEffects?.includes("SHIP_GRANT_WIN_EFFECT");
+  const rewardShip = useNodeRewardShipWeb2(hasGrantEffect ? nodeId : undefined);
   const { data: settings } = useQuery({
     queryKey: ["win-effects-settings", "public"],
     queryFn: () => apiFetch<PublicWinEffectsSettings>("/api/win-effects-settings"),
@@ -65,9 +66,7 @@ export function useRoguelikeVictoryEffectsWeb2(
         ? settings.healAboveFloorPercent
         : null,
       decBonus: winEffects!.includes("DEC_BONUS_WIN_EFFECT") ? settings.decBonusAmount : null,
-      shipGrant: winEffects!.includes("SHIP_GRANT_WIN_EFFECT")
-        ? { variant: settings.shipGrantVariant, tier: settings.shipGrantTier }
-        : null,
+      shipGrant: hasGrantEffect ? rewardShip : null,
     };
-  }, [hasAny, settings, winEffects]);
+  }, [hasAny, settings, winEffects, hasGrantEffect, rewardShip]);
 }

@@ -11,6 +11,8 @@ import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { aiConfigToPreviewShipWeb2, type AIShipConfigWeb2 } from "../utils/aiShipConfigWeb2";
 import { calculateAttributesFromContractsWeb2 } from "../utils/shipAttributesCalculatorWeb2";
 import { MapPlacementsEditorCore, type PlacementRosterEntry } from "./MapPlacementsEditorCore";
+import { useMapWeb2 } from "../hooks/useMapWeb2";
+import { GRID_DIMENSIONS } from "../types/types";
 
 interface AIMapPlacementWeb2 {
   id: number;
@@ -40,6 +42,8 @@ export function MapPlacementsEditorWeb2({
     queryKey: ["ai-map-placements", mapId],
     queryFn: () => apiFetch<AIMapPlacementWeb2[]>(`/api/admin/ai-map-placements?mapId=${mapId}`),
   });
+
+  const { joinerZone, isLoading: isMapLoading } = useMapWeb2(mapId, GRID_DIMENSIONS.WIDTH, GRID_DIMENSIONS.HEIGHT);
 
   const configById = useMemo(() => new Map(configs.map((c) => [c.id, c])), [configs]);
 
@@ -82,6 +86,7 @@ export function MapPlacementsEditorWeb2({
       mapId={mapId}
       roster={roster}
       savedPlacements={placementsData}
+      joinerZone={isMapLoading ? undefined : joinerZone}
       maxPlacements={MAX_PLACEMENTS_PER_MAP}
       startOpen={startOpen}
       onClose={onClose}

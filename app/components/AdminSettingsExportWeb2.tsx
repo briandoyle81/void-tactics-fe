@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { apiFetch } from "../lib/apiFetch";
 import { useWeb2Admin } from "../hooks/useWeb2Admin";
 import type { AIShipConfigWeb2 } from "../utils/aiShipConfigWeb2";
+import { downloadJson } from "../utils/jsonFileSave";
 
 interface Web2Map {
   id: number;
@@ -26,19 +27,6 @@ interface CampaignNodeWeb2 {
   turnTimeSeconds: number;
   maxScore: number;
   creatorGoesFirst: boolean;
-}
-
-function downloadJson(filename: string, data: unknown) {
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
 }
 
 interface Props {

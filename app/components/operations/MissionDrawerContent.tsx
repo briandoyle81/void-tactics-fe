@@ -2,9 +2,13 @@
 
 import type { ReactNode } from "react";
 import { nodeContentTextClass, type NodeContentStatus } from "../../hooks/useNodeContent";
+import { getFactionName } from "../../config/factions";
+import { calculateShipRank } from "../../utils/shipLevel";
+import { shipGrantToVisual, type NodeRewardShip } from "../../utils/shipGrant";
 
 // The run map drawer's mission view: title and kind, the briefing
-// transmission, the enemy fleet as named ship chips, then the dossier.
+// transmission, the enemy fleet as named ship chips, the reward ship (if the
+// node grants one), then the dossier.
 
 export interface EnemyShipChip {
   key: string;
@@ -20,6 +24,7 @@ export function MissionDrawerContent({
   kindLabel,
   briefing,
   enemyFleet,
+  rewardShip,
   dossier,
 }: {
   title: string;
@@ -28,6 +33,8 @@ export function MissionDrawerContent({
   briefing: ReactNode;
   /** Combat nodes only; null while loading. */
   enemyFleet?: EnemyShipChip[] | null;
+  /** The ship a win here mints; `image` is the mode's ShipImage of it. */
+  rewardShip?: { reward: NodeRewardShip; image: ReactNode } | null;
   dossier: ReactNode;
 }) {
   return (
@@ -68,7 +75,39 @@ export function MissionDrawerContent({
         </section>
       )}
 
+      {rewardShip && <RewardShipSection {...rewardShip} />}
+
       {dossier}
     </div>
+  );
+}
+
+function RewardShipSection({ reward, image }: { reward: NodeRewardShip; image: ReactNode }) {
+  const { grant, claimed } = reward;
+  const { rank } = calculateShipRank(shipGrantToVisual(grant));
+  const alreadyReceived = grant.oncePerAddress && claimed;
+  return (
+    <section aria-label="Reward ship">
+      <div className="mb-2 text-sm font-bold uppercase tracking-wider text-phosphor-green" style={DISPLAY_FONT}>
+        Reward ship
+      </div>
+      <div className={`flex items-center gap-3 border p-2 ${alreadyReceived ? "border-gunmetal" : "border-phosphor-green/50"}`}>
+        <div className={`h-16 w-16 shrink-0 overflow-hidden bg-black/40 ${alreadyReceived ? "opacity-50" : ""}`}>{image}</div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-bold text-text-primary">{grant.name}</div>
+          <div className="text-[11px] text-text-secondary">
+            {getFactionName(grant.variant)} · Rank {rank}
+            {grant.shiny ? " · Shiny" : ""}
+          </div>
+          <div className={`text-[11px] ${alreadyReceived ? "text-text-muted" : "text-phosphor-green"}`}>
+            {alreadyReceived
+              ? "Already received"
+              : grant.oncePerAddress
+                ? "Win to add it to your fleet (once)"
+                : "Every win adds one to your fleet"}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

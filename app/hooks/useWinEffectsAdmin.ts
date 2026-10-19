@@ -6,7 +6,8 @@ import { baseSepolia } from "viem/chains";
 import type { Abi, Address } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 
-// Owner-only config setters for the three concrete win-effect resolvers
+// Owner-only config setters for the DEC Bonus and Heal Above Floor win-effect
+// resolvers; Grant Ship is per node (useShipGrants.ts's useShipGrantAdmin)
 // (see contracts/IWinEffect.sol and useWinEffects.ts's WIN_EFFECT_CATALOG)
 // — each targets a different singleton contract, not RoguelikeNodeMap, so
 // kept separate from useRoguelikeNodeMapAdmin.ts (which owns node/campaign
@@ -51,22 +52,5 @@ export function useWinEffectsAdmin() {
     [writeContractAsync, publicClient],
   );
 
-  const setShipGrantConfig = useCallback(
-    async (variant: number, tier: number) => {
-      const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-        .SHIP_GRANT_WIN_EFFECT as Address;
-      const hash = await writeContractAsync({
-        address,
-        abi: CONTRACT_ABIS.SHIP_GRANT_WIN_EFFECT as Abi,
-        chainId: CHAIN_ID,
-        functionName: "setShipConfig",
-        args: [variant, tier],
-      });
-      await publicClient!.waitForTransactionReceipt({ hash });
-      return hash;
-    },
-    [writeContractAsync, publicClient],
-  );
-
-  return { setDecBonusAmount, setHealAboveFloorPercent, setShipGrantConfig };
+  return { setDecBonusAmount, setHealAboveFloorPercent };
 }
