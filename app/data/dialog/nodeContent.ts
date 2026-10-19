@@ -52,13 +52,22 @@ Our future is in your hands.
     Admiral, I think my hunch was right.  Securing this site will give us a better foothold in this sector.  We need to push ahead and find out who's building these new ships.
     `,
   },
-  6: {
+  16: {
     title: "Sneak Attack",
     description: `Admiral, our scouts report that the enemy has a base hidden in a gas cloud.  If we're careful, we can sneak through and take them by surprise.  Reports indicate that there's a small defensive contingent guarding the station, and an inactive ship that looks particularly powerful.
 
     The good news is that the enemy does seem to be following more of the rules. The station itself appears unarmed and unarmored.  We can't legally fire on the space station itself, but we don't have to worry about it shooting at us either.
 
-    There's no resources to claim with Central.  Knock out the enemy ships, send a team to seize the ship, and get out.
+    There's no resources to claim with Central.  Knock out the enemy ships, so we can send a team to seize the ship, then get out.
+    `,
+  },
+  31: {
+    title: "Repair Station",
+    description: `Admiral, we've found a repair station!  It's a small one, but it's enough to get our ships back to full strength.  We can use it to repair our ships and then continue our mission.
+
+    The bad news is that there's an enemy fleet guarding the station.  We'll need to knock them out before we can use it to repair our ships.
+
+    There's no resources to claim with Central.  Seize the station and send those creepy bastards packing..
     `,
   },
 };

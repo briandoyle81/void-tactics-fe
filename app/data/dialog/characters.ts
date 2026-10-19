@@ -44,6 +44,12 @@ export const DIALOG_CHARACTERS = {
     image: "/img/character-art/prototype-drone.svg",
     textColor: "var(--color-warning-red)",
   },
+  drone: {
+    id: "drone",
+    name: "0919 Foundation",
+    image: "/img/character-art/drone-core.svg",
+    textColor: "var(--color-warning-red)",
+  },
 } as const satisfies Record<string, DialogCharacter>;
 
 export type DialogCharacterId = keyof typeof DIALOG_CHARACTERS;
