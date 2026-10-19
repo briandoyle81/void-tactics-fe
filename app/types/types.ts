@@ -465,8 +465,12 @@ export interface MapEditorState {
   selectedTool: "block" | "impassable" | "score" | "erase" | "creatorZone" | "joinerZone";
   selectedScoreValue: number;
   selectedOnlyOnce: boolean;
-  symmetryMode: "none" | "radial";
+  symmetryMode: MapSymmetryMode;
 }
+
+// Map editor mirroring: radial = 180° turn about the center, horizontal =
+// left↔right mirror, vertical = top↔bottom mirror.
+export type MapSymmetryMode = "none" | "radial" | "horizontal" | "vertical";
 
 export const GRID_DIMENSIONS = {
   WIDTH: 17,

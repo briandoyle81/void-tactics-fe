@@ -62,12 +62,12 @@ Our future is in your hands.
     `,
   },
   31: {
-    title: "Repair Station",
+    title: "Repair Station DS7",
     description: `Admiral, we've found a repair station!  It's a small one, but it's enough to get our ships back to full strength.  We can use it to repair our ships and then continue our mission.
 
-    The bad news is that there's an enemy fleet guarding the station.  We'll need to knock them out before we can use it to repair our ships.
+    The bad news is that there's an enemy fleet guarding the station.  We'll need to knock them out before we can use it.
 
-    There's no resources to claim with Central.  Seize the station and send those creepy bastards packing..
+    There's no resources to claim with Central.  Seize the station and send those creepy bastards packing.
     `,
   },
 };

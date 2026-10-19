@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
   MapEditorState,
+  MapSymmetryMode,
   MapPosition,
   ScoringPosition,
   GRID_DIMENSIONS,
@@ -60,6 +61,13 @@ interface MapEditorProps {
 function toFileNamePart(value: string): string {
   return value.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
 }
+
+const MAP_SYMMETRY_MODES: readonly { mode: MapSymmetryMode; label: string; hint: string }[] = [
+  { mode: "none", label: "None", hint: "Edit one tile at a time" },
+  { mode: "radial", label: "Radial", hint: "Mirror through the center (180° turn)" },
+  { mode: "horizontal", label: "Horizontal ↔", hint: "Mirror left and right" },
+  { mode: "vertical", label: "Vertical ↕", hint: "Mirror top and bottom" },
+];
 
 const isZoneTool = (tool: string | null | undefined): tool is ZoneSide =>
   tool === "creatorZone" || tool === "joinerZone";
@@ -148,7 +156,7 @@ export function MapEditor({
               selectedTool: parsed.selectedTool || "score",
               selectedScoreValue: parsed.selectedScoreValue || 1,
               selectedOnlyOnce: parsed.selectedOnlyOnce || false,
-              symmetryMode: parsed.symmetryMode || "none",
+              symmetryMode: MAP_SYMMETRY_MODES.some((m) => m.mode === parsed.symmetryMode) ? parsed.symmetryMode : "none",
             };
           } else {
             // Clear invalid cached data
@@ -292,41 +300,28 @@ export function MapEditor({
     }
   }, [editorState]);
 
-  // Calculate radial symmetry positions
-  const getRadialSymmetryPositions = useCallback((row: number, col: number) => {
-    // For even dimensions, center is between tiles
-    // Center line is between (HEIGHT/2 - 1) and (HEIGHT/2)
-    const centerRow = (GRID_DIMENSIONS.HEIGHT - 1) / 2; // 5 for 11 rows
-    const centerCol = (GRID_DIMENSIONS.WIDTH - 1) / 2; // 8 for 17 cols
+  // The tiles an edit at (row, col) touches: the tile itself plus its
+  // mirror. Radial flips both axes (a 180° turn about the center),
+  // horizontal mirrors left↔right, vertical mirrors top↔bottom. On the
+  // center line the mirror is the tile itself, so it's listed once.
+  const getSymmetryPositions = useCallback(
+    (row: number, col: number, mode: MapSymmetryMode) => {
+      const positions = [{ row, col }];
+      if (mode === "none") return positions;
+      const mirrorRow = mode === "horizontal" ? row : GRID_DIMENSIONS.HEIGHT - 1 - row;
+      const mirrorCol = mode === "vertical" ? col : GRID_DIMENSIONS.WIDTH - 1 - col;
+      if (mirrorRow !== row || mirrorCol !== col) positions.push({ row: mirrorRow, col: mirrorCol });
+      return positions;
+    },
+    [],
+  );
 
-    // Calculate relative position from center
-    const relRow = row - centerRow;
-    const relCol = col - centerCol;
-
-    // Generate exactly 2 positions: original and opposite (both x and y flipped)
-    const positions = [
-      { row, col }, // Original position
-      {
-        row: Math.round(centerRow - relRow),
-        col: Math.round(centerCol - relCol),
-      }, // Opposite in both x and y
-    ];
-
-    // Filter out positions that are out of bounds
-    return positions.filter(
-      (pos) =>
-        pos.row >= 0 &&
-        pos.row < GRID_DIMENSIONS.HEIGHT &&
-        pos.col >= 0 &&
-        pos.col < GRID_DIMENSIONS.WIDTH
-    );
-  }, []);
-
-  // Paint (or clear) zone tiles. A tile belongs to at most one side; with
-  // radial symmetry the mirrored tile goes to the OPPOSITE side, so the two
-  // fleets get matching start areas.
+  // Paint (or clear) zone tiles. A tile belongs to at most one side. With
+  // radial or horizontal symmetry the mirrored tile is on the other half of
+  // the board, so it goes to the OPPOSITE side and the two fleets get
+  // matching start areas; with vertical symmetry it stays on the same side.
   const paintZone = useCallback(
-    (side: ZoneSide, row: number, col: number, value: boolean, radial: boolean) => {
+    (side: ZoneSide, row: number, col: number, value: boolean, mode: MapSymmetryMode) => {
       setZones((prev) => {
         const next = { creatorZone: prev.creatorZone.map((r) => [...r]), joinerZone: prev.joinerZone.map((r) => [...r]) };
         const set = (target: ZoneSide, r: number, c: number) => {
@@ -335,16 +330,15 @@ export function MapEditor({
           if (value) next[other][r][c] = false;
         };
         set(side, row, col);
-        if (radial) {
-          const mirror = getRadialSymmetryPositions(row, col)[1];
-          if (mirror && (mirror.row !== row || mirror.col !== col)) {
-            set(side === "creatorZone" ? "joinerZone" : "creatorZone", mirror.row, mirror.col);
-          }
+        const mirror = getSymmetryPositions(row, col, mode)[1];
+        if (mirror) {
+          const mirrorSide = mode === "vertical" ? side : side === "creatorZone" ? "joinerZone" : "creatorZone";
+          set(mirrorSide, mirror.row, mirror.col);
         }
         return next;
       });
     },
-    [getRadialSymmetryPositions],
+    [getSymmetryPositions],
   );
 
   // Handle tile click
@@ -372,9 +366,7 @@ export function MapEditor({
 
         // Get positions to modify (including symmetry if enabled)
         const positions =
-          prev.symmetryMode === "radial"
-            ? getRadialSymmetryPositions(row, col)
-            : [{ row, col }];
+          getSymmetryPositions(row, col, prev.symmetryMode);
 
         positions.forEach(({ row: posRow, col: posCol }) => {
           // "block"/"impassable" are handled entirely by
@@ -412,8 +404,7 @@ export function MapEditor({
         };
       });
       if (editorState.selectedTool === "erase" && canEditZones) {
-        const radial = editorState.symmetryMode === "radial";
-        const targets = radial ? getRadialSymmetryPositions(row, col) : [{ row, col }];
+        const targets = getSymmetryPositions(row, col, editorState.symmetryMode);
         setZones((prev) => {
           const next = { creatorZone: prev.creatorZone.map((r) => [...r]), joinerZone: prev.joinerZone.map((r) => [...r]) };
           targets.forEach(({ row: r, col: c }) => {
@@ -424,7 +415,7 @@ export function MapEditor({
         });
       }
     },
-    [getRadialSymmetryPositions, canEdit, canEditZones, editorState.selectedTool, editorState.symmetryMode]
+    [getSymmetryPositions, canEdit, canEditZones, editorState.selectedTool, editorState.symmetryMode]
   );
 
   // Handle tile mouse down for drag start
@@ -441,7 +432,7 @@ export function MapEditor({
         const side = editorState.selectedTool;
         setIsDragging(true);
         setDragTool(side);
-        paintZone(side, row, col, true, editorState.symmetryMode === "radial");
+        paintZone(side, row, col, true, editorState.symmetryMode);
         return;
       }
       if (editorState.selectedTool === "block" || editorState.selectedTool === "impassable") {
@@ -455,9 +446,7 @@ export function MapEditor({
           const newTiles = prev[key].map((rowArray) => [...rowArray]);
 
           const positions =
-            prev.symmetryMode === "radial"
-              ? getRadialSymmetryPositions(row, col)
-              : [{ row, col }];
+            getSymmetryPositions(row, col, prev.symmetryMode);
 
           positions.forEach(({ row: posRow, col: posCol }) => {
             newTiles[posRow][posCol] = true;
@@ -471,7 +460,7 @@ export function MapEditor({
       }
       // For non-paintable tools, don't do anything here - let onClick handle it
     },
-    [editorState.selectedTool, editorState.symmetryMode, getRadialSymmetryPositions, canEdit, canEditZones, paintZone]
+    [editorState.selectedTool, editorState.symmetryMode, getSymmetryPositions, canEdit, canEditZones, paintZone]
   );
 
   // Handle tile mouse enter for drag painting
@@ -483,7 +472,7 @@ export function MapEditor({
       }
 
       if (isDragging && isZoneTool(dragTool)) {
-        paintZone(dragTool, row, col, true, editorState.symmetryMode === "radial");
+        paintZone(dragTool, row, col, true, editorState.symmetryMode);
         return;
       }
       if (isDragging && (dragTool === "block" || dragTool === "impassable")) {
@@ -494,9 +483,7 @@ export function MapEditor({
 
           // Get positions to modify (including symmetry if enabled)
           const positions =
-            prev.symmetryMode === "radial"
-              ? getRadialSymmetryPositions(row, col)
-              : [{ row, col }];
+            getSymmetryPositions(row, col, prev.symmetryMode);
 
           positions.forEach(({ row: posRow, col: posCol }) => {
             // Paint mode
@@ -510,7 +497,7 @@ export function MapEditor({
         });
       }
     },
-    [isDragging, dragTool, getRadialSymmetryPositions, canEdit, paintZone, editorState.symmetryMode]
+    [isDragging, dragTool, getSymmetryPositions, canEdit, paintZone, editorState.symmetryMode]
   );
 
   // Handle mouse up to stop dragging
@@ -558,7 +545,7 @@ export function MapEditor({
       if (isZoneTool(editorState.selectedTool)) {
         if (canEditZones) {
           const side = editorState.selectedTool;
-          paintZone(side, row, col, !zones[side][row][col], false);
+          paintZone(side, row, col, !zones[side][row][col], "none");
         }
         return;
       }
@@ -921,25 +908,23 @@ export function MapEditor({
 
         <div className="flex items-center gap-2">
           <label className="text-sm text-text-secondary">Symmetry:</label>
-          <button
-            onClick={() =>
-              setEditorState((prev) => ({
-                ...prev,
-                symmetryMode:
-                  prev.symmetryMode === "radial" ? "none" : "radial",
-              }))
-            }
-            disabled={!canEdit}
-            className={`px-3 py-2 rounded-none text-sm font-mono ${
-              !canEdit
-                ? "bg-steel text-text-muted cursor-not-allowed"
-                : editorState.symmetryMode === "radial"
-                ? "bg-purple text-white"
-                : "bg-steel text-text-secondary hover:bg-gunmetal"
-            }`}
-          >
-            {editorState.symmetryMode === "radial" ? "Radial ON" : "Radial OFF"}
-          </button>
+          {MAP_SYMMETRY_MODES.map(({ mode, label, hint }) => (
+            <button
+              key={mode}
+              onClick={() => setEditorState((prev) => ({ ...prev, symmetryMode: mode }))}
+              disabled={!canEdit}
+              title={hint}
+              className={`px-3 py-2 rounded-none text-sm font-mono ${
+                !canEdit
+                  ? "bg-steel text-text-muted cursor-not-allowed"
+                  : editorState.symmetryMode === mode
+                  ? "bg-purple text-white"
+                  : "bg-steel text-text-secondary hover:bg-gunmetal"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2">
@@ -1015,7 +1000,7 @@ export function MapEditor({
           Current tool: {editorState.selectedTool} | Points:{" "}
           {editorState.selectedScoreValue} | Once only:{" "}
           {editorState.selectedOnlyOnce ? "Yes" : "No"} | Symmetry:{" "}
-          {editorState.symmetryMode === "radial" ? "Radial" : "None"}
+          {MAP_SYMMETRY_MODES.find((m) => m.mode === editorState.symmetryMode)?.label ?? "None"}
         </div>
 
         <div className="flex flex-wrap gap-4 text-xs text-text-secondary">

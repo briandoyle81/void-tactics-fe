@@ -12,7 +12,7 @@ import { type ReactNode, useEffect, memo } from "react";
 import { ContractEventsHost } from "./hooks/useContractEvents";
 import { useQueryClient } from "@tanstack/react-query";
 import { VOID_TACTICS_CHAIN_CHANGED_EVENT, xaiTestnet } from "./config/networks";
-import MobileAlphaNoticeModal from "./components/MobileAlphaNoticeModal";
+import AlphaNoticeModal from "./components/AlphaNoticeModal";
 import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
 import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
 import { ClearOAuthRedirectParams } from "./components/ClearOAuthRedirectParams";
@@ -106,7 +106,7 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
       <GasGrantClaimer />
       <TransactionProvider>
         {children}
-        <MobileAlphaNoticeModal />
+        <AlphaNoticeModal />
       </TransactionProvider>
     </>
   );

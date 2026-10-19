@@ -1055,8 +1055,9 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
       <div
         className={`mx-auto flex ${GAME_CONTENT_MAX_WIDTH_CLASS} items-center gap-2 px-3 py-2 sm:px-6 md:gap-4 lg:px-10`}
       >
-        <div className={isSignedIn ? "hidden md:block" : "block"}>
+        <div className={isSignedIn ? "hidden items-center gap-2 md:flex md:gap-4" : "block"}>
           <HeaderTitleBlock isSignedIn={isSignedIn} />
+          {isSignedIn && <HeaderAlphaBadge compact />}
         </div>
 
         {isSignedIn && isHydrated && (

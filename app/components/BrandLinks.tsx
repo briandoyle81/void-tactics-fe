@@ -2,15 +2,20 @@
 
 import React from "react";
 import { ALPHA_DISCORD_INVITE_URL } from "../config/alpha";
+import { openAlphaNotice } from "../utils/alphaNotice";
 
 // Brand chrome shared by the game client's Header and the website header.
 
 export const VOID_TACTICS_X_URL = "https://x.com/voidtacticsxyz";
 
+/** The [ALPHA] badge. Opens the Alpha notice (AlphaNoticeModal). */
 export function HeaderAlphaBadge({ compact }: { compact?: boolean }) {
   return (
-    <div
-      className={`shrink-0 border border-solid w-fit ${
+    <button
+      type="button"
+      onClick={openAlphaNotice}
+      title="About the Alpha"
+      className={`shrink-0 cursor-pointer border border-solid w-fit transition-[filter] hover:brightness-125 ${
         compact ? "px-2 py-0.5" : "px-2.5 py-1"
       }`}
       style={{
@@ -25,7 +30,7 @@ export function HeaderAlphaBadge({ compact }: { compact?: boolean }) {
       }}
     >
       [ALPHA]
-    </div>
+    </button>
   );
 }
 
