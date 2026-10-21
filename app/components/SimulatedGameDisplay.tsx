@@ -320,6 +320,7 @@ export function SimulatedGameDisplay({
     executeAction,
     isStepHydrated,
     isConfirmingMove,
+    pendingAction,
     nextStep,
     previousStep,
     resetTutorial,
@@ -1089,12 +1090,23 @@ export function SimulatedGameDisplay({
 
   // Mirror live-game retreat prep visual: when a disabled ship is selected on
   // the player's turn, show the in-cell retreat effect (flip + engine glow).
+  // It stays on while a submitted Retreat confirms (the live game keeps its
+  // selection until the turn changes), so the ship doesn't drop back to its
+  // disabled art before the flee animation plays.
+  const pendingRetreatShipId =
+    isConfirmingMove &&
+    pendingAction?.type === "moveShip" &&
+    pendingAction.actionType === ActionType.Retreat &&
+    pendingAction.shipId != null
+      ? BigInt(pendingAction.shipId)
+      : null;
   const retreatPrepShipId =
-    selectedShipId != null &&
+    pendingRetreatShipId ??
+    (selectedShipId != null &&
     actionOverride === ActionType.Retreat &&
     isShipOwnedByCurrentPlayer(selectedShipId)
       ? selectedShipId
-      : null;
+      : null);
 
   const retreatPrepIsCreator = useMemo(() => {
     if (retreatPrepShipId == null) return null;

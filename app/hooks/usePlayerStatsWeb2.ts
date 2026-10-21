@@ -9,7 +9,7 @@ import { apiFetch } from "../lib/apiFetch";
 export function usePlayerStatsWeb2(userId: string | null) {
   const { data } = useQuery({
     queryKey: ["user", "stats", userId],
-    queryFn: () => apiFetch<{ wins: number; losses: number }>(`/api/user/${userId}/stats`),
+    queryFn: () => apiFetch<{ wins: number; losses: number; draws: number; totalGames: number }>(`/api/user/${userId}/stats`),
     enabled: userId != null && userId !== "",
     staleTime: 30_000,
   });

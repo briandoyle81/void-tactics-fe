@@ -3,7 +3,9 @@
 import { navigateToGame as openGame } from "../utils/navigateToGame";
 import React, { useMemo } from "react";
 import { useAccount } from "wagmi";
+import { baseSepolia } from "viem/chains";
 import { usePlayerGames } from "../hooks/usePlayerGames";
+import { usePlayerStats } from "../hooks/usePlayerStats";
 import { PlayerStatsPanel } from "./PlayerStatsPanel";
 import { GameHistoryList, type GameHistoryRowData } from "./GameHistoryList";
 import { CopyAddressButton } from "./CopyAddressButton";
@@ -14,29 +16,23 @@ const Profile: React.FC = () => {
   const { address, isConnected } = useAccount();
   const { games, isLoading } = usePlayerGames();
 
-  // Calculate statistics from finished games
+  // The record is GameResults' (PvP games plus the tutorial's win or loss,
+  // TutorialClaim.completeTutorialWinPath/LossPath), not a count of the
+  // games list: the tutorial has no game, and PvE games don't count.
+  const record = usePlayerStats(address, baseSepolia.id);
   const stats = useMemo(() => {
-    if (!address || !games.length) {
-      return { wins: 0, losses: 0, inProgress: 0, winRate: 0, total: 0 };
-    }
-
-    const finishedGames = games.filter(
-      (game) => game.metadata.winner !== ZERO_ADDRESS
-    );
-
-    const wins = finishedGames.filter(
-      (game) => game.metadata.winner.toLowerCase() === address.toLowerCase()
-    ).length;
-
-    const losses = finishedGames.length - wins;
-    const inProgress = games.length - finishedGames.length;
-    const winRate =
-      finishedGames.length > 0
-        ? Math.round((wins / finishedGames.length) * 100)
-        : 0;
-
-    return { wins, losses, inProgress, winRate, total: games.length };
-  }, [games, address]);
+    const inProgress = games.filter((game) => game.metadata.winner === ZERO_ADDRESS).length;
+    const wins = Number(record?.wins ?? 0n);
+    const losses = Number(record?.losses ?? 0n);
+    const decided = wins + losses;
+    return {
+      wins,
+      losses,
+      inProgress,
+      winRate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
+      total: Number(record?.totalGames ?? 0n),
+    };
+  }, [games, record]);
 
   // Sort games: finished first (by startedAt desc), then in progress
   const sortedGames = useMemo(() => {

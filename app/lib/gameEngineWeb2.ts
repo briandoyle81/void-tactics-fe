@@ -19,6 +19,7 @@ import { resolveCampaignNodeIfApplicable } from "./resolveCampaignNodeIfApplicab
 import { resolveRoguelikeRunIfApplicable } from "./resolveRoguelikeRunIfApplicable";
 import { getWinEffectsSettings } from "./winEffectsWeb2";
 import { AI_USER_ID } from "../config/aiUser";
+import { recordGameResult } from "./playerStatsWeb2";
 
 // Server-side turn-processing engine — ported from `explore-traditional`'s
 // `app/api/games/[id]/action/route.ts` (human-vs-human logic only; the
@@ -871,30 +872,14 @@ export async function applyGameAction(
     }
 
     if (finalPhase === GamePhase.COMPLETED && finalWinnerId && finalWinnerId !== game.winnerId) {
-      if (finalWinnerId === WEB2_TIE_SENTINEL) {
-        await tx.playerStats.upsert({
-          where: { userId: game.player1Id },
-          update: { draws: { increment: 1 }, totalGames: { increment: 1 } },
-          create: { userId: game.player1Id, draws: 1, totalGames: 1 },
-        });
-        await tx.playerStats.upsert({
-          where: { userId: game.player2Id },
-          update: { draws: { increment: 1 }, totalGames: { increment: 1 } },
-          create: { userId: game.player2Id, draws: 1, totalGames: 1 },
-        });
-      } else {
-        const loserId = finalWinnerId === game.player1Id ? game.player2Id : game.player1Id;
-        await tx.playerStats.upsert({
-          where: { userId: finalWinnerId },
-          update: { wins: { increment: 1 }, totalGames: { increment: 1 } },
-          create: { userId: finalWinnerId, wins: 1, totalGames: 1 },
-        });
-        await tx.playerStats.upsert({
-          where: { userId: loserId },
-          update: { losses: { increment: 1 }, totalGames: { increment: 1 } },
-          create: { userId: loserId, losses: 1, totalGames: 1 },
-        });
-      }
+      const loserId = finalWinnerId === game.player1Id ? game.player2Id : game.player1Id;
+      await recordGameResult(
+        tx,
+        game.lobby,
+        finalWinnerId === WEB2_TIE_SENTINEL
+          ? { draw: [game.player1Id, game.player2Id] }
+          : { winnerId: finalWinnerId, loserId },
+      );
       // Free all ships used in this game so players can use them again
       const gameFleets = await tx.fleet.findMany({ where: { lobbyId: game.lobbyId } });
       const allFleetShipIds = gameFleets.flatMap((f) => f.shipIds);

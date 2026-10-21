@@ -11,8 +11,11 @@ import type { Attributes } from "../types/types";
 // under the (long-lived) blob, and since constructing a ship doesn't change
 // the shipIds cache key, the stale zeros were served forever afterward
 // (most visibly: variant 2 ships showing 0% armor/shield damage reduction).
+// v3 -> v4: an invalidation didn't refetch wagmi's in-memory query, so the
+// pre-construction zeros were written back after every construct
+// (useShipAttributesByIds now uses a fresh scopeKey per invalidation).
 const SHIP_ATTRIBUTES_BY_IDS_CACHE_KEY_PREFIX =
-  "ship-attributes-cache-v3" as const;
+  "ship-attributes-cache-v4" as const;
 
 // Dispatched whenever a chain's by-ids attributes blob is invalidated so any
 // mounted useShipAttributesByIds can drop its in-memory memo and refetch,
@@ -20,8 +23,11 @@ const SHIP_ATTRIBUTES_BY_IDS_CACHE_KEY_PREFIX =
 export const SHIP_ATTRIBUTES_CACHE_INVALIDATED_EVENT =
   "void-tactics-ship-attributes-cache-invalidated" as const;
 
+// The key carries the first 6 hex characters of the chain's Ships contract,
+// so a Ships redeploy (ship ids start over) moves to a fresh key.
 function shipAttributesByIdsCacheKey(chainId: number): string {
-  return `${SHIP_ATTRIBUTES_BY_IDS_CACHE_KEY_PREFIX}:${chainId}`;
+  const ships = (getContractAddresses(chainId).SHIPS as string | undefined) ?? "";
+  return `${SHIP_ATTRIBUTES_BY_IDS_CACHE_KEY_PREFIX}:${chainId}:${ships.slice(2, 8).toLowerCase()}`;
 }
 
 const CONTRACT_SNAPSHOT_KEY = (chainId: number) =>

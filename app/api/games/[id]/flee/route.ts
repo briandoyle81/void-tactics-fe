@@ -3,6 +3,7 @@ import { prisma } from "../../../../lib/prisma";
 import { requireAuth } from "../../../../lib/auth";
 import { GamePhase } from "../../../../generated/prisma";
 import type { Web2GameDataView } from "../../../../types/web2Game";
+import { recordGameResult } from "../../../../lib/playerStatsWeb2";
 import { resolveTournamentMatchIfApplicable } from "../../../../lib/resolveTournamentMatchIfApplicable";
 import { resolveCampaignNodeIfApplicable } from "../../../../lib/resolveCampaignNodeIfApplicable";
 import { resolveRoguelikeRunIfApplicable } from "../../../../lib/resolveRoguelikeRunIfApplicable";
@@ -23,6 +24,7 @@ export async function POST(
       id: gameId,
       OR: [{ player1Id: userId! }, { player2Id: userId! }],
     },
+    include: { lobby: true },
   });
 
   if (!game) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -44,16 +46,7 @@ export async function POST(
       data: { state: newState as unknown as object, phase: GamePhase.COMPLETED, winnerId },
     });
 
-    await tx.playerStats.upsert({
-      where: { userId: winnerId },
-      update: { wins: { increment: 1 }, totalGames: { increment: 1 } },
-      create: { userId: winnerId, wins: 1, totalGames: 1 },
-    });
-    await tx.playerStats.upsert({
-      where: { userId: loserId },
-      update: { losses: { increment: 1 }, totalGames: { increment: 1 } },
-      create: { userId: loserId, losses: 1, totalGames: 1 },
-    });
+    await recordGameResult(tx, game.lobby, { winnerId, loserId });
 
     const gameFleets = await tx.fleet.findMany({ where: { lobbyId: game.lobbyId } });
     const allFleetShipIds = gameFleets.flatMap((f) => f.shipIds);

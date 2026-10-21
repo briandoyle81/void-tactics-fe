@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { requireAuth } from "@/app/lib/auth";
+import { addPlayerResult } from "@/app/lib/playerStatsWeb2";
 
 // The signed-in web2 player's tutorial ("first battle") record. Players who
 // haven't done it get it as the first mission on the Operations map
@@ -44,10 +45,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
   const keepPath = user.tutorialPath === "win" || user.tutorialPath === "loss";
-  const updated = await prisma.user.update({
-    where: { id: userId! },
-    data: { tutorialCompleted: true, tutorialPath: keepPath ? user.tutorialPath : path },
-    select: { tutorialCompleted: true, tutorialPath: true },
+  // The first finished path adds a win or a loss to the player's record, like
+  // web3's TutorialClaim.completeTutorialWinPath/LossPath (GameResults).
+  const recordResult = !keepPath && (path === "win" || path === "loss");
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.user.update({
+      where: { id: userId! },
+      data: { tutorialCompleted: true, tutorialPath: keepPath ? user.tutorialPath : path },
+      select: { tutorialCompleted: true, tutorialPath: true },
+    });
+    if (recordResult) await addPlayerResult(tx, userId!, path === "win" ? "win" : "loss");
+    return u;
   });
   return NextResponse.json(updated);
 }

@@ -18,8 +18,13 @@ export async function GET(
   const { id } = await params;
   const stats = await prisma.playerStats.findUnique({
     where: { userId: id },
-    select: { wins: true, losses: true },
+    select: { wins: true, losses: true, draws: true, totalGames: true },
   });
 
-  return NextResponse.json({ wins: stats?.wins ?? 0, losses: stats?.losses ?? 0 });
+  return NextResponse.json({
+    wins: stats?.wins ?? 0,
+    losses: stats?.losses ?? 0,
+    draws: stats?.draws ?? 0,
+    totalGames: stats?.totalGames ?? 0,
+  });
 }

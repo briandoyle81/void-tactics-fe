@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { requireAuth } from "../../../../lib/auth";
 import { GamePhase } from "../../../../generated/prisma";
+import { recordGameResult } from "../../../../lib/playerStatsWeb2";
 import { resolveTournamentMatchIfApplicable } from "../../../../lib/resolveTournamentMatchIfApplicable";
 import { resolveCampaignNodeIfApplicable } from "../../../../lib/resolveCampaignNodeIfApplicable";
 import { resolveRoguelikeRunIfApplicable } from "../../../../lib/resolveRoguelikeRunIfApplicable";
@@ -47,22 +48,13 @@ export async function POST(
   const gameFleets = await prisma.fleet.findMany({ where: { lobbyId: game.lobbyId } });
   const allFleetShipIds = gameFleets.flatMap((f) => f.shipIds);
 
-  await prisma.$transaction([
-    prisma.game.update({ where: { id: gameId }, data: { phase: GamePhase.TIMED_OUT, winnerId, state: patchedState } }),
-    prisma.playerStats.upsert({
-      where: { userId: winnerId },
-      update: { wins: { increment: 1 }, totalGames: { increment: 1 } },
-      create: { userId: winnerId, wins: 1, totalGames: 1 },
-    }),
-    prisma.playerStats.upsert({
-      where: { userId: game.currentTurn },
-      update: { losses: { increment: 1 }, totalGames: { increment: 1 } },
-      create: { userId: game.currentTurn, losses: 1, totalGames: 1 },
-    }),
-    ...(allFleetShipIds.length > 0
-      ? [prisma.ship.updateMany({ where: { id: { in: allFleetShipIds } }, data: { inFleet: false } })]
-      : []),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.game.update({ where: { id: gameId }, data: { phase: GamePhase.TIMED_OUT, winnerId, state: patchedState } });
+    await recordGameResult(tx, game.lobby, { winnerId, loserId: game.currentTurn });
+    if (allFleetShipIds.length > 0) {
+      await tx.ship.updateMany({ where: { id: { in: allFleetShipIds } }, data: { inFleet: false } });
+    }
+  });
 
   await resolveTournamentMatchIfApplicable(game.lobbyId, winnerId);
   await resolveCampaignNodeIfApplicable(game.lobbyId, winnerId);

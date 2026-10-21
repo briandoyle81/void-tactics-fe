@@ -3,6 +3,7 @@
 import React, { useMemo } from "react";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { usePlayerGamesWeb2 } from "../hooks/usePlayerGamesWeb2";
+import { usePlayerStatsWeb2 } from "../hooks/usePlayerStatsWeb2";
 import { WEB2_TIE_SENTINEL } from "../types/web2Game";
 import { PlayerStatsPanel } from "./PlayerStatsPanel";
 import { GameHistoryList, type GameHistoryRowData } from "./GameHistoryList";
@@ -17,27 +18,24 @@ const ProfileWeb2: React.FC = () => {
   const { userId, isLoggedIn } = useCurrentUser();
   const { games, isLoading } = usePlayerGamesWeb2();
 
+  // The record is PlayerStats (finished games plus the tutorial's win or
+  // loss), like web3's GameResults; the tutorial has no game to count.
+  const record = usePlayerStatsWeb2(userId);
   const stats = useMemo(() => {
-    if (!userId || !games.length) {
-      return { wins: 0, losses: 0, draws: 0, inProgress: 0, winRate: 0, total: 0 };
-    }
-
-    const finishedGames = games.filter((game) => game.metadata.winner !== "");
-    const draws = finishedGames.filter(
-      (game) => game.metadata.winner === WEB2_TIE_SENTINEL,
-    ).length;
-    const wins = finishedGames.filter(
-      (game) => game.metadata.winner === userId,
-    ).length;
-    const losses = finishedGames.length - wins - draws;
-    const inProgress = games.length - finishedGames.length;
-    const winRate =
-      finishedGames.length > 0
-        ? Math.round((wins / finishedGames.length) * 100)
-        : 0;
-
-    return { wins, losses, draws, inProgress, winRate, total: games.length };
-  }, [games, userId]);
+    const inProgress = games.filter((game) => game.metadata.winner === "").length;
+    const wins = record?.wins ?? 0;
+    const losses = record?.losses ?? 0;
+    const draws = record?.draws ?? 0;
+    const decided = wins + losses + draws;
+    return {
+      wins,
+      losses,
+      draws,
+      inProgress,
+      winRate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
+      total: record?.totalGames ?? 0,
+    };
+  }, [games, record]);
 
   const sortedGames = useMemo(() => {
     return [...games].sort((a, b) => {

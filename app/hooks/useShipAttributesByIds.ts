@@ -82,6 +82,10 @@ export function useShipAttributesByIds(shipIds: bigint[], chainIdOverride?: numb
     chainId,
     functionName: "calculateShipAttributesByIds",
     args: contractArgs,
+    // A new query after each invalidation. Otherwise wagmi serves the rows it
+    // read before (e.g. zeroed stats from before construction) for the same
+    // ids, and the effect below writes them straight back into the cache.
+    scopeKey: `ship-attributes-${cacheBust}`,
   });
 
   React.useEffect(() => {
