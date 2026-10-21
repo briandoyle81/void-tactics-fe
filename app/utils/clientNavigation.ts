@@ -4,7 +4,7 @@ import { applyUrlParams, CLIENT_CHILD_PARAMS, getUrlParam, setUrlParams, type Ur
 
 export { CLIENT_TAB_SLUGS, clientTabFromSlug, type ClientTab } from "../config/clientTabs";
 
-// The game client (app/play/GameClient.tsx) keeps its screen in the URL (see
+// The game client (app/(client)/play/GameClient.tsx) keeps its screen in the URL (see
 // urlState.ts): the tab in the path (/play/<slug>) plus whatever the screen
 // adds to the query. Inside the client, navigation pushes history entries;
 // from pages without it (Ops Console, spectator) it loads the same URL.

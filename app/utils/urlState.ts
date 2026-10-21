@@ -14,8 +14,8 @@ import { ADMIN_PATH, PLAY_PATH } from "../config/routes";
 // other key is in the query string. Both go through the same functions
 // here. Keys in use (see CLIENT_CHILD_PARAMS for which are cleared on a tab
 // change):
-//   tab         top-level screen (app/play/GameClient.tsx,
-//               app/admin/OpsConsole.tsx)
+//   tab         top-level screen (app/(client)/play/GameClient.tsx,
+//               app/(client)/admin/OpsConsole.tsx)
 //   section     Store / Fleet sub-tab
 //   game        open match (Games / GamesWeb2); `replay=1` opened in replay
 //   lobby       open lobby detail; `create=1` the create form; `fleet` (+

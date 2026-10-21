@@ -4,13 +4,13 @@ import { useParams } from "next/navigation";
 import { formatEther } from "viem";
 import { useState, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { useTournament } from "../../hooks/useTournament";
-import { useTournamentActions } from "../../hooks/useTournamentActions";
-import { TournamentRegister } from "../../components/TournamentRegister";
-import { TournamentBracket } from "../../components/TournamentBracket";
-import { TournamentAdminPanel } from "../../components/TournamentAdminPanel";
-import { TournamentStartControls } from "../../components/TournamentStartControls";
-import { TournamentState } from "../../types/types";
+import { useTournament } from "../../../hooks/useTournament";
+import { useTournamentActions } from "../../../hooks/useTournamentActions";
+import { TournamentRegister } from "../../../components/TournamentRegister";
+import { TournamentBracket } from "../../../components/TournamentBracket";
+import { TournamentAdminPanel } from "../../../components/TournamentAdminPanel";
+import { TournamentStartControls } from "../../../components/TournamentStartControls";
+import { TournamentState } from "../../../types/types";
 
 const STATE_LABELS: Record<TournamentState, string> = {
   [TournamentState.Registration]: "Registration Open",

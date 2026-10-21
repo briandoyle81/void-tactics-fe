@@ -10,22 +10,22 @@ import {
   type ReactNode,
 } from "react";
 import { useAccount } from "wagmi";
-import { SessionRestoreProbe } from "../components/SessionRestoreProbe";
-import Header from "../components/Header";
-import { GameNav, type GameSection } from "../components/GameNav";
-import { BootScreen } from "../components/BootScreen";
-import { SignedOutOperations } from "../components/operations/SignedOutOperations";
-import { CommandDeckWeb3 } from "../components/commandDeck/CommandDeckWeb3";
-import { CommandDeckWeb2 } from "../components/commandDeck/CommandDeckWeb2";
-import type { CommandDeckDestination } from "../components/commandDeck/CommandDeck";
+import { SessionRestoreProbe } from "../../components/SessionRestoreProbe";
+import Header from "../../components/Header";
+import { GameNav, type GameSection } from "../../components/GameNav";
+import { BootScreen } from "../../components/BootScreen";
+import { SignedOutOperations } from "../../components/operations/SignedOutOperations";
+import { CommandDeckWeb3 } from "../../components/commandDeck/CommandDeckWeb3";
+import { CommandDeckWeb2 } from "../../components/commandDeck/CommandDeckWeb2";
+import type { CommandDeckDestination } from "../../components/commandDeck/CommandDeck";
 import dynamic from "next/dynamic";
-import { FLEET_SECTIONS, type FleetSection } from "../components/fleet/fleetSections";
-import { STORE_SECTIONS, type StoreSection } from "../components/storeSections";
-import { usePlayerGames } from "../hooks/usePlayerGames";
-import { usePlayerGamesWeb2 } from "../hooks/usePlayerGamesWeb2";
-import { useCurrentUser } from "../hooks/useCurrentUser";
-import { useCommandDeckLayout } from "../hooks/useCommandDeckLayout";
-import { TUTORIAL_STEP_STORAGE_KEY } from "../types/onboarding";
+import { FLEET_SECTIONS, type FleetSection } from "../../components/fleet/fleetSections";
+import { STORE_SECTIONS, type StoreSection } from "../../components/storeSections";
+import { usePlayerGames } from "../../hooks/usePlayerGames";
+import { usePlayerGamesWeb2 } from "../../hooks/usePlayerGamesWeb2";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
+import { useCommandDeckLayout } from "../../hooks/useCommandDeckLayout";
+import { TUTORIAL_STEP_STORAGE_KEY } from "../../types/onboarding";
 import {
   getTutorialReturnTo,
   hasCompletedFirstBattle,
@@ -35,21 +35,21 @@ import {
   setTutorialReturnTo,
   signedOutLanding,
   START_TUTORIAL_EVENT,
-} from "../utils/tutorialCompletion";
-import { useAppMode } from "../hooks/useAppMode";
-import { OPS_CONSOLE_TABS, type OpsConsoleTab } from "../hooks/useOpsConsoleAccess";
+} from "../../utils/tutorialCompletion";
+import { useAppMode } from "../../hooks/useAppMode";
+import { OPS_CONSOLE_TABS, type OpsConsoleTab } from "../../hooks/useOpsConsoleAccess";
 import {
   clientTabFromSlug,
   openClientTab,
   setGameClientMounted,
   type ClientTab,
-} from "../utils/clientNavigation";
-import { applyUrlParams, getUrlParam, setUrlParams, useUrlParam, useUrlSearch } from "../utils/urlState";
+} from "../../utils/clientNavigation";
+import { applyUrlParams, getUrlParam, setUrlParams, useUrlParam, useUrlSearch } from "../../utils/urlState";
 import posthog from "posthog-js";
-import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../config/contentWidth";
-import { TOURNAMENTS_ENABLED } from "../config/alpha";
-import { AI_USER_ID } from "../config/aiUser";
-import { isPveGame } from "../utils/pveGames";
+import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../../config/contentWidth";
+import { TOURNAMENTS_ENABLED } from "../../config/alpha";
+import { AI_USER_ID } from "../../config/aiUser";
+import { isPveGame } from "../../utils/pveGames";
 
 // Screens load when first opened, so the boot screen and Command Deck don't
 // download (and in dev, compile) the game view, tutorial, Lobbies, hangar,
@@ -62,28 +62,28 @@ function ScreenLoading() {
   );
 }
 const OnboardingTutorial = dynamic(
-  () => import("../components/OnboardingTutorial").then((m) => m.OnboardingTutorial),
+  () => import("../../components/OnboardingTutorial").then((m) => m.OnboardingTutorial),
   { loading: ScreenLoading },
 );
-const FleetHangar = dynamic(() => import("../components/fleet/FleetHangar").then((m) => m.FleetHangar), { loading: ScreenLoading });
-const StoreScreen = dynamic(() => import("../components/StoreScreen").then((m) => m.StoreScreen), { loading: ScreenLoading });
-const Lobbies = dynamic(() => import("../components/Lobbies"), { loading: ScreenLoading });
-const LobbiesWeb2 = dynamic(() => import("../components/LobbiesWeb2"), { loading: ScreenLoading });
+const FleetHangar = dynamic(() => import("../../components/fleet/FleetHangar").then((m) => m.FleetHangar), { loading: ScreenLoading });
+const StoreScreen = dynamic(() => import("../../components/StoreScreen").then((m) => m.StoreScreen), { loading: ScreenLoading });
+const Lobbies = dynamic(() => import("../../components/Lobbies"), { loading: ScreenLoading });
+const LobbiesWeb2 = dynamic(() => import("../../components/LobbiesWeb2"), { loading: ScreenLoading });
 const RoguelikeCampaign = dynamic(
-  () => import("../components/RoguelikeCampaign").then((m) => m.RoguelikeCampaign),
+  () => import("../../components/RoguelikeCampaign").then((m) => m.RoguelikeCampaign),
   { loading: ScreenLoading },
 );
 const RoguelikeCampaignWeb2 = dynamic(
-  () => import("../components/RoguelikeCampaignWeb2").then((m) => m.RoguelikeCampaignWeb2),
+  () => import("../../components/RoguelikeCampaignWeb2").then((m) => m.RoguelikeCampaignWeb2),
   { loading: ScreenLoading },
 );
-const Games = dynamic(() => import("../components/Games"), { loading: ScreenLoading });
-const GamesWeb2 = dynamic(() => import("../components/GamesWeb2"), { loading: ScreenLoading });
-const Profile = dynamic(() => import("../components/Profile"), { loading: ScreenLoading });
-const ProfileWeb2 = dynamic(() => import("../components/ProfileWeb2"), { loading: ScreenLoading });
-const Tournaments = dynamic(() => import("../components/Tournaments").then((m) => m.Tournaments), { loading: ScreenLoading });
+const Games = dynamic(() => import("../../components/Games"), { loading: ScreenLoading });
+const GamesWeb2 = dynamic(() => import("../../components/GamesWeb2"), { loading: ScreenLoading });
+const Profile = dynamic(() => import("../../components/Profile"), { loading: ScreenLoading });
+const ProfileWeb2 = dynamic(() => import("../../components/ProfileWeb2"), { loading: ScreenLoading });
+const Tournaments = dynamic(() => import("../../components/Tournaments").then((m) => m.Tournaments), { loading: ScreenLoading });
 const TournamentsWeb2 = dynamic(
-  () => import("../components/TournamentsWeb2").then((m) => m.TournamentsWeb2),
+  () => import("../../components/TournamentsWeb2").then((m) => m.TournamentsWeb2),
   { loading: ScreenLoading },
 );
 

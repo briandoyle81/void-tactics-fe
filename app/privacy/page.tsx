@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Void Tactics",
+  title: "Privacy Policy",
+  alternates: { canonical: "/privacy" },
   description: "How Void Tactics handles information when you use the alpha.",
 };
 

@@ -1,4 +1,4 @@
-import { CLIENT_TAB_SLUG_LIST } from "../../config/clientTabs";
+import { CLIENT_TAB_SLUG_LIST } from "../../../config/clientTabs";
 import GameClient from "../GameClient";
 
 // A game client tab (/play/operations, ...): the same page as /play, which

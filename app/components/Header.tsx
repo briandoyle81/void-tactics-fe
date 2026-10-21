@@ -21,7 +21,8 @@ import {
 } from "../config/networks";
 import { switchWalletToAppChain } from "../utils/switchWalletChain";
 import { readRpcErrorCode } from "../utils/ensureUiChainsInWallet";
-import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink, VOID_TACTICS_X_URL } from "./BrandLinks";
+import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink } from "./BrandLinks";
+import { X_URL } from "../config/socialLinks";
 import { ALPHA_DISCORD_INVITE_URL, WEB2_SIGN_IN_ENABLED } from "../config/alpha";
 import { useFreeShipClaimStatus } from "../hooks/useFreeShipClaimStatus";
 import type { StoreSection } from "./storeSections";
@@ -1364,7 +1365,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                     <SettingsLink href={ALPHA_DISCORD_INVITE_URL} external>
                       Discord
                     </SettingsLink>
-                    <SettingsLink href={VOID_TACTICS_X_URL} external>
+                    <SettingsLink href={X_URL} external>
                       X
                     </SettingsLink>
                     <SettingsLink href="/">Website</SettingsLink>

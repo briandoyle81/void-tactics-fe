@@ -1,8 +1,8 @@
 "use client";
 
-import { useTournamentList } from "../hooks/useTournamentList";
-import { TournamentCard } from "../components/TournamentCard";
-import { TournamentState } from "../types/types";
+import { useTournamentList } from "../../hooks/useTournamentList";
+import { TournamentCard } from "../../components/TournamentCard";
+import { TournamentState } from "../../types/types";
 
 export default function TournamentsPage() {
   const { tournaments, isLoading } = useTournamentList();

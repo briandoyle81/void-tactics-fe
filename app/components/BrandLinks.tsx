@@ -2,11 +2,10 @@
 
 import React from "react";
 import { ALPHA_DISCORD_INVITE_URL } from "../config/alpha";
+import { X_URL } from "../config/socialLinks";
 import { openAlphaNotice } from "../utils/alphaNotice";
 
 // Brand chrome shared by the game client's Header and the website header.
-
-export const VOID_TACTICS_X_URL = "https://x.com/voidtacticsxyz";
 
 /** The [ALPHA] badge. Opens the Alpha notice (AlphaNoticeModal). */
 export function HeaderAlphaBadge({ compact }: { compact?: boolean }) {
@@ -39,7 +38,7 @@ export function HeaderXLink({ compact = false }: { compact?: boolean }) {
   const icon = compact ? 14 : 16;
   return (
     <a
-      href={VOID_TACTICS_X_URL}
+      href={X_URL}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Void Tactics on X"

@@ -12,7 +12,6 @@ import { type ReactNode, useEffect, memo } from "react";
 import { ContractEventsHost } from "./hooks/useContractEvents";
 import { useQueryClient } from "@tanstack/react-query";
 import { VOID_TACTICS_CHAIN_CHANGED_EVENT, xaiTestnet } from "./config/networks";
-import AlphaNoticeModal from "./components/AlphaNoticeModal";
 import { useShipArtCacheGuard } from "./hooks/useShipImageCache";
 import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
 import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
@@ -111,14 +110,14 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
       <ClearOAuthRedirectParams />
       <GasGrantClaimer />
       <ShipArtCacheGuard />
-      <TransactionProvider>
-        {children}
-        <AlphaNoticeModal />
-      </TransactionProvider>
+      <TransactionProvider>{children}</TransactionProvider>
     </>
   );
 });
 
+// The game client's providers (wallet, chain reads, session), mounted once by
+// its shared layout (app/(client)/layout.tsx: /play, /admin, a game,
+// tournaments). The website doesn't need the wallet stack, so it doesn't load it.
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>

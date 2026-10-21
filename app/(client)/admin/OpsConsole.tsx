@@ -1,30 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUrlParam, setUrlParams, useUrlParam } from "../utils/urlState";
+import { getUrlParam, setUrlParams, useUrlParam } from "../../utils/urlState";
 import Link from "next/link";
 import { useAccount } from "wagmi";
-import Header from "../components/Header";
-import { SessionRestoreProbe } from "../components/SessionRestoreProbe";
-import Maps from "../components/Maps";
-import MapsWeb2 from "../components/MapsWeb2";
-import Admin from "../components/Admin";
-import AdminWeb2 from "../components/AdminWeb2";
-import ShipAttributes from "../components/ShipAttributes";
-import EligibilityControls from "../components/EligibilityControls";
-import ShipAttributesWeb2 from "../components/ShipAttributesWeb2";
-import ShipPurchasePrices from "../components/ShipPurchasePrices";
-import ShipPurchasePricesWeb2 from "../components/ShipPurchasePricesWeb2";
-import { RewardShipsAdmin } from "../components/rewardShips/RewardShipsAdmin";
-import { RewardShipsAdminWeb2 } from "../components/rewardShips/RewardShipsAdminWeb2";
-import { useAppMode } from "../hooks/useAppMode";
-import { useCurrentUser } from "../hooks/useCurrentUser";
+import Header from "../../components/Header";
+import { SessionRestoreProbe } from "../../components/SessionRestoreProbe";
+import Maps from "../../components/Maps";
+import MapsWeb2 from "../../components/MapsWeb2";
+import Admin from "../../components/Admin";
+import AdminWeb2 from "../../components/AdminWeb2";
+import ShipAttributes from "../../components/ShipAttributes";
+import EligibilityControls from "../../components/EligibilityControls";
+import ShipAttributesWeb2 from "../../components/ShipAttributesWeb2";
+import ShipPurchasePrices from "../../components/ShipPurchasePrices";
+import ShipPurchasePricesWeb2 from "../../components/ShipPurchasePricesWeb2";
+import { RewardShipsAdmin } from "../../components/rewardShips/RewardShipsAdmin";
+import { RewardShipsAdminWeb2 } from "../../components/rewardShips/RewardShipsAdminWeb2";
+import { useAppMode } from "../../hooks/useAppMode";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import {
   OPS_CONSOLE_TABS,
   useOpsConsoleAccess,
   type OpsConsoleTab,
-} from "../hooks/useOpsConsoleAccess";
-import { PLAY_PATH } from "../config/routes";
+} from "../../hooks/useOpsConsoleAccess";
+import { PLAY_PATH } from "../../config/routes";
 import posthog from "posthog-js";
 
 const ACTIVE_TAB_STORAGE_KEY = "void-tactics-ops-console-tab";

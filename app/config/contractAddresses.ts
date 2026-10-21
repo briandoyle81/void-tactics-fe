@@ -1,0 +1,306 @@
+// Deployed contract addresses per chain. Kept apart from the ABIs
+// (contracts.ts, which imports every contract's full build artifact) so code
+// that only needs an address, like the website's ship art, doesn't pull the
+// artifacts into its bundle. contracts.ts re-exports all of this.
+import { baseSepolia, flowTestnet, saigon } from "viem/chains";
+import { getSelectedChainId, xaiTestnet } from "./networks";
+import flowTestnetDeployedAddresses from "../contracts/flow-testnet/deployed_addresses.json";
+import baseSepoliaDeployedAddresses from "../contracts/base-sepolia/deployed_addresses.json";
+import roninSaigonDeployedAddresses from "../contracts/ronin-saigon/deployed_addresses.json";
+import xaiTestnetDeployedAddresses from "../contracts/xai-testnet/deployed_addresses.json";
+
+type DeployedAddresses = Record<string, `0x${string}`>;
+
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+const FLOW_TESTNET_DEPLOYED_ADDRESSES =
+  flowTestnetDeployedAddresses as unknown as DeployedAddresses;
+const RONIN_SAIGON_DEPLOYED_ADDRESSES =
+  roninSaigonDeployedAddresses as unknown as DeployedAddresses;
+const BASE_SEPOLIA_DEPLOYED_ADDRESSES =
+  baseSepoliaDeployedAddresses as unknown as DeployedAddresses;
+const XAI_TESTNET_DEPLOYED_ADDRESSES =
+  xaiTestnetDeployedAddresses as unknown as DeployedAddresses;
+
+// Per-network deployed address registries
+export const DEPLOYED_ADDRESSES_BY_CHAIN_ID = {
+  [flowTestnet.id]: FLOW_TESTNET_DEPLOYED_ADDRESSES,
+  [saigon.id]: RONIN_SAIGON_DEPLOYED_ADDRESSES,
+  [baseSepolia.id]: BASE_SEPOLIA_DEPLOYED_ADDRESSES,
+  [xaiTestnet.id]: XAI_TESTNET_DEPLOYED_ADDRESSES,
+} as const;
+
+// Stable, per-network contract address sets
+const FLOW_TESTNET_CONTRACT_ADDRESSES = {
+  SHIPS: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Ships"],
+  FLEETS: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Fleets"],
+  LOBBIES: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Lobbies"],
+  GAME: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Game"],
+  UNIVERSAL_CREDITS: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#UniversalCredits"],
+  MAPS: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Maps"],
+  SHIP_ATTRIBUTES: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#ShipAttributes"],
+  SHIP_PURCHASER: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#ShipPurchaser"],
+  DRONE_YARD: FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneYard"],
+  DRONE_ENERGY_CORES:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneEnergyCores"] ??
+    ZERO_ADDRESS,
+  TUTORIAL_CLAIM:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#TutorialClaim"] ?? ZERO_ADDRESS,
+  FREE_SHIP_CLAIM:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#FreeShipClaim"] ??
+    ZERO_ADDRESS,
+  DRONE_STOREFRONT:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneStorefront"] ??
+    ZERO_ADDRESS,
+  RAM_RESOLVER:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#RamResolver"] ?? ZERO_ADDRESS,
+  REPAIR_RESOLVER:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#RepairResolver"] ??
+    ZERO_ADDRESS,
+  DRONE_NAMES:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneNames"] ?? ZERO_ADDRESS,
+  VARIANT_PURCHASE_GATE:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#VariantPurchaseGate"] ??
+    ZERO_ADDRESS,
+  SHATTERED_HIVE_MEDAL:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#ShatteredHiveMedal"] ??
+    ZERO_ADDRESS,
+  RANDOM_MANAGER:
+    FLOW_TESTNET_DEPLOYED_ADDRESSES["DeployModule#RandomManager"] ??
+    ZERO_ADDRESS,
+} as const;
+
+const RONIN_SAIGON_CONTRACT_ADDRESSES = {
+  SHIPS: RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#Ships"] ?? ZERO_ADDRESS,
+  FLEETS:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#Fleets"] ?? ZERO_ADDRESS,
+  LOBBIES:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#Lobbies"] ?? ZERO_ADDRESS,
+  GAME: RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#Game"] ?? ZERO_ADDRESS,
+  UNIVERSAL_CREDITS:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#UniversalCredits"] ??
+    ZERO_ADDRESS,
+  MAPS: RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#Maps"] ?? ZERO_ADDRESS,
+  SHIP_ATTRIBUTES:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#ShipAttributes"] ??
+    ZERO_ADDRESS,
+  SHIP_PURCHASER:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#ShipPurchaser"] ??
+    ZERO_ADDRESS,
+  DRONE_YARD:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#DroneYard"] ?? ZERO_ADDRESS,
+  DRONE_ENERGY_CORES:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#DroneEnergyCores"] ??
+    ZERO_ADDRESS,
+  TUTORIAL_CLAIM:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#TutorialClaim"] ??
+    ZERO_ADDRESS,
+  FREE_SHIP_CLAIM:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#FreeShipClaim"] ??
+    ZERO_ADDRESS,
+  DRONE_STOREFRONT:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#DroneStorefront"] ??
+    ZERO_ADDRESS,
+  RAM_RESOLVER:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#RamResolver"] ??
+    ZERO_ADDRESS,
+  REPAIR_RESOLVER:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#RepairResolver"] ??
+    ZERO_ADDRESS,
+  DRONE_NAMES:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#DroneNames"] ??
+    ZERO_ADDRESS,
+  VARIANT_PURCHASE_GATE:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#VariantPurchaseGate"] ??
+    ZERO_ADDRESS,
+  SHATTERED_HIVE_MEDAL:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#ShatteredHiveMedal"] ??
+    ZERO_ADDRESS,
+  RANDOM_MANAGER:
+    RONIN_SAIGON_DEPLOYED_ADDRESSES["DeployModule#RandomManager"] ??
+    ZERO_ADDRESS,
+} as const;
+
+const BASE_SEPOLIA_CONTRACT_ADDRESSES = {
+  SHIPS: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#Ships"] ?? ZERO_ADDRESS,
+  TOURNAMENT: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#Tournament"] ?? ZERO_ADDRESS,
+  GAME_BLOB_REGISTRY: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#GameBlobRegistry"] ?? ZERO_ADDRESS,
+  SINGLE_PLAYER_MATCH: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#SinglePlayerMatch"] ?? ZERO_ADDRESS,
+  AI_ENCOUNTERS: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#AIEncounters"] ?? ZERO_ADDRESS,
+  PVP_MATCH: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#PvPMatch"] ?? ZERO_ADDRESS,
+  NODE_MAP: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#NodeMap"] ?? ZERO_ADDRESS,
+  AI_SHIPS: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#AIShips"] ?? ZERO_ADDRESS,
+  SHIPS_ROUTER: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#ShipsRouter"] ?? ZERO_ADDRESS,
+  ROGUELIKE_NODE_MAP:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RoguelikeNodeMap"] ??
+    ZERO_ADDRESS,
+  ROGUELIKE_RUN:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RoguelikeRun"] ??
+    ZERO_ADDRESS,
+  ROGUELIKE_MATCH:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RoguelikeMatch"] ??
+    ZERO_ADDRESS,
+  ROGUELIKE_RESUPPLY:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RoguelikeResupply"] ??
+    ZERO_ADDRESS,
+  DRONE_STOREFRONT:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#DroneStorefront"] ??
+    ZERO_ADDRESS,
+  FREE_SHIP_CLAIM:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#FreeShipClaim"] ??
+    ZERO_ADDRESS,
+  RAM_RESOLVER:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RamResolver"] ??
+    ZERO_ADDRESS,
+  REPAIR_RESOLVER:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RepairResolver"] ??
+    ZERO_ADDRESS,
+  DRONE_NAMES:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#DroneNames"] ??
+    ZERO_ADDRESS,
+  VARIANT_PURCHASE_GATE:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#VariantPurchaseGate"] ??
+    ZERO_ADDRESS,
+  SHATTERED_HIVE_MEDAL:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#ShatteredHiveMedal"] ??
+    ZERO_ADDRESS,
+  FLEETS:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#Fleets"] ?? ZERO_ADDRESS,
+  LOBBIES:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#Lobbies"] ?? ZERO_ADDRESS,
+  GAME: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#Game"] ?? ZERO_ADDRESS,
+  UNIVERSAL_CREDITS:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#UniversalCredits"] ??
+    ZERO_ADDRESS,
+  MAPS: BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#Maps"] ?? ZERO_ADDRESS,
+  SHIP_ATTRIBUTES:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#ShipAttributes"] ??
+    ZERO_ADDRESS,
+  SHIP_PURCHASER:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#ShipPurchaser"] ??
+    ZERO_ADDRESS,
+  DRONE_YARD:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#DroneYard"] ?? ZERO_ADDRESS,
+  DRONE_ENERGY_CORES:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#DroneEnergyCores"] ??
+    ZERO_ADDRESS,
+  TUTORIAL_CLAIM:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#TutorialClaim"] ??
+    ZERO_ADDRESS,
+  RANDOM_MANAGER:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#RandomManager"] ??
+    ZERO_ADDRESS,
+  // Read-only aggregate views (paginated owned ships, run view, campaign
+  // graph) — see docs/redesign-10-7/frontend-handoff-rpc-cost-suggestions-2026-10-08.md §3.
+  GAME_LENS:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#GameLens"] ?? ZERO_ADDRESS,
+  // Pluggable roguelike win effects (see IRoguelikeWinEffect.sol) — not yet
+  // deployed to Base Sepolia, falls back to ZERO_ADDRESS until a real
+  // deploy populates deployed_addresses.json.
+  DEC_BONUS_WIN_EFFECT:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#DECBonusWinEffect"] ??
+    ZERO_ADDRESS,
+  HEAL_ABOVE_FLOOR_WIN_EFFECT:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#HealAboveFloorWinEffect"] ??
+    ZERO_ADDRESS,
+  SHIP_GRANT_WIN_EFFECT:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#ShipGrantWinEffect"] ??
+    ZERO_ADDRESS,
+  // Keyed by destroyed ship's traits.variant — see
+  // docs/update/Frontend_Updates_2026-09-17.md §2. Base Sepolia only today.
+  FACTION_REWARD_TOKEN_REGISTRY:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#FactionRewardTokenRegistry"] ??
+    ZERO_ADDRESS,
+  // Gates FreeShipClaim/TutorialClaim — see
+  // docs/eth-global-remote/uniswap-lottery-selfie-check-frontend-integration.md §3.
+  // Base Sepolia only today.
+  SELFIE_CHECK_ELIGIBILITY_PROVIDER:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#SelfieCheckEligibilityProvider"] ??
+    ZERO_ADDRESS,
+  // Resolves which Game engine serves a given gameId. See
+  // docs/eth-global-remote/frontend-handoff-engine-registry-and-redeploy-2026-09-30.md §2.
+  GAME_ENGINE_REGISTRY:
+    BASE_SEPOLIA_DEPLOYED_ADDRESSES["DeployModule#GameEngineRegistry"] ??
+    ZERO_ADDRESS,
+} as const;
+
+const XAI_TESTNET_CONTRACT_ADDRESSES = {
+  SHIPS: XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Ships"] ?? ZERO_ADDRESS,
+  FLEETS:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Fleets"] ?? ZERO_ADDRESS,
+  LOBBIES:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Lobbies"] ?? ZERO_ADDRESS,
+  GAME: XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Game"] ?? ZERO_ADDRESS,
+  UNIVERSAL_CREDITS:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#UniversalCredits"] ??
+    ZERO_ADDRESS,
+  MAPS: XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#Maps"] ?? ZERO_ADDRESS,
+  SHIP_ATTRIBUTES:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#ShipAttributes"] ??
+    ZERO_ADDRESS,
+  SHIP_PURCHASER:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#ShipPurchaser"] ??
+    ZERO_ADDRESS,
+  DRONE_YARD:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneYard"] ?? ZERO_ADDRESS,
+  DRONE_ENERGY_CORES:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneEnergyCores"] ??
+    ZERO_ADDRESS,
+  TUTORIAL_CLAIM:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#TutorialClaim"] ??
+    ZERO_ADDRESS,
+  FREE_SHIP_CLAIM:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#FreeShipClaim"] ??
+    ZERO_ADDRESS,
+  DRONE_STOREFRONT:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneStorefront"] ??
+    ZERO_ADDRESS,
+  RAM_RESOLVER:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#RamResolver"] ?? ZERO_ADDRESS,
+  REPAIR_RESOLVER:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#RepairResolver"] ??
+    ZERO_ADDRESS,
+  DRONE_NAMES:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#DroneNames"] ?? ZERO_ADDRESS,
+  VARIANT_PURCHASE_GATE:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#VariantPurchaseGate"] ??
+    ZERO_ADDRESS,
+  SHATTERED_HIVE_MEDAL:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#ShatteredHiveMedal"] ??
+    ZERO_ADDRESS,
+  RANDOM_MANAGER:
+    XAI_TESTNET_DEPLOYED_ADDRESSES["DeployModule#RandomManager"] ??
+    ZERO_ADDRESS,
+} as const;
+
+export const CONTRACT_ADDRESSES_BY_CHAIN_ID = {
+  [flowTestnet.id]: FLOW_TESTNET_CONTRACT_ADDRESSES,
+  [saigon.id]: RONIN_SAIGON_CONTRACT_ADDRESSES,
+  [baseSepolia.id]: BASE_SEPOLIA_CONTRACT_ADDRESSES,
+  [xaiTestnet.id]: XAI_TESTNET_CONTRACT_ADDRESSES,
+} as const;
+
+/**
+ * Returns contract addresses for the active chain. Falls back to Flow
+ * Testnet for unknown chainIds.
+ */
+export function getContractAddresses(chainId?: number) {
+  if (chainId && chainId in CONTRACT_ADDRESSES_BY_CHAIN_ID) {
+    return CONTRACT_ADDRESSES_BY_CHAIN_ID[
+      chainId as keyof typeof CONTRACT_ADDRESSES_BY_CHAIN_ID
+    ];
+  }
+  return FLOW_TESTNET_CONTRACT_ADDRESSES;
+}
+
+// Back-compat: most callsites import `CONTRACT_ADDRESSES`. Make it chain-aware.
+export const CONTRACT_ADDRESSES = new Proxy(
+  {} as typeof FLOW_TESTNET_CONTRACT_ADDRESSES,
+  {
+    get(_target, prop) {
+      const chainId = getSelectedChainId();
+      const addresses = getContractAddresses(chainId) as Record<string, unknown>;
+      return addresses[prop as string];
+    },
+  }
+);

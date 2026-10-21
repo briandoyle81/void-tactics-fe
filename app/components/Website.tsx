@@ -95,11 +95,6 @@ export default function Website() {
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--color-near-black)" }}>
       <SiteHeader />
       <main className="flex w-full flex-1 flex-col" aria-label="Void Tactics">
-        <p className="sr-only">
-          Void Tactics is a fully onchain turn-based PvP fleet strategy game. Build ships,
-          manage your navy, join lobbies, and play tactical grid battles where range, movement,
-          and target priority decide each match.
-        </p>
         <InfoTopBackdrop>
           <InfoHero
             actions={

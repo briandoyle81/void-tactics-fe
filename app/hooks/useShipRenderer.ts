@@ -10,9 +10,6 @@ import {
 // Debug flag
 const DEBUG_RENDERER = false;
 
-// Re-export rendering mode functions for compatibility
-export { getUseLocalRendering, setUseLocalRendering } from "./useShipImageCache";
-
 // Debug logging function
 function debugLog(...args: unknown[]) {
   if (DEBUG_RENDERER) {
@@ -232,22 +229,6 @@ export function useShipRenderer(ship: Ship): ShipImageState {
 
   return { ...imageState, renderKey };
 }
-
-// Re-export cache management functions for backward compatibility
-export {
-  clearShipImageCache,
-  clearShipImageCacheForShip,
-  clearBrokenImageCache,
-  clearAllShipImageCache,
-  resetShipRequestState,
-  resetAllShipRequestStates,
-  clearShipRetryTimeout,
-  clearAllShipRetryTimeouts,
-  restartQueueProcessing,
-  getQueueStatus,
-  clearCacheOnLogout,
-  getShipImageCacheStats,
-} from "./useShipImageCache";
 
 // Export ship data cache functions
 export {

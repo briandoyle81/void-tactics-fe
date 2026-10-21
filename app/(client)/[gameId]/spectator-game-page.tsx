@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import Header from "../components/Header";
-import GameDisplay from "../components/GameDisplay";
-import { useGetGame } from "../hooks/useGameContract";
-import { GameDataView } from "../types/types";
+import Header from "../../components/Header";
+import GameDisplay from "../../components/GameDisplay";
+import { useGetGame } from "../../hooks/useGameContract";
+import { GameDataView } from "../../types/types";
 import { useRouter } from "next/navigation";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
-import { PLAY_PATH } from "../config/routes";
+import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../../config/networks";
+import { PLAY_PATH } from "../../config/routes";
 
 interface SpectatorGamePageProps {
   gameId: number | null;

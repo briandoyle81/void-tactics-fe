@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | Void Tactics",
+  title: "Terms of Service",
+  alternates: { canonical: "/terms" },
   description: "Terms for using the Void Tactics alpha.",
 };
 

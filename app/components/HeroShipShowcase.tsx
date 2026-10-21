@@ -153,12 +153,14 @@ export const HeroShipShowcase: React.FC<{
   // gear lines), so nothing moves as the ships rotate.
   const statsColumn = (
     <div className={`flex min-w-0 flex-col gap-4 ${alignEnd ? "items-end text-right" : "items-start text-left"}`}>
-      <h3
+      {/* Not a heading: the ship changes on click and is empty until it
+          loads, which would leave blank headings in the page outline. */}
+      <p
         className="line-clamp-2 min-h-[2lh] w-full text-2xl font-bold leading-tight md:text-3xl"
         style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif", color: accent }}
       >
         {heroShip?.name ?? EMPTY}
-      </h3>
+      </p>
       <ul
         className="min-h-[3lh] w-full text-sm leading-snug text-text-bright"
         style={{ fontFamily: "var(--font-mono), monospace" }}

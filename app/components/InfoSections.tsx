@@ -2,9 +2,17 @@
 
 import React from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { HeroShipShowcase } from "./HeroShipShowcase";
-import { TacticalTargetingPreview } from "./TacticalTargetingPreview";
 import { ART_SLOTS } from "../config/art";
+
+// The hero demo is the real game board (GameGrid), so it's its own chunk:
+// the page doesn't wait on it to become interactive. It only draws after
+// mount anyway (random ships), and the placeholder holds its space.
+const TacticalTargetingPreview = dynamic(
+  () => import("./TacticalTargetingPreview").then((m) => m.TacticalTargetingPreview),
+  { ssr: false, loading: () => <div className="h-[320px] w-full bg-near-black md:h-[400px]" /> },
+);
 
 // The website's hero and the sections below it (app/components/Website.tsx):
 // the ship showcase, the enemy, the Shattered Hive campaign, how battles
@@ -75,8 +83,8 @@ export function InfoHero({ actions }: { actions: React.ReactNode }) {
           className="max-w-md text-lg font-medium leading-snug text-text-secondary md:text-xl"
           style={BODY_FONT}
         >
-          Command a fleet of starships with positioning, range control, and
-          ruthless target priority in tactical, turn-based battles.
+          Command a fleet of starships in turn-based space battles, where
+          positioning, range control and target priority decide every fight.
         </p>
         {actions}
       </div>
@@ -231,7 +239,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
         >
           <Image
             src="/img/character-art/hive-queen.svg"
-            alt="Unknown source"
+            alt="Portrait of the unknown enemy"
             width={256}
             height={256}
             unoptimized
@@ -310,7 +318,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
           </div>
           <ol className="grid grid-cols-1 gap-10 md:grid-cols-3">
             {[
-              "Choose your route on the star chart. Every path you commit to closes the others behind you.",
+              "A roguelike run across the star chart: every path you commit to closes the others behind you.",
               "The ships you bring are the ships you keep, scars and all. Repair and regroup at resupply stations.",
               "Adjutant Bosch is on comms for every mission, piecing together what you're up against.",
             ].map((line, i) => (

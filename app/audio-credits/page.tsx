@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Audio Credits | Void Tactics",
+  title: "Audio Credits",
+  alternates: { canonical: "/audio-credits" },
   description: "Audio asset credits used in the Void Tactics alpha.",
 };
 

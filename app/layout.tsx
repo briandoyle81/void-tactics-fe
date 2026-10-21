@@ -3,7 +3,7 @@ import { Rajdhani, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 // Ensure BigInt JSON serialization is safe before anything else runs
 import "./utils/bigintJson";
-import { Providers } from "./providers";
+import AlphaNoticeModal from "./components/AlphaNoticeModal";
 import { Toaster } from "react-hot-toast";
 import { LocalhostFrame } from "./components/LocalhostFrame";
 
@@ -23,7 +23,7 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://voidtactics.xyz";
 
 const defaultPageTitle =
-  "Void Tactics | Fully Onchain Turn-Based Fleet Tactics";
+  "Void Tactics: Turn-Based Space Tactics, Fully Onchain";
 
 export const viewport: Viewport = {
   colorScheme: "dark",
@@ -56,8 +56,9 @@ export const metadata: Metadata = {
     default: defaultPageTitle,
     template: "%s | Void Tactics",
   },
+  // Search results show about 155-160 characters.
   description:
-    "A fully onchain turn-based fleet tactics game. Lead one fleet through Shattered Hive, a branching campaign against the Hive, where positioning, weapons range, and target priority decide every fight. Ships carry their damage and rank from battle to battle, and every rule, ship and match lives onchain. Then take your fleet into PvP. Your first mission needs no account.",
+    "Void Tactics is a fully onchain, turn-based space tactics game. Lead your fleet through a branching campaign against the Hive, then face other admirals in PvP.",
   applicationName: "Void Tactics",
   keywords: [
     "Void Tactics",
@@ -84,10 +85,11 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/img/og-image.png",
+        // A 1200x630 JPEG of og-image.png (about 150 KB): some apps skip large previews.
+        url: "/img/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Void Tactics",
+        alt: "Void Tactics: Outmaneuver. Outrange. Outlast. Starships trade fire on a tactical grid.",
       },
     ],
   },
@@ -98,7 +100,7 @@ export const metadata: Metadata = {
       "Fully onchain turn-based fleet tactics. Lead your ships through a branching campaign against the Hive, then take on other admirals in PvP. Your first mission needs no account.",
     creator: "@voidtacticsxyz",
     site: "@voidtacticsxyz",
-    images: ["/img/og-image.png"],
+    images: ["/img/og-image.jpg"],
   },
   robots: {
     index: true,
@@ -158,7 +160,9 @@ export default function RootLayout({
             `,
           }}
         />
-        <Providers>{children}</Providers>
+        {/* The game client's providers are in its shared layout, app/(client)/layout.tsx. */}
+        {children}
+        <AlphaNoticeModal />
         <LocalhostFrame />
         <Toaster
           position="top-right"
