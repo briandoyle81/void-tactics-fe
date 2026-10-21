@@ -58,6 +58,7 @@ import { ShipImageWeb2 } from "./ShipImageWeb2";
 import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { GameScoreBox } from "./GameScoreBox";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
+import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
   LandscapeBattleHeader,
@@ -1611,6 +1612,7 @@ function GameDisplayWeb2({
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
+        <FullscreenPrompt />
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
           <div className="flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center">
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">

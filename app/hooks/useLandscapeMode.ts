@@ -1,4 +1,5 @@
 import React from "react";
+import { exitFullscreen, isFullscreen } from "../utils/fullscreen";
 
 /**
  * A phone: narrow in portrait (≤500px wide) or short in landscape (≤500px
@@ -64,58 +65,11 @@ export function useLandscapeMode() {
   const isLandscapeMobile = (layout & LANDSCAPE_MOBILE) !== 0;
   const isPortraitTablet = (layout & PORTRAIT_TABLET) !== 0;
 
+  // Leaving the landscape battle layout (rotated upright, or left the
+  // battle) leaves fullscreen too. Going fullscreen is the player's choice,
+  // from FullscreenPrompt, since browsers only allow it from a tap.
   React.useEffect(() => {
-    if (typeof document === "undefined") return;
-    type WebkitFullscreenDocument = Document & {
-      webkitFullscreenElement?: Element | null;
-      webkitExitFullscreen?: () => Promise<void> | void;
-    };
-    type WebkitFullscreenElement = HTMLElement & {
-      webkitRequestFullscreen?: () => Promise<void> | void;
-    };
-    const webkitDocument = document as WebkitFullscreenDocument;
-    const isCurrentlyFullscreen = () =>
-      Boolean(
-        document.fullscreenElement || webkitDocument.webkitFullscreenElement,
-      );
-
-    if (!isLandscapeMobile) {
-      if (document.fullscreenElement) {
-        void document.exitFullscreen().catch(() => {});
-      } else if (webkitDocument.webkitFullscreenElement) {
-        void Promise.resolve(
-          webkitDocument.webkitExitFullscreen?.(),
-        ).catch(() => {});
-      }
-      return;
-    }
-
-    if (isCurrentlyFullscreen()) return;
-
-    const rootEl = document.documentElement as WebkitFullscreenElement;
-    const tryEnterFullscreen = () => {
-      if (isCurrentlyFullscreen()) return;
-      const requestFullscreen =
-        rootEl.requestFullscreen?.bind(rootEl) ??
-        rootEl.webkitRequestFullscreen?.bind(rootEl);
-      if (!requestFullscreen) return;
-      void Promise.resolve(requestFullscreen()).catch(() => {});
-    };
-
-    const onFirstInteraction = () => {
-      tryEnterFullscreen();
-      window.removeEventListener("pointerdown", onFirstInteraction);
-      window.removeEventListener("touchend", onFirstInteraction);
-    };
-
-    window.addEventListener("pointerdown", onFirstInteraction, {
-      passive: true,
-    });
-    window.addEventListener("touchend", onFirstInteraction, { passive: true });
-    return () => {
-      window.removeEventListener("pointerdown", onFirstInteraction);
-      window.removeEventListener("touchend", onFirstInteraction);
-    };
+    if (!isLandscapeMobile && isFullscreen()) exitFullscreen();
   }, [isLandscapeMobile]);
 
   return { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet };

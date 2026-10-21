@@ -85,11 +85,11 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        // A 1200x630 JPEG of og-image.png (about 150 KB): some apps skip large previews.
+        // A JPEG of og-image.png (1200x630, the source art; about 280 KB): some apps skip large previews.
         url: "/img/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "Void Tactics: Outmaneuver. Outrange. Outlast. Starships trade fire on a tactical grid.",
+        alt: "Void Tactics: Outmaneuver. Outrange. Outlast. Join Early Access. Starships on a tactical grid among nebulae.",
       },
     ],
   },

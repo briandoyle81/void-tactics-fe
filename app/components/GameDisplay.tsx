@@ -30,6 +30,7 @@ import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
 import { gameFleetPanelLabel } from "../utils/gameFleetPanelLabel";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
+import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import { LandscapeBattleHeader, LandscapeRailTabs, LandscapeShipSheet, LandscapeStagedMove } from "./LandscapeBattleRail";
 import {
@@ -3010,6 +3011,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
+        <FullscreenPrompt />
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
           <div
             className={`flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center ${

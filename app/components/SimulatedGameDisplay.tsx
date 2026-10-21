@@ -43,6 +43,7 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
+import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
   buildDisplayGrid,
@@ -3202,6 +3203,7 @@ export function SimulatedGameDisplay({
     return (
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
+        <FullscreenPrompt />
         <div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
           <div
             className={`flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center ${
