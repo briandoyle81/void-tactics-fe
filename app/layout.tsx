@@ -5,6 +5,7 @@ import "./globals.css";
 import "./utils/bigintJson";
 import { Providers } from "./providers";
 import { Toaster } from "react-hot-toast";
+import { LocalhostFrame } from "./components/LocalhostFrame";
 
 const rajdhani = Rajdhani({
   variable: "--font-rajdhani",
@@ -158,6 +159,7 @@ export default function RootLayout({
           }}
         />
         <Providers>{children}</Providers>
+        <LocalhostFrame />
         <Toaster
           position="top-right"
           toastOptions={{
