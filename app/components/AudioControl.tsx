@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useId, useMem
 import { createPortal } from "react-dom";
 import { HudIconButton } from "./HudIconButton";
 import { playSoundEffect, useSoundEffectsSetting } from "../hooks/useSoundEffects";
-import { useGameMusic } from "../hooks/useGameMusic";
+import { DEFAULT_MUSIC_TRACK, useGameMusic } from "../hooks/useGameMusic";
 
 // The game client's audio: AudioSettingsProvider (in app/(client)/layout.tsx)
 // owns the music and the sound-effects setting, so music keeps playing
@@ -113,6 +113,8 @@ type AudioSettings = {
   soundEffects: AudioChannel & { toggle: () => void };
   music: AudioChannel & { toggle: () => void };
   openAudioSettings: () => void;
+  /** Asks for a music track while a screen is up; returns the release. */
+  requestMusicTrack: (src: string) => () => void;
 };
 
 const AudioSettingsContext = createContext<AudioSettings | null>(null);
@@ -125,12 +127,21 @@ export function useAudioSettings(): AudioSettings {
 
 export function AudioSettingsProvider({ children }: { children: React.ReactNode }) {
   const soundEffects = useSoundEffectsSetting();
-  const music = useGameMusic();
+  // Screens ask for a track (useMusicTrack); the latest request plays, and
+  // the default plays when none is up.
+  const [trackRequests, setTrackRequests] = useState<Array<{ id: number; src: string }>>([]);
+  const nextRequestId = React.useRef(0);
+  const requestMusicTrack = useCallback((src: string) => {
+    const id = ++nextRequestId.current;
+    setTrackRequests((list) => [...list, { id, src }]);
+    return () => setTrackRequests((list) => list.filter((r) => r.id !== id));
+  }, []);
+  const music = useGameMusic(trackRequests.at(-1)?.src ?? DEFAULT_MUSIC_TRACK);
   const [open, setOpen] = useState(false);
   const openAudioSettings = useCallback(() => setOpen(true), []);
   const value = useMemo(
-    () => ({ soundEffects, music, openAudioSettings }),
-    [soundEffects, music, openAudioSettings],
+    () => ({ soundEffects, music, openAudioSettings, requestMusicTrack }),
+    [soundEffects, music, openAudioSettings, requestMusicTrack],
   );
   return (
     <AudioSettingsContext.Provider value={value}>
@@ -138,6 +149,15 @@ export function AudioSettingsProvider({ children }: { children: React.ReactNode 
       {open && <AudioSettingsModal soundEffects={soundEffects} music={music} onClose={() => setOpen(false)} />}
     </AudioSettingsContext.Provider>
   );
+}
+
+/**
+ * Plays `src` as the music while the calling screen is on screen (when music
+ * is on); null asks for nothing. Tracks are listed in app/config/music.ts.
+ */
+export function useMusicTrack(src: string | null) {
+  const { requestMusicTrack } = useAudioSettings();
+  useEffect(() => (src ? requestMusicTrack(src) : undefined), [requestMusicTrack, src]);
 }
 
 /** The speaker button: waves when anything is on, muted when nothing is. Opens the audio modal. */

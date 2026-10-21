@@ -5,9 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // Background music for the game client (credited on /audio-credits). Off
 // by default, at full volume when on; both are remembered in this browser
 // and set in the header's audio control (AudioControl) or Settings › Audio.
+// `track` is the screen's track (useMusicTrack in AudioControl.tsx); when it
+// changes, the old one fades out and the new one fades in.
 
-const MUSIC_SRC = "/music/synthwave-80s-robot-swarm-218092.mp3";
+/** The track for screens that don't ask for one. */
+export const DEFAULT_MUSIC_TRACK = "/music/synthwave-80s-robot-swarm-218092.mp3";
 const MUSIC_VOLUME = 0.35;
+const FADE_MS = 600;
 const STORAGE_KEY = "vt-music-enabled";
 const VOLUME_KEY = "vt-music-volume";
 
@@ -21,7 +25,22 @@ function readVolume(): number {
   }
 }
 
-export function useGameMusic() {
+/** Ramps `audio` to `to` over FADE_MS; returns a cancel function. */
+function fadeTo(audio: HTMLAudioElement, to: number, onDone?: () => void): () => void {
+  const from = audio.volume;
+  const start = performance.now();
+  const timer = window.setInterval(() => {
+    const u = Math.min(1, (performance.now() - start) / FADE_MS);
+    audio.volume = from + (to - from) * u;
+    if (u >= 1) {
+      window.clearInterval(timer);
+      onDone?.();
+    }
+  }, 30);
+  return () => window.clearInterval(timer);
+}
+
+export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
   const [enabled, setEnabled] = useState(false);
   const [volume, setVolumeState] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -47,13 +66,26 @@ export function useGameMusic() {
       audioRef.current?.pause();
       return;
     }
-    if (!audioRef.current) {
-      const audio = new Audio(MUSIC_SRC);
-      audio.loop = true;
-      audio.volume = MUSIC_VOLUME * volumeRef.current;
-      audioRef.current = audio;
+    const target = MUSIC_VOLUME * volumeRef.current;
+    const cancels: Array<() => void> = [];
+    const current = audioRef.current;
+    const switching = current != null && !current.src.endsWith(track);
+    if (switching) {
+      // Fade the old track out, then let it go (at once if this is cut short).
+      const old = current;
+      cancels.push(fadeTo(old, 0, () => old.pause()), () => old.pause());
+    } else if (current) {
+      // Same track: undo any fade that was cut short.
+      current.volume = target;
     }
-    const audio = audioRef.current;
+    if (!current || switching) {
+      const audio = new Audio(track);
+      audio.loop = true;
+      audio.volume = switching ? 0 : target;
+      audioRef.current = audio;
+      if (switching) cancels.push(fadeTo(audio, target));
+    }
+    const audio = audioRef.current!;
     // Browsers block playback until the page has had a click or tap (e.g.
     // after a reload with music on), so retry on the first one.
     const onGesture = () => {
@@ -62,8 +94,11 @@ export function useGameMusic() {
     audio.play().catch(() => {
       window.addEventListener("pointerdown", onGesture, { once: true });
     });
-    return () => window.removeEventListener("pointerdown", onGesture);
-  }, [enabled]);
+    return () => {
+      window.removeEventListener("pointerdown", onGesture);
+      cancels.forEach((cancel) => cancel());
+    };
+  }, [enabled, track]);
 
   useEffect(() => () => audioRef.current?.pause(), []);
 

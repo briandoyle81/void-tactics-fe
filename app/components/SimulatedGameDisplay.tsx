@@ -43,7 +43,8 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
-import { AudioControl, useAudioSettings } from "./AudioControl";
+import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
+import { TUTORIAL_MUSIC } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
@@ -145,6 +146,7 @@ import {
   TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING,
 } from "./TutorialGridPanelConfigs";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
+
 
 const TUTORIAL_DIALOG_MISSION: DialogMission = { kind: "tutorial" };
 
@@ -605,6 +607,8 @@ export function SimulatedGameDisplay({
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
+  // The tutorial mission has its own music (app/config/music.ts).
+  useMusicTrack(TUTORIAL_MUSIC);
 
   React.useEffect(() => {
     if (!isLandscapeMobile) return;

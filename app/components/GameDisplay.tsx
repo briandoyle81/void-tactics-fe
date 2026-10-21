@@ -30,7 +30,8 @@ import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
 import { gameFleetPanelLabel } from "../utils/gameFleetPanelLabel";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
-import { AudioControl, useAudioSettings } from "./AudioControl";
+import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
+import { roguelikeMissionMusic } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import { LandscapeBattleHeader, LandscapeRailTabs, LandscapeShipSheet, LandscapeStagedMove } from "./LandscapeBattleRail";
@@ -918,6 +919,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   );
   const roguelikeNodeIdForGame =
     isRoguelikeGame && roguelikeRunForGame ? Number(roguelikeRunForGame.currentNodeId) : 0;
+  // Operations missions with their own music (app/config/music.ts).
+  useMusicTrack(roguelikeMissionMusic(roguelikeNodeIdForGame));
   // Map-specific tile art (app/data/content/mapTileArt.ts). The game doesn't
   // store its map id, so the content file maps the mission node to its map.
   const tileArt =
