@@ -1,22 +1,14 @@
 import { Ship, validSpecialsForVariant } from "../types/types";
 import { randomMockDroneName } from "../data/mockDroneNames";
+import { SHOWCASE_SHIP_NAMES } from "../data/content/showcaseShipNames";
 
-// Random ship names for decorative/demo ship displays (no on-chain identity
-// backs these — see callers for how they're used).
-const SHIP_NAMES = [
-  "Vanguard", "Nexus", "Aurora", "Stellar", "Quantum", "Nebula", "Eclipse",
-  "Horizon", "Vortex", "Titan", "Phoenix", "Apex", "Nova", "Catalyst",
-  "Odyssey", "Spectre", "Raven", "Falcon", "Viper", "Cobra", "Thunder",
-  "Storm", "Tempest", "Blade", "Saber", "Reaper", "Wraith", "Phantom",
-  "Shadow", "Ghost", "Hunter", "Predator", "Scorpion", "Vulture", "Hawk",
-  "Eagle", "Dragon", "Wyvern", "Leviathan", "Kraken", "Behemoth", "Colossus",
-  "Goliath", "Atlas", "Hercules", "Zeus", "Ares", "Apollo", "Artemis",
-  "Athena",
-];
+// Variant 1 (consortium) names are a sample of the real ship names
+// (app/data/content/showcaseShipNames.ts), not the whole list.
+const SHIP_NAMES = SHOWCASE_SHIP_NAMES;
 
 /**
  * Generate a random, fully-formed decorative Ship — no backend/on-chain data
- * required. `name` is a mock: SHIP_NAMES for variant 1, a drone-style
+ * required. `name` is a real consortium ship name for variant 1, a drone-style
  * call sign (data/mockDroneNames.ts) for variant 2. Uses Math.random(), so callers that
  * render during SSR must only call this client-side, after mount, to avoid a
  * hydration mismatch.

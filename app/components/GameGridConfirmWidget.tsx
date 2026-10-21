@@ -329,6 +329,7 @@ export const GameGridConfirmWidget = React.memo(function GameGridConfirmWidget({
           {confirmButton ?? (
             <button
               type="button"
+              data-confirm-submit
               onClick={onConfirmMove}
               disabled={isSubmitting}
               className="flex-[2] px-4 py-2 text-xs uppercase font-bold tracking-widest transition-colors duration-100"

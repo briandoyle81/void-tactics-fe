@@ -9,6 +9,7 @@ import { calculateAttributesFromContracts } from "../utils/shipAttributesCalcula
 import { toGameplayShip, toGridShip } from "../utils/toGridDisplay";
 import { useGameplayInteraction } from "../hooks/useGameplayInteraction";
 import { useDamageCalculation } from "../hooks/useDamageCalculation";
+import { calculateDamage } from "../utils/calculateDamage";
 import { buildMapGridsFromContractMap } from "../utils/mapGridUtils";
 import {
   HERO_DEMO_BLOCKED,
@@ -147,6 +148,60 @@ const DEMO_MAP_GRIDS = buildMapGridsFromContractMap(
 
 // select ship -> propose move -> lock target -> last-move replay -> reset
 const PHASE_DURATIONS = [1000, 1000, 1600, 1800, 2600];
+// Fire is "clicked" this long into the lock-target phase, before the shot.
+const FIRE_CLICK_MS = 1200;
+
+const cellSelector = (p: { row: number; col: number }) =>
+  `[data-grid-row="${p.row}"][data-grid-col="${p.col}"]`;
+// Where each phase's click lands (the phase's setter runs as it starts).
+const PHASE_CLICK_SELECTORS: Record<number, string> = {
+  1: cellSelector(ALLY_START),
+  2: cellSelector(ALLY_DEST),
+  3: cellSelector(ENEMY_POS),
+};
+const FIRE_SELECTOR = "[data-confirm-submit]";
+
+type DemoClick = { x: number; y: number; key: number };
+
+// A click mark over the demo, like a screen recording's: a translucent
+// circle that expands and fades, with a second ring just behind it. Styles
+// are inline (with their keyframes) so they ship with the component.
+const CLICK_KEYFRAMES = `@keyframes demo-click{0%{transform:translate(-50%,-50%) scale(.4);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}`;
+const CLICK_CIRCLE: React.CSSProperties = {
+  position: "absolute",
+  left: 0,
+  top: 0,
+  width: 44,
+  height: 44,
+  borderRadius: "9999px",
+  opacity: 0,
+};
+const CLICK_FILL: React.CSSProperties = {
+  ...CLICK_CIRCLE,
+  background: "rgba(20, 24, 30, 0.45)",
+  border: "2px solid rgba(255, 255, 255, 0.75)",
+  boxShadow: "0 0 6px rgba(0, 0, 0, 0.5)",
+  animation: "demo-click 600ms ease-out forwards",
+};
+const CLICK_RING: React.CSSProperties = {
+  ...CLICK_CIRCLE,
+  border: "2px solid rgba(255, 255, 255, 0.6)",
+  animation: "demo-click 600ms ease-out 140ms forwards",
+};
+
+function DemoClickMark({ click }: { click: DemoClick }) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute z-[1000]"
+      style={{ left: click.x, top: click.y }}
+    >
+      <style>{CLICK_KEYFRAMES}</style>
+      <span style={CLICK_FILL} />
+      <span style={CLICK_RING} />
+    </div>
+  );
+}
 
 function buildDemoShips() {
   const allyBase = generateRandomShip(ALLY_ID, 1);
@@ -191,6 +246,21 @@ function buildDemoShips() {
   const bgEnemy1Attrs = calculateAttributesFromContracts(bgEnemy1);
   const bgEnemy2Attrs = calculateAttributesFromContracts(bgEnemy2);
 
+  // The last-move step shows the shot landed: the enemy's hull drops by what
+  // the locked-target preview showed (the same calculation), never to 0.
+  const shot = calculateDamage({
+    shooterId: ALLY_ID,
+    targetShipId: ENEMY_ID,
+    getShipAttributes: (id) => (id === ALLY_ID ? allyAttrs : id === ENEMY_ID ? enemyAttrs : null),
+    selectedWeaponType: "weapon",
+    specialData: null,
+    specialType: 0,
+  });
+  const enemyHitAttrs: Attributes = {
+    ...enemyAttrs,
+    hullPoints: Math.max(1, enemyAttrs.hullPoints - shot.reducedDamage),
+  };
+
   return {
     ally,
     enemy,
@@ -200,6 +270,7 @@ function buildDemoShips() {
     bgEnemy2,
     allyAttrs,
     enemyAttrs,
+    enemyHitAttrs,
     bgAlly1Attrs,
     bgAlly2Attrs,
     bgEnemy1Attrs,
@@ -230,18 +301,20 @@ export function TacticalTargetingPreview() {
 
   const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid } = DEMO_MAP_GRIDS;
 
+  const showLastMove = phase === 4;
+
   const attributesById = useMemo(() => {
     const map = new Map<number, Attributes>();
     if (ships) {
       map.set(ALLY_ID, ships.allyAttrs);
-      map.set(ENEMY_ID, ships.enemyAttrs);
+      map.set(ENEMY_ID, showLastMove ? ships.enemyHitAttrs : ships.enemyAttrs);
       map.set(BG_ALLY_1_ID, ships.bgAlly1Attrs);
       map.set(BG_ALLY_2_ID, ships.bgAlly2Attrs);
       map.set(BG_ENEMY_1_ID, ships.bgEnemy1Attrs);
       map.set(BG_ENEMY_2_ID, ships.bgEnemy2Attrs);
     }
     return map;
-  }, [ships]);
+  }, [ships, showLastMove]);
   const getShipAttributes = useCallback(
     (shipId: number) => attributesById.get(shipId) ?? null,
     [attributesById],
@@ -278,7 +351,6 @@ export function TacticalTargetingPreview() {
     return map;
   }, [ships]);
 
-  const showLastMove = phase === 4;
   const shipPositions = showLastMove ? COMMITTED_POSITIONS : POSITIONS;
   const demoLastMove = showLastMove ? DEMO_LAST_MOVE : null;
   const movedShipIdsSet = showLastMove ? COMMITTED_MOVED_SET : EMPTY_MOVED_SET;
@@ -321,6 +393,30 @@ export function TacticalTargetingPreview() {
   });
 
   const { resetSelection, setPreviewPosition, setTargetShipId } = interaction;
+
+  // Click marks: measured from the real elements, relative to the viewport.
+  const [click, setClick] = useState<DemoClick | null>(null);
+  const showClickAt = useCallback((selector: string) => {
+    const root = rootRef.current;
+    const el = root?.querySelector(selector);
+    if (!root || !el) return;
+    const r = el.getBoundingClientRect();
+    const box = root.getBoundingClientRect();
+    // Plus the crop box's own scroll, which absolutely positioned marks move with.
+    setClick((prev) => ({
+      x: r.left + r.width / 2 - box.left + root.scrollLeft,
+      y: r.top + r.height / 2 - box.top + root.scrollTop,
+      key: (prev?.key ?? 0) + 1,
+    }));
+  }, []);
+  useEffect(() => {
+    if (!isPlaying || !ships) return;
+    const selector = PHASE_CLICK_SELECTORS[phase];
+    if (selector) showClickAt(selector);
+    if (phase !== 3) return;
+    const t = setTimeout(() => showClickAt(FIRE_SELECTOR), FIRE_CLICK_MS);
+    return () => clearTimeout(t);
+  }, [phase, isPlaying, ships, showClickAt]);
 
   // Autoplay driver — calls the exact same setters a player's clicks would,
   // just on a timer instead of onClick.
@@ -449,6 +545,7 @@ export function TacticalTargetingPreview() {
           GameGrid renders, is what actually guarantees this whole preview is
           strictly view-only on the Info page. */}
       <div className="absolute inset-0 z-[999]" aria-hidden />
+      {click && <DemoClickMark key={click.key} click={click} />}
     </div>
   );
 }
