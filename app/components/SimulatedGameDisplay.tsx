@@ -43,6 +43,7 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
+import { AudioControl, useAudioSettings } from "./AudioControl";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
@@ -603,6 +604,7 @@ export function SimulatedGameDisplay({
   );
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
+  const { openAudioSettings } = useAudioSettings();
 
   React.useEffect(() => {
     if (!isLandscapeMobile) return;
@@ -3220,6 +3222,7 @@ export function SimulatedGameDisplay({
                 opponentScore={Number(opponentScore)}
                 maxScore={Number(maxScore)}
                 menuItems={[
+                  { label: "Audio", onClick: openAudioSettings },
                   { label: "Reset tutorial", onClick: () => resetTutorial(), tone: "warn" },
                   ...(onBack ? [{ label: exitLabel, onClick: onBack }] : []),
                 ]}
@@ -3899,12 +3902,16 @@ export function SimulatedGameDisplay({
               }
             >
               <div className="flex flex-col">
-                <h1 className="text-2xl font-mono text-white flex items-center gap-3">
-                  <span>Game 0</span>
-                  <span className="text-text-muted text-base">
-                    Round {gameState.turnState.currentRound.toString()}
-                  </span>
-                </h1>
+                <div className="flex items-center justify-between gap-2">
+                  <h1 className="text-2xl font-mono text-white flex items-center gap-3">
+                    <span>Game 0</span>
+                    <span className="text-text-muted text-base">
+                      Round {gameState.turnState.currentRound.toString()}
+                    </span>
+                  </h1>
+                  {/* Audio settings, on the battle title row (the HUD header is hidden in battle). */}
+                  <AudioControl />
+                </div>
                 {/* Turn indicator (no countdown in tutorial / PvE) */}
                 <div className="flex flex-col gap-1.5">
                   <div

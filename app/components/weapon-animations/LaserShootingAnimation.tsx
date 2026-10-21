@@ -18,6 +18,18 @@ import {
   startCancelledRaf,
   startVisibilityAwareInterval,
 } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// The red laser's first beams each snap (laser-snap.wav), pitched a little
+// differently each time; the beams after them are silent, so the volley
+// doesn't rattle for as long as it's on screen. A replayed last move snaps
+// once per move (soundOnceKey).
+const SNAP_SOUND = "/sound/laser-snap.wav";
+const SNAP_COUNT = 7;
+const SNAP_PITCH_VARIATION = 0.05;
+const SNAP_PLAYED_KEY = "vt-laser-snap-played-v1";
 
 const BEAM_GREEN = "#6bff8f";
 const BEAM_CORE = "#eafff0";
@@ -40,6 +52,11 @@ interface LaserShootingAnimationProps {
   facingRight: boolean;
   /** Variant 2 is the Mining Laser: one green wander beam. Variant 1 is the red pulse volley. */
   variant?: number;
+  /**
+   * The last move being replayed: the red laser's snaps play once per key
+   * this session. Omitted (aiming preview), they play each time it starts.
+   */
+  soundOnceKey?: string;
 }
 
 // Muzzle points, as offsets from the attacker cell's centre. The sprite
@@ -87,7 +104,13 @@ const Faction1LaserAnimation = React.memo(function Faction1LaserAnimation({
   targetRow,
   targetCol,
   facingRight,
+  soundOnceKey,
 }: Omit<LaserShootingAnimationProps, "variant">) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+  /** Snaps still to play: one per beam of the first SNAP_COUNT. */
+  const snapsLeftRef = useRef(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const lineGroupRefs = useRef<Array<SVGGElement | null>>([]);
   const flareGroupRefs = useRef<Array<SVGGElement | null>>([]);
@@ -216,6 +239,11 @@ const Faction1LaserAnimation = React.memo(function Faction1LaserAnimation({
       const angle = Math.atan2(dy, dx) * (180 / Math.PI);
       const tr = `rotate(${angle} ${origin.x} ${origin.y})`;
 
+      if (snapsLeftRef.current > 0) {
+        snapsLeftRef.current -= 1;
+        playSoundEffect(SNAP_SOUND, { pitchVariation: SNAP_PITCH_VARIATION });
+      }
+
       const lineSlot = lineSlotRef.current % LASER_LINE_SLOTS;
       lineSlotRef.current += 1;
       const lineGroup = lineGroupRefs.current[lineSlot];
@@ -268,6 +296,11 @@ const Faction1LaserAnimation = React.memo(function Faction1LaserAnimation({
       }
     };
 
+    const key = soundOnceKeyRef.current;
+    snapsLeftRef.current =
+      !soundsMutedRef.current && (key == null || takeFirstPlay(SNAP_PLAYED_KEY, key))
+        ? SNAP_COUNT
+        : 0;
     createLine();
     const stopInterval = startVisibilityAwareInterval(createLine, LASER_FIRE_INTERVAL_MS);
     return () => {
@@ -728,6 +761,7 @@ export const LaserShootingAnimation = React.memo(function LaserShootingAnimation
   ...props
 }: LaserShootingAnimationProps) {
   if (Number(variant) === 2) {
+    // The Mining Laser has no sound yet (it ignores soundOnceKey).
     return <MiningLaserAnimation {...props} />;
   }
   return <Faction1LaserAnimation {...props} />;

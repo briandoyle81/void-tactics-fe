@@ -30,6 +30,7 @@ import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
 import { gameFleetPanelLabel } from "../utils/gameFleetPanelLabel";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
+import { AudioControl, useAudioSettings } from "./AudioControl";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import { LandscapeBattleHeader, LandscapeRailTabs, LandscapeShipSheet, LandscapeStagedMove } from "./LandscapeBattleRail";
@@ -271,6 +272,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   );
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
+  const { openAudioSettings } = useAudioSettings();
   const [isMobileFleetModalOpen, setIsMobileFleetModalOpen] = React.useState(false);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = React.useState(false);
   const [mobileLeftPanelTab, setMobileLeftPanelTab] = React.useState<
@@ -3028,7 +3030,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               myScore={Number(myScore)}
               opponentScore={Number(opponentScore)}
               maxScore={Number(maxScore)}
-              menuItems={[{ label: "Sync", onClick: () => refetchGame() }]}
+              menuItems={[
+                { label: "Sync", onClick: () => refetchGame() },
+                { label: "Audio", onClick: openAudioSettings },
+              ]}
             />
 
             <LandscapeRailTabs
@@ -3617,12 +3622,16 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             }
           >
           <div className="flex flex-col">
-            <h1 className="text-2xl font-mono text-white flex items-center gap-3">
-              <span>{gameTitleLabel}</span>
-              <span className="text-text-muted text-base">
-                Round {game.turnState.currentRound.toString()}
-              </span>
-            </h1>
+            <div className="flex items-center justify-between gap-2">
+              <h1 className="text-2xl font-mono text-white flex items-center gap-3">
+                <span>{gameTitleLabel}</span>
+                <span className="text-text-muted text-base">
+                  Round {game.turnState.currentRound.toString()}
+                </span>
+              </h1>
+              {/* Audio settings, on the battle title row (the HUD header is hidden in battle). */}
+              <AudioControl />
+            </div>
             {/* Turn Indicator and Countdown / Seize Turn */}
             {game.metadata.winner ===
               "0x0000000000000000000000000000000000000000" &&

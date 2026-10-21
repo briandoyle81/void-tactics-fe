@@ -492,6 +492,11 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
   const showDirectedWeaponFire =
     !!directedWeaponBeamTargetId &&
     (stagingDirectedFire || idleLastMoveDirectedFire);
+  // Weapon sounds for a replayed last move play once per move (see
+  // weapon-animations/playOnce.ts); aiming plays them each time they start.
+  const lastMoveSoundKey = idleLastMoveDirectedFire
+    ? `${lastMoveShipId}:${lastMoveTargetShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${lastMoveNewPosition?.row},${lastMoveNewPosition?.col}`
+    : undefined;
   const lastMoveFlakTargetCells = React.useMemo(() => {
     if (!showLastMoveEmpReplay) return EMPTY_OVERLAY_CELLS;
     if (lastMoveActionNum !== ActionType.Special) return EMPTY_OVERLAY_CELLS;
@@ -634,6 +639,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     targetCol={targetPosition.col}
                     facingRight={attackerIsCreator}
                     variant={Number(ship.traits.variant)}
+                    soundOnceKey={lastMoveSoundKey}
                   />,
                 );
               })()}
@@ -698,6 +704,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     targetCol={targetPosition.col}
                     facingRight={attackerIsCreator}
                     variant={Number(ship.traits.variant)}
+                    soundOnceKey={lastMoveSoundKey}
                   />,
                 );
               })()}
@@ -768,6 +775,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                       targetRow={targetPosition.row}
                       targetCol={targetPosition.col}
                       facingRight={attackerIsCreator}
+                      soundOnceKey={lastMoveSoundKey}
                     />
                   ),
                 );
@@ -829,6 +837,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     targetCol={targetPosition.col}
                     facingRight={attackerIsCreator}
                     variant={Number(ship.traits.variant)}
+                    soundOnceKey={lastMoveSoundKey}
                   />,
                 );
               })()}

@@ -26,8 +26,8 @@ import { X_URL } from "../config/socialLinks";
 import { ALPHA_DISCORD_INVITE_URL, WEB2_SIGN_IN_ENABLED } from "../config/alpha";
 import { useFreeShipClaimStatus } from "../hooks/useFreeShipClaimStatus";
 import type { StoreSection } from "./storeSections";
-import { useGameMusic } from "../hooks/useGameMusic";
-import { useSoundEffectsSetting } from "../hooks/useSoundEffects";
+import { HudIconButton } from "./HudIconButton";
+import { AudioControl, useAudioSettings } from "./AudioControl";
 import { useDebugModeSetting } from "../hooks/useDebugMode";
 import { formatDec } from "../utils/formatDec";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -538,49 +538,6 @@ function HudPillRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-function HudIconButton({
-  label,
-  onClick,
-  children,
-  badge,
-  expanded,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-  badge?: number;
-  expanded?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      aria-expanded={expanded}
-      className="relative flex h-8 w-8 shrink-0 items-center justify-center border border-solid transition-colors duration-150 hover:bg-slate"
-      style={{
-        color: "var(--color-cyan)",
-        backgroundColor: "var(--color-near-black)",
-        borderColor: "var(--color-gunmetal)",
-      }}
-    >
-      {children}
-      {badge != null && badge > 0 && (
-        <span
-          className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center px-1 text-[10px] font-bold leading-none"
-          style={{
-            fontFamily: MONO_FONT,
-            backgroundColor: "var(--color-phosphor-green)",
-            color: "var(--color-near-black)",
-          }}
-        >
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
 
 /**
  * The HUD's free-ships countdown. Its own component so the countdown's
@@ -1008,8 +965,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
     }
   }, [isConnected, isWeb2LoggedIn]);
 
-  const music = useGameMusic();
-  const soundEffects = useSoundEffectsSetting();
+  const { music, soundEffects } = useAudioSettings();
   const debugMode = useDebugModeSetting();
   const isSignedIn = showWeb2Panel || showWeb3Panel;
   const callsign = showWeb2Panel
@@ -1105,6 +1061,11 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
             <span className="font-mono text-sm text-cyan/60">Connecting...</span>
           )}
 
+          {/* Signed out there's no settings menu, and the tutorial plays sounds too. */}
+          {isHydrated && !isSignedIn && (
+            <AudioControl />
+          )}
+
           {isHydrated && !isConnecting && !isSignedIn && showSignIn && (
             <AuthModeChooser connectButtonClassName="px-4 py-1.5 border-2 border-solid uppercase font-semibold tracking-wider transition-colors duration-150 text-xs w-full md:w-auto" />
           )}
@@ -1166,6 +1127,8 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                   </svg>
                 </HudIconButton>
               )}
+
+              <AudioControl />
 
               <div ref={settingsMenuRef} className="relative">
                 <HudIconButton

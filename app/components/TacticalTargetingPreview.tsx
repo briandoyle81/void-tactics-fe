@@ -17,6 +17,7 @@ import {
   HERO_DEMO_SCORING,
 } from "../data/content/heroDemoMap";
 import { GameGrid } from "./GameGrid";
+import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
 import { GameBoardLayout } from "./GameBoardLayout";
 import { useInView } from "../hooks/useInView";
 import { usePageVisible } from "../hooks/usePageVisible";
@@ -464,6 +465,8 @@ export function TacticalTargetingPreview() {
           top: `${50 - FOCUS_Y_FRACTION * CROP_SCALE * 100}%`,
         }}
       >
+        {/* A marketing page: the demo's weapons stay silent. */}
+        <WeaponSoundsMuted value={true}>
         <GameBoardLayout isCurrentPlayerTurn={true}>
           <GameGrid
             grid={interaction.displayGrid}
@@ -535,6 +538,7 @@ export function TacticalTargetingPreview() {
             renderShipCard={() => null}
           />
         </GameBoardLayout>
+        </WeaponSoundsMuted>
       </div>
 
       {/* Click-blocker: GameGridWeaponSelector/GameGridConfirmWidget/the HOLD

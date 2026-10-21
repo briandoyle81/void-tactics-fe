@@ -58,6 +58,7 @@ import { ShipImageWeb2 } from "./ShipImageWeb2";
 import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { GameScoreBox } from "./GameScoreBox";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
+import { AudioControl, useAudioSettings } from "./AudioControl";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
@@ -147,6 +148,7 @@ function GameDisplayWeb2({
   const chromeLayout = useGameViewChromeLayout(gameViewRootRef, gridContainerRef);
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
+  const { openAudioSettings } = useAudioSettings();
   const useSideLayout = chromeOnSide && !isLandscapeMobile;
   const sideChrome = gameViewSideChrome(isPortraitTablet);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = useState(false);
@@ -1625,7 +1627,10 @@ function GameDisplayWeb2({
                 myScore={Number(myScore)}
                 opponentScore={Number(opponentScore)}
                 maxScore={Number(maxScore)}
-                menuItems={[{ label: "Sync", onClick: () => refetchGame() }]}
+                menuItems={[
+                  { label: "Sync", onClick: () => refetchGame() },
+                  { label: "Audio", onClick: openAudioSettings },
+                ]}
               />
 
               <LandscapeRailTabs
@@ -1734,10 +1739,14 @@ function GameDisplayWeb2({
             >
               ← Back
             </button>
-            <h1 className="text-2xl font-mono text-white flex items-center gap-3">
-              <span>{gameTitleLabel}</span>
-              <span className="text-text-muted text-base">Round {game.turnState.currentRound}</span>
-            </h1>
+            <div className="flex items-center justify-between gap-2">
+              <h1 className="text-2xl font-mono text-white flex items-center gap-3">
+                <span>{gameTitleLabel}</span>
+                <span className="text-text-muted text-base">Round {game.turnState.currentRound}</span>
+              </h1>
+              {/* Audio settings, on the battle title row (the HUD header is hidden in battle). */}
+              <AudioControl />
+            </div>
             {!isGameOver && renderTurnTimerPanel()}
             <GameScoreBox score={gameScoreData} />
             {gameWinnerResult ? (

@@ -11,6 +11,19 @@ import {
 } from "../../constants/animationTiming";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 import { createOverlaySizeSync, setCircle, setHidden, setLine, startCancelledRaf } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// A Railgun shot's first round fires (railgun-fire.wav) and explodes on
+// impact (railgun-impact.wav), both the railgun's own sounds and pitched a
+// little differently each time; the rounds it keeps firing after that are
+// silent. A replayed last move plays them once per move (soundOnceKey). The
+// Linear Accelerator has no sound yet.
+const FIRE_SOUND = "/sound/railgun-fire.wav";
+const IMPACT_SOUND = "/sound/railgun-impact.wav";
+const PITCH_VARIATION = 0.05;
+const IMPACT_PLAYED_KEY = "vt-railgun-impact-played-v1";
 
 interface RailgunShootingAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -21,6 +34,11 @@ interface RailgunShootingAnimationProps {
   facingRight: boolean;
   /** Variant 2 is the Linear Accelerator: same shot family, bigger and slower. */
   variant?: number;
+  /**
+   * The last move being replayed: the impact sound plays once per key this
+   * session. Omitted (aiming preview), it plays each time a shot starts.
+   */
+  soundOnceKey?: string;
 }
 
 const SPALL_SPREAD = (48 * Math.PI) / 180;
@@ -134,8 +152,14 @@ export const RailgunShootingAnimation = React.memo(function RailgunShootingAnima
   targetCol,
   facingRight,
   variant = 1,
+  soundOnceKey,
 }: RailgunShootingAnimationProps) {
   const isLinearAccelerator = Number(variant) === 2;
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  soundOnceKeyRef.current = soundOnceKey;
+  /** Impact sounds still to play: the shot's first round (its fire sound plays as it spawns). */
+  const impactSoundsLeftRef = useRef(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const muzzleLayerRef = useRef<HTMLDivElement | null>(null);
   const muzzleRef = useRef<HTMLDivElement | null>(null);
@@ -434,6 +458,10 @@ export const RailgunShootingAnimation = React.memo(function RailgunShootingAnima
             });
           }
           impactsRef.current[slot] = impact;
+          if (impactSoundsLeftRef.current > 0) {
+            impactSoundsLeftRef.current -= 1;
+            playSoundEffect(IMPACT_SOUND, { pitchVariation: PITCH_VARIATION });
+          }
           projectileRef.current = null;
           setHidden(projectileGroupRef.current, true);
           respawnAtRef.current = now + RAILGUN_RESPAWN_DELAY_MS;
@@ -483,8 +511,15 @@ export const RailgunShootingAnimation = React.memo(function RailgunShootingAnima
     respawnAtRef.current = 0;
     setHidden(projectileGroupRef.current, true);
     for (const group of impactGroupRefs.current) setHidden(group, true);
+    const key = soundOnceKeyRef.current;
+    const sounding =
+      !soundsMuted &&
+      Number(variant) !== 2 &&
+      (key == null || takeFirstPlay(IMPACT_PLAYED_KEY, key));
+    impactSoundsLeftRef.current = sounding ? 1 : 0;
+    if (sounding) playSoundEffect(FIRE_SOUND, { pitchVariation: PITCH_VARIATION });
     spawnProjectile();
-  }, [attackerRow, attackerCol, targetRow, targetCol, variant, spawnProjectile]);
+  }, [attackerRow, attackerCol, targetRow, targetCol, variant, spawnProjectile, soundsMuted]);
 
   const trailId = `rg-trail-${instanceId.current}`;
 

@@ -12,6 +12,30 @@ import {
 } from "../../constants/animationTiming";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 import { createOverlaySizeSync, setCircle, setHidden, startCancelledRaf } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// Each missile of the first volley clunks out of its launcher
+// (missile-eject.mp3, credited on /audio-credits) as it appears, its motor
+// lights (missile-motor.wav) when it starts accelerating, and it explodes
+// (missile-impact.wav) when it hits; the looping volleys after it are
+// silent. A replayed last move plays them once per move (soundOnceKey).
+const LAUNCH_SOUND = "/sound/missile-eject.mp3";
+/** missile-eject.mp3 opens with ~0.12 s of quiet; skip it so the clunk lands as the missile appears. */
+const LAUNCH_SOUND_START_S = 0.1;
+const MOTOR_SOUND = "/sound/missile-motor.wav";
+const MOTOR_PITCH_VARIATION = 0.05;
+const IMPACT_SOUND = "/sound/missile-impact.wav";
+const IMPACT_PITCH_VARIATION = 0.05;
+/** The Torpedo Launcher plays the same three sounds 15% lower (and slower). */
+const TORPEDO_PITCH = 0.85;
+/** Its explosion lower still: 30% longer than that (so lower again), and 15% louder. */
+const TORPEDO_IMPACT_PITCH = TORPEDO_PITCH / 1.3;
+const TORPEDO_IMPACT_VOLUME = 1.15;
+const LAUNCH_PLAYED_KEY = "vt-missile-launch-played-v1";
+/** A missile drifts out of the launcher this long before its motor lights and it accelerates. */
+const INITIAL_DRIFT_TIME_S = 0.5;
 
 interface MissileShootingAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -22,6 +46,11 @@ interface MissileShootingAnimationProps {
   facingRight: boolean;
   /** Variant 2 is the Torpedo Launcher: one slower oval, ring shockwave. */
   variant?: number;
+  /**
+   * The last move being replayed: its launch sound plays once per key this
+   * session. Omitted (aiming preview), it plays each time the animation starts.
+   */
+  soundOnceKey?: string;
 }
 
 const IMPACT_COLORS = ["#ff4400", "#ff8800", "#ffcc00", "#ffffff", "#ff6600"];
@@ -33,6 +62,8 @@ const MAX_TRAIL = 10;
 const MAX_DEBRIS = 10;
 
 type Missile = {
+  /** Plays the launch, motor and impact sounds (the first volley's missiles). */
+  sounding?: boolean;
   x: number;
   y: number;
   angle: number;
@@ -90,7 +121,6 @@ function stepMissile(
   topSpeed: number,
   startSpeed: number,
 ): { x: number; y: number; angle: number } | null {
-  const INITIAL_DRIFT_TIME = 0.5;
   const ACCELERATION_TIME = 0.125;
   const ACCELERATION = (topSpeed - startSpeed) / ACCELERATION_TIME;
   const targetDx = missile.targetX - missile.spawnX;
@@ -105,7 +135,7 @@ function stepMissile(
     0.5 * ACCELERATION * ACCELERATION_TIME * ACCELERATION_TIME;
   const reachesTargetDuringAccel = accelerationDistance >= totalDistance;
   const totalElapsed = (now - missile.driftStartTime) / 1000;
-  const accelerationElapsed = totalElapsed - INITIAL_DRIFT_TIME;
+  const accelerationElapsed = totalElapsed - INITIAL_DRIFT_TIME_S;
   const angleDx = missile.targetX - (missile.x || missile.spawnX);
   const angleDy = missile.targetY - (missile.y || missile.spawnY);
   const angle = Math.atan2(angleDy, angleDx) * (180 / Math.PI) + 90;
@@ -115,7 +145,7 @@ function stepMissile(
   if (totalDistance < 0.5) {
     currentX = missile.targetX;
     currentY = missile.targetY;
-  } else if (totalElapsed < INITIAL_DRIFT_TIME) {
+  } else if (totalElapsed < INITIAL_DRIFT_TIME_S) {
     const driftDistance = startSpeed * totalElapsed;
     currentX = missile.spawnX + Math.cos(initialAngle) * driftDistance;
     currentY = missile.spawnY + Math.sin(initialAngle) * driftDistance;
@@ -202,6 +232,7 @@ export const MissileShootingAnimation = React.memo(function MissileShootingAnima
   targetCol,
   facingRight,
   variant = 1,
+  soundOnceKey,
 }: MissileShootingAnimationProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const missileGroupRefs = useRef<Array<SVGGElement | null>>(
@@ -240,6 +271,10 @@ export const MissileShootingAnimation = React.memo(function MissileShootingAnima
   const targetColRef = useRef(targetCol);
   const facingRightRef = useRef(facingRight);
   const isTorpedoRef = useRef(Number(variant) === 2);
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(useWeaponSoundsMuted());
+  /** Launch sounds still to play: one per missile of the first volley. */
+  const launchSoundsLeftRef = useRef(0);
   attackerRowRef.current = attackerRow;
   attackerColRef.current = attackerCol;
   targetRowRef.current = targetRow;
@@ -290,15 +325,34 @@ export const MissileShootingAnimation = React.memo(function MissileShootingAnima
       return layoutCacheRef.current;
     };
 
+    const soundPitch = () => (isTorpedoRef.current ? TORPEDO_PITCH : 1);
+
+    // Motors still to light; cleared if the animation goes away first.
+    const motorTimers = new Set<number>();
+
     const spawnOne = (slot: number) => {
       const layout = ensureLayout();
       if (!layout) return;
+      let sounding = false;
+      if (launchSoundsLeftRef.current > 0) {
+        launchSoundsLeftRef.current -= 1;
+        sounding = true;
+        playSoundEffect(LAUNCH_SOUND, { startAt: LAUNCH_SOUND_START_S, pitch: soundPitch() });
+        const motorTimer = window.setTimeout(() => {
+          motorTimers.delete(motorTimer);
+          playSoundEffect(MOTOR_SOUND, { pitch: soundPitch(), pitchVariation: MOTOR_PITCH_VARIATION });
+        }, INITIAL_DRIFT_TIME_S * 1000);
+        motorTimers.add(motorTimer);
+      }
       const speedScale = isTorpedoRef.current ? TORPEDO_SPEED_SCALE : 1;
       const startSpeed = (layout.avgCellSize * 4 * speedScale) / 8;
       const origin = { x: layout.originX, y: layout.originY };
       const targetX = layout.targetCX + (Math.random() - 0.5) * layout.cellWidth * 0.5;
       const targetY = layout.targetCY + (Math.random() - 0.5) * layout.cellHeight * 0.5;
-      missilesRef.current[slot] = makeMissile(origin, targetX, targetY, startSpeed, 0.5);
+      missilesRef.current[slot] = {
+        ...makeMissile(origin, targetX, targetY, startSpeed, INITIAL_DRIFT_TIME_S),
+        sounding,
+      };
     };
 
     const spawnVolley = () => {
@@ -440,6 +494,13 @@ export const MissileShootingAnimation = React.memo(function MissileShootingAnima
       impactsRef.current[slot] = impact;
     };
 
+    const key = soundOnceKeyRef.current;
+    launchSoundsLeftRef.current =
+      !soundsMutedRef.current && (key == null || takeFirstPlay(LAUNCH_PLAYED_KEY, key))
+        ? isTorpedoRef.current
+          ? 1
+          : MISSILE_SLOTS
+        : 0;
     spawnVolley();
 
     const ro = gridContainerRef.current
@@ -479,6 +540,13 @@ export const MissileShootingAnimation = React.memo(function MissileShootingAnima
           const next = stepMissile(missile, now, topSpeed, startSpeed);
           if (!next) {
             addImpact(missile.targetX, missile.targetY, now);
+            if (missile.sounding) {
+              playSoundEffect(IMPACT_SOUND, {
+                pitch: isTorpedoRef.current ? TORPEDO_IMPACT_PITCH : 1,
+                volume: isTorpedoRef.current ? TORPEDO_IMPACT_VOLUME : 1,
+                pitchVariation: IMPACT_PITCH_VARIATION,
+              });
+            }
             missilesRef.current[i] = null;
             setHidden(group, true);
             continue;
@@ -526,6 +594,7 @@ export const MissileShootingAnimation = React.memo(function MissileShootingAnima
     return () => {
       stopRaf();
       ro?.disconnect();
+      motorTimers.forEach((id) => window.clearTimeout(id));
     };
   }, [gridContainerRef, syncOverlaySize]);
 

@@ -41,7 +41,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: October 11, 2026
+          Last updated: October 21, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -161,6 +161,34 @@ export default function AudioCreditsPage() {
               >
                 Pixabay License Summary
               </a>
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2
+              className="text-lg font-bold uppercase tracking-wide"
+              style={{
+                fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
+              }}
+            >
+              Missile Launch Sound Effect
+            </h2>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              &ldquo;Mechanical1.wav&rdquo; by BMacZero
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              <span className="opacity-80">Source:</span>{" "}
+              <a
+                href="https://freesound.org/s/94120/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                freesound.org/s/94120/
+              </a>
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              <span className="opacity-80">License:</span> Creative Commons 0
             </p>
           </section>
 

@@ -10,6 +10,17 @@ import {
 } from "../../constants/animationTiming";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 import { createOverlaySizeSync, setCircle, setHidden, startVisibilityAwareInterval } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// One flamethrower burst (plasma-flame.wav, 2.7 s) as the stream starts; the
+// stream after it is silent. A replayed last move plays it once per move
+// (soundOnceKey). It stops if the stream goes away first (after
+// FLAME_STOP_AFTER_MS, so React's quick dev-mode remount doesn't cut it).
+const FLAME_SOUND = "/sound/plasma-flame.wav";
+const FLAME_PLAYED_KEY = "vt-plasma-flame-played-v1";
+const FLAME_STOP_AFTER_MS = 200;
 
 interface PlasmaShootingAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -18,6 +29,11 @@ interface PlasmaShootingAnimationProps {
   targetRow: number;
   targetCol: number;
   facingRight: boolean;
+  /**
+   * The last move being replayed: the flame sound plays once per key this
+   * session. Omitted (aiming preview), it plays each time the stream starts.
+   */
+  soundOnceKey?: string;
 }
 
 const PLASMA_COLORS = ["#56d6ff", "#6495ED", "#9370DB", "#4169E1", "#00CED1"];
@@ -69,7 +85,11 @@ export const PlasmaShootingAnimation = React.memo(function PlasmaShootingAnimati
   targetRow,
   targetCol,
   facingRight,
+  soundOnceKey,
 }: PlasmaShootingAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const particleRefs = useRef<Array<SVGCircleElement | null>>(
     Array.from({ length: PLASMA_PARTICLE_SLOTS }, () => null),
@@ -236,6 +256,13 @@ export const PlasmaShootingAnimation = React.memo(function PlasmaShootingAnimati
       impactsRef.current[slot] = impact;
     };
 
+    const key = soundOnceKeyRef.current;
+    const flame =
+      !soundsMutedRef.current && (key == null || takeFirstPlay(FLAME_PLAYED_KEY, key))
+        ? playSoundEffect(FLAME_SOUND)
+        : null;
+    const flameStartedAt = Date.now();
+
     spawnParticle();
     const stopSpawn = startVisibilityAwareInterval(
       spawnParticle,
@@ -322,6 +349,7 @@ export const PlasmaShootingAnimation = React.memo(function PlasmaShootingAnimati
     animationFrameRef.current = requestAnimationFrame(animate);
     return () => {
       cancelled = true;
+      if (flame && Date.now() - flameStartedAt > FLAME_STOP_AFTER_MS) flame.pause();
       stopSpawn();
       ro?.disconnect();
       if (typeof document !== "undefined") {

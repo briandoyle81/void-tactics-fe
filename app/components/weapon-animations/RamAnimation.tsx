@@ -4,6 +4,8 @@ import React, { useEffect, useLayoutEffect, useState } from "react";
 import { GridShip } from "../../types/gridDisplay";
 import { GridShipImage } from "../GridShipImage";
 import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 
 // Last-move effect for a Ram (variant 1's FactionAbility): the rammer's
@@ -20,17 +22,6 @@ import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 const CYCLE_MS = 2400;
 const PLAYED_KEY = "vt-ram-played-v1";
 const SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
-
-function takeFirstPlay(playKey: string): boolean {
-  try {
-    const played = JSON.parse(sessionStorage.getItem(PLAYED_KEY) ?? "[]") as string[];
-    if (played.includes(playKey)) return false;
-    sessionStorage.setItem(PLAYED_KEY, JSON.stringify([...played.slice(-49), playKey]));
-    return true;
-  } catch {
-    return true;
-  }
-}
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -70,6 +61,7 @@ export const RamAnimation = React.memo(function RamAnimation({
   victimIsCreator,
   playKey,
 }: RamAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
   const [layout, setLayout] = useState<Layout | null>(null);
 
   useLayoutEffect(() => {
@@ -96,9 +88,9 @@ export const RamAnimation = React.memo(function RamAnimation({
 
   // Sound and shake once per ram, timed to the first impact (~28% in).
   useEffect(() => {
-    if (!takeFirstPlay(playKey)) return;
+    if (!takeFirstPlay(PLAYED_KEY, playKey)) return;
     const timer = window.setTimeout(() => {
-      playSoundEffect("/sound/crash.mp3");
+      if (!soundsMuted) playSoundEffect("/sound/crash.mp3");
       const grid = gridContainerRef.current;
       if (grid && !prefersReducedMotion() && typeof grid.animate === "function") {
         // `translate` composes with any transform the grid already has.
@@ -115,7 +107,7 @@ export const RamAnimation = React.memo(function RamAnimation({
       }
     }, CYCLE_MS * 0.28);
     return () => window.clearTimeout(timer);
-  }, [playKey, gridContainerRef]);
+  }, [playKey, gridContainerRef, soundsMuted]);
 
   if (!layout) return null;
   const { width, height, cellWidth, cellHeight, from, to } = layout;
