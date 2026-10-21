@@ -3,11 +3,14 @@ import { parseShipGrant, shipGrantError, type ShipGrantSpec } from "./shipGrant"
 // The app's own copy of every roguelike node's reward ship
 // (app/data/content/rewardShips.json), so players' screens show a node's
 // ship without reading ShipGrantWinEffect. Grants rarely change; when they
-// do, Ops Console › Reward Ships flags the nodes that differ and saves a new
-// copy to commit and deploy. The copy names the contract it was read from:
+// do, Ops Console › Reward Ships flags the nodes that differ, and the mission
+// seed export (Admin tab) saves a new copy to commit and deploy. The copy names the contract it was read from:
 // after a redeploy (a new address) it's out of date as a whole, and reads go
 // back to the chain until a new copy is saved. Web3 only: web2 reads its
 // grants from Postgres.
+
+/** The app copy's file name, in app/data/content/. */
+export const REWARD_SHIP_SNAPSHOT_FILE = "rewardShips.json";
 
 export interface RewardShipSnapshotFile {
   /** The ShipGrantWinEffect address the grants were read from. */

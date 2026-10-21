@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildMissionImportRows } from "../missionSeedImport";
+import { DEFAULT_SHIP_GRANT } from "../shipGrant";
 import type { MissionSeedFiles, SeedMap } from "../missionSeedExport";
 
 const map = (key: string, name = key): SeedMap => ({
@@ -94,6 +95,41 @@ describe("buildMissionImportRows", () => {
       { graphType: "CAMPAIGN", nodeId: 1, title: "Seed A", description: "" },
       { graphType: "ROGUELIKE", nodeId: 1, title: "Repo title", description: "Repo text" },
     ]);
+  });
+
+  it("imports reward ships by node id and rejects invalid ones", () => {
+    const f = files();
+    f.roguelike.nodes[0].shipGrant = { ...DEFAULT_SHIP_GRANT, name: "Prize" };
+    const text = { mapNames: {}, campaignContent: {}, roguelikeContent: {} };
+    expect(buildMissionImportRows(f, text).roguelikeShipGrants).toEqual([
+      { nodeId: 1, grant: { ...DEFAULT_SHIP_GRANT, name: "Prize" } },
+    ]);
+
+    f.roguelike.nodes[0].shipGrant = { ...DEFAULT_SHIP_GRANT, equipment: { mainWeapon: 0, armor: 1, shields: 1, special: 0 } };
+    f.roguelike.nodes[1].shipGrant = DEFAULT_SHIP_GRANT;
+    const build = () => buildMissionImportRows(f, text);
+    expect(build).toThrow(/armor and shields/);
+    expect(build).toThrow(/resupply node with a reward ship/);
+  });
+
+  it("uses the deployment's ids for maps and roguelike nodes", () => {
+    const text = { mapNames: {}, campaignContent: {}, roguelikeContent: { 9: { title: "Nine", description: "" } } };
+    const ids = {
+      // rlM01 was synced in after the PvP map; 4 is an ignored duplicate.
+      mapIds: new Map([["m01", 1], ["m02", 2], ["p1", 3], ["rlM01", 5]]),
+      roguelikeNodeIds: new Map([["r1", 1], ["r2", 9]]),
+      ignoredMapIds: [4],
+      ignoredRoguelikeNodeIds: [],
+      fromRecord: true,
+    };
+    const rows = buildMissionImportRows(files(), text, ids);
+    expect(rows.maps.map((m) => m.id)).toEqual([1, 2, 5, 3]);
+    expect(rows.roguelikeNodes.map((n) => [n.id, n.mapId])).toEqual([[1, 5], [9, null]]);
+    expect(rows.roguelikeEdges).toEqual([{ parentId: 1, childId: 9 }]);
+    expect(rows.nodeContent).toContainEqual({ graphType: "ROGUELIKE", nodeId: 9, title: "Nine", description: "" });
+
+    ids.mapIds.delete("p1");
+    expect(() => buildMissionImportRows(files(), text, ids)).toThrow(/map "p1" isn't on the deployment yet/);
   });
 
   it("lists every broken reference", () => {

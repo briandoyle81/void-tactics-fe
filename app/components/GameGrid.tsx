@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { Attributes, ActionType } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { useGridCellSets } from "../hooks/useGridCellSets";
@@ -8,6 +8,10 @@ import { useGridPanZoom } from "../hooks/useGridPanZoom";
 import { useGridEffectPreviews } from "../hooks/useGridEffectPreviews";
 import { computeConfirmWidgetAnchor, selectedShipHasEffectLabel } from "../utils/gameGridRanges";
 import { GameGridCell } from "./GameGridCell";
+import { MapBackground } from "./MapBackground";
+import { mapBackgroundFor } from "../utils/mapBackground";
+import { buildTerrainArtGrid } from "../utils/terrainEdges";
+import { buildTileArtGrid, type MapTileArt, type TileArtGrid } from "../utils/mapTileArt";
 import { GameGridOverlays, GameGridMoveArrow } from "./GameGridOverlays";
 import { GameGridTooltip, GameGridTooltipHoveredCell } from "./GameGridTooltip";
 import { GameGridTileTooltip } from "./GameGridTileTooltip";
@@ -23,6 +27,7 @@ const EMPTY_TARGET_REFS: Array<{
   position: { row: number; col: number };
 }> = [];
 const NOOP_CONFIRM = () => {};
+const NO_TERRAIN: readonly string[] = [];
 
 type SubmittedProposal = {
   selectedShipId: number;
@@ -116,6 +121,8 @@ interface GameGridProps {
   blockedGrid: boolean[][];
   /** Movement-blocking terrain, independent of blockedGrid's LOS-only blocking. Optional — omitted renders no impassable-terrain overlay. */
   impassableGrid?: boolean[][];
+  /** The map's tile art (mapTileArtFor(mapId), app/utils/mapTileArt.ts). Omitted: none. */
+  tileArt?: readonly MapTileArt[];
   scoringGrid: number[][];
   onlyOnceGrid: boolean[][];
   calculateDamage: (
@@ -251,6 +258,7 @@ const GameGridCells = React.memo(function GameGridCells({
   specialType,
   blockedGrid,
   impassableGrid,
+  tileArtGrid,
   scoringGrid,
   onlyOnceGrid,
   getShipAttributes,
@@ -312,6 +320,7 @@ const GameGridCells = React.memo(function GameGridCells({
   specialType: number;
   blockedGrid: boolean[][];
   impassableGrid?: boolean[][];
+  tileArtGrid: TileArtGrid | null;
   scoringGrid: number[][];
   onlyOnceGrid: boolean[][];
   getShipAttributes: GameGridProps["getShipAttributes"];
@@ -365,11 +374,21 @@ const GameGridCells = React.memo(function GameGridCells({
   React.useLayoutEffect(() => {
     gridRef.current = grid;
   }, [grid]);
+  const nebulaGrid = useMemo(() => buildTerrainArtGrid("nebula", blockedGrid, tileArtGrid), [blockedGrid, tileArtGrid]);
+  const asteroidGrid = useMemo(
+    () => buildTerrainArtGrid("asteroids", impassableGrid, tileArtGrid),
+    [impassableGrid, tileArtGrid],
+  );
+  const background = useMemo(
+    () => mapBackgroundFor(blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid),
+    [blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid],
+  );
   return (
     <div
       ref={gridLayoutRef}
       className="relative z-0 grid gap-0 border border-near-black grid-cols-[repeat(17,1fr)] grid-rows-[repeat(11,1fr)] w-full h-full min-h-0 group"
     >
+      <MapBackground src={background} />
       {grid.map((row, rowIndex) =>
         row.map((cell, colIndex) => (
           <GameGridCell
@@ -401,6 +420,9 @@ const GameGridCells = React.memo(function GameGridCells({
             specialType={specialType}
             blockedGrid={blockedGrid}
             impassableGrid={impassableGrid}
+            tileArtSlice={tileArtGrid?.[rowIndex]?.[colIndex] ?? null}
+            nebulaPieces={nebulaGrid[rowIndex]?.[colIndex] ?? NO_TERRAIN}
+            asteroidPieces={asteroidGrid[rowIndex]?.[colIndex] ?? NO_TERRAIN}
             scoringGrid={scoringGrid}
             onlyOnceGrid={onlyOnceGrid}
             getShipAttributes={getShipAttributes}
@@ -469,6 +491,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   specialRange,
   blockedGrid,
   impassableGrid,
+  tileArtGrid,
   scoringGrid,
   onlyOnceGrid,
   getShipAttributes,
@@ -549,6 +572,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   specialRange?: number;
   blockedGrid: boolean[][];
   impassableGrid?: boolean[][];
+  tileArtGrid: TileArtGrid | null;
   scoringGrid: number[][];
   onlyOnceGrid: boolean[][];
   getShipAttributes: GameGridProps["getShipAttributes"];
@@ -648,6 +672,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         specialType={specialType}
         blockedGrid={blockedGrid}
         impassableGrid={impassableGrid}
+        tileArtGrid={tileArtGrid}
         scoringGrid={scoringGrid}
         onlyOnceGrid={onlyOnceGrid}
         getShipAttributes={getShipAttributes}
@@ -798,6 +823,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
   specialRange,
   blockedGrid,
   impassableGrid,
+  tileArt,
   scoringGrid,
   onlyOnceGrid,
   calculateDamage,
@@ -849,6 +875,10 @@ const GameGridBoard = React.memo(function GameGridBoard({
   const widgetTargetId = submittedProposal ? submittedProposal.targetShipId : targetShipId;
   const widgetRetreatPrepId = submittedProposal ? submittedProposal.retreatPrepShipId : retreatPrepShipId;
   const widgetMovementRange = submittedProposal ? submittedProposal.movementRange : movementRange;
+  const tileArtGrid = useMemo(
+    () => (tileArt && tileArt.length > 0 ? buildTileArtGrid(tileArt, blockedGrid, impassableGrid) : null),
+    [tileArt, blockedGrid, impassableGrid],
+  );
   const setHoveredCell = useSetGridHoveredCell();
   const setHoveredMoveTile = useSetGridDestHoveredTile();
   const { outerWrapperRef, gridContainerRef, zoom, resetZoom } = useGridPanZoom();
@@ -1135,6 +1165,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
             specialRange={specialRange}
             blockedGrid={blockedGrid}
             impassableGrid={impassableGrid}
+            tileArtGrid={tileArtGrid}
             scoringGrid={scoringGrid}
             onlyOnceGrid={onlyOnceGrid}
             getShipAttributes={getShipAttributes}

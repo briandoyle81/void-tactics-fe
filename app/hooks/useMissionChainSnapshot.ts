@@ -20,6 +20,7 @@ import {
 } from "./useRoguelikeNodeMap";
 import { useWeb3NodeContent } from "./useNodeContent";
 import { useRoguelikeNodesWinEffects, useWinEffectAddresses } from "./useWinEffects";
+import { useShipGrants } from "./useShipGrants";
 import type { MissionChainSnapshot } from "../utils/missionSeedExport";
 
 /** The deploy seeds exactly one roguelike campaign, which gets id 1. */
@@ -83,6 +84,8 @@ export function useMissionChainSnapshot(): {
   const { effectsByNodeId, isLoading: winEffectsLoading } =
     useRoguelikeNodesWinEffects(roguelikeNodeIds);
   const winEffectAddresses = useWinEffectAddresses();
+  const roguelikeNodeNumbers = useMemo(() => roguelikeNodes.map((n) => Number(n.id)), [roguelikeNodes]);
+  const { grantsByNodeId, isLoading: grantsLoading } = useShipGrants(roguelikeNodeNumbers);
 
   // ---- Titles/descriptions: the shipped content (nodeContent.ts).
   const campaignNodeIds = useMemo(() => campaignNodes.map((n) => n.id), [campaignNodes]);
@@ -103,6 +106,7 @@ export function useMissionChainSnapshot(): {
     campaignNodesLoading ||
     roguelikeNodesLoading ||
     winEffectsLoading ||
+    grantsLoading ||
     campaignContentLoading ||
     roguelikeContentLoading;
 
@@ -209,6 +213,7 @@ export function useMissionChainSnapshot(): {
             if (!key) unknownWinEffects.add(address);
             return key ? [key] : [];
           }),
+          shipGrant: grantsByNodeId.get(Number(n.id)),
         })),
       },
       campaignContent,
@@ -235,6 +240,7 @@ export function useMissionChainSnapshot(): {
     rootNodeId,
     initialCostCap,
     effectsByNodeId,
+    grantsByNodeId,
     winEffectAddresses,
     campaignChainContent,
     roguelikeChainContent,

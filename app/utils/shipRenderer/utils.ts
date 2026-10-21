@@ -138,7 +138,14 @@ function uintToString(value: number): string {
 }
 
 /**
- * Blend HSL colors
+ * Variant 1's shiny tint. Muted art colors (saturation <= 40: the grey/blue
+ * hull and structure) take the ship's own hue and saturation, and move
+ * toward white (l > 50) or black (l < 50) in proportion to how far l is from
+ * 50; l 50-99 is squeezed into 50-85 first so the brightest ships don't wash
+ * out. Vivid accents (shield and engine glows) keep the gentle tint.
+ * Changed twice on 2026-10-20 with the contract (frontend-handoff-2026-10-20.md
+ * §3): muted colors used to average hues with the blue-grey art (no red,
+ * orange or gold shinies), then ignored the ship's lightness.
  * Ported from blendHSL
  */
 export function blendHSL(
@@ -148,15 +155,22 @@ export function blendHSL(
   hslString: string
 ): string {
   const { h: h2, s: s2, l: l2 } = parseHSL(hslString);
-  const { blendedH, blendedS, blendedL } = blendValues(h, s, l, h2, s2, l2);
-
-  // Return the blended HSL string
-  return buildHslString(blendedH, blendedS, blendedL);
+  if (s2 <= 40) {
+    if (l > 50) {
+      const squeezed = 50 + Math.floor(((l - 50) * 35) / 49);
+      return buildHslString(h, s, l2 + Math.floor(((100 - l2) * (squeezed - 50)) / 100));
+    }
+    return buildHslString(h, s, l2 - Math.floor((l2 * (50 - l)) / 100));
+  }
+  return buildHslString(
+    Math.floor((h2 * 95 + h * 5) / 100),
+    Math.floor((s2 * 95 + s * 5) / 100),
+    Math.floor((l2 * 85 + l * 15) / 100)
+  );
 }
 
 /**
- * Shared 50/50-ish blend math, factored out of blendHSL so blendHSLV2 can
- * reuse it without duplicating the ratio logic.
+ * Variant 2's blend math (the old variant 1 rule, still used by blendHSLV2).
  * Ported from blendValues
  */
 function blendValues(

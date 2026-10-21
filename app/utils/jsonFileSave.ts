@@ -1,8 +1,8 @@
 // Saving admin exports as JSON files: written into a folder the admin picks
 // where the browser allows it (Chromium's File System Access API), or
 // downloaded to be dropped over the original by hand. Used by the mission
-// seed export (AdminSettingsExport) and the reward ship snapshot
-// (RewardShipSnapshotPanel).
+// seed export (AdminSettingsExport, which also saves the reward ship app
+// copy).
 
 // The parts of the File System Access API lib.dom doesn't type yet.
 type PermissionMode = { mode: "readwrite" };

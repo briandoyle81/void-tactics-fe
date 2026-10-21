@@ -13,6 +13,7 @@ import { ContractEventsHost } from "./hooks/useContractEvents";
 import { useQueryClient } from "@tanstack/react-query";
 import { VOID_TACTICS_CHAIN_CHANGED_EVENT, xaiTestnet } from "./config/networks";
 import AlphaNoticeModal from "./components/AlphaNoticeModal";
+import { useShipArtCacheGuard } from "./hooks/useShipImageCache";
 import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
 import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
 import { ClearOAuthRedirectParams } from "./components/ClearOAuthRedirectParams";
@@ -94,6 +95,11 @@ const DYNAMIC_SETTINGS: DynamicContextProps["settings"] = {
     : undefined,
 };
 
+function ShipArtCacheGuard() {
+  useShipArtCacheGuard();
+  return null;
+}
+
 // memo prevents DynamicWagmiConnectorInner's frequent re-renders from cascading into the entire app tree
 const AppContent = memo(function AppContent({ children }: { children: ReactNode }) {
   return (
@@ -104,6 +110,7 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
       <RestoreWalletConnection />
       <ClearOAuthRedirectParams />
       <GasGrantClaimer />
+      <ShipArtCacheGuard />
       <TransactionProvider>
         {children}
         <AlphaNoticeModal />

@@ -173,15 +173,18 @@ export function MapPlacementsEditorCore({
     setIsDirty(false);
   };
 
-  const handleSave = async () => {
+  /** Resolves true when the placements were saved. */
+  const handleSave = async (): Promise<boolean> => {
     setSaving(true);
     try {
       const message = await onSave(placements.map((p) => ({ row: p.row, col: p.col, configId: p.configId })));
       setIsDirty(false);
       toast.success(message);
+      return true;
     } catch (e) {
       console.error("Failed to save map placements:", e);
       toast.error(e instanceof Error ? e.message : "Failed to save placements");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -208,6 +211,43 @@ export function MapPlacementsEditorCore({
     setShowEditor(false);
     onClose?.();
   };
+  // Leaving with unsaved changes asks first: the ✕ opens this prompt, and a
+  // reload or tab close gets the browser's own leave-page prompt.
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const requestClose = () => {
+    if (isDirty) setConfirmingLeave(true);
+    else closeEditor();
+  };
+  const leaveWithoutSaving = () => {
+    setConfirmingLeave(false);
+    // Reopening shows the saved fleet, not the dropped edits.
+    handleReset();
+    closeEditor();
+  };
+  const saveAndLeave = async () => {
+    if (await handleSave()) {
+      setConfirmingLeave(false);
+      closeEditor();
+    }
+  };
+  useEffect(() => {
+    if (!showEditor || !isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [showEditor, isDirty]);
+  useEffect(() => {
+    if (!confirmingLeave) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !saving) setConfirmingLeave(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmingLeave, saving]);
+  const canSave = isDirty && !saving && outOfZoneCount === 0;
   // A variant filter keeps the roster (both factions' configs) scannable
   // when placing a fleet for one faction.
   const [rosterVariantFilter, setRosterVariantFilter] = useState<"all" | number>("all");
@@ -278,7 +318,7 @@ export function MapPlacementsEditorCore({
                 </button>
                 <button
                   type="button"
-                  disabled={!isDirty || saving || outOfZoneCount > 0}
+                  disabled={!canSave}
                   title={outOfZoneCount > 0 ? "Move or remove the ships outside the joiner zone first" : undefined}
                   onClick={() => void handleSave()}
                   className="w-full px-4 py-2 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold text-sm tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto md:whitespace-nowrap"
@@ -290,7 +330,8 @@ export function MapPlacementsEditorCore({
               <div className="flex items-center justify-start gap-2 sm:justify-end">
                 <button
                   type="button"
-                  onClick={closeEditor}
+                  onClick={requestClose}
+                  aria-label="Close placements editor"
                   className="px-3 py-1 text-sm font-bold text-text-muted border border-gunmetal rounded-none hover:text-text-secondary hover:border-steel transition-colors"
                 >
                   ✕
@@ -342,6 +383,62 @@ export function MapPlacementsEditorCore({
               </div>
             </div>
           </div>
+          {confirmingLeave && (
+            <div
+              className="fixed inset-0 z-[610] flex items-center justify-center bg-black/80 p-4"
+              onClick={() => {
+                if (!saving) setConfirmingLeave(false);
+              }}
+              role="presentation"
+            >
+              <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="placements-leave-title"
+                className="w-full max-w-md border-2 border-amber bg-near-black p-6 font-mono"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 id="placements-leave-title" className="text-lg font-bold uppercase tracking-wider text-amber">
+                  Leave without saving?
+                </h2>
+                <p className="mt-3 text-sm text-text-secondary">
+                  Your enemy placement changes on map #{mapId} aren&apos;t saved. Leaving drops them.
+                </p>
+                {outOfZoneCount > 0 && (
+                  <p className="mt-2 text-xs text-amber">
+                    Saving is blocked until the ships outside the joiner zone are moved or removed.
+                  </p>
+                )}
+                <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    autoFocus
+                    disabled={saving}
+                    onClick={() => setConfirmingLeave(false)}
+                    className="border-2 border-gunmetal px-3 py-2 text-xs font-bold uppercase tracking-wider text-text-secondary hover:border-steel hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Keep editing
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={leaveWithoutSaving}
+                    className="border-2 border-warning-red px-3 py-2 text-xs font-bold uppercase tracking-wider text-warning-red hover:bg-warning-red/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canSave}
+                    onClick={() => void saveAndLeave()}
+                    className="border-2 border-phosphor-green px-3 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {saving ? "Saving..." : "Save and leave"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>

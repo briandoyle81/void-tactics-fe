@@ -9,16 +9,23 @@
 // some keys (campaign "mainCampaign", node "f06"), so the export must keep
 // existing keys stable. It takes the current seed files as a baseline and
 // maps chain items back to their keys:
-// - maps, NodeMap campaigns/nodes and roguelike nodes: the deploy forces
-//   these to be created in array order, so on-chain id == 1-indexed
-//   position in the baseline (maps across all three files, in the deploy's
-//   sp -> roguelike -> pvp concatenation order).
+// - maps and roguelike nodes: by the deployment's own record of each key's
+//   id (seedDeploymentIds.ts: the Ignition journal plus the sync script's
+//   content-sync.json). Content synced after the deploy gets ids out of
+//   array order (live Base Sepolia: seed map67 is map 68, and map 67 is an
+//   ignored duplicate). Without that record, ids are 1-indexed array
+//   positions, as a fresh deploy gives them.
+// - NodeMap campaigns/nodes: the deploy forces these to be created in array
+//   order and nothing syncs them later, so on-chain id == 1-indexed position.
 // - AI ship configs: created without forced order (ids read from events),
 //   so these are matched by content, then by unique name, then by position.
 // Anything on chain past the baseline gets a generated key.
 //
 // Pure and number-native: the caller converts chain reads first (see
 // useMissionChainSnapshot).
+
+import type { ShipGrantSpec } from "./shipGrant";
+import { positionalSeedIds, type SeedDeploymentIds } from "./seedDeploymentIds";
 
 export interface SeedPos {
   row: number;
@@ -89,6 +96,8 @@ export interface SeedRoguelikeNode {
   description?: string;
   /** Win effect catalog keys (e.g. "DEC_BONUS_WIN_EFFECT"), in run order. */
   winEffects?: string[];
+  /** The node's reward ship (ShipGrantWinEffect.setGrant), when it has one. */
+  shipGrant?: ShipGrantSpec;
 }
 /** Forward-only: the run can move from `from` to `to`, never back. */
 export interface SeedRoguelikeEdge {
@@ -175,6 +184,8 @@ export interface ChainRoguelikeNode {
   children: { childId: number }[];
   /** Win effect catalog keys already resolved from resolver addresses. */
   winEffects: string[];
+  /** ShipGrantWinEffect.getGrant, when hasGrant. */
+  shipGrant?: ShipGrantSpec;
 }
 export interface MissionChainSnapshot {
   maps: ChainMap[];
@@ -196,6 +207,9 @@ export interface MissionChainSnapshot {
   campaignContent: Map<number, NodeContent>;
   roguelikeContent: Map<number, NodeContent>;
 }
+
+/** The win effect catalog key that mints a node's reward ship. */
+const SHIP_GRANT_EFFECT_KEY = "SHIP_GRANT_WIN_EFFECT";
 
 const MAP_MODE_NAMES: Record<number, SeedMapMode> = { 0: "PvP", 1: "PvE", 2: "Both" };
 
@@ -263,8 +277,11 @@ function orderCampaignNodes(nodes: ChainCampaignNode[]): {
 export function buildMissionSeedFiles(
   chain: MissionChainSnapshot,
   baseline: MissionSeedFiles,
+  deploymentIds: SeedDeploymentIds = positionalSeedIds(baseline),
 ): { files: MissionSeedFiles; warnings: string[] } {
   const warnings: string[] = [];
+  const invert = (ids: Map<string, number>) => new Map([...ids].map(([key, id]) => [id, key]));
+  const ignoredRlNodeIds = new Set(deploymentIds.ignoredRoguelikeNodeIds);
 
   // ---- Maps -------------------------------------------------------------
   type MapFile = "singlePlayer" | "roguelike" | "pvp";
@@ -274,6 +291,8 @@ export function buildMissionSeedFiles(
     ...baseline.pvp.maps.map((map) => ({ map, file: "pvp" as const })),
   ];
   const usedMapKeys = new Set(baselineMaps.map((b) => b.map.key));
+  const baselineMapByKey = new Map(baselineMaps.map((b, i) => [b.map.key, { ...b, index: i }]));
+  const mapKeyByChainId = invert(deploymentIds.mapIds);
   const roguelikeMapIds = new Set(
     chain.roguelike.nodes
       .filter((n) => n.campaignId === chain.roguelike.campaignId && n.kind === 0)
@@ -286,9 +305,23 @@ export function buildMissionSeedFiles(
 
   const mapKeyById = new Map<number, string>();
   const outMaps: Record<MapFile, SeedMap[]> = { singlePlayer: [], roguelike: [], pvp: [] };
+  const mapOrder = new Map<string, number>();
   for (const m of [...chain.maps].sort((a, b) => a.id - b.id)) {
-    const existing = baselineMaps[m.id - 1];
+    const knownKey = mapKeyByChainId.get(m.id);
+    const existing = knownKey ? baselineMapByKey.get(knownKey) : undefined;
     const key = existing ? existing.map.key : uniqueKey(`map${m.id}`, usedMapKeys);
+    // A chain map the deployment record doesn't give a seed key (new in the
+    // editor, or listed under "ignored") becomes a new seed map. The sync
+    // script and the web2 import only find its id once it's recorded.
+    if (!existing && deploymentIds.fromRecord) {
+      warnings.push(
+        `Map #${m.id} is new to the seed as "${key}". Record "${key}": "${m.id}" under "maps" in the ` +
+          "deployment's content-sync.json (and remove it from \"ignored\") so the sync script and the web2 import use id " +
+          `${m.id}.`,
+      );
+    }
+    // Baseline maps keep their place in the files; new ones go at the end.
+    mapOrder.set(key, existing ? existing.index : baselineMaps.length + m.id);
     const file: MapFile = existing
       ? existing.file
       : roguelikeMapIds.has(m.id)
@@ -315,10 +348,14 @@ export function buildMissionSeedFiles(
       joinerZone: m.joinerZone,
     });
   }
-  if (chain.maps.length < baselineMaps.length) {
+  (Object.keys(outMaps) as MapFile[]).forEach((file) =>
+    outMaps[file].sort((a, b) => mapOrder.get(a.key)! - mapOrder.get(b.key)!),
+  );
+  const droppedMaps = baselineMaps.filter((b) => !outMaps[b.file].some((m) => m.key === b.map.key));
+  if (droppedMaps.length > 0) {
     warnings.push(
-      `Chain has ${chain.maps.length} maps but the baseline seed files list ${baselineMaps.length}; ` +
-        "baseline maps past the chain's count were dropped. Check the seed files match this deployment.",
+      `${droppedMaps.length} baseline map(s) aren't on this chain and were dropped: ` +
+        `${droppedMaps.map((b) => b.map.key).join(", ")}. Check the seed files match this deployment.`,
     );
   }
   const mapKey = (id: number, context: string) => {
@@ -471,14 +508,21 @@ export function buildMissionSeedFiles(
   }
   const baselineRlNodes = baseline.roguelike.nodes;
   const usedRlKeys = new Set(baselineRlNodes.map((n) => n.key));
-  const rlNodes = [...rl.nodes]
-    .filter((n) => n.campaignId === rl.campaignId)
-    .sort((a, b) => a.id - b.id);
+  const baselineRlIndex = new Map(baselineRlNodes.map((n, i) => [n.key, i]));
+  const rlKeyByChainId = invert(deploymentIds.roguelikeNodeIds);
   const rlKeyById = new Map<number, string>();
-  for (const n of rlNodes) {
-    const existing = baselineRlNodes[n.id - 1];
-    rlKeyById.set(n.id, existing ? existing.key : uniqueKey(`rl${n.id}`, usedRlKeys));
+  const rlOrder = new Map<number, number>();
+  for (const n of rl.nodes) {
+    if (n.campaignId !== rl.campaignId || ignoredRlNodeIds.has(n.id)) continue;
+    const knownKey = rlKeyByChainId.get(n.id);
+    const index = knownKey != null ? baselineRlIndex.get(knownKey) : undefined;
+    rlKeyById.set(n.id, index != null ? knownKey! : uniqueKey(`rl${n.id}`, usedRlKeys));
+    // Baseline nodes keep their place in the file; new ones go at the end.
+    rlOrder.set(n.id, index ?? baselineRlNodes.length + n.id);
   }
+  const rlNodes = rl.nodes
+    .filter((n) => rlKeyById.has(n.id))
+    .sort((a, b) => rlOrder.get(a.id)! - rlOrder.get(b.id)!);
   const outRlNodes: SeedRoguelikeNode[] = rlNodes.map((n) => {
     const key = rlKeyById.get(n.id)!;
     const base: SeedRoguelikeNode =
@@ -493,7 +537,18 @@ export function buildMissionSeedFiles(
           }
         : { key, kind: "Resupply", costCapOverride: n.costCapOverride };
     const node = withContent(base, chain.roguelikeContent.get(n.id));
-    return n.winEffects.length > 0 ? { ...node, winEffects: n.winEffects } : node;
+    const runsShipGrant = n.winEffects.includes(SHIP_GRANT_EFFECT_KEY);
+    if (runsShipGrant && !n.shipGrant) {
+      warnings.push(`Roguelike node #${n.id} (${key}) runs Grant Ship but has no reward ship, so its wins grant nothing.`);
+    }
+    if (n.shipGrant && !runsShipGrant) {
+      warnings.push(`Roguelike node #${n.id} (${key}) has a reward ship but doesn't run Grant Ship, so it's never granted.`);
+    }
+    return {
+      ...node,
+      ...(n.winEffects.length > 0 ? { winEffects: n.winEffects } : {}),
+      ...(n.shipGrant ? { shipGrant: n.shipGrant } : {}),
+    };
   });
 
   // Keep baseline edge order for edges that still exist, then append new ones.

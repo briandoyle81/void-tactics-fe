@@ -4,12 +4,14 @@ import React, { useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
+import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
 import { useWeb2Admin } from "../hooks/useWeb2Admin";
 import { MapEditScreenWeb2 } from "./MapEditScreenWeb2";
 import { MapPreviewCard } from "./MapPreviewCard";
 import { MapsListShell } from "./MapsListShell";
 import { MapPosition, ScoringPosition, MapMode } from "../types/types";
 import { parseZoneTiles } from "../utils/deploymentZone";
+import { mapProblems } from "../utils/mapProblems";
 import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 export interface Web2Map {
@@ -36,6 +38,53 @@ export default function MapsWeb2() {
     queryKey: ["maps", "web2"],
     queryFn: () => apiFetch<Web2Map[]>("/api/maps"),
   });
+  // What each card flags opposite its key (same as Maps.tsx). Fleets and
+  // missions come from the admin routes, so only admins get those flags.
+  const { data: placements } = useQuery({
+    queryKey: ["ai-map-placements", "all"],
+    queryFn: () => apiFetch<{ mapId: number }[]>("/api/admin/ai-map-placements"),
+    enabled: canCreateMaps,
+    staleTime: ADMIN_DATA_STALE_MS,
+  });
+  const { data: campaignNodes } = useQuery({
+    queryKey: ["admin", "campaign-nodes", "all"],
+    queryFn: () => apiFetch<{ mapId: number }[]>("/api/admin/campaign/nodes"),
+    enabled: canCreateMaps,
+    staleTime: ADMIN_DATA_STALE_MS,
+  });
+  const { data: roguelikeNodes } = useQuery({
+    queryKey: ["admin", "roguelike-nodes", "all"],
+    queryFn: () => apiFetch<{ mapId: number | null; kind: number }[]>("/api/admin/roguelike/nodes"),
+    enabled: canCreateMaps,
+    staleTime: ADMIN_DATA_STALE_MS,
+  });
+  const problemsByMapId = useMemo(() => {
+    const usage =
+      placements && campaignNodes && roguelikeNodes
+        ? (() => {
+            const fleetSizeByMapId = new Map<number, number>();
+            placements.forEach((p) => fleetSizeByMapId.set(p.mapId, (fleetSizeByMapId.get(p.mapId) ?? 0) + 1));
+            const missionCountByMapId = new Map<number, number>();
+            const countMission = (mapId: number) =>
+              missionCountByMapId.set(mapId, (missionCountByMapId.get(mapId) ?? 0) + 1);
+            campaignNodes.forEach((n) => countMission(n.mapId));
+            roguelikeNodes.forEach((n) => {
+              if (n.kind === 0 && n.mapId != null) countMission(n.mapId);
+            });
+            return { fleetSizeByMapId, missionCountByMapId };
+          })()
+        : undefined;
+    return mapProblems(
+      maps.map((m) => ({
+        id: m.id,
+        mode: m.mode,
+        blockedPositions: m.blockedTiles,
+        impassablePositions: m.impassableTiles,
+        scoringPositions: m.scoringTiles,
+      })),
+      usage,
+    );
+  }, [maps, placements, campaignNodes, roguelikeNodes]);
   // The editor is in the URL (`map=<id>` or `map=new`, see urlState.ts):
   // refresh keeps it open, Back closes it.
   const mapParam = useUrlParam("map");
@@ -102,6 +151,7 @@ export default function MapsWeb2() {
               joinerZonePositions: parseZoneTiles(map.joinerZone) ?? [],
             }}
             modeLabel={MapMode[map.mode]}
+            problems={problemsByMapId.get(map.id)}
             onEdit={canCreateMaps ? () => handleEditMap(map) : undefined}
           />
         ))}

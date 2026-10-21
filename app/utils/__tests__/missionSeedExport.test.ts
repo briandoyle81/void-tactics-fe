@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { DEFAULT_SHIP_GRANT } from "../shipGrant";
 import {
   buildMissionSeedFiles,
   type MissionChainSnapshot,
@@ -69,6 +70,7 @@ export function chainFromSeed(seed: MissionSeedFiles): MissionChainSnapshot {
           .filter((e) => e.from === n.key)
           .map((e) => ({ childId: rlIds.get(e.to)! })),
         winEffects: n.winEffects ?? [],
+        shipGrant: n.shipGrant,
       })),
     },
     campaignContent: new Map(
@@ -186,6 +188,58 @@ describe("buildMissionSeedFiles", () => {
     });
     expect(files.roguelike.nodes[0].winEffects).toEqual(["DEC_BONUS_WIN_EFFECT"]);
     expect(files.roguelike.edges).toEqual([{ from: "m01", to: "r01" }]);
+  });
+
+  it("exports reward ships and warns when Grant Ship and the ship don't match", () => {
+    const seed = fixture();
+    const chain = chainFromSeed(seed);
+    chain.roguelike.nodes[0].winEffects = ["SHIP_GRANT_WIN_EFFECT"];
+    chain.roguelike.nodes[0].shipGrant = { ...DEFAULT_SHIP_GRANT, name: "Prize" };
+
+    const { files, warnings } = buildMissionSeedFiles(chain, seed);
+    expect(warnings).toEqual([]);
+    expect(files.roguelike.nodes[0].shipGrant).toMatchObject({ name: "Prize" });
+
+    chain.roguelike.nodes[0].winEffects = [];
+    expect(buildMissionSeedFiles(chain, seed).warnings).toEqual([
+      expect.stringContaining("doesn't run Grant Ship"),
+    ]);
+    chain.roguelike.nodes[0].winEffects = ["SHIP_GRANT_WIN_EFFECT"];
+    chain.roguelike.nodes[0].shipGrant = undefined;
+    expect(buildMissionSeedFiles(chain, seed).warnings).toEqual([
+      expect.stringContaining("has no reward ship"),
+    ]);
+  });
+
+  it("keys maps by the deployment's ids, not seed order", () => {
+    // Like live Base Sepolia: the roguelike map was synced in after the PvP
+    // map (id 5, not 3), and id 4 is an ignored duplicate.
+    const seed = fixture();
+    const chain = chainFromSeed(seed); // m01 1, f06 2, rlM01 3, pvp01 4
+    const rlMap = chain.maps.find((m) => m.id === 3)!;
+    chain.maps = [
+      ...chain.maps.filter((m) => m.id <= 2),
+      { ...chain.maps.find((m) => m.id === 4)!, id: 3 },
+      { ...rlMap, id: 4 },
+      { ...rlMap, id: 5 },
+    ];
+    chain.placements = chain.placements.map((p) => (p.mapId === 3 ? { ...p, mapId: 5 } : p));
+    chain.roguelike.nodes = chain.roguelike.nodes.map((n) => (n.mapId === 3 ? { ...n, mapId: 5 } : n));
+    const ids = {
+      mapIds: new Map([["m01", 1], ["f06", 2], ["pvp01", 3], ["rlM01", 5]]),
+      roguelikeNodeIds: new Map([["m01", 1], ["r01", 2]]),
+      ignoredMapIds: [4],
+      ignoredRoguelikeNodeIds: [],
+      fromRecord: true,
+    };
+
+    const { files, warnings } = buildMissionSeedFiles(chain, seed, ids);
+    // Id 4 has no seed key, so it's exported as a new map, with a reminder to record its id.
+    expect(warnings).toEqual([expect.stringContaining('Record "map4": "4"')]);
+    expect(files.pvp.maps.map((m) => m.key)).toEqual(["pvp01", "map4"]);
+    expect({ ...files, pvp: { ...files.pvp, maps: files.pvp.maps.slice(0, 1) } }).toEqual(seed);
+    // Seed order would have keyed id 3 as rlM01.
+    expect(buildMissionSeedFiles(chain, seed).files).not.toEqual(seed);
   });
 
   it("gives new chain items generated keys in the right file", () => {

@@ -16,6 +16,8 @@ import {
   type ZoneSide,
 } from "./MapTileVisual";
 import { DEFAULT_DEPLOYMENT_COLS } from "../utils/deploymentZone";
+import { setUrlParams, useUrlParam } from "../utils/urlState";
+import { MapGameView } from "./MapGameView";
 
 // Data-source-agnostic — the initial map data and the save action are both
 // supplied by the caller (contract reads/writes for web3's Maps.tsx, REST
@@ -69,6 +71,21 @@ const MAP_SYMMETRY_MODES: readonly { mode: MapSymmetryMode; label: string; hint:
   { mode: "vertical", label: "Vertical ↕", hint: "Mirror top and bottom" },
 ];
 
+// The grid to show: the editing grid, or the map as a battle draws it
+// (URL param mapView=game).
+const MAP_VIEWS: readonly { view: "editor" | "game"; label: string }[] = [
+  { view: "editor", label: "Editor view" },
+  { view: "game", label: "Game view" },
+];
+
+/** Wraps a leave-the-editor callback so the view choice doesn't outlive the editor. */
+export function withMapViewCleared(leave: () => void): () => void {
+  return () => {
+    setUrlParams({ mapView: null }, { replace: true });
+    leave();
+  };
+}
+
 const isZoneTool = (tool: string | null | undefined): tool is ZoneSide =>
   tool === "creatorZone" || tool === "joinerZone";
 
@@ -111,6 +128,8 @@ export function MapEditor({
   const blockedPositions = initialBlockedPositions;
   const impassablePositions = initialImpassablePositions;
   const scoringPositions = initialScoringPositions;
+
+  const mapView = useUrlParam("mapView") === "game" ? "game" : "editor";
 
   // Initialize editor state
   const [editorState, setEditorState] = useState<MapEditorState>(() => {
@@ -1028,167 +1047,197 @@ export function MapEditor({
         </div>
       </div>
 
+      {/* View toggle: the editing grid, or the map as a battle draws it */}
+      <div className="flex items-center gap-2" role="group" aria-label="Map view">
+        {MAP_VIEWS.map(({ view, label }) => (
+          <button
+            key={view}
+            type="button"
+            aria-pressed={mapView === view}
+            onClick={() => setUrlParams({ mapView: view === "game" ? "game" : null }, { replace: true })}
+            className={`px-3 py-2 rounded-none text-sm font-mono ${
+              mapView === view ? "bg-gunmetal text-white" : "bg-steel text-text-secondary hover:bg-gunmetal"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        {mapView === "game" && (
+          <span className="text-xs text-text-muted">View only. Switch to the editor view to change tiles.</span>
+        )}
+      </div>
+
       {/* Grid */}
-      <div className="bg-near-black w-full relative flex justify-center p-1">
-        <div
-          key={`grid-${editorState.blockedTiles.length}-${editorState.scoringTiles.length}`}
-          className="grid relative gap-0 grid-cols-[repeat(17,1fr)] grid-rows-[repeat(11,1fr)] w-full"
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-        >
-          {Array.from({ length: GRID_DIMENSIONS.HEIGHT }, (_, row) => (
-            <div key={`row-${row}`} className="contents">
-              {Array.from({ length: GRID_DIMENSIONS.WIDTH }, (_, col) => (
-                <div
-                  key={`${row}-${col}`}
-                  className={getTileClass(row, col)}
-                  onClick={() => {
-                    // Only handle click if not dragging
-                    if (!isDragging) {
-                      handleTileClick(row, col);
-                    }
-                  }}
-                  onMouseDown={(e) => handleTileMouseDown(e, row, col)}
-                  onMouseEnter={() => handleTileMouseEnter(row, col)}
-                  onContextMenu={(e) => handleTileRightClick(e, row, col)}
-                  onDragStart={(e) => e.preventDefault()}
-                  style={{ userSelect: "none" }}
-                  title={`Row: ${row}, Col: ${col}${
-                    editorState.blockedTiles[row][col] ? ", Blocked (LOS)" : ""
-                  }${
-                    editorState.impassableTiles[row][col] ? ", Impassable (movement)" : ""
-                  }${zones.creatorZone[row][col] ? ", Creator deployment zone" : ""}${
-                    zones.joinerZone[row][col] ? ", Joiner deployment zone" : ""
-                  }${
-                    editorState.scoringTiles[row][col] > 0
-                      ? `, Score: ${editorState.scoringTiles[row][col]}${
-                          editorState.onlyOnceTiles[row][col]
-                            ? " (once only)"
-                            : " (reusable)"
-                        }`
-                      : ""
-                  }`}
-                >
-                  <MapTileContents look={tileLook(row, col)} />
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+      {mapView === "game" ? (
+        <MapGameView
+          mapId={mapId}
+          blockedGrid={editorState.blockedTiles}
+          impassableGrid={editorState.impassableTiles}
+          scoringGrid={editorState.scoringTiles}
+          onlyOnceGrid={editorState.onlyOnceTiles}
+        />
+      ) : (
+        <div className="bg-near-black w-full relative flex justify-center p-1">
+          <div
+            key={`grid-${editorState.blockedTiles.length}-${editorState.scoringTiles.length}`}
+            className="grid relative gap-0 grid-cols-[repeat(17,1fr)] grid-rows-[repeat(11,1fr)] w-full"
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {Array.from({ length: GRID_DIMENSIONS.HEIGHT }, (_, row) => (
+              <div key={`row-${row}`} className="contents">
+                {Array.from({ length: GRID_DIMENSIONS.WIDTH }, (_, col) => (
+                  <div
+                    key={`${row}-${col}`}
+                    className={getTileClass(row, col)}
+                    onClick={() => {
+                      // Only handle click if not dragging
+                      if (!isDragging) {
+                        handleTileClick(row, col);
+                      }
+                    }}
+                    onMouseDown={(e) => handleTileMouseDown(e, row, col)}
+                    onMouseEnter={() => handleTileMouseEnter(row, col)}
+                    onContextMenu={(e) => handleTileRightClick(e, row, col)}
+                    onDragStart={(e) => e.preventDefault()}
+                    style={{ userSelect: "none" }}
+                    title={`Row: ${row}, Col: ${col}${
+                      editorState.blockedTiles[row][col] ? ", Blocked (LOS)" : ""
+                    }${
+                      editorState.impassableTiles[row][col] ? ", Impassable (movement)" : ""
+                    }${zones.creatorZone[row][col] ? ", Creator deployment zone" : ""}${
+                      zones.joinerZone[row][col] ? ", Joiner deployment zone" : ""
+                    }${
+                      editorState.scoringTiles[row][col] > 0
+                        ? `, Score: ${editorState.scoringTiles[row][col]}${
+                            editorState.onlyOnceTiles[row][col]
+                              ? " (once only)"
+                              : " (reusable)"
+                          }`
+                        : ""
+                    }`}
+                  >
+                    <MapTileContents look={tileLook(row, col)} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
 
-        {/* Grid reference lines overlay */}
-        <div className="absolute pointer-events-none inset-0">
-          {/* Vertical reference lines */}
-          {/* Center column edges (left and right of column 8) */}
-          <div
-            className="absolute bg-cyan"
-            style={{
-              left: `${(8 / GRID_DIMENSIONS.WIDTH) * 100}%`,
-              top: 0,
-              width: "2px",
-              height: "100%",
-              transform: "translateX(-50%)",
-            }}
-          />
-          <div
-            className="absolute bg-cyan"
-            style={{
-              left: `${(9 / GRID_DIMENSIONS.WIDTH) * 100}%`,
-              top: 0,
-              width: "2px",
-              height: "100%",
-              transform: "translateX(-50%)",
-            }}
-          />
-          <div
-            className="absolute bg-cyan"
-            style={{
-              left: `${(13 / GRID_DIMENSIONS.WIDTH) * 100}%`,
-              top: 0,
-              width: "2px",
-              height: "100%",
-              transform: "translateX(-50%)",
-            }}
-          />
-
-          {/* Red emphasis lines - Creator/Joiner boundaries */}
-          <div
-            className="absolute bg-warning-red"
-            style={{
-              left: `${(4 / GRID_DIMENSIONS.WIDTH) * 100}%`, // Right boundary of creator zone (after column 3, before column 4)
-              top: 0,
-              width: "2px",
-              height: "100%",
-              transform: "translateX(-50%)",
-            }}
-          />
-          <div
-            className="absolute bg-warning-red"
-            style={{
-              left: `${(13 / GRID_DIMENSIONS.WIDTH) * 100}%`, // Start of joiner zone (columns 13-16)
-              top: 0,
-              width: "2px",
-              height: "100%",
-              transform: "translateX(-50%)",
-            }}
-          />
-
-          {/* Reference columns */}
-          {[3, 5, 11, 14].map((col) => (
+          {/* Grid reference lines overlay */}
+          <div className="absolute pointer-events-none inset-0">
+            {/* Vertical reference lines */}
+            {/* Center column edges (left and right of column 8) */}
             <div
-              key={`v-${col}`}
-              className="absolute bg-cyan/40"
+              className="absolute bg-cyan"
               style={{
-                left: `${(col / GRID_DIMENSIONS.WIDTH) * 100}%`,
+                left: `${(8 / GRID_DIMENSIONS.WIDTH) * 100}%`,
                 top: 0,
-                width: "1px",
+                width: "2px",
                 height: "100%",
                 transform: "translateX(-50%)",
-                opacity: 0.6,
               }}
             />
-          ))}
-
-          {/* Horizontal reference lines */}
-          {/* Center row edges (top and bottom of row 5) */}
-          <div
-            className="absolute bg-cyan"
-            style={{
-              left: 0,
-              top: `${(5 / GRID_DIMENSIONS.HEIGHT) * 100}%`,
-              width: "100%",
-              height: "2px",
-              transform: "translateY(-50%)",
-            }}
-          />
-          <div
-            className="absolute bg-cyan"
-            style={{
-              left: 0,
-              top: `${(6 / GRID_DIMENSIONS.HEIGHT) * 100}%`,
-              width: "100%",
-              height: "2px",
-              transform: "translateY(-50%)",
-            }}
-          />
-
-          {/* Reference rows */}
-          {[1, 9].map((row) => (
             <div
-              key={`h-${row}`}
-              className="absolute bg-cyan/40"
+              className="absolute bg-cyan"
+              style={{
+                left: `${(9 / GRID_DIMENSIONS.WIDTH) * 100}%`,
+                top: 0,
+                width: "2px",
+                height: "100%",
+                transform: "translateX(-50%)",
+              }}
+            />
+            <div
+              className="absolute bg-cyan"
+              style={{
+                left: `${(13 / GRID_DIMENSIONS.WIDTH) * 100}%`,
+                top: 0,
+                width: "2px",
+                height: "100%",
+                transform: "translateX(-50%)",
+              }}
+            />
+
+            {/* Red emphasis lines - Creator/Joiner boundaries */}
+            <div
+              className="absolute bg-warning-red"
+              style={{
+                left: `${(4 / GRID_DIMENSIONS.WIDTH) * 100}%`, // Right boundary of creator zone (after column 3, before column 4)
+                top: 0,
+                width: "2px",
+                height: "100%",
+                transform: "translateX(-50%)",
+              }}
+            />
+            <div
+              className="absolute bg-warning-red"
+              style={{
+                left: `${(13 / GRID_DIMENSIONS.WIDTH) * 100}%`, // Start of joiner zone (columns 13-16)
+                top: 0,
+                width: "2px",
+                height: "100%",
+                transform: "translateX(-50%)",
+              }}
+            />
+
+            {/* Reference columns */}
+            {[3, 5, 11, 14].map((col) => (
+              <div
+                key={`v-${col}`}
+                className="absolute bg-cyan/40"
+                style={{
+                  left: `${(col / GRID_DIMENSIONS.WIDTH) * 100}%`,
+                  top: 0,
+                  width: "1px",
+                  height: "100%",
+                  transform: "translateX(-50%)",
+                  opacity: 0.6,
+                }}
+              />
+            ))}
+
+            {/* Horizontal reference lines */}
+            {/* Center row edges (top and bottom of row 5) */}
+            <div
+              className="absolute bg-cyan"
               style={{
                 left: 0,
-                top: `${(row / GRID_DIMENSIONS.HEIGHT) * 100}%`,
+                top: `${(5 / GRID_DIMENSIONS.HEIGHT) * 100}%`,
                 width: "100%",
-                height: "1px",
+                height: "2px",
                 transform: "translateY(-50%)",
-                opacity: 0.6,
               }}
             />
-          ))}
+            <div
+              className="absolute bg-cyan"
+              style={{
+                left: 0,
+                top: `${(6 / GRID_DIMENSIONS.HEIGHT) * 100}%`,
+                width: "100%",
+                height: "2px",
+                transform: "translateY(-50%)",
+              }}
+            />
+
+            {/* Reference rows */}
+            {[1, 9].map((row) => (
+              <div
+                key={`h-${row}`}
+                className="absolute bg-cyan/40"
+                style={{
+                  left: 0,
+                  top: `${(row / GRID_DIMENSIONS.HEIGHT) * 100}%`,
+                  width: "100%",
+                  height: "1px",
+                  transform: "translateY(-50%)",
+                  opacity: 0.6,
+                }}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">

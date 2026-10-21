@@ -5,7 +5,6 @@ import { useAccount } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetAllPresetMaps,
-  useMapCount,
   useMapModes,
   useMapNames,
   mapTitleLabel,
@@ -14,6 +13,10 @@ import {
   useMapsJoinerZonePositions,
   useMapsContract,
 } from "../hooks/useMapsContract";
+import { useGetAllMapPlacements } from "../hooks/useAIEncountersContract";
+import { useAllCampaignNodes } from "../hooks/useNodeMap";
+import { useAllRoguelikeNodes } from "../hooks/useRoguelikeNodeMap";
+import { mapProblems } from "../utils/mapProblems";
 import { MapEditScreen } from "./MapEditScreen";
 import { MapPreviewCard } from "./MapPreviewCard";
 import { MapsListShell } from "./MapsListShell";
@@ -25,7 +28,6 @@ import { setUrlParams, useUrlParam } from "../utils/urlState";
 export default function Maps() {
   const { address } = useAccount();
   const { data: allMapsData, refetch: refetchMaps } = useGetAllPresetMaps();
-  const { data: mapCount, refetch: refetchMapCount } = useMapCount();
   const queryClient = useQueryClient();
   const { address: mapsAddress } = useMapsContract();
   // The editor is in the URL (`map=<id>` or `map=new`, see urlState.ts):
@@ -51,6 +53,37 @@ export default function Maps() {
   const { impassableByMapId } = useMapsImpassablePositions(maps.map((m) => m.id));
   const { creatorZoneByMapId } = useMapsCreatorZonePositions(maps.map((m) => m.id));
   const { joinerZoneByMapId } = useMapsJoinerZonePositions(maps.map((m) => m.id));
+
+  // What each card flags opposite its key: duplicate terrain, missing fleets,
+  // unused PvE maps. Maps are never hidden from this list.
+  const mapIds = useMemo(() => maps.map((m) => m.id), [maps]);
+  const { data: placements, isLoading: placementsLoading } = useGetAllMapPlacements(mapIds);
+  const { data: campaignNodes, isLoading: campaignNodesLoading } = useAllCampaignNodes();
+  const { nodes: roguelikeNodes, isLoading: roguelikeNodesLoading } = useAllRoguelikeNodes();
+  const problemsByMapId = useMemo(() => {
+    const usageReady = !placementsLoading && !campaignNodesLoading && !roguelikeNodesLoading;
+    const missionCountByMapId = new Map<number, number>();
+    const countMission = (mapId: number) => missionCountByMapId.set(mapId, (missionCountByMapId.get(mapId) ?? 0) + 1);
+    campaignNodes.forEach((n) => countMission(Number(n.mapId)));
+    roguelikeNodes.forEach((n) => {
+      if (Number(n.kind) === 0) countMission(Number(n.mapId));
+    });
+    return mapProblems(
+      maps.map((m) => ({
+        id: m.id,
+        mode: modeByMapId.get(m.id),
+        blockedPositions: m.blockedPositions,
+        impassablePositions: impassableByMapId.get(m.id),
+        scoringPositions: m.scoringPositions,
+      })),
+      usageReady
+        ? {
+            fleetSizeByMapId: new Map(placements.map((p) => [p.mapId, p.positions.length])),
+            missionCountByMapId,
+          }
+        : undefined,
+    );
+  }, [maps, modeByMapId, impassableByMapId, placements, placementsLoading, campaignNodes, campaignNodesLoading, roguelikeNodes, roguelikeNodesLoading]);
 
   const canCreateMaps =
     address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
@@ -111,7 +144,6 @@ export default function Maps() {
         initialScoringPositions={editingMap?.scoringPositions}
         onSaved={() => {
           void refetchMaps();
-          void refetchMapCount();
           handleEditorSave();
         }}
         onCancel={handleEditorCancel}
@@ -124,7 +156,7 @@ export default function Maps() {
       <MapsListShell
         canCreateMaps={canCreateMaps}
         onCreateMap={handleCreateMap}
-        totalMaps={mapCount ? Number(mapCount) : 0}
+        totalMaps={maps.length}
         restrictedMessage="[!] Map creation is currently restricted to authorized addresses only"
         isEmpty={maps.length === 0}
       >
@@ -141,6 +173,7 @@ export default function Maps() {
               joinerZonePositions: joinerZoneByMapId.get(map.id),
             }}
             modeLabel={MapMode[modeByMapId.get(map.id) ?? MapMode.Both]}
+            problems={problemsByMapId.get(map.id)}
             onEdit={canCreateMaps ? () => handleEditMap(map.id) : undefined}
           />
         ))}

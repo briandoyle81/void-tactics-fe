@@ -12,9 +12,9 @@ import {
 } from "../../utils/shipGrant";
 import { ShipGrantForm } from "./ShipGrantForm";
 
-// Ops Console › Reward Ships: every roguelike combat node with its reward
-// ship (ShipGrantWinEffect grants / web2's RoguelikeShipGrant rows), and an
-// editor for the selected one. Shared by RewardShipsAdmin (web3: owner
+// Ops Console › Reward Ships: the roguelike combat nodes that have a reward
+// ship (ShipGrantWinEffect grants / web2's RoguelikeShipGrant rows), a picker
+// to add one to another node, and an editor for the selected one. Shared by RewardShipsAdmin (web3: owner
 // transactions) and RewardShipsAdminWeb2 (admin API); number ids. The
 // selected node is the URL's `node` param.
 
@@ -89,6 +89,9 @@ export function RewardShipsAdminView({
   const [draft, setDraft] = useState<ShipGrantSpec>(DEFAULT_SHIP_GRANT);
   const [busy, setBusy] = useState<"save" | "clear" | "reset" | "attach" | null>(null);
   const [player, setPlayer] = useState("");
+  // The "add a reward ship" picker: open, and the node chosen in it.
+  const [adding, setAdding] = useState(false);
+  const [addNodeId, setAddNodeId] = useState<number | null>(null);
 
   // Load the node's saved grant (or a default) when the selection changes or
   // its saved grant changes. Keyed by content, so a refetch returning the
@@ -114,11 +117,29 @@ export function RewardShipsAdminView({
     }
   };
 
+  // The list shows nodes with a reward ship, plus the one being added (until
+  // it's saved or another node is picked) and any whose chain grant was
+  // cleared but is still in the app copy, so that warning stays visible.
+  const listed = useMemo(
+    () => nodes.filter((n) => grantsByNodeId.has(n.id) || n.id === selectedId || staleNodeIds?.has(n.id)),
+    [nodes, grantsByNodeId, selectedId, staleNodeIds],
+  );
+  const addable = useMemo(() => nodes.filter((n) => !grantsByNodeId.has(n.id)), [nodes, grantsByNodeId]);
   const campaigns = useMemo(() => {
     const byCampaign = new Map<number, RewardShipsAdminNode[]>();
-    nodes.forEach((n) => byCampaign.set(n.campaignId, [...(byCampaign.get(n.campaignId) ?? []), n]));
+    listed.forEach((n) => byCampaign.set(n.campaignId, [...(byCampaign.get(n.campaignId) ?? []), n]));
     return [...byCampaign.entries()].sort(([a], [b]) => a - b);
-  }, [nodes]);
+  }, [listed]);
+
+  const closeAdd = () => {
+    setAdding(false);
+    setAddNodeId(null);
+  };
+  const confirmAdd = () => {
+    if (addNodeId == null) return;
+    setUrlParams({ node: String(addNodeId) });
+    closeAdd();
+  };
 
   return (
     <div className="font-mono">
@@ -131,10 +152,70 @@ export function RewardShipsAdminView({
           <p className="mb-3 text-[11px] leading-snug text-text-muted">
             A node&apos;s ship is minted, constructed, to whoever wins there. Changes apply to the next win.
           </p>
+          {!isLoading && nodes.length > 0 && (
+            <div className="mb-3">
+              {!adding ? (
+                <button
+                  type="button"
+                  disabled={!canEdit || addable.length === 0}
+                  title={
+                    !canEdit
+                      ? (editBlockedReason ?? undefined)
+                      : addable.length === 0
+                        ? "Every combat node has a reward ship"
+                        : undefined
+                  }
+                  onClick={() => setAdding(true)}
+                  className={`${BUTTON} w-full border-cyan text-cyan hover:bg-cyan/10`}
+                >
+                  [+ ADD REWARD SHIP]
+                </button>
+              ) : (
+                <div className="space-y-2 border border-cyan/60 p-2">
+                  <label className="block text-[11px] uppercase tracking-wider text-text-secondary" htmlFor="reward-ship-add-node">
+                    Node
+                  </label>
+                  <select
+                    id="reward-ship-add-node"
+                    value={addNodeId ?? ""}
+                    onChange={(e) => setAddNodeId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full border border-gunmetal bg-near-black px-2 py-1.5 text-xs text-cyan"
+                  >
+                    <option value="">Pick a node…</option>
+                    {addable.map((n) => (
+                      <option key={n.id} value={n.id}>
+                        #{n.id} {n.title}
+                        {n.campaignId !== 1 ? ` (campaign #${n.campaignId})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={closeAdd}
+                      className={`${BUTTON} border-steel text-text-secondary hover:border-text-secondary`}
+                    >
+                      [CANCEL]
+                    </button>
+                    <button
+                      type="button"
+                      disabled={addNodeId == null}
+                      onClick={confirmAdd}
+                      className={`${BUTTON} border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10`}
+                    >
+                      [CONFIRM]
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {isLoading ? (
             <p className="text-xs text-text-muted">Loading nodes…</p>
           ) : nodes.length === 0 ? (
             <p className="text-xs text-text-muted">No combat nodes.</p>
+          ) : listed.length === 0 ? (
+            <p className="text-xs text-text-muted">No node has a reward ship yet.</p>
           ) : (
             <div className="space-y-3">
               {campaigns.map(([campaignId, list]) => (
@@ -181,7 +262,7 @@ export function RewardShipsAdminView({
 
         <section className="min-w-0 border border-gunmetal bg-black/30 p-3 md:p-4">
           {!selected ? (
-            <p className="text-sm text-text-muted">Pick a combat node to see or set its reward ship.</p>
+            <p className="text-sm text-text-muted">Pick a reward ship on the left, or add one to a node.</p>
           ) : (
             <div className="space-y-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">

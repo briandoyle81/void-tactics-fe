@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { apiMutate } from "../lib/apiMutate";
 import { useWeb2Admin } from "../hooks/useWeb2Admin";
-import { MapEditor } from "./MapEditor";
+import { MapEditor, withMapViewCleared } from "./MapEditor";
 import { MapEditorHeader } from "./MapEditorHeader";
 import { MapMode, type MapPosition, type ScoringPosition } from "../types/types";
 import { JOINER_ZONE_CHANGED_NOTE, parseZoneTiles, sameTileSet } from "../utils/deploymentZone";
@@ -125,7 +125,14 @@ interface MapEditScreenWeb2Props {
 // The web2 map create/edit screen (name + mode + grid editor + /api/maps
 // save), shared by the web2 Maps tab (MapsWeb2.tsx) and the web2 node
 // editors' map preview. Web3 counterpart: MapEditScreen.tsx.
-export function MapEditScreenWeb2({ map, onSaved, onCancel, onMapChanged }: MapEditScreenWeb2Props) {
+export function MapEditScreenWeb2({
+  map,
+  onSaved: onSavedProp,
+  onCancel: onCancelProp,
+  onMapChanged,
+}: MapEditScreenWeb2Props) {
+  const onSaved = withMapViewCleared(onSavedProp);
+  const onCancel = withMapViewCleared(onCancelProp);
   const canEdit = useWeb2Admin();
   const isEditing = map !== undefined;
   const [name, setName] = useState(map?.name ?? "");

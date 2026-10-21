@@ -110,7 +110,6 @@ export function RewardShipsAdmin() {
       header={
         <RewardShipSnapshotPanel
           address={SHIP_GRANT_ADDRESS}
-          liveGrants={grantsByNodeId}
           staleCount={staleNodeIds.size}
           isLoading={nodesLoading || grantsLoading}
         />

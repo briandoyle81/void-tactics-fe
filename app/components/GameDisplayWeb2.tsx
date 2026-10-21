@@ -19,6 +19,7 @@ import { useGameShipsWeb2 } from "../hooks/useGameShipsWeb2";
 import { useGameStreamWeb2 } from "../hooks/useGameStreamWeb2";
 import { useGamePolling } from "../hooks/useGamePolling";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
+import { mapTileArtFor } from "../utils/mapTileArt";
 import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
 import { useDamageCalculation } from "../hooks/useDamageCalculation";
 import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
@@ -1208,6 +1209,7 @@ function GameDisplayWeb2({
       specialRange={specialRange}
       blockedGrid={blockedGrid}
       impassableGrid={impassableGrid}
+      tileArt={mapTileArtFor(game.mapId)}
       scoringGrid={scoringGrid}
       onlyOnceGrid={onlyOnceGrid}
       calculateDamage={calculateDamageForShip}

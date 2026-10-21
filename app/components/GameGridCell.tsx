@@ -14,6 +14,9 @@ import { TutorialTargetFrame } from "./TutorialTarget";
 import { HOLD_HOLOGRAM_CYCLE_MS } from "../constants/animationTiming";
 import { isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { describeTile, tileTooltipLabel } from "../utils/tileTooltip";
+import type { TileArtSlice } from "../utils/mapTileArt";
+import { TileArtSliceView } from "./TileArtSliceView";
+import { TerrainArt } from "./TerrainArt";
 
 function isValidActionTargetType(params: {
   selectedWeaponType: "weapon" | "special" | "ram";
@@ -75,6 +78,11 @@ interface GameGridCellProps {
   blockedGrid: boolean[][];
   /** Movement-blocking terrain, independent of blockedGrid's LOS-only blocking. Optional — omitted renders no impassable-terrain overlay. */
   impassableGrid?: boolean[][];
+  /** This cell's part of the map's tile art (app/utils/mapTileArt.ts), drawn in place of the nebula / hazard art. */
+  tileArtSlice?: TileArtSlice | null;
+  /** This tile's nebula and asteroid images (app/utils/terrainEdges.ts). */
+  nebulaPieces: readonly string[];
+  asteroidPieces: readonly string[];
   scoringGrid: number[][];
   onlyOnceGrid: boolean[][];
   getShipAttributes: (shipId: number) => Attributes | null;
@@ -156,6 +164,9 @@ export const GameGridCell = React.memo(function GameGridCell({
   specialType,
   blockedGrid,
   impassableGrid,
+  tileArtSlice,
+  nebulaPieces,
+  asteroidPieces,
   scoringGrid,
   onlyOnceGrid,
   getShipAttributes,
@@ -780,7 +791,7 @@ export const GameGridCell = React.memo(function GameGridCell({
 
                         // Last-move From is the hologram ghost of that mover, so keep the green wash.
                         if (hasShipMoved && !isLastMoveFromHologram) {
-                          return "bg-near-black cursor-not-allowed";
+                          return "cursor-not-allowed";
                         }
                         if (isSelectedTarget) {
                           const isAssistAction =
@@ -815,7 +826,8 @@ export const GameGridCell = React.memo(function GameGridCell({
                           cursorSuffix = " cursor-not-allowed";
                         }
                       }
-                      const movedStyle = "bg-near-black" + cursorSuffix;
+                      // No solid fill: the map's background (MapBackground) shows through.
+                      const movedStyle = cursorSuffix;
                       return hasShipMoved
                         ? movedStyle
                         : isSelectedTarget && cell
@@ -844,7 +856,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                               ? "bg-cyan/10 ring-1 ring-inset ring-cyan"
                               : isMovementTile
                                 ? "bg-phosphor-green/10"
-                                : "bg-near-black";
+                                : "";
                     })()} ${isFleetHoveredShip && cell ? isShipOwnedByCurrentPlayer(cell.shipId) ? "ring-2 ring-inset ring-cyan" : "ring-2 ring-inset ring-warning-red" : ""}`}
                     style={
                       isHoldHologramPulse && !isSelectedTarget && !isHidingDestinationPreview
@@ -983,32 +995,15 @@ export const GameGridCell = React.memo(function GameGridCell({
                       />
                     )}
 
-                    {/* Blocked line of sight tile */}
-                    {blockedGrid[rowIndex][colIndex] && (
-                      <div className="pointer-events-none absolute inset-0 z-[1]">
-                        <Image
-                          src="/img/nebula-tile.png"
-                          alt="Blocked line of sight"
-                          fill
-                          className="object-cover opacity-30"
-                        />
-                      </div>
-                    )}
+                    {/* Map-specific tile art, in place of the terrain art below */}
+                    {tileArtSlice && <TileArtSliceView slice={tileArtSlice} />}
 
-                    {/* Impassable terrain — independent bit from blockedGrid (see
-                        docs/eth-global-remote/frontend-handoff-maps-and-deployment-zones-2026-09-23.md
-                        §1). Above scoring art and above the nebula (blocked/LOS)
-                        tile so a dual-tagged cell still reads as impassable. */}
-                    {isImpassableTile && (
-                      <div className="pointer-events-none absolute inset-0 z-[2]">
-                        <Image
-                          src="/img/hazard-tile.png"
-                          alt="Impassable terrain"
-                          fill
-                          className="object-cover opacity-65"
-                        />
-                      </div>
-                    )}
+                    {/* Terrain: full art on the tile, edge pieces on the tiles next to it
+                        (app/utils/terrainEdges.ts). Nebula (blocked line of sight), then
+                        asteroids (impassable) above it so a dual-tagged cell still reads
+                        as impassable. */}
+                    <TerrainArt pieces={nebulaPieces} layer={1} />
+                    <TerrainArt pieces={asteroidPieces} layer={2} />
 
                     {/* Movement range highlight */}
                     {isMovementTile && (

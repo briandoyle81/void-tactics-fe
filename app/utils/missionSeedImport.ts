@@ -4,12 +4,16 @@
 // prisma/importMissionSeeds.ts, which clears the old mission content and
 // writes these rows.
 //
-// Ids follow the contract deploy (DeployAndConfig.ts), so web2 and web3 ids
-// line up and the id-keyed text files (nodeContent.ts, mapNames.ts,
-// missionDialog.ts) mean the same thing in both:
-// - maps: 1-indexed position across single-player -> roguelike -> PvP maps.
-// - campaigns, campaign nodes, roguelike nodes: 1-indexed position in their
-//   file. The deploy seeds one roguelike campaign (id 1).
+// Ids follow the chain, so web2 and web3 ids line up and the id-keyed text
+// files (nodeContent.ts, mapNames.ts, missionDialog.ts) mean the same thing
+// in both:
+// - maps and roguelike nodes: the deployment's record of each key's id
+//   (seedDeploymentIds.ts), since content synced after the deploy is out of
+//   array order (live Base Sepolia: seed map67 is map 68). Without a record,
+//   1-indexed position, as a fresh deploy gives them (maps across
+//   single-player -> roguelike -> PvP).
+// - campaigns, campaign nodes: 1-indexed position in their file. The deploy
+//   seeds one roguelike campaign (id 1).
 // - AI ship configs: on chain they get ids from events; here, position in
 //   the single-player file. Only placements reference them.
 //
@@ -24,6 +28,9 @@ import type {
   NodeContent,
 } from "./missionSeedExport";
 import { isWinEffectKey } from "../lib/winEffectsCatalog";
+import { parseShipGrant, shipGrantError, type ShipGrantSpec } from "./shipGrant";
+import { MAX_FACTION_VARIANT } from "../config/factions";
+import { positionalSeedIds, type SeedDeploymentIds } from "./seedDeploymentIds";
 
 const MAP_MODES: Record<SeedMapMode, number> = { PvP: 0, PvE: 1, Both: 2 };
 
@@ -92,6 +99,10 @@ export interface RoguelikeNodeRow {
   costCapOverride: number | null;
   winEffects: string[];
 }
+export interface RoguelikeShipGrantRow {
+  nodeId: number;
+  grant: ShipGrantSpec;
+}
 export interface RoguelikeEdgeRow {
   parentId: number;
   childId: number;
@@ -112,6 +123,7 @@ export interface MissionImportRows {
   roguelikeCampaign: RoguelikeCampaignRow;
   roguelikeNodes: RoguelikeNodeRow[];
   roguelikeEdges: RoguelikeEdgeRow[];
+  roguelikeShipGrants: RoguelikeShipGrantRow[];
   nodeContent: NodeContentRow[];
 }
 
@@ -127,8 +139,25 @@ export interface MissionImportText {
 export function buildMissionImportRows(
   files: MissionSeedFiles,
   text: MissionImportText,
+  deploymentIds: SeedDeploymentIds = positionalSeedIds(files),
 ): MissionImportRows {
   const errors: string[] = [];
+  /** Keys resolved to the deployment's ids; a key the chain doesn't have yet is an error. */
+  const deployedIds = (items: readonly { key: string }[], ids: Map<string, number>, what: string) => {
+    const out = new Map<string, number>();
+    const used = new Map<number, string>();
+    items.forEach((item) => {
+      const id = ids.get(item.key);
+      if (id == null) {
+        errors.push(`The ${what} "${item.key}" isn't on the deployment yet. Sync the chain to the seeds first.`);
+        return;
+      }
+      if (used.has(id)) errors.push(`The ${what}s "${used.get(id)}" and "${item.key}" both have id ${id}.`);
+      used.set(id, item.key);
+      out.set(item.key, id);
+    });
+    return out;
+  };
   const indexKeys = (items: readonly { key: string }[], what: string) => {
     const ids = new Map<string, number>();
     items.forEach((item, i) => {
@@ -145,9 +174,10 @@ export function buildMissionImportRows(
 
   // ---- Maps ----------------------------------------------------------------
   const seedMaps: SeedMap[] = [...files.singlePlayer.maps, ...files.roguelike.maps, ...files.pvp.maps];
-  const mapIds = indexKeys(seedMaps, "map");
-  const maps: MapRow[] = seedMaps.map((m, i) => {
-    const id = i + 1;
+  indexKeys(seedMaps, "map");
+  const mapIds = deployedIds(seedMaps, deploymentIds.mapIds, "map");
+  const maps: MapRow[] = seedMaps.map((m) => {
+    const id = mapIds.get(m.key) ?? 0;
     const mode = MAP_MODES[m.mode];
     if (mode == null) errors.push(`Map "${m.key}" has unknown mode "${m.mode}".`);
     return {
@@ -221,16 +251,27 @@ export function buildMissionImportRows(
 
   // ---- Roguelike -------------------------------------------------------------------
   const rl = files.roguelike;
-  const rlIds = indexKeys(rl.nodes, "roguelike node");
-  const roguelikeNodes: RoguelikeNodeRow[] = rl.nodes.map((n, i) => {
+  indexKeys(rl.nodes, "roguelike node");
+  const rlIds = deployedIds(rl.nodes, deploymentIds.roguelikeNodeIds, "roguelike node");
+  const roguelikeShipGrants: RoguelikeShipGrantRow[] = [];
+  const roguelikeNodes: RoguelikeNodeRow[] = rl.nodes.map((n) => {
     const context = `Roguelike node "${n.key}"`;
+    const id = rlIds.get(n.key) ?? 0;
     const combat = n.kind === "Combat";
     if (!combat && n.kind !== "Resupply") errors.push(`${context} has unknown kind "${n.kind}".`);
     for (const effect of n.winEffects ?? []) {
       if (!isWinEffectKey(effect)) errors.push(`${context} has unknown win effect "${effect}".`);
     }
+    if (n.shipGrant != null) {
+      // The same checks setGrant makes in the deploy.
+      const grant = parseShipGrant(n.shipGrant);
+      const problem = grant ? shipGrantError(grant, MAX_FACTION_VARIANT) : "it isn't a ship grant";
+      if (!combat) errors.push(`${context} is a resupply node with a reward ship.`);
+      else if (problem) errors.push(`${context} has an invalid reward ship: ${problem}`);
+      else roguelikeShipGrants.push({ nodeId: id, grant: grant! });
+    }
     return {
-      id: i + 1,
+      id,
       campaignId: 1,
       kind: combat ? 0 : 1,
       mapId: combat ? lookup(mapIds, n.mapKey, "map", context) : null,
@@ -267,18 +308,19 @@ export function buildMissionImportRows(
   const nodeContent: NodeContentRow[] = [];
   const addContent = (
     graphType: NodeContentRow["graphType"],
-    nodes: readonly { title?: string; description?: string }[],
+    nodes: readonly { key: string; title?: string; description?: string }[],
+    idOf: (key: string, i: number) => number,
     repoText: Readonly<Record<number, NodeContent>>,
   ) => {
     nodes.forEach((n, i) => {
-      const nodeId = i + 1;
+      const nodeId = idOf(n.key, i);
       const title = repoText[nodeId]?.title || n.title || "";
       const description = repoText[nodeId]?.description || n.description || "";
       if (title || description) nodeContent.push({ graphType, nodeId, title, description });
     });
   };
-  addContent("CAMPAIGN", sp.campaignNodes, text.campaignContent);
-  addContent("ROGUELIKE", rl.nodes, text.roguelikeContent);
+  addContent("CAMPAIGN", sp.campaignNodes, (_, i) => i + 1, text.campaignContent);
+  addContent("ROGUELIKE", rl.nodes, (key) => rlIds.get(key) ?? 0, text.roguelikeContent);
 
   if (errors.length > 0) {
     throw new Error(`The seed files can't be imported:\n- ${errors.join("\n- ")}`);
@@ -292,6 +334,7 @@ export function buildMissionImportRows(
     roguelikeCampaign,
     roguelikeNodes,
     roguelikeEdges,
+    roguelikeShipGrants,
     nodeContent,
   };
 }

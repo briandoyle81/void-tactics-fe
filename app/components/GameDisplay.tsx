@@ -68,6 +68,7 @@ import { buildDialogSnapshot } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
 import { useAITurnLoop } from "../hooks/useAITurnLoop";
 import { useRoguelikeAITurnLoop } from "../hooks/useRoguelikeAITurnLoop";
+import { nodeTileArtFor } from "../utils/mapTileArt";
 import { aiTurnBatchSize } from "../utils/aiTurnBatch";
 import { TransactionButton } from "./TransactionButton";
 import { toast } from "react-hot-toast";
@@ -914,6 +915,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   );
   const roguelikeNodeIdForGame =
     isRoguelikeGame && roguelikeRunForGame ? Number(roguelikeRunForGame.currentNodeId) : 0;
+  // Map-specific tile art (app/data/content/mapTileArt.ts). The game doesn't
+  // store its map id, so the content file maps the mission node to its map.
+  const tileArt =
+    roguelikeNodeIdForGame > 0
+      ? nodeTileArtFor("ROGUELIKE", roguelikeNodeIdForGame)
+      : nodeTileArtFor("CAMPAIGN", nodeIdForGame);
   // A once-only reward ship mints only if it wasn't claimed before this
   // win: read while the game is live, for the result screen.
   const rewardClaimedBeforeWin = useRewardClaimedBeforeWin(
@@ -3183,6 +3190,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                       specialRange={selectedSpecialRange}
                       blockedGrid={blockedGrid}
                       impassableGrid={impassableGrid}
+                      tileArt={tileArt}
                       scoringGrid={scoringGrid}
                       onlyOnceGrid={onlyOnceGrid}
                       calculateDamage={calculateDamageForDisplay}
@@ -3760,6 +3768,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           specialRange={selectedSpecialRange}
           blockedGrid={blockedGrid}
           impassableGrid={impassableGrid}
+          tileArt={tileArt}
           scoringGrid={scoringGrid}
           onlyOnceGrid={onlyOnceGrid}
           calculateDamage={calculateDamageForDisplay}

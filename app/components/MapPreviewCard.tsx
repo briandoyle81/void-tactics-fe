@@ -44,12 +44,21 @@ interface MapPreviewCardProps {
   // Web3-only (Maps.tsx) — Maps.mapMode has no web2 equivalent, so this
   // stays undefined/unrendered for MapsWeb2.tsx's usage.
   modeLabel?: string;
+  /** Problems to flag (see mapProblems.ts), listed opposite the tile key. */
+  problems?: readonly string[];
 }
 
-export function MapPreviewCard({ map, onEdit, onSelect, modeLabel }: MapPreviewCardProps) {
+export function MapPreviewCard({
+  map,
+  onEdit,
+  onSelect,
+  modeLabel,
+  problems,
+}: MapPreviewCardProps) {
   const clickable = Boolean(onSelect);
   const hasZoneData =
-    map.creatorZonePositions !== undefined || map.joinerZonePositions !== undefined;
+    map.creatorZonePositions !== undefined ||
+    map.joinerZonePositions !== undefined;
   const creatorZone = map.creatorZonePositions ?? [];
   const joinerZone = map.joinerZonePositions ?? [];
   const has = (list: readonly MapPosition[], row: number, col: number) =>
@@ -57,7 +66,9 @@ export function MapPreviewCard({ map, onEdit, onSelect, modeLabel }: MapPreviewC
 
   // Same tile format and key as the map editor (see MapTileVisual.tsx).
   const lookAt = (row: number, col: number): MapTileLook => {
-    const scoring = map.scoringPositions.find((p) => Number(p.row) === row && Number(p.col) === col);
+    const scoring = map.scoringPositions.find(
+      (p) => Number(p.row) === row && Number(p.col) === col,
+    );
     const look: MapTileLook = {
       blocked: has(map.blockedPositions, row, col),
       impassable: has(map.impassablePositions ?? [], row, col),
@@ -65,9 +76,20 @@ export function MapPreviewCard({ map, onEdit, onSelect, modeLabel }: MapPreviewC
       onlyOnce: scoring?.onlyOnce ?? false,
     };
     if (hasZoneData) {
-      if (creatorZone.length > 0 ? has(creatorZone, row, col) : isDeploymentTile(row, col, true, [])) {
-        look.zone = { side: "creatorZone", isDefault: creatorZone.length === 0 };
-      } else if (joinerZone.length > 0 ? has(joinerZone, row, col) : isDeploymentTile(row, col, false, [])) {
+      if (
+        creatorZone.length > 0
+          ? has(creatorZone, row, col)
+          : isDeploymentTile(row, col, true, [])
+      ) {
+        look.zone = {
+          side: "creatorZone",
+          isDefault: creatorZone.length === 0,
+        };
+      } else if (
+        joinerZone.length > 0
+          ? has(joinerZone, row, col)
+          : isDeploymentTile(row, col, false, [])
+      ) {
         look.zone = { side: "joinerZone", isDefault: joinerZone.length === 0 };
       }
     }
@@ -75,7 +97,8 @@ export function MapPreviewCard({ map, onEdit, onSelect, modeLabel }: MapPreviewC
   };
 
   const onlyOnceCount = map.scoringPositions.filter((p) => p.onlyOnce).length;
-  const zoneCount = (zone: MapPosition[]) => (zone.length > 0 ? `${zone.length} tiles` : "default");
+  const zoneCount = (zone: MapPosition[]) =>
+    zone.length > 0 ? `${zone.length} tiles` : "default";
   return (
     <div
       className={`bg-steel rounded-none p-4 border border-gunmetal${clickable ? " cursor-pointer" : ""}`}
@@ -118,19 +141,33 @@ export function MapPreviewCard({ map, onEdit, onSelect, modeLabel }: MapPreviewC
         )}
       </div>
 
-      <div className="space-y-2 text-sm text-text-secondary">
-        <MapTileLegend
-          showZones={hasZoneData}
-          hide={map.impassablePositions === undefined ? ["impassable"] : undefined}
-          counts={{
-            blocked: map.blockedPositions.length,
-            impassable: map.impassablePositions?.length ?? 0,
-            scoring: map.scoringPositions.length - onlyOnceCount,
-            onlyOnce: onlyOnceCount,
-            creatorZone: zoneCount(creatorZone),
-            joinerZone: zoneCount(joinerZone),
-          }}
-        />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-2 text-sm text-text-secondary">
+          <MapTileLegend
+            showZones={hasZoneData}
+            hide={
+              map.impassablePositions === undefined ? ["impassable"] : undefined
+            }
+            counts={{
+              blocked: map.blockedPositions.length,
+              impassable: map.impassablePositions?.length ?? 0,
+              scoring: map.scoringPositions.length - onlyOnceCount,
+              onlyOnce: onlyOnceCount,
+              creatorZone: zoneCount(creatorZone),
+              joinerZone: zoneCount(joinerZone),
+            }}
+          />
+        </div>
+        {problems && problems.length > 0 && (
+          <ul
+            className="max-w-[55%] space-y-1 text-right text-xs font-mono text-amber"
+            aria-label="Map problems"
+          >
+            {problems.map((p) => (
+              <li key={p}>⚠ {p}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Mini preview */}

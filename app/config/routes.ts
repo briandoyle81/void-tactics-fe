@@ -18,6 +18,11 @@ export function rewardShipsAdminHref(nodeId?: number): string {
   return `${ADMIN_PATH}/reward-ships${nodeId != null ? `?node=${nodeId}` : ""}`;
 }
 
+/** Ops Console › Admin, where the mission seed files (and the reward ship app copy) are exported. */
+export function missionSeedExportHref(): string {
+  return `${ADMIN_PATH}/admin`;
+}
+
 /**
  * The website's home page, for links out of the game client. With a
  * separate play host (NEXT_PUBLIC_PLAY_URL), "/" there is the client, so

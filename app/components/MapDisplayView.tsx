@@ -6,6 +6,12 @@ import { GRID_DIMENSIONS, Attributes } from "../types/types";
 import ShipCard from "./ShipCard";
 import { SHIP_TOOLTIP_HOVER_DELAY_MS } from "./HoverShipCardTooltip";
 import type { ShipCardData } from "../types/shipCardData";
+import { buildTileArtGrid, mapTileArtFor } from "../utils/mapTileArt";
+import { TileArtSliceView } from "./TileArtSliceView";
+import { TerrainArt } from "./TerrainArt";
+import { buildTerrainArtGrid, terrainFullArt } from "../utils/terrainEdges";
+import { MapBackground } from "./MapBackground";
+import { mapBackgroundFor } from "../utils/mapBackground";
 
 // Shared between MapDisplay.tsx (web3) and MapDisplayWeb2.tsx (web2) — the
 // grid rendering, ship placement interactions (click/drag/tap-to-place),
@@ -118,6 +124,21 @@ export function MapDisplayView({
   // Resolves to the engine default column band when a side hasn't
   // customized its zone (empty/undefined) — same tiles `isValidShipPosition`
   // checked inline before custom zones existed.
+  // Map-specific tile art (app/utils/mapTileArt.ts), in place of the nebula / hazard art.
+  const tileArtGrid = React.useMemo(
+    () => buildTileArtGrid(mapTileArtFor(mapId), blockedGrid, impassableGrid),
+    [mapId, blockedGrid, impassableGrid],
+  );
+
+  const nebulaGrid = React.useMemo(
+    () => buildTerrainArtGrid("nebula", blockedGrid, tileArtGrid),
+    [blockedGrid, tileArtGrid],
+  );
+  const asteroidGrid = React.useMemo(
+    () => buildTerrainArtGrid("asteroids", impassableGrid, tileArtGrid),
+    [impassableGrid, tileArtGrid],
+  );
+
   const defaultZoneTiles = React.useMemo((): Array<{ row: number; col: number }> => {
     const tiles: Array<{ row: number; col: number }> = [];
     for (let row = 0; row < GRID_DIMENSIONS.HEIGHT; row++) {
@@ -306,9 +327,8 @@ export function MapDisplayView({
       } else {
         baseClass += " bg-amber";
       }
-    } else if (!isSelected) {
-      baseClass += " bg-near-black";
     }
+    // Otherwise no solid fill: the map's background (MapBackground) shows through.
 
     return baseClass;
   };
@@ -336,8 +356,9 @@ export function MapDisplayView({
         <div
           ref={mapGridRef}
           key={`map-display-${mapId}-${blockedGrid.length}-${scoringGrid.length}`}
-          className="grid relative gap-0 grid-cols-[repeat(17,1fr)] grid-rows-[repeat(11,1fr)] w-full h-full"
+          className="grid relative z-0 gap-0 grid-cols-[repeat(17,1fr)] grid-rows-[repeat(11,1fr)] w-full h-full"
         >
+          <MapBackground src={mapBackgroundFor(blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid)} />
           {Array.from({ length: GRID_DIMENSIONS.HEIGHT }, (_, row) => (
             <div key={`row-${row}`} className="contents">
               {Array.from({ length: GRID_DIMENSIONS.WIDTH }, (_, col) => {
@@ -383,32 +404,11 @@ export function MapDisplayView({
                         {scoringGrid[row][col]}
                       </div>
                     )}
-                    {blockedGrid[row][col] && (
-                      <div className="pointer-events-none absolute inset-0 z-[1]">
-                        <Image
-                          src="/img/nebula-tile.png"
-                          alt=""
-                          fill
-                          className="object-cover opacity-30"
-                          sizes="(max-width: 768px) 5vw, 3vw"
-                        />
-                      </div>
-                    )}
-                    {/* Impassable terrain — independent bit from blockedGrid (see
-                        docs/eth-global-remote/frontend-handoff-maps-and-deployment-zones-2026-09-23.md
-                        §1). Above scoring and above the nebula (blocked/LOS)
-                        tile so a dual-tagged cell still reads as impassable. */}
-                    {impassableGrid?.[row]?.[col] && (
-                      <div className="pointer-events-none absolute inset-0 z-[2]">
-                        <Image
-                          src="/img/hazard-tile.png"
-                          alt="Impassable terrain"
-                          fill
-                          className="object-cover opacity-65"
-                          sizes="(max-width: 768px) 5vw, 3vw"
-                        />
-                      </div>
-                    )}
+                    {tileArtGrid?.[row]?.[col] && <TileArtSliceView slice={tileArtGrid[row][col]!} />}
+                    {/* Terrain (app/utils/terrainEdges.ts): nebula, then asteroids above it
+                        so a dual-tagged cell still reads as impassable. */}
+                    <TerrainArt pieces={nebulaGrid[row]?.[col] ?? []} layer={1} sizes="(max-width: 768px) 5vw, 3vw" />
+                    <TerrainArt pieces={asteroidGrid[row]?.[col] ?? []} layer={2} sizes="(max-width: 768px) 5vw, 3vw" />
 
                     {/* Ship display */}
                     {(() => {
@@ -675,13 +675,13 @@ export function MapDisplayView({
         <div className="flex flex-wrap gap-4 text-xs text-text-secondary">
           <div className="flex items-center gap-2">
             <div className="relative h-5 w-5 shrink-0 overflow-hidden border border-gunmetal bg-near-black">
-              <Image src="/img/nebula-tile.png" alt="" fill className="object-cover opacity-30" sizes="20px" />
+              <Image src={terrainFullArt("nebula")} alt="" fill className="object-cover" sizes="20px" />
             </div>
             <span>Blocked (LOS) - Nebula</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative h-5 w-5 shrink-0 overflow-hidden border border-gunmetal bg-near-black">
-              <Image src="/img/hazard-tile.png" alt="" fill className="object-cover opacity-65" sizes="20px" />
+              <Image src={terrainFullArt("asteroids")} alt="" fill className="object-cover" sizes="20px" />
             </div>
             <span>Impassable (movement) - Hazard</span>
           </div>

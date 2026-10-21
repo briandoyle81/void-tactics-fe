@@ -30,12 +30,37 @@ function renderView(overrides: Partial<React.ComponentProps<typeof RewardShipsAd
 }
 
 describe("RewardShipsAdminView", () => {
-  it("lists nodes with their reward and flags a node without the effect", () => {
+  it("lists only nodes with a reward ship", () => {
     window.history.replaceState(null, "", "/admin/reward-ships");
     renderView();
     expect(screen.getByText("Vanguard")).toBeTruthy();
-    expect(screen.getByText("No reward")).toBeTruthy();
-    expect(screen.getByText(/Pick a combat node/)).toBeTruthy();
+    expect(screen.queryByText(/#2 Second/)).toBeNull();
+    expect(screen.getByText(/Pick a reward ship on the left/)).toBeTruthy();
+  });
+
+  it("adds a reward ship to a node picked from the dropdown", () => {
+    window.history.replaceState(null, "", "/admin/reward-ships");
+    renderView();
+    fireEvent.click(screen.getByText("[+ ADD REWARD SHIP]"));
+    const confirm = screen.getByText("[CONFIRM]") as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    const select = screen.getByLabelText("Node") as HTMLSelectElement;
+    // Only nodes without a reward ship are offered.
+    expect([...select.options].map((o) => o.value)).toEqual(["", "2"]);
+    fireEvent.change(select, { target: { value: "2" } });
+    fireEvent.click(confirm);
+    expect(new URLSearchParams(window.location.search).get("node")).toBe("2");
+    // The new node shows in the list and opens in the editor with the default ship.
+    expect(screen.getAllByText(/#2 Second/).length).toBeGreaterThan(0);
+    expect((screen.getByPlaceholderText("Enter ship name") as HTMLInputElement).value).toBe("Reward Ship");
+  });
+
+  it("disables adding without edit rights", () => {
+    window.history.replaceState(null, "", "/admin/reward-ships");
+    renderView({ canEdit: false, editBlockedReason: "Connect the owner wallet." });
+    const add = screen.getByText("[+ ADD REWARD SHIP]") as HTMLButtonElement;
+    expect(add.disabled).toBe(true);
+    expect(add.title).toBe("Connect the owner wallet.");
   });
 
   it("loads the selected node's grant and saves the edited one", async () => {

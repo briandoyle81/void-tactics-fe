@@ -12,7 +12,7 @@ import {
   useMapNames,
   useMapsContract,
 } from "../hooks/useMapsContract";
-import { MapEditor } from "./MapEditor";
+import { MapEditor, withMapViewCleared } from "./MapEditor";
 import { MapEditorHeader } from "./MapEditorHeader";
 import { MapMode, type MapPosition, type ScoringPosition } from "../types/types";
 import { MAP_ADMIN_ADDRESS } from "../config/alpha";
@@ -34,9 +34,11 @@ export function MapEditScreen({
   mapId,
   initialBlockedPositions,
   initialScoringPositions,
-  onSaved,
-  onCancel,
+  onSaved: onSavedProp,
+  onCancel: onCancelProp,
 }: MapEditScreenProps) {
+  const onSaved = withMapViewCleared(onSavedProp);
+  const onCancel = withMapViewCleared(onCancelProp);
   const { address } = useAccount();
   const canEdit = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
   const mapsContract = useMapsContract();

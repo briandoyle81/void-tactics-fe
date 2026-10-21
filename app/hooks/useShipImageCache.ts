@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { usePublicClient } from "wagmi";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { usePublicClient, useReadContract } from "wagmi";
 import { CONTRACT_ADDRESSES, CONTRACT_ABIS } from "../config/contracts";
 import type { Abi } from "viem";
 import { Ship } from "../types/types";
@@ -14,6 +14,24 @@ const MAX_CACHE_SIZE = 50; // Reduced from 1000 to prevent quota issues
 const CACHE_KEY_PREFIX = "void-tactics-ship-image-";
 const MAX_CACHE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit
 const SHIPS_ADDRESS_STORAGE_KEY = "void-tactics-ships-contract-address";
+// Bump when existing ships' art changes on chain without a new Ships address
+// or renderer address, so every browser drops its cached images once.
+// Renderer swaps don't need a bump: useShipArtCacheGuard watches
+// Ships.config().metadataRenderer.
+// 2026-10-20: variant 1 shiny colors (frontend-handoff-2026-10-20.md §3).
+const SHIP_ART_VERSION = "2026-10-20";
+const SHIP_ART_VERSION_STORAGE_KEY = "void-tactics-ship-art-version";
+const SHIP_RENDERER_STORAGE_KEY = "void-tactics-ship-metadata-renderer";
+// Ships.config() rarely changes; one read per 10 minutes is plenty.
+const SHIP_CONFIG_STALE_MS = 10 * 60 * 1000;
+
+/** Removes every cached ship image, for every Ships address. */
+function purgeAllShipImages() {
+  Object.keys(localStorage)
+    .filter((key) => key.startsWith(CACHE_KEY_PREFIX))
+    .forEach((key) => localStorage.removeItem(key));
+  clearAllShipImageCache();
+}
 
 // Rate limiting configuration
 const REQUEST_DELAY = 100; // 100ms between requests
@@ -775,12 +793,15 @@ const initializeCacheSystem = () => {
     // Check and cleanup cache
     checkAndCleanupCache();
 
-    // Flush cache if Ships contract address changed
+    // Flush the cache if the Ships contract address or its art changed.
+    // Removes every address's images, not just the current one's.
     try {
       const currentAddress = (CONTRACT_ADDRESSES.SHIPS as string) || "";
       const storedAddress = localStorage.getItem(SHIPS_ADDRESS_STORAGE_KEY);
-      if (storedAddress && storedAddress !== currentAddress) {
-        clearAllShipImageCache();
+      const storedArtVersion = localStorage.getItem(SHIP_ART_VERSION_STORAGE_KEY);
+      if ((storedAddress && storedAddress !== currentAddress) || storedArtVersion !== SHIP_ART_VERSION) {
+        purgeAllShipImages();
+        localStorage.setItem(SHIP_ART_VERSION_STORAGE_KEY, SHIP_ART_VERSION);
       }
       if (currentAddress && storedAddress !== currentAddress) {
         localStorage.setItem(SHIPS_ADDRESS_STORAGE_KEY, currentAddress);
@@ -844,4 +865,32 @@ export function clearCacheOnLogout() {
   } catch (error) {
     debugLog("❌ Error clearing localStorage cache:", error);
   }
+}
+
+/**
+ * Drops every cached ship image when Ships points at a new metadata
+ * renderer. A renderer redeploy (scripts/redeployVariant1Renderers.ts plus
+ * Ships.setConfig) changes existing ships' art under the same Ships address,
+ * so the address check above can't see it. Mounted once, in providers.tsx.
+ */
+export function useShipArtCacheGuard() {
+  const readConfig = useMemo(
+    () => ({
+      address: CONTRACT_ADDRESSES.SHIPS as `0x${string}`,
+      abi: SHIPS_ABI,
+      functionName: "config" as const,
+      query: { staleTime: SHIP_CONFIG_STALE_MS, refetchInterval: SHIP_CONFIG_STALE_MS },
+    }),
+    [],
+  );
+  const { data } = useReadContract(readConfig);
+  const renderer = Array.isArray(data) ? String(data[3]).toLowerCase() : undefined;
+  useEffect(() => {
+    if (!renderer) return;
+    try {
+      const stored = localStorage.getItem(SHIP_RENDERER_STORAGE_KEY);
+      if (stored && stored !== renderer) purgeAllShipImages();
+      if (stored !== renderer) localStorage.setItem(SHIP_RENDERER_STORAGE_KEY, renderer);
+    } catch {}
+  }, [renderer]);
 }

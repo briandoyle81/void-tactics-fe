@@ -31,9 +31,18 @@ export async function GET(req: NextRequest) {
   const { error } = await requireWeb2Admin();
   if (error) return error;
 
-  const mapId = Number(req.nextUrl.searchParams.get("mapId"));
+  // Without mapId: every map's placements (the map list's problem flags).
+  const mapIdParam = req.nextUrl.searchParams.get("mapId");
+  if (mapIdParam == null) {
+    const all = await prisma.aIMapPlacement.findMany({
+      select: { mapId: true, row: true, col: true, configId: true },
+      orderBy: [{ mapId: "asc" }, { row: "asc" }, { col: "asc" }],
+    });
+    return NextResponse.json(all);
+  }
+  const mapId = Number(mapIdParam);
   if (!Number.isInteger(mapId) || mapId <= 0) {
-    return NextResponse.json({ error: "mapId is required" }, { status: 400 });
+    return NextResponse.json({ error: "mapId must be a positive integer" }, { status: 400 });
   }
 
   const placements = await prisma.aIMapPlacement.findMany({

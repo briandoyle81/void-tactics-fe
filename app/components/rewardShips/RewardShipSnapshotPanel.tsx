@@ -1,96 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { REWARD_SHIP_SNAPSHOT } from "../../config/rewardShips";
-import { buildRewardShipSnapshot, isSnapshotForContract } from "../../utils/rewardShipSnapshot";
-import type { ShipGrantSpec } from "../../utils/shipGrant";
-import {
-  canWriteFiles,
-  downloadJson,
-  ensureWritable,
-  isAbort,
-  pickWritableDirectory,
-  writeJson,
-  type WritableDirectoryHandle,
-} from "../../utils/jsonFileSave";
+import { missionSeedExportHref } from "../../config/routes";
+import { isSnapshotForContract, REWARD_SHIP_SNAPSHOT_FILE } from "../../utils/rewardShipSnapshot";
 
-// Reward Ships' app copy: compares the chain's grants with the checked-in
-// app/data/content/rewardShips.json (what players' screens show) and saves
-// a new copy, into that folder where the browser can write files, or as a
-// download to drop over it. Commit and deploy to update players. Web3 only.
-
-const FILE_NAME = "rewardShips.json";
-const FOLDER_NAME = "content";
-
-async function hasFile(dir: WritableDirectoryHandle, name: string): Promise<boolean> {
-  try {
-    await dir.getFileHandle(name);
-    return true;
-  } catch {
-    return false;
-  }
-}
+// Reward Ships' app copy status: whether the chain's grants still match the
+// checked-in app/data/content/rewardShips.json (what players' screens show).
+// The copy is saved with the mission seed files (Admin › Export mission seed
+// files), so every file a deploy needs comes from one place. Web3 only.
 
 export function RewardShipSnapshotPanel({
   address,
-  liveGrants,
   staleCount,
   isLoading,
 }: {
   /** This deploy's ShipGrantWinEffect. */
   address: string;
-  liveGrants: Map<number, ShipGrantSpec>;
   /** Nodes whose chain grant differs from the app copy. */
   staleCount: number;
   isLoading: boolean;
 }) {
-  const [dir, setDir] = useState<WritableDirectoryHandle | null>(null);
-  const [message, setMessage] = useState<{ tone: "good" | "bad"; text: string } | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const forContract = isSnapshotForContract(REWARD_SHIP_SNAPSHOT, address);
-  const writable = canWriteFiles();
-
-  const save = async () => {
-    setMessage(null);
-    const file = buildRewardShipSnapshot(address, liveGrants);
-    if (!writable) {
-      downloadJson(FILE_NAME, file);
-      setMessage({ tone: "good", text: `Downloaded ${FILE_NAME}. Drop it over app/data/content/${FILE_NAME}, then commit and deploy.` });
-      return;
-    }
-    setIsSaving(true);
-    try {
-      let target = dir;
-      if (!target) {
-        target = await pickWritableDirectory("vt-app-content");
-        // Only save over the real copy: the repo's app/data/content/ folder,
-        // which already holds the file. Another folder would get a stray
-        // file and players would keep the old copy.
-        if (target.name !== FOLDER_NAME || !(await hasFile(target, FILE_NAME))) {
-          setMessage({
-            tone: "bad",
-            text: `That folder isn't app/data/content/ (it needs to hold ${FILE_NAME}). Pick the repo's app/data/content/ folder.`,
-          });
-          return;
-        }
-        setDir(target);
-      }
-      if (!(await ensureWritable(target))) {
-        setMessage({ tone: "bad", text: "Saving needs write access to the folder." });
-        return;
-      }
-      await writeJson(target, FILE_NAME, file);
-      setMessage({
-        tone: "good",
-        text: `Saved ${target.name}/${FILE_NAME}. Commit and deploy to update players (the dev server picks it up on reload).`,
-      });
-    } catch (e) {
-      if (!isAbort(e)) setMessage({ tone: "bad", text: `Saving failed: ${e instanceof Error ? e.message : String(e)}` });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const status = isLoading
     ? "Comparing with the chain…"
     : !forContract
@@ -106,27 +37,23 @@ export function RewardShipSnapshotPanel({
         <div className="min-w-0">
           <div className="text-xs font-bold uppercase tracking-wider text-text-secondary">App copy</div>
           <div className="text-[11px] text-text-muted">
-            app/data/content/{FILE_NAME} · saved {new Date(REWARD_SHIP_SNAPSHOT.savedAt).toLocaleString()}
+            app/data/content/{REWARD_SHIP_SNAPSHOT_FILE} · saved {new Date(REWARD_SHIP_SNAPSHOT.savedAt).toLocaleString()}
           </div>
         </div>
-        <button
-          type="button"
-          disabled={isLoading || isSaving}
-          onClick={() => void save()}
-          className={`border-2 px-4 py-2 text-xs font-bold uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-50 ${
+        <a
+          href={missionSeedExportHref()}
+          className={`border-2 px-4 py-2 text-xs font-bold uppercase tracking-wider ${
             needsSave ? "border-amber text-amber hover:bg-amber/10" : "border-cyan text-cyan hover:bg-cyan/10"
           }`}
         >
-          {isSaving ? "[SAVING...]" : writable ? "[SAVE APP COPY]" : `[DOWNLOAD ${FILE_NAME}]`}
-        </button>
+          [SAVE WITH SEED FILES]
+        </a>
       </div>
       <p className={`text-xs ${needsSave ? "text-amber" : "text-text-secondary"}`}>{status}</p>
-      {writable && !dir && (
-        <p className="text-[11px] text-text-muted">Saving asks for the repo&apos;s app/data/content/ folder the first time.</p>
-      )}
-      {message && (
-        <p className={`text-xs ${message.tone === "good" ? "text-phosphor-green" : "text-warning-red"}`}>{message.text}</p>
-      )}
+      <p className="text-[11px] text-text-muted">
+        The copy is saved with the mission seed files on the Admin tab, which also puts each reward ship in the
+        deploy&apos;s seed so a redeploy sets them.
+      </p>
     </div>
   );
 }
