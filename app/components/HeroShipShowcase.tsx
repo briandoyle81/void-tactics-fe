@@ -160,7 +160,7 @@ export const HeroShipShowcase: React.FC<{
         {heroShip?.name ?? EMPTY}
       </h3>
       <ul
-        className="min-h-[3lh] w-full text-sm leading-snug text-text-secondary"
+        className="min-h-[3lh] w-full text-sm leading-snug text-text-bright"
         style={{ fontFamily: "var(--font-mono), monospace" }}
       >
         {gear.length > 0
@@ -177,7 +177,7 @@ export const HeroShipShowcase: React.FC<{
             key={label}
             className="flex items-center justify-between gap-3 border-t border-white/10 py-1.5"
           >
-            <dt className="shrink-0 text-[10px] uppercase tracking-[0.16em] text-text-muted">{label}</dt>
+            <dt className="shrink-0 text-[10px] uppercase tracking-[0.16em] text-text-secondary">{label}</dt>
             {/* The number sits on a bar of this stat against the best any
                 ship can reach; the bar grows from the side nearest the art. */}
             <dd className="relative w-3/5 min-w-0 bg-white/[0.04] px-2 py-0.5 text-right">

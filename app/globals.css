@@ -21,6 +21,8 @@
 
   /* Text Colors */
   --color-text-primary: #e2e8f0;
+  /* Between primary and secondary: readable supporting text (showcase gear). */
+  --color-text-bright: #dae3ef;
   --color-text-secondary: #94a3b8;
   --color-text-muted: #64748b;
 
@@ -55,6 +57,8 @@
 
   /* Text Colors */
   --color-text-primary: #e2e8f0;
+  /* Between primary and secondary: readable supporting text (showcase gear). */
+  --color-text-bright: #dae3ef;
   --color-text-secondary: #94a3b8;
   --color-text-muted: #64748b;
 
