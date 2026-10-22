@@ -161,47 +161,73 @@ export function useGridPanZoom() {
       y: (t[0].clientY + t[1].clientY) / 2,
       dist: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY),
     });
-    // One-finger pan while zoomed in. It starts once the finger has moved
+    // One-finger pan while zoomed in, on pointer events (with touch-action:
+    // none on the wrapper while zoomed, see GameGrid), which every mobile
+    // browser delivers for a drag. It starts once the finger has moved
     // ONE_FINGER_PAN_THRESHOLD_PX, so a tap still taps; the click that ends a
-    // pan is swallowed so it doesn't select anything.
+    // pan is swallowed so it doesn't select anything. A second finger hands
+    // over to the pinch.
     const ONE_FINGER_PAN_THRESHOLD_PX = 8;
-    let drag: { x: number; y: number; tx: number; ty: number; panning: boolean } | null = null;
+    let drag: { id: number; x: number; y: number; tx: number; ty: number; panning: boolean } | null = null;
     let swallowClick = false;
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        const target = e.target as Element | null;
-        // A ship you can drag keeps its own (long-press) drag.
-        const onDraggableShip = !!target?.closest?.('[draggable="true"]');
-        drag =
-          zoomRef.current.scale > 1 && !onDraggableShip
-            ? { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: zoomRef.current.tx, ty: zoomRef.current.ty, panning: false }
-            : null;
-        return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      if (!e.isPrimary) { drag = null; return; }
+      const target = e.target as Element | null;
+      // A ship you can drag keeps its own (long-press) drag.
+      const onDraggableShip = !!target?.closest?.('[draggable="true"]');
+      drag =
+        zoomRef.current.scale > 1 && !onDraggableShip
+          ? { id: e.pointerId, x: e.clientX, y: e.clientY, tx: zoomRef.current.tx, ty: zoomRef.current.ty, panning: false }
+          : null;
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!drag || e.pointerId !== drag.id || pinch) return;
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      if (!drag.panning && Math.hypot(dx, dy) < ONE_FINGER_PAN_THRESHOLD_PX) return;
+      drag.panning = true;
+      const gridEl = gridContainerRef.current;
+      if (!gridEl) return;
+      const { scale } = zoomRef.current;
+      const w = gridEl.offsetWidth;
+      const h = gridEl.offsetHeight;
+      const next = {
+        scale,
+        tx: Math.min(0, Math.max(w * (1 - scale), drag.tx + dx)),
+        ty: Math.min(0, Math.max(h * (1 - scale), drag.ty + dy)),
+      };
+      zoomRef.current = next;
+      applyGridTransform(gridEl, next);
+    };
+    const onPointerEnd = (e: PointerEvent) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (drag.panning) {
+        swallowClick = true;
+        // Only the click this touch produces, if any.
+        window.setTimeout(() => { swallowClick = false; }, 400);
+        commitZoomState();
       }
       drag = null;
+    };
+    const onClickCapture = (e: MouseEvent) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
+      drag = null;
       const m = touchMid(e.touches);
       pinch = { dist: Math.max(1, m.dist), midX: m.x, midY: m.y, zoom: { ...zoomRef.current } };
     };
     const onTouchMove = (e: TouchEvent) => {
+      // A one-finger touch that may become a pan: keep the browser from
+      // claiming it as its own gesture (it would cancel the pointer events).
       if (drag && e.touches.length === 1) {
-        const dx = e.touches[0].clientX - drag.x;
-        const dy = e.touches[0].clientY - drag.y;
-        if (!drag.panning && Math.hypot(dx, dy) < ONE_FINGER_PAN_THRESHOLD_PX) return;
-        drag.panning = true;
         e.preventDefault();
-        const gridEl = gridContainerRef.current;
-        if (!gridEl) return;
-        const { scale } = zoomRef.current;
-        const w = gridEl.offsetWidth;
-        const h = gridEl.offsetHeight;
-        const next = {
-          scale,
-          tx: Math.min(0, Math.max(w * (1 - scale), drag.tx + dx)),
-          ty: Math.min(0, Math.max(h * (1 - scale), drag.ty + dy)),
-        };
-        zoomRef.current = next;
-        applyGridTransform(gridEl, next);
         return;
       }
       if (!pinch || e.touches.length !== 2) return;
@@ -227,24 +253,9 @@ export function useGridPanZoom() {
       applyGridTransform(gridEl, next);
     };
     const onTouchEnd = (e: TouchEvent) => {
-      if (drag) {
-        if (drag.panning) {
-          swallowClick = true;
-          // Only the click this touch produces, if any.
-          window.setTimeout(() => { swallowClick = false; }, 400);
-          commitZoomState();
-        }
-        drag = null;
-      }
       if (!pinch || e.touches.length >= 2) return;
       pinch = null;
       commitZoomState();
-    };
-    const onClickCapture = (e: MouseEvent) => {
-      if (!swallowClick) return;
-      swallowClick = false;
-      e.preventDefault();
-      e.stopPropagation();
     };
 
     el.addEventListener("wheel", handleWheel, { passive: false });
@@ -257,6 +268,10 @@ export function useGridPanZoom() {
     window.addEventListener("mouseup", onMouseUp);
     el.addEventListener("contextmenu", onContextMenu, { capture: true });
     el.addEventListener("click", onClickCapture, { capture: true });
+    el.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerEnd);
+    window.addEventListener("pointercancel", onPointerEnd);
 
     return () => {
       el.removeEventListener("wheel", handleWheel);
@@ -269,6 +284,10 @@ export function useGridPanZoom() {
       window.removeEventListener("mouseup", onMouseUp);
       el.removeEventListener("contextmenu", onContextMenu, { capture: true });
       el.removeEventListener("click", onClickCapture, { capture: true });
+      el.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerEnd);
+      window.removeEventListener("pointercancel", onPointerEnd);
       if (wheelCommitTimerRef.current) {
         clearTimeout(wheelCommitTimerRef.current);
         wheelCommitTimerRef.current = null;
