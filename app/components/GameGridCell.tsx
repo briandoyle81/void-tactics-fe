@@ -18,6 +18,19 @@ import type { TileArtSlice } from "../utils/mapTileArt";
 import { TileArtSliceView } from "./TileArtSliceView";
 import { TerrainArt } from "./TerrainArt";
 
+/**
+ * Splits a cell's highlight classes: the `ring…` classes (inset borders) go
+ * on a layer above the terrain art, since a ring on the cell itself is
+ * painted under its children; everything else (tints, cursors) stays.
+ */
+function splitHighlightRings(classes: string): { cell: string; rings: string } {
+  const tokens = classes.split(/\s+/).filter(Boolean);
+  return {
+    cell: tokens.filter((t) => !t.startsWith("ring")).join(" "),
+    rings: tokens.filter((t) => t.startsWith("ring")).join(" "),
+  };
+}
+
 function isValidActionTargetType(params: {
   selectedWeaponType: "weapon" | "special" | "ram";
   specialType: number;
@@ -135,6 +148,8 @@ interface GameGridCellProps {
   setDraggedShipId: (shipId: number | null) => void;
   setDragOverCell: (cell: Position | null) => void;
   setHoveredMoveTile: (cell: Position | null) => void;
+  /** Look-only board: no move hover, and no "Move here" on tiles. */
+  moveHoverDisabled?: boolean;
 }
 
 /**
@@ -211,6 +226,7 @@ export const GameGridCell = React.memo(function GameGridCell({
   setDraggedShipId,
   setDragOverCell,
   setHoveredMoveTile,
+  moveHoverDisabled,
 }: GameGridCellProps) {
                 const ship = cell ? shipMap.get(cell.shipId) : null;
                 const cellStatus = cell?.status ?? 0;
@@ -679,6 +695,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                 // turn; off-turn, selecting it is just for inspecting.
                 // (Enemy ships keep their grey inspection arrow.)
                 const showsMoveHover =
+                  !moveHoverDisabled &&
                   isMovementTile &&
                   !draggedShipId &&
                   (isCurrentPlayerTurn ||
@@ -758,18 +775,11 @@ export const GameGridCell = React.memo(function GameGridCell({
                       colIndex === effectiveDragCell.col)
                   );
 
-                return (
-                  <div
-                    key={`cell-${rowIndex}-${colIndex}`}
-                    data-grid-row={rowIndex}
-                    data-grid-col={colIndex}
-                    className={`min-h-0 min-w-0 h-full w-full isolate ${
-                      isShipOnScoringTile
-                        ? isOnlyOnceScoringActive
-                          ? "border-2 border-teal-400"
-                          : "border-2 border-amber"
-                        : "border-0"
-                    } outline outline-1 outline-near-black relative cursor-pointer ${(() => {
+                // The cell's state highlight (selection, ranges, targets...). Its
+                // rings are drawn in a layer above the terrain art (see below);
+                // the tint and other classes stay on the cell.
+                const highlight = splitHighlightRings(
+                  `${(() => {
                       // Preview To (isPreview ghost). Preview From uses selected styling below.
                       const isProposedMovePreview =
                         cell?.isPreview &&
@@ -857,7 +867,21 @@ export const GameGridCell = React.memo(function GameGridCell({
                               : isMovementTile
                                 ? "bg-phosphor-green/10"
                                 : "";
-                    })()} ${isFleetHoveredShip && cell ? isShipOwnedByCurrentPlayer(cell.shipId) ? "ring-2 ring-inset ring-cyan" : "ring-2 ring-inset ring-warning-red" : ""}`}
+})()} ${isFleetHoveredShip && cell ? isShipOwnedByCurrentPlayer(cell.shipId) ? "ring-2 ring-inset ring-cyan" : "ring-2 ring-inset ring-warning-red" : ""}`,
+                );
+
+                return (
+                  <div
+                    key={`cell-${rowIndex}-${colIndex}`}
+                    data-grid-row={rowIndex}
+                    data-grid-col={colIndex}
+                    className={`min-h-0 min-w-0 h-full w-full isolate ${
+                      isShipOnScoringTile
+                        ? isOnlyOnceScoringActive
+                          ? "border-2 border-teal-400"
+                          : "border-2 border-amber"
+                        : "border-0"
+                    } outline outline-1 outline-near-black relative cursor-pointer ${highlight.cell}`}
                     style={
                       isHoldHologramPulse && !isSelectedTarget && !isHidingDestinationPreview
                         ? { animationDuration: `${HOLD_HOLOGRAM_CYCLE_MS}ms` }
@@ -943,7 +967,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                         // Read by GameGridTileTooltip (one listener for the
                         // whole board) instead of a native title tooltip.
                         const tip = describeTile({
-                          isMovementTile,
+                          isMovementTile: isMovementTile && !moveHoverDisabled,
                           isImpassable: isImpassableTile,
                           scoringPoints,
                           onlyOnce: onlyOnceGrid[rowIndex][colIndex],
@@ -1004,6 +1028,11 @@ export const GameGridCell = React.memo(function GameGridCell({
                         as impassable. */}
                     <TerrainArt pieces={nebulaPieces} layer={1} />
                     <TerrainArt pieces={asteroidPieces} layer={2} />
+
+                    {/* Selection and range borders, above the terrain art. */}
+                    {highlight.rings && (
+                      <div aria-hidden className={`pointer-events-none absolute inset-0 z-[3] ${highlight.rings}`} />
+                    )}
 
                     {/* Movement range highlight */}
                     {isMovementTile && (

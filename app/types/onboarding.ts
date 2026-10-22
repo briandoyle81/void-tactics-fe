@@ -75,6 +75,8 @@ export interface TutorialStep {
     mapPositions?: Position[];
     uiElements?: string[];
   };
+  /** Reading-only step: no ship selection, dragging or tooltips on the board or fleet list. */
+  lockControls?: boolean;
   requiresTransaction?: boolean;
   onStepComplete?: (actionData: TutorialAction | null) => boolean; // Return true if step should progress
   nextStepCondition?: (gameState: SimulatedGameState) => boolean;

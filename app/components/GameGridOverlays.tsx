@@ -22,6 +22,7 @@ import { LightningFieldAnimation } from "./weapon-animations/LightningFieldAnima
 import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
 import { FleeAnimation } from "./weapon-animations/FleeAnimation";
 import { RamAnimation } from "./weapon-animations/RamAnimation";
+import { ShipExplosionSound, shipExplosionDelayMs, type KillingBlow } from "./weapon-animations/ShipExplosionSound";
 import { TutorialTargetPointer } from "./TutorialTarget";
 import { collectDamageLabelTargets } from "../utils/gameGridRanges";
 import { useGridDestHoveredTile, useGridHoveredCell } from "./GridHover";
@@ -516,8 +517,52 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
     grid,
   ]);
 
+  // The last move destroyed its target: that ship explodes, once per move,
+  // just after the weapon's hit (ShipExplosionSound). The target's cell is
+  // still on the board, marked destroyed (status 1).
+  const lastMoveKill = React.useMemo(() => {
+    if (lastMoveShipId == null || lastMoveTargetShipId == null || lastMoveTargetShipId === 0) return null;
+    let targetPos: { row: number; col: number } | null = null;
+    for (const row of grid) {
+      for (const cell of row) {
+        if (cell && cell.shipId === lastMoveTargetShipId && cell.status === 1) targetPos = cell.position;
+      }
+    }
+    if (!targetPos) return null;
+    const attacker = lastMoveNewPosition ?? lastMoveOldPosition;
+    const distanceCells = attacker
+      ? Math.hypot(attacker.row - targetPos.row, attacker.col - targetPos.col)
+      : 0;
+    const ship = shipMap.get(lastMoveShipId);
+    const blow: KillingBlow = lastMoveIsRam(lastMoveActionNum, lastMoveShipId, shipMap)
+      ? { kind: "ram" }
+      : lastMoveActionNum === ActionType.Shoot && ship
+        ? {
+            kind: "weapon",
+            mainWeapon: Number(ship.equipment.mainWeapon),
+            variant: Number(ship.traits.variant),
+            distanceCells,
+          }
+        : { kind: "other" };
+    return {
+      key: `${lastMoveShipId}:${lastMoveTargetShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${targetPos.row},${targetPos.col}`,
+      delayMs: shipExplosionDelayMs(blow),
+    };
+  }, [
+    grid,
+    lastMoveShipId,
+    lastMoveTargetShipId,
+    lastMoveNewPosition,
+    lastMoveOldPosition,
+    lastMoveActionNum,
+    shipMap,
+  ]);
+
   return (
           <div className="absolute inset-0 z-50 pointer-events-none">
+            {lastMoveKill && (
+              <ShipExplosionSound playKey={lastMoveKill.key} delayMs={lastMoveKill.delayMs} />
+            )}
             {/* Retreat last move: the warp field collapsing at the position,
                 and the ship (a hologram, like every last-move From) zooming
                 off toward its own side. The cell hides its own ghost there. */}
@@ -866,6 +911,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                 <FlakExplosionAnimation
                   gridContainerRef={gridContainerRef}
                   targetCells={lastMoveFlakTargetCells}
+                  // A replayed last move plays its sound once per move.
+                  soundOnceKey={`flak:${lastMoveShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${lastMoveNewPosition?.row},${lastMoveNewPosition?.col}`}
                 />
               )}
 
@@ -979,6 +1026,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     attackerCol={attackerCol}
                     targetRow={targetPosition.row}
                     targetCol={targetPosition.col}
+                    // A replayed last move plays its sound once per move.
+                    soundOnceKey={`emp:${lastMoveShipId}:${lastMoveTargetShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${attackerRow},${attackerCol}`}
                   />
                 );
               })()}
@@ -1091,6 +1140,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     attackerCol={attackerCol}
                     targetRow={targetPosition.row}
                     targetCol={targetPosition.col}
+                    // A replayed last move plays its sounds once per move.
+                    soundOnceKey={`repair:${lastMoveShipId}:${lastMoveTargetShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${attackerRow},${attackerCol}`}
                   />
                 );
               })()}

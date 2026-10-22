@@ -25,6 +25,9 @@ const INITIAL_SHIP_POSITIONS: TutorialShipPosition[] = [
   { shipId: "2003", position: { row: 7, col: 14 }, isCreator: false },
 ];
 
+/** The Sentinel's starting hull, as a share of its maximum. */
+const SENTINEL_START_HULL = 0.6;
+
 // Create initial attributes for all ships
 function createInitialAttributes(shipId: TutorialShipId): Attributes {
   const idAsBigInt = BigInt(shipId);
@@ -43,11 +46,12 @@ function createInitialAttributes(shipId: TutorialShipId): Attributes {
     };
   }
 
-  // Sentinel (1003) starts at a fixed 100 HP for tutorial pacing.
+  // Sentinel (1003) starts damaged, at 60% hull: the move step sends it into
+  // a nebula to protect it ("The Sentinel is damaged", tutorial.ts).
   if (ship.id === 1003n) {
     return {
       ...baseAttrs,
-      hullPoints: 100,
+      hullPoints: Math.round(baseAttrs.maxHullPoints * SENTINEL_START_HULL),
     };
   }
 

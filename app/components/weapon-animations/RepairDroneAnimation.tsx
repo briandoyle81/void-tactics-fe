@@ -2,6 +2,23 @@
 
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { gridLayoutSize } from "./gridLayout";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+/** Each drone's launch, after the first (the animation and its sounds). */
+const DRONE_LAUNCH_DELAYS_MS = [0, 180, 360];
+
+// Each drone plays its own sound (repair-drone.wav: a bleep-bloop as it
+// leaves, then its weld during its repair window) as it launches, pitched a
+// little differently each time; the loops after the first cycle are silent.
+// A replayed last move plays them once per move (soundOnceKey). They stop if
+// the drones go away first (after SOUND_STOP_AFTER_MS, so React's quick
+// dev-mode remount doesn't cut them).
+const DRONE_SOUND = "/sound/repair-drone.wav";
+const DRONE_PITCH_VARIATION = 0.05;
+const DRONE_PLAYED_KEY = "vt-repair-drones-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
 
 interface RepairDroneAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -9,6 +26,11 @@ interface RepairDroneAnimationProps {
   attackerCol: number;
   targetRow: number;
   targetCol: number;
+  /**
+   * The last move being replayed: the sounds play once per key this session.
+   * Omitted (aiming preview), they play each time the drones launch.
+   */
+  soundOnceKey?: string;
 }
 
 function clamp(n: number, min: number, max: number) {
@@ -21,17 +43,36 @@ export const RepairDroneAnimation = React.memo(function RepairDroneAnimation({
   attackerCol,
   targetRow,
   targetCol,
+  soundOnceKey,
 }: RepairDroneAnimationProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+
+  // One sound per drone, as each launches.
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(DRONE_PLAYED_KEY, key))) return;
+    const startedAt = Date.now();
+    const playing: HTMLAudioElement[] = [];
+    const timers = DRONE_LAUNCH_DELAYS_MS.map((delay) =>
+      window.setTimeout(() => {
+        const audio = playSoundEffect(DRONE_SOUND, { pitchVariation: DRONE_PITCH_VARIATION });
+        if (audio) playing.push(audio);
+      }, delay),
+    );
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      if (Date.now() - startedAt > SOUND_STOP_AFTER_MS) playing.forEach((a) => a.pause());
+    };
+  }, []);
 
   const drones = useMemo(() => {
     // Three drones with slightly different delays, phases, and arc shapes.
     // Arc midpoints are relative translations from the attacker origin.
-    const base = [
-      { delayMs: 0, phase: "0deg" },
-      { delayMs: 180, phase: "120deg" },
-      { delayMs: 360, phase: "240deg" },
-    ];
+    const phases = ["0deg", "120deg", "240deg"];
+    const base = DRONE_LAUNCH_DELAYS_MS.map((delayMs, i) => ({ delayMs, phase: phases[i] }));
 
     // Randomize arc magnitudes deterministically per mount
     return base.map((d, i) => {

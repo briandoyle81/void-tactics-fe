@@ -8,12 +8,29 @@ import {
 } from "../../constants/animationTiming";
 import { gridLayoutSize } from "./gridLayout";
 import { createOverlaySizeSync, restartCssAnimation, startVisibilityAwareInterval } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// One rolling flak barrage (flak.wav, 1.8 s) as the bursts start; the bursts
+// after it are silent. A replayed last move plays it once per move
+// (soundOnceKey). It stops if the bursts go away first (after
+// SOUND_STOP_AFTER_MS, so React's quick dev-mode remount doesn't cut it).
+const FLAK_SOUND = "/sound/flak.wav";
+const FLAK_PITCH_VARIATION = 0.05;
+const FLAK_PLAYED_KEY = "vt-flak-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
 
 type GridCell = { row: number; col: number };
 
 interface FlakExplosionAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
   targetCells: GridCell[];
+  /**
+   * The last move being replayed: the sound plays once per key this session.
+   * Omitted (aiming preview), it plays each time the bursts start.
+   */
+  soundOnceKey?: string;
 }
 
 function shuffleCells(cells: GridCell[]) {
@@ -37,7 +54,20 @@ function sameTargetCells(a: GridCell[], b: GridCell[]) {
 export const FlakExplosionAnimation = React.memo(function FlakExplosionAnimation({
   gridContainerRef,
   targetCells,
+  soundOnceKey,
 }: FlakExplosionAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(FLAK_PLAYED_KEY, key))) return;
+    const audio = playSoundEffect(FLAK_SOUND, { pitchVariation: FLAK_PITCH_VARIATION });
+    const startedAt = Date.now();
+    return () => {
+      if (audio && Date.now() - startedAt > SOUND_STOP_AFTER_MS) audio.pause();
+    };
+  }, []);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const burstRefs = useRef<Array<HTMLDivElement | null>>([]);
   const burstSlotRef = useRef(0);

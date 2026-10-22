@@ -1,7 +1,19 @@
 "use client";
 
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gridLayoutSize } from "./gridLayout";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// One EMP sound (emp.wav, 1.3 s: charge, discharge, wave, power-down) as the
+// beam appears; its loop after that is silent. A replayed last move plays it
+// once per move (soundOnceKey). It stops if the beam goes away first (after
+// SOUND_STOP_AFTER_MS, so React's quick dev-mode remount doesn't cut it).
+const EMP_SOUND = "/sound/emp.wav";
+const EMP_PITCH_VARIATION = 0.05;
+const EMP_PLAYED_KEY = "vt-emp-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
 
 interface EmpWaveAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -9,6 +21,11 @@ interface EmpWaveAnimationProps {
   attackerCol: number;
   targetRow: number;
   targetCol: number;
+  /**
+   * The last move being replayed: the sound plays once per key this session.
+   * Omitted (aiming preview), it plays each time the beam appears.
+   */
+  soundOnceKey?: string;
 }
 
 type Geom = {
@@ -72,7 +89,20 @@ export const EmpWaveAnimation = React.memo(function EmpWaveAnimation({
   attackerCol,
   targetRow,
   targetCol,
+  soundOnceKey,
 }: EmpWaveAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(EMP_PLAYED_KEY, key))) return;
+    const audio = playSoundEffect(EMP_SOUND, { pitchVariation: EMP_PITCH_VARIATION });
+    const startedAt = Date.now();
+    return () => {
+      if (audio && Date.now() - startedAt > SOUND_STOP_AFTER_MS) audio.pause();
+    };
+  }, []);
   const [geom, setGeom] = useState<Geom | null>(null);
   // Unique defs ids: two instances (e.g. selected-ship EMP + last-move replay) can
   // share the same row/col; duplicate id="..." breaks url(#...) stroke fills in SVG.

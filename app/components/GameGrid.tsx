@@ -20,6 +20,8 @@ import { GameGridConfirmWidget } from "./GameGridConfirmWidget";
 import { DestHoverProvider, useGridHoveredCell, useSetGridDestHoveredTile, useSetGridHoveredCell } from "./GridHover";
 import { GameGridDestHoverRange } from "./GameGridDestHoverRange";
 
+const NOOP_SET_MOVE_TILE = () => {};
+
 const EMPTY_SHIP_ID_SET: Set<number> = new Set();
 const EMPTY_RANGE_CELLS: Array<{ row: number; col: number }> = [];
 const EMPTY_TARGET_REFS: Array<{
@@ -196,6 +198,12 @@ interface GameGridProps {
    * without lifting that cell into the match parent (which would recrawl
    * GameDisplay on every pointer move).
    */
+  /**
+   * Look-only boards (the tutorial's inspect steps): hovering the selected
+   * ship's move range shows nothing (no path arrow, destination square,
+   * threat range from there or "Move here"); the ranges themselves still show.
+   */
+  moveHoverDisabled?: boolean;
   getHoverPreview?: (cell: { row: number; col: number } | null) => {
     shootingRange: Array<{ row: number; col: number }>;
     validTargets: Array<{
@@ -303,6 +311,7 @@ const GameGridCells = React.memo(function GameGridCells({
   setDraggedShipId,
   setDragOverCell,
   setHoveredMoveTile,
+  moveHoverDisabled,
 }: {
   grid: (GridShipPosition | null)[][];
   gridLayoutRef: React.RefObject<HTMLDivElement | null>;
@@ -366,6 +375,7 @@ const GameGridCells = React.memo(function GameGridCells({
   setDraggedShipId: (shipId: number | null) => void;
   setDragOverCell: (cell: { row: number; col: number } | null) => void;
   setHoveredMoveTile: (cell: { row: number; col: number } | null) => void;
+  moveHoverDisabled?: boolean;
 }) {
   const dest = effectiveDragCell ?? previewPosition;
   // Cells read the grid only in click handlers; a ref keeps a new grid
@@ -467,6 +477,7 @@ const GameGridCells = React.memo(function GameGridCells({
             setDraggedShipId={setDraggedShipId}
             setDragOverCell={setDragOverCell}
             setHoveredMoveTile={setHoveredMoveTile}
+            moveHoverDisabled={moveHoverDisabled}
           />
         )),
       )}
@@ -543,6 +554,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   setDraggedShipId,
   setDragOverCell,
   setHoveredMoveTile,
+  moveHoverDisabled,
   allShipPositions,
   dragOverCell,
   calculateDamage,
@@ -625,6 +637,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   setDraggedShipId: (shipId: number | null) => void;
   setDragOverCell: (cell: { row: number; col: number } | null) => void;
   setHoveredMoveTile: (cell: { row: number; col: number } | null) => void;
+  moveHoverDisabled?: boolean;
   allShipPositions?: readonly GridShipPosition[];
   dragOverCell: { row: number; col: number } | null;
   calculateDamage: GameGridProps["calculateDamage"];
@@ -717,6 +730,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         setDraggedShipId={setDraggedShipId}
         setDragOverCell={setDragOverCell}
         setHoveredMoveTile={setHoveredMoveTile}
+            moveHoverDisabled={moveHoverDisabled}
       />
       <GameGridDestHoverRange
         gridLayoutRef={gridLayoutRef}
@@ -858,6 +872,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
   setDraggedShipId,
   setDragOverCell,
   getHoverPreview,
+  moveHoverDisabled = false,
   showConfirmWidget = false,
   confirmWidgetLabel = "SUBMIT",
   onConfirmMove,
@@ -880,7 +895,8 @@ const GameGridBoard = React.memo(function GameGridBoard({
     [tileArt, blockedGrid, impassableGrid],
   );
   const setHoveredCell = useSetGridHoveredCell();
-  const setHoveredMoveTile = useSetGridDestHoveredTile();
+  const setDestHoveredTile = useSetGridDestHoveredTile();
+  const setHoveredMoveTile = moveHoverDisabled ? NOOP_SET_MOVE_TILE : setDestHoveredTile;
   const { outerWrapperRef, gridContainerRef, zoom, resetZoom } = useGridPanZoom();
   /** The bordered CSS grid (cells); tracks are inset by border — use for cell math vs overlay. */
   const gridLayoutRef = useRef<HTMLDivElement>(null);
@@ -1220,6 +1236,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
             setDraggedShipId={setDraggedShipId}
             setDragOverCell={setDragOverCell}
             setHoveredMoveTile={setHoveredMoveTile}
+            moveHoverDisabled={moveHoverDisabled}
             allShipPositions={allShipPositions}
             dragOverCell={dragOverCell}
             calculateDamage={calculateDamage}

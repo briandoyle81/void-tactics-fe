@@ -147,6 +147,8 @@ import {
 } from "./TutorialGridPanelConfigs";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 
+const NO_LABEL_TARGETS: Array<{ shipId: number; position: { row: number; col: number } }> = [];
+
 
 const TUTORIAL_DIALOG_MISSION: DialogMission = { kind: "tutorial" };
 
@@ -609,6 +611,15 @@ export function SimulatedGameDisplay({
   const { openAudioSettings } = useAudioSettings();
   // The tutorial mission has its own music (app/config/music.ts).
   useMusicTrack(TUTORIAL_MUSIC);
+  // Reading-only steps (lockControls) switch the board and fleet list off.
+  const controlsLocked = !!currentStep?.lockControls;
+  /**
+   * Select a ship and Viewing enemy ships: look only. The board shows the
+   * selected ship's move and threat ranges from where it stands, but nothing
+   * to stage (the board treats it as not your turn: no weapon picker, Hold
+   * or drag) and no targets (no damage labels).
+   */
+  const isInspectStep = currentStep?.id === "select-ship" || currentStep?.id === "view-enemy";
 
   React.useEffect(() => {
     if (!isLandscapeMobile) return;
@@ -934,6 +945,9 @@ export function SimulatedGameDisplay({
   // main game's behavior: it appears as soon as you select one of your ships
   // that can act this round, even before choosing a destination.
   const isShowingProposedMove = useMemo(() => {
+    // The inspect steps (isInspectStep): the move and threat ranges from
+    // where the ship is, with no staged move (no Hold, weapon picker or damage).
+    if (isInspectStep) return false;
     const idString = selectedShipId?.toString() as TutorialShipId | undefined;
     return computeIsShowingProposedMove({
       hasSelection: selectedShipId !== null,
@@ -945,6 +959,7 @@ export function SimulatedGameDisplay({
       isDisabled: idString != null && getShipAttributes(idString)?.hullPoints === 0,
     });
   }, [
+    isInspectStep,
     selectedShipId,
     isMyTurn,
     isConfirmingMove,
@@ -1893,6 +1908,8 @@ export function SimulatedGameDisplay({
 
   const wrappedSetSelectedShipId = useCallback(
     (shipId: bigint | null) => {
+      // A reading-only step: selecting does nothing (no "not allowed" toast).
+      if (shipId !== null && controlsLocked) return;
       if (shipId === null) {
         setSelectedShipId(null);
         setPreviewPosition(null);
@@ -1939,6 +1956,7 @@ export function SimulatedGameDisplay({
       setTargetShipId(null);
     },
     [
+      controlsLocked,
       currentStep,
       selectedShipId,
       previewPosition,
@@ -2689,19 +2707,21 @@ export function SimulatedGameDisplay({
   const selectedShipIdForDisplay = selectedShipId != null ? Number(selectedShipId) : null;
   const targetShipIdForDisplay = targetShipId != null ? Number(targetShipId) : null;
   const draggedShipIdForDisplay = draggedShipId != null ? Number(draggedShipId) : null;
+  // The inspect steps (isInspectStep) show ranges only: no targets, so no
+  // damage labels or target marks on the ships in range.
   const gridValidTargetsForDisplay = useMemo(
-    () => toGridTargets(gridValidTargets),
-    [gridValidTargets],
+    () => (isInspectStep ? [] : toGridTargets(gridValidTargets)),
+    [gridValidTargets, isInspectStep],
   );
   // Already number ids (computeLabelTargets is the shared number-native one).
-  const labelTargetsForDisplay = labelTargets;
+  const labelTargetsForDisplay = isInspectStep ? NO_LABEL_TARGETS : labelTargets;
   const gridAssistableTargetsForDisplay = useMemo(
-    () => toGridTargets(gridAssistableTargets),
-    [gridAssistableTargets],
+    () => (isInspectStep ? [] : toGridTargets(gridAssistableTargets)),
+    [gridAssistableTargets, isInspectStep],
   );
   const gridAssistableTargetsFromStartForDisplay = useMemo(
-    () => toGridTargets(gridAssistableTargetsFromStart),
-    [gridAssistableTargetsFromStart],
+    () => (isInspectStep ? [] : toGridTargets(gridAssistableTargetsFromStart)),
+    [gridAssistableTargetsFromStart, isInspectStep],
   );
   const dragValidTargetsForDisplay = useMemo(
     () => toGridTargets(dragValidTargets),
@@ -3619,7 +3639,8 @@ export function SimulatedGameDisplay({
                       dragValidTargets={dragValidTargetsForDisplay}
                       labelTargets={labelTargetsForDisplay}
                       getHoverPreview={getHoverPreview}
-                      isCurrentPlayerTurn={isMyTurn}
+                  moveHoverDisabled={isInspectStep || controlsLocked}
+                      isCurrentPlayerTurn={isMyTurn && !controlsLocked && !isInspectStep}
                       isShipOwnedByCurrentPlayer={isShipOwnedByCurrentPlayerForDisplay}
                       movedShipIdsSet={gridMovedShipIdsSetForDisplay}
                       specialType={specialType}
@@ -4001,7 +4022,9 @@ export function SimulatedGameDisplay({
                   flip={flip}
                   isSelected={selectedShipId === bigId}
                   shipImage={ship && <ShipImage ship={ship} className="w-full h-full" showLoadingState={false} hideRankStars />}
-                  onClick={() => setSelectedShipId(bigId)}
+                  // Same path as a click on the board: the step's rules apply,
+                  // and selecting counts toward the step.
+                  onClick={() => wrappedSetSelectedShipId(bigId)}
                   fleetHoverAnchor={
                     shipPos
                       ? {
@@ -4076,7 +4099,8 @@ export function SimulatedGameDisplay({
                   dragValidTargets={dragValidTargetsForDisplay}
                   labelTargets={labelTargetsForDisplay}
                   getHoverPreview={getHoverPreview}
-                  isCurrentPlayerTurn={isMyTurn}
+                  moveHoverDisabled={isInspectStep || controlsLocked}
+                  isCurrentPlayerTurn={isMyTurn && !controlsLocked && !isInspectStep}
                   isShipOwnedByCurrentPlayer={isShipOwnedByCurrentPlayerForDisplay}
                   movedShipIdsSet={gridMovedShipIdsSetForDisplay}
                   specialType={specialType}
@@ -4086,7 +4110,7 @@ export function SimulatedGameDisplay({
                   onlyOnceGrid={onlyOnceGrid}
                   calculateDamage={calculateDamageForDisplay}
                   getShipAttributes={getShipAttributesForDisplay}
-                  disableTooltips={false}
+                  disableTooltips={controlsLocked}
                   address={TUTORIAL_PLAYER_ADDRESS}
                   currentTurn={gameState.turnState.currentTurn}
                   highlightedMovePosition={highlightedMovePosition}
