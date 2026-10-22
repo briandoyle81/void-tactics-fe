@@ -16,6 +16,10 @@ export const TUTORIAL_MUSIC = "/music/chill-synthwave-211190.mp3";
 const ROGUELIKE_MISSION_MUSIC: Record<number, string> = {
   // A Strange Encounter, the first onchain mission.
   1: "/music/dark-synth-wave-221328.mp3",
+  // Digging Deeper.
+  2: "/music/bransboynd-retro-game-402454.mp3",
+  // Collision Course.
+  3: "/music/tom091178-neon-dystopia-vaporwave-1-562018.mp3",
 };
 
 /**

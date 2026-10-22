@@ -252,6 +252,22 @@ export default function AudioCreditsPage() {
             artist="ElephantGreen"
             href="https://pixabay.com/music/synthwave-dark-synth-wave-221328/"
           />
+          <PixabayMusicCredit
+            heading="Mission Music: Digging Deeper"
+            file="bransboynd-retro-game-402454.mp3"
+            title="Retro Game"
+            artist="Roman Rumyantsev"
+            artistHref="https://pixabay.com/users/bransboynd-51721546/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=402454"
+            href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=402454"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Collision Course"
+            file="tom091178-neon-dystopia-vaporwave-1-562018.mp3"
+            title="Neon-Dystopia-Vaporwave-1"
+            artist="tom091178"
+            artistHref="https://pixabay.com/users/tom091178-52127885/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=562018"
+            href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=562018"
+          />
 
           <section className="space-y-3">
             <h2
@@ -313,14 +329,23 @@ function PixabayMusicCredit({
   file,
   title,
   artist,
+  artistHref,
   href,
 }: {
   heading: string;
   file: string;
   title: string;
   artist: string;
+  artistHref?: string;
   href: string;
 }) {
+  const artistCredit = artistHref ? (
+    <a href={artistHref} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+      {artist}
+    </a>
+  ) : (
+    artist
+  );
   return (
     <section className="space-y-3">
       <h2
@@ -331,7 +356,7 @@ function PixabayMusicCredit({
       </h2>
       <p style={{ color: "var(--color-text-secondary)" }}>&ldquo;{file}&rdquo;</p>
       <p style={{ color: "var(--color-text-secondary)" }}>
-        &ldquo;{title}&rdquo; by {artist} from{" "}
+        &ldquo;{title}&rdquo; by {artistCredit} from{" "}
         <a href={href} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
           Pixabay
         </a>
