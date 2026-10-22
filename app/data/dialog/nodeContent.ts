@@ -70,6 +70,15 @@ Our future is in your hands.
     There's no resources to claim with Central.  Seize the station and send those creepy bastards packing.
     `,
   },
+  6: {
+    title: "Counterattack",
+    description: `Admiral, the enemy must be really upset about losing that station.  They've sent a huge fleet to attack us.
+
+    I don't think we can win a direct confrontation here, but if we retreat, someone else will learn about what's happening and figure out how to profit from it. They might even figure out how to build the new ships!
+
+    Luckily, I've been able to position our fleet in a spot where we have another way to get out of this. I'll give you the details on-site.
+    `,
+  },
 };
 
 export const CAMPAIGN_NODE_CONTENT: Record<number, NodeContentText> = {};

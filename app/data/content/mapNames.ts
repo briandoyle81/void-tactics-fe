@@ -20,7 +20,7 @@ export const MAP_NAMES: Record<number, string> = {
   10: "Debris Ring — Sector 10",
   11: "Reactor Core — Sector 11",
   12: "Open Void — Sector 12",
-  13: "Trench Run — Sector 13",
+  13: "Trench Run",
   14: "Debris Ring — Sector 14",
   15: "Reactor Core — Sector 15",
   16: "Twin Pillars — Dead End 1",

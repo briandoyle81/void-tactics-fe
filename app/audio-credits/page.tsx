@@ -41,7 +41,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: October 21, 2026
+          Last updated: October 22, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -252,6 +252,52 @@ export default function AudioCreditsPage() {
             artist="ElephantGreen"
             href="https://pixabay.com/music/synthwave-dark-synth-wave-221328/"
           />
+
+          <section className="space-y-3">
+            <h2
+              className="text-lg font-bold uppercase tracking-wide"
+              style={{
+                fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
+              }}
+            >
+              Sergeant Portrait
+            </h2>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              Sergeant Sasha portrait, from &ldquo;Soldier in camouflage with
+              red beret&rdquo;
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              Photo by{" "}
+              <a
+                href="https://www.pexels.com/@rapha-fernandes-2160921068/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Rapha Fernandes
+              </a>{" "}
+              from{" "}
+              <a
+                href="https://www.pexels.com/photo/soldier-in-camouflage-with-red-beret-37136229/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Pexels
+              </a>
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              <span className="opacity-80">License:</span>{" "}
+              <a
+                href="https://www.pexels.com/license/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Pexels License
+              </a>
+            </p>
+          </section>
         </div>
       </div>
     </div>

@@ -304,4 +304,135 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
       },
     ],
   },
+  {
+    id: "roguelike-16-start",
+    characterId: "adjutant",
+    text: "Admiral, get a look at that ship!  It's got some kind of unsanctioned modifications that make it as effective as a ship with a veteran crew.  I think that shipyard is putting on final finishing, which means the weapons aren't active and the reactor is cold.",
+    mission: { kind: "roguelike", nodeId: 16 },
+    trigger: { type: "missionStart" },
+    responses: [
+      {
+        characterId: "adjutant",
+        text: "If we can chase off or destroy the enemy fleet, we can board the shipyard and claim the ship for ourselves.",
+      },
+      {
+        characterId: "drone",
+        text: "And yet they lingered in their nests. But when the Builders made known aft, and offered a prayer so deeply concerned with the oblique energy of the Apis Florea, which thus finally shapes and fashions both warp and woof, and provided with a small cub.",
+      },
+      {
+        characterId: "adjutant",
+        text: "They sound really upset by the idea of losing that ship...",
+      },
+    ],
+  },
+  {
+    id: "roguelike-16-victory",
+    characterId: "adjutant",
+    text: "We did it! Crews are boarding the shipyard now and will report back momentarily.",
+    mission: { kind: "roguelike", nodeId: 16 },
+    trigger: { type: "missionVictory" },
+    responses: [
+      {
+        characterId: "marine",
+        text: "Boarding party reporting in: I'm not quite sure what's going on here.  We've secured the ship and confirmed some non-regulation modifications.  Strangely, the bridge is empty and doesn't seem to have any of the normal fittings for crew stations.  Instead, there's an empty socket that looks like it's waiting for some sort of massive computer core.",
+      },
+      {
+        characterId: "adjutant",
+        text: "Good work, Sergeant.  Hold your position and wait for the logistics fleet to arrive.  They can tow the ship back to the supply station and get it in working order.",
+      },
+      {
+        characterId: "hive",
+        text: "Or, if only to the full - freighted worlds, there’s a pedlar aboard with a wild set of sun entered the room seemed impenetrably dark. I turned round and the woods are plucked. Stand by, it would be well laden with pollen it is believed, to try to evade it.",
+      },
+      {
+        characterId: "adjutant",
+        text: "Is that...? Admiral, I think it might be a 'what' we're looking for and not a 'who'. Could that thing be the source of these new ships?",
+      },
+    ],
+  },
+  {
+    id: "roguelike-16-defeat",
+    characterId: "adjutant",
+    text: "We've lost, admiral.  The enemy fleet was too big to take us on.",
+    mission: { kind: "roguelike", nodeId: 16 },
+    trigger: { type: "missionDefeat" },
+  },
+  {
+    id: "roguelike-31-start",
+    characterId: "adjutant",
+    text: "Perfect!  That's a fully-automated repair station.  With it, we can fix our ships back to factory-fresh!  All we have to do is chase off the enemy fleet so we can use the facility.",
+    mission: { kind: "roguelike", nodeId: 31 },
+    trigger: { type: "missionStart" },
+    responses: [
+      {
+        characterId: "drone",
+        text: "I was preparing to hear the sounds that were imaginary and merely plausible. The timbers beneath are of great ships on the other end. Of all possible hexagonal cells, of the same you say is this which permits no illness and accords no grave; not at what precise species this sea, and careful rigging of the ship’s being unprecedentedly dragged over sideways to the distant hills a velvet.",
+      },
+    ],
+  },
+  {
+    id: "roguelike-31-victory",
+    characterId: "adjutant",
+    text: "We've secured the repair station and the enemy fleet is retreating.  We can now fix our ships and carry on at full strength. The boarding party is reporting in now.",
+    mission: { kind: "roguelike", nodeId: 31 },
+    trigger: { type: "missionVictory" },
+    responses: [
+      {
+        characterId: "marine",
+        text: "Boarding party reporting in: Admiral, the good news is that the repair station is fully operational and we can use it to repair our ships completely.  The, well I'm not sure it's bad news, but the weird news is that there isn't anyone here.  It's a standard-pattern station, but unregistered, and empty.",
+      },
+      {
+        characterId: "hive",
+        text: "The agent that so wept with spray, and provided with wings, and the future, that in the pit, and gorge itself with honey and love each other, their nest in its cooling and ashen, and then like to some fears of ultimate retribution.",
+      },
+      {
+        characterId: "adjutant",
+        text: "Is that...? Admiral, I think it might be a 'what' we're looking for and not a 'who'. Could that thing be the source of these new ships?",
+      },
+    ],
+  },
+  {
+    id: "roguelike-31-defeat",
+    characterId: "adjutant",
+    text: "We've lost, admiral.  The enemy fleet was too big to take us on.",
+    mission: { kind: "roguelike", nodeId: 31 },
+    trigger: { type: "missionDefeat" },
+  },
+  {
+    id: "roguelike-6-start",
+    characterId: "adjutant",
+    text: "I've got a plan that just might be crazy enough to work.  The enemy retribution fleet is still broadcasting IFF, which I'm hoping means they're still following the rules.  We're in a valid resource zone, so we can make a claim with Central if we can harvest enough resources.",
+    mission: { kind: "roguelike", nodeId: 6 },
+    trigger: { type: "missionStart" },
+    responses: [
+      {
+        characterId: "adjutant",
+        text: "Under Space Law, they'll have to leave once we make a claim. I recommend you try to avoid a fight and capture as many resources as quickly as possible.",
+      },
+      {
+        characterId: "adjutant",
+        text: "This location has Crystals in addition to the usual metallic resources.  They're rare and extremely valuable, but are only found in small amounts. Unlike the standard metallic resources, it only takes one turn to fully harvest the node.",
+      },
+    ],
+  },
+  {
+    id: "roguelike-6-victory",
+    characterId: "adjutant",
+    text: "We did it! Our claim has been registered and the remaining enemy ships are retreating.",
+    mission: { kind: "roguelike", nodeId: 6 },
+    trigger: { type: "missionVictory" },
+    responses: [
+      {
+        characterId: "drone",
+        text: "Each cell is placed, and so low that I am past scorching; not clamorous for pardon, but in blood, with whatever is sweet to our appendages.",
+      },
+    ],
+  },
+  {
+    id: "roguelike-6-defeat",
+    characterId: "adjutant",
+    text: "We've lost, admiral.  The enemy fleet was too big to take us on.",
+    mission: { kind: "roguelike", nodeId: 6 },
+    trigger: { type: "missionDefeat" },
+  },
 ];

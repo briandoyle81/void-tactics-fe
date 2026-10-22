@@ -74,10 +74,11 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     id: "generic-first-kill",
     characterId: "adjutant",
     trigger: { type: "shipsDestroyed", side: "enemy", count: 1 },
+    canHide: true,
     variants: [
-      "Target down.",
-      "Splash one.",
-      "Confirmed kill. Keep the pressure on.",
+      "Target down. There's some sort of advanced computer core in the wreckage.  Sending a shuttle to retrieve it.",
+      "Splash one. I think it dropped something.  We'll grab it and see what it is.",
+      "Confirmed kill. Detecting a complex signal in the wreckage.  Bringing it aboard for analysis.",
     ],
   },
   {
@@ -170,7 +171,7 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
   {
     id: "generic-hive-taunt",
     characterId: "hive",
-    trigger: { type: "shipsDestroyed", side: "player", count: 2 },
+    trigger: { type: "shipsDestroyed", side: "player", count: 3 },
     variants: ["Your hulls break so easily.", "We are many. You are fewer."],
   },
 ];
