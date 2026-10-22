@@ -418,7 +418,7 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
   {
     id: "roguelike-6-victory",
     characterId: "adjutant",
-    text: "We did it! Our claim has been registered and the remaining enemy ships are retreating.",
+    text: "We did it! Our claim has been registered and the remaining enemy ships are retreating. There's another resupply station nearby.  Charting a course to it now.",
     mission: { kind: "roguelike", nodeId: 6 },
     trigger: { type: "missionVictory" },
     responses: [

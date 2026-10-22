@@ -79,6 +79,10 @@ Our future is in your hands.
     Luckily, I've been able to position our fleet in a spot where we have another way to get out of this. I'll give you the details on-site.
     `,
   },
+  7: {
+    title: "Resupply Station",
+    description: `We've reached the resupply station!  We can swap out damaged ships and add new ones to our fleet.  With the last escalation, we've been authorized to bring in a greater force.  I recommend we do so now.`,
+  },
 };
 
 export const CAMPAIGN_NODE_CONTENT: Record<number, NodeContentText> = {};
