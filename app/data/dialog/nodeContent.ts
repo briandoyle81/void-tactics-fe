@@ -21,9 +21,9 @@ export const ROGUELIKE_NODE_CONTENT: Record<number, NodeContentText> = {
     title: "A Strange Encounter",
     description: `Admiral, Central has detected a small fleet in the eastern quadrant operating without corporate IFF. That means they have no legal claim to any resource sites.
 
-All nearby Consortium ships have been ordered to investigate. You're closest, but our rivals aren't far behind. Reinforcements won't arrive in time, so you'll rendezvous with them later at a sector supply station.
+All nearby Consortium ships have been asked to investigate. You're closest, but our rivals aren't far behind. Reinforcements won't arrive in time, so you'll rendezvous with them later at a sector supply station.
 
-You have one shot at this. Retreat, and someone else takes point. Take your ships, investigate, and secure the site. If the unknown fleet resists, you know what to do.`,
+You have one shot at this. Retreat, and someone else gets there first. Take your ships, investigate, and secure the site. If the unknown fleet resists, you know what to do.`,
   },
   2: {
     title: "Digging Deeper",
