@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_MUSIC_TRACK, NO_MUSIC } from "../config/music";
 
 // Background music for the game client (credited on /audio-credits). Off
-// by default, at full volume when on; both are remembered in this browser
+// by default, at 50% volume when on; both are remembered in this browser
 // and set in the header's audio control (AudioControl) or Settings › Audio.
 // `track` is the screen's track (useMusicTrack in AudioControl.tsx; the
 // choices are in app/config/music.ts), or NO_MUSIC for silence. When it
@@ -12,6 +12,7 @@ import { DEFAULT_MUSIC_TRACK, NO_MUSIC } from "../config/music";
 // its place, so going back to one resumes it.
 
 const MUSIC_VOLUME = 0.35;
+const DEFAULT_VOLUME = 0.5;
 const FADE_MS = 600;
 const STORAGE_KEY = "vt-music-enabled";
 const VOLUME_KEY = "vt-music-volume";
@@ -19,10 +20,10 @@ const VOLUME_KEY = "vt-music-volume";
 function readVolume(): number {
   try {
     const stored = localStorage.getItem(VOLUME_KEY);
-    const v = stored === null ? 1 : Number(stored);
-    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1;
+    const v = stored === null ? DEFAULT_VOLUME : Number(stored);
+    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : DEFAULT_VOLUME;
   } catch {
-    return 1;
+    return DEFAULT_VOLUME;
   }
 }
 
@@ -43,7 +44,7 @@ function fadeTo(audio: HTMLAudioElement, to: number, onDone?: () => void): () =>
 
 export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
   const [enabled, setEnabled] = useState(false);
-  const [volume, setVolumeState] = useState(1);
+  const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
   /** The track playing (or last played), so a change fades it out. */
   const audioRef = useRef<HTMLAudioElement | null>(null);
   /** One element per track, so each resumes where it left off. */

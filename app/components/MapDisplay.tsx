@@ -50,6 +50,11 @@ interface MapDisplayProps {
    * stay correct even if the picker happens to be on a different chain;
    * Lobbies.tsx (PvP, genuinely multi-chain) leaves this unset. */
   chainIdOverride?: number;
+  /**
+   * Current hull on each ship (id string), e.g. a run's roster HP. Overlays
+   * the calculated full-hull attributes so placement shows real damage.
+   */
+  hullPointsByShipId?: Map<string, number>;
 }
 
 export function MapDisplay({
@@ -72,6 +77,7 @@ export function MapDisplay({
   showDeployZoneLabel = false,
   pendingPlacementShipId = null,
   chainIdOverride,
+  hullPointsByShipId,
 }: MapDisplayProps) {
   const { data: blockedPositions } = useGetPresetMap(mapId);
   const { data: scoringPositions } = useGetPresetScoringMap(mapId);
@@ -166,8 +172,13 @@ export function MapDisplay({
         map.set(ship.id.toString(), calculateAttributesFromContracts(ship));
       }
     });
+    hullPointsByShipId?.forEach((hull, id) => {
+      const attrs = map.get(id);
+      if (!attrs) return;
+      map.set(id, { ...attrs, hullPoints: Math.min(attrs.maxHullPoints, Math.max(0, hull)) });
+    });
     return map;
-  }, [shipIds, attributes, fullShips]);
+  }, [shipIds, attributes, fullShips, hullPointsByShipId]);
 
   const stringShipPositions = React.useMemo(
     () => shipPositions.map((pos) => ({ shipId: pos.shipId.toString(), row: pos.row, col: pos.col })),

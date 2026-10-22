@@ -322,44 +322,41 @@ const ShipCard: React.FC<ShipCardProps> = ({
           </div>
         )}
 
+        {inGameAttributes &&
+          inGameAttributes.hullPoints < inGameAttributes.maxHullPoints && (
+            <div className="absolute -top-2 left-0 right-0 z-10" dir="ltr">
+              <div
+                className="relative h-1 w-full overflow-hidden transition-all duration-300"
+                style={{
+                  backgroundColor: "var(--color-gunmetal)",
+                  borderRadius: 0,
+                }}
+              >
+                <div
+                  className="absolute left-0 top-0 h-full transition-all duration-300"
+                  style={{
+                    backgroundColor:
+                      (inGameAttributes.hullPoints /
+                        inGameAttributes.maxHullPoints) *
+                        100 <=
+                      25
+                        ? "var(--color-warning-red)"
+                        : "var(--color-phosphor-green)",
+                    borderRadius: 0,
+                    width: `${
+                      (inGameAttributes.hullPoints /
+                        inGameAttributes.maxHullPoints) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
         {/* Game view indicators for tooltip */}
         {(tooltipMode || gameViewMode) && inGameAttributes && (
           <>
-            {/* Health bar for damaged ships */}
-            {inGameAttributes.hullPoints < inGameAttributes.maxHullPoints && (
-              <div
-                className="absolute -top-2 left-0 right-0 z-10"
-                dir="ltr"
-              >
-                <div
-                  className="relative h-1 w-full overflow-hidden transition-all duration-300"
-                  style={{
-                    backgroundColor: "var(--color-gunmetal)",
-                    borderRadius: 0,
-                  }}
-                >
-                  <div
-                    className="absolute left-0 top-0 h-full transition-all duration-300"
-                    style={{
-                      backgroundColor:
-                        (inGameAttributes.hullPoints /
-                          inGameAttributes.maxHullPoints) *
-                          100 <=
-                        25
-                          ? "var(--color-warning-red)"
-                          : "var(--color-phosphor-green)",
-                      borderRadius: 0,
-                      width: `${
-                        (inGameAttributes.hullPoints /
-                          inGameAttributes.maxHullPoints) *
-                        100
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
             {/* Moved badge */}
             {hasMoved && (
               <div

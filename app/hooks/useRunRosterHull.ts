@@ -7,6 +7,7 @@ import { useRoguelikeRunView } from "./useGameLens";
 import { useFleetShipAttributes } from "./useFleetShipAttributes";
 import { useShipAttributesByIdsWeb2 } from "./useShipAttributesByIdsWeb2";
 import type { RoguelikeRosterEntryWeb2 } from "./useRoguelikeWeb2";
+import { currentHullFromOnchainRosterHp, currentHullFromWeb2RosterHp } from "../utils/rosterHull";
 
 // Hull left on each run roster ship, as a percentage — shown on the run
 // map's action bar and the Command Deck's layout B. Keyed by ship id string
@@ -23,8 +24,7 @@ export function useRunRosterHullWeb3(
     const hull = new Map<string, number>();
     rosterShipIds.forEach((id) => {
       const max = attributesMap.get(id)?.maxHullPoints ?? 0;
-      const raw = hpByShipId.get(id.toString()) ?? 0;
-      const current = raw === 0 ? max : raw;
+      const current = currentHullFromOnchainRosterHp(hpByShipId.get(id.toString()) ?? 0, max);
       hull.set(id.toString(), max > 0 ? (current / max) * 100 : 100);
     });
     return hull;
@@ -39,7 +39,8 @@ export function useRunRosterHullWeb2(roster: RoguelikeRosterEntryWeb2[]): Map<st
     const hull = new Map<string, number>();
     roster.forEach((entry) => {
       const max = attributesByShipId.get(entry.shipId)?.maxHullPoints ?? 0;
-      hull.set(String(entry.shipId), max > 0 ? (Math.max(0, max - entry.hp) / max) * 100 : 100);
+      const current = currentHullFromWeb2RosterHp(entry.hp, max);
+      hull.set(String(entry.shipId), max > 0 ? (current / max) * 100 : 100);
     });
     return hull;
   }, [roster, attributesByShipId]);

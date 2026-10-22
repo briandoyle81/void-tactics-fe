@@ -21,6 +21,7 @@ import { aiConfigToPreviewShipWeb2, type AIShipConfigWeb2 } from "../utils/aiShi
 import type { Web2Ship } from "../types/web2Ship";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { GRID_DIMENSIONS } from "../types/types";
+import { currentHullFromWeb2RosterHp, overlayHullPoints } from "../utils/rosterHull";
 
 interface AIMapPlacementWeb2 {
   id: number;
@@ -95,6 +96,12 @@ export function RoguelikeCombatModalWeb2({
     isLoading: attributesLoading,
     isFromCache: isAttributesFromCache,
   } = useShipAttributesByIdsWeb2(shipIdsForAttributes);
+  const attributesWithRosterHull = React.useMemo(() => {
+    const damageById = new Map(run.roster.map((entry) => [entry.shipId, entry.hp]));
+    return overlayHullPoints(attributesByShipId, (id) =>
+      currentHullFromWeb2RosterHp(damageById.get(id) ?? 0, attributesByShipId.get(id)?.maxHullPoints ?? 0),
+    );
+  }, [attributesByShipId, run.roster]);
 
   const handleLaunch = async () => {
     if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip) return;
@@ -146,7 +153,7 @@ export function RoguelikeCombatModalWeb2({
     removeShip: fleet.removeShip,
     setDraggedShipId: fleet.setDraggedShipId,
     setDragOverPosition: fleet.setDragOverPosition,
-    attributesMap: attributesByShipId,
+    attributesMap: attributesWithRosterHull,
     attributesLoading,
     showInGameProperties,
     flipShips: true,
@@ -200,6 +207,7 @@ export function RoguelikeCombatModalWeb2({
       }}
       dragOverPosition={fleet.dragOverPosition}
       showDeployZoneLabel={true}
+      attributesMap={attributesWithRosterHull}
     />
   );
 

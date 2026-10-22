@@ -29,6 +29,8 @@ import { aiConfigToPreviewShip } from "../utils/aiShipConfig";
 import { CONTRACT_ABIS } from "../config/contracts";
 import { navigateToGame } from "../utils/navigateToGame";
 import { DUPLICATE_SHIP_ID_TOAST } from "../utils/fleetShipIds";
+import { useRoguelikeRunView } from "../hooks/useGameLens";
+import { currentHullFromOnchainRosterHp, overlayHullPoints } from "../utils/rosterHull";
 
 const ENEMY_PREVIEW_ID_OFFSET = 100_000_000n;
 
@@ -123,6 +125,22 @@ export function RoguelikeCombatModal({
     attributesLoading: attributesLoadingEffective,
     isFromCache: isAttributesFromCache,
   } = useFleetShipAttributes(shipIdsForAttributes, baseSepolia.id);
+  const { hpByShipId } = useRoguelikeRunView(address, run.rosterShipIds.length > 0);
+  const attributesWithRosterHull = React.useMemo(
+    () =>
+      overlayHullPoints(attributesMap, (id) =>
+        currentHullFromOnchainRosterHp(
+          hpByShipId.get(id.toString()) ?? 0,
+          attributesMap.get(id)?.maxHullPoints ?? 0,
+        ),
+      ),
+    [attributesMap, hpByShipId],
+  );
+  const hullPointsByShipId = React.useMemo(() => {
+    const hull = new Map<string, number>();
+    attributesWithRosterHull.forEach((attrs, id) => hull.set(id.toString(), attrs.hullPoints));
+    return hull;
+  }, [attributesWithRosterHull]);
 
   const handleLaunch = async () => {
     if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip) return;
@@ -190,7 +208,7 @@ export function RoguelikeCombatModal({
     removeShip: fleet.removeShip,
     setDraggedShipId: fleet.setDraggedShipId,
     setDragOverPosition: fleet.setDragOverPosition,
-    attributesMap,
+    attributesMap: attributesWithRosterHull,
     attributesLoading: attributesLoadingEffective,
     showInGameProperties,
     flipShips: true,
@@ -248,6 +266,7 @@ export function RoguelikeCombatModal({
       }}
       dragOverPosition={fleet.dragOverPosition}
       showDeployZoneLabel={true}
+      hullPointsByShipId={hullPointsByShipId}
     />
   );
 

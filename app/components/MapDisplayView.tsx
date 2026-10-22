@@ -416,6 +416,11 @@ export function MapDisplayView({
                       const flipThis = flippedShipIds.some((id) => id === shipId);
                       const hasCardData = shipCardDataMap.has(shipId);
 
+                      const attrs = attributesMap?.get(shipId);
+                      const hullPercent =
+                        attrs && attrs.maxHullPoints > 0
+                          ? (attrs.hullPoints / attrs.maxHullPoints) * 100
+                          : 100;
                       return (
                         <div className="absolute inset-0 z-[3] pointer-events-none">
                           {hasCardData ? (
@@ -425,6 +430,23 @@ export function MapDisplayView({
                           ) : (
                             <div className="w-full h-full bg-gunmetal rounded-none flex items-center justify-center text-white text-xs">
                               {shipNameMap?.get(shipId) ?? ""}
+                            </div>
+                          )}
+                          {attrs && attrs.hullPoints < attrs.maxHullPoints && (
+                            <div
+                              className="absolute left-0 right-0 top-0 h-0.5 overflow-hidden"
+                              style={{ backgroundColor: "var(--color-gunmetal)" }}
+                            >
+                              <div
+                                className="h-full"
+                                style={{
+                                  width: `${hullPercent}%`,
+                                  backgroundColor:
+                                    hullPercent <= 25
+                                      ? "var(--color-warning-red)"
+                                      : "var(--color-phosphor-green)",
+                                }}
+                              />
                             </div>
                           )}
                         </div>

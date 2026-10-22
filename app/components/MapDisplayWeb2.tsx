@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { GRID_DIMENSIONS } from "../types/types";
+import { GRID_DIMENSIONS, type Attributes } from "../types/types";
 import { Web2Ship } from "../types/web2Ship";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
 import { toShipCardDataWeb2 } from "../utils/toShipCardData";
@@ -32,6 +32,8 @@ interface MapDisplayWeb2Props {
   dragOverPosition?: { row: number; col: number } | null;
   showDeployZoneLabel?: boolean;
   pendingPlacementShipId?: number | null;
+  /** Calculated attributes with roster hull already applied, for tooltips. */
+  attributesMap?: Map<number, Attributes>;
 }
 
 export function MapDisplayWeb2({
@@ -53,6 +55,7 @@ export function MapDisplayWeb2({
   dragOverPosition = null,
   showDeployZoneLabel = false,
   pendingPlacementShipId = null,
+  attributesMap,
 }: MapDisplayWeb2Props) {
   const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid, creatorZone, joinerZone } = useMapWeb2(
     mapId,
@@ -79,6 +82,13 @@ export function MapDisplayWeb2({
     },
     [shipByStringId],
   );
+
+  const stringAttributesMap = React.useMemo(() => {
+    if (!attributesMap) return undefined;
+    const map = new Map<string, Attributes>();
+    attributesMap.forEach((attrs, id) => map.set(String(id), attrs));
+    return map;
+  }, [attributesMap]);
 
   const stringShipPositions = React.useMemo(
     () => shipPositions.map((pos) => ({ shipId: String(pos.shipId), row: pos.row, col: pos.col })),
@@ -121,7 +131,8 @@ export function MapDisplayWeb2({
       creatorZonePositions={creatorZone}
       joinerZonePositions={joinerZone}
       pendingPlacementShipId={pendingPlacementShipId !== null ? String(pendingPlacementShipId) : null}
-      showTooltipInGameProperties={false}
+      attributesMap={stringAttributesMap}
+      showTooltipInGameProperties={!!stringAttributesMap}
     />
   );
 }
