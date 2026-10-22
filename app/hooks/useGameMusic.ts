@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_MUSIC_TRACK, NO_MUSIC } from "../config/music";
 
 // Background music for the game client (credited on /audio-credits). Off
 // by default, at full volume when on; both are remembered in this browser
 // and set in the header's audio control (AudioControl) or Settings › Audio.
-// `track` is the screen's track (useMusicTrack in AudioControl.tsx); when it
-// changes, the old one fades out and the new one fades in.
+// `track` is the screen's track (useMusicTrack in AudioControl.tsx; the
+// choices are in app/config/music.ts), or NO_MUSIC for silence. When it
+// changes, the old one fades out and the new one fades in. Each track keeps
+// its place, so going back to one resumes it.
 
-/** The track for screens that don't ask for one. */
-export const DEFAULT_MUSIC_TRACK = "/music/synthwave-80s-robot-swarm-218092.mp3";
 const MUSIC_VOLUME = 0.35;
 const FADE_MS = 600;
 const STORAGE_KEY = "vt-music-enabled";
@@ -43,7 +44,10 @@ function fadeTo(audio: HTMLAudioElement, to: number, onDone?: () => void): () =>
 export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
   const [enabled, setEnabled] = useState(false);
   const [volume, setVolumeState] = useState(1);
+  /** The track playing (or last played), so a change fades it out. */
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  /** One element per track, so each resumes where it left off. */
+  const tracksRef = useRef(new Map<string, HTMLAudioElement>());
   const volumeRef = useRef(volume);
   volumeRef.current = volume;
 
@@ -62,36 +66,44 @@ export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
   }, [volume]);
 
   useEffect(() => {
+    const prev = audioRef.current;
     if (!enabled) {
-      audioRef.current?.pause();
+      prev?.pause();
       return;
     }
-    const target = MUSIC_VOLUME * volumeRef.current;
     const cancels: Array<() => void> = [];
-    const current = audioRef.current;
-    const switching = current != null && !current.src.endsWith(track);
-    if (switching) {
-      // Fade the old track out, then let it go (at once if this is cut short).
-      const old = current;
-      cancels.push(fadeTo(old, 0, () => old.pause()), () => old.pause());
-    } else if (current) {
-      // Same track: undo any fade that was cut short.
-      current.volume = target;
+    const prevPlaying = prev != null && !prev.paused;
+
+    if (track === NO_MUSIC) {
+      // Silence: fade out whatever's playing (it resumes from here later).
+      if (prev && prevPlaying) cancels.push(fadeTo(prev, 0, () => prev.pause()), () => prev.pause());
+      return () => cancels.forEach((cancel) => cancel());
     }
-    if (!current || switching) {
-      const audio = new Audio(track);
+
+    const target = MUSIC_VOLUME * volumeRef.current;
+    let audio = tracksRef.current.get(track);
+    if (!audio) {
+      audio = new Audio(track);
       audio.loop = true;
-      audio.volume = switching ? 0 : target;
-      audioRef.current = audio;
-      if (switching) cancels.push(fadeTo(audio, target));
+      tracksRef.current.set(track, audio);
     }
-    const audio = audioRef.current!;
+    if (prev && prev !== audio && prevPlaying) {
+      // Crossfade from the old track.
+      cancels.push(fadeTo(prev, 0, () => prev.pause()), () => prev.pause());
+      audio.volume = 0;
+      cancels.push(fadeTo(audio, target));
+    } else {
+      audio.volume = target;
+    }
+    if (audio.paused && process.env.NODE_ENV !== "production") console.info("[music] playing", track);
+    audioRef.current = audio;
+    const playing = audio;
     // Browsers block playback until the page has had a click or tap (e.g.
     // after a reload with music on), so retry on the first one.
     const onGesture = () => {
-      void audio.play().catch(() => {});
+      void playing.play().catch(() => {});
     };
-    audio.play().catch(() => {
+    playing.play().catch(() => {
       window.addEventListener("pointerdown", onGesture, { once: true });
     });
     return () => {
@@ -100,7 +112,10 @@ export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
     };
   }, [enabled, track]);
 
-  useEffect(() => () => audioRef.current?.pause(), []);
+  useEffect(() => {
+    const tracks = tracksRef.current;
+    return () => tracks.forEach((audio) => audio.pause());
+  }, []);
 
   const setOn = useCallback((next: boolean) => {
     try {

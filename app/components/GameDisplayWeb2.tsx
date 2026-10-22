@@ -59,7 +59,7 @@ import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { GameScoreBox } from "./GameScoreBox";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
 import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
-import { roguelikeMissionMusic } from "../config/music";
+import { battleMusic } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
 import {
@@ -470,8 +470,8 @@ function GameDisplayWeb2({
   const { run: roguelikeRunForDialog } = useRoguelikeRunWeb2(isRoguelikeGame);
   const roguelikeDialogNodeId =
     isRoguelikeGame && roguelikeRunForDialog ? roguelikeRunForDialog.currentNodeId : 0;
-  // Operations missions with their own music (app/config/music.ts).
-  useMusicTrack(roguelikeMissionMusic(roguelikeDialogNodeId));
+  // Battles are silent unless their mission has a track (app/config/music.ts).
+  useMusicTrack(battleMusic(roguelikeDialogNodeId));
   const campaignDialogNodeId = isSinglePlayerGame ? (game.metadata.campaignNodeId ?? 0) : 0;
   const dialogMission: DialogMission | null = useMemo(() => {
     if (campaignDialogNodeId > 0) return { kind: "campaign", nodeId: campaignDialogNodeId };

@@ -1,9 +1,13 @@
 // Which music plays where (all under public/music/, credited on
-// /audio-credits). Screens ask for theirs with useMusicTrack (AudioControl.tsx);
-// anything else plays DEFAULT_MUSIC_TRACK (useGameMusic.ts).
+// /audio-credits). Every screen plays DEFAULT_MUSIC_TRACK, except battles,
+// which are silent unless their mission has a track here. Battles ask with
+// useMusicTrack (AudioControl.tsx); useGameMusic.ts plays it.
 
-/** The Command Deck, the game's home screen. */
-export const COMMAND_DECK_MUSIC = "/music/night-221519.mp3";
+/** Every screen outside battle: the Command Deck, Operations, fleet selection... */
+export const DEFAULT_MUSIC_TRACK = "/music/night-221519.mp3";
+
+/** A battle with no track of its own (missions not listed here, PvP, spectating). */
+export const NO_MUSIC = "";
 
 /** The tutorial mission, First Contact. */
 export const TUTORIAL_MUSIC = "/music/chill-synthwave-211190.mp3";
@@ -14,7 +18,12 @@ const ROGUELIKE_MISSION_MUSIC: Record<number, string> = {
   1: "/music/dark-synth-wave-221328.mp3",
 };
 
-/** The track for an Operations mission's battle, or null for the default. */
-export function roguelikeMissionMusic(nodeId: number | null | undefined): string | null {
-  return nodeId != null && nodeId > 0 ? (ROGUELIKE_MISSION_MUSIC[nodeId] ?? null) : null;
+/**
+ * A battle's track: its Operations mission's own track, or silence (other
+ * missions, PvP and spectating don't have music yet).
+ */
+export function battleMusic(roguelikeNodeId: number | null | undefined): string {
+  return roguelikeNodeId != null && roguelikeNodeId > 0
+    ? (ROGUELIKE_MISSION_MUSIC[roguelikeNodeId] ?? NO_MUSIC)
+    : NO_MUSIC;
 }

@@ -230,8 +230,77 @@ export default function AudioCreditsPage() {
               </a>
             </p>
           </section>
+
+          <PixabayMusicCredit
+            heading="Music Outside Battle"
+            file="night-221519.mp3"
+            title="Night"
+            artist="Begench_Begenjov"
+            href="https://pixabay.com/music/synthwave-night-221519/"
+          />
+          <PixabayMusicCredit
+            heading="Tutorial Mission Music"
+            file="chill-synthwave-211190.mp3"
+            title="Chill Synthwave"
+            artist="NickPanek"
+            href="https://pixabay.com/music/synthwave-chill-synthwave-211190/"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: A Strange Encounter"
+            file="dark-synth-wave-221328.mp3"
+            title="Dark Synth Wave"
+            artist="ElephantGreen"
+            href="https://pixabay.com/music/synthwave-dark-synth-wave-221328/"
+          />
         </div>
       </div>
     </div>
+  );
+}
+
+const LINK_CLASS =
+  "text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80";
+
+/** A Pixabay music track's credit, in the same layout as the entries above. */
+function PixabayMusicCredit({
+  heading,
+  file,
+  title,
+  artist,
+  href,
+}: {
+  heading: string;
+  file: string;
+  title: string;
+  artist: string;
+  href: string;
+}) {
+  return (
+    <section className="space-y-3">
+      <h2
+        className="text-lg font-bold uppercase tracking-wide"
+        style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" }}
+      >
+        {heading}
+      </h2>
+      <p style={{ color: "var(--color-text-secondary)" }}>&ldquo;{file}&rdquo;</p>
+      <p style={{ color: "var(--color-text-secondary)" }}>
+        &ldquo;{title}&rdquo; by {artist} from{" "}
+        <a href={href} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+          Pixabay
+        </a>
+      </p>
+      <p style={{ color: "var(--color-text-secondary)" }}>
+        <span className="opacity-80">License:</span>{" "}
+        <a
+          href="https://pixabay.com/service/license-summary/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={LINK_CLASS}
+        >
+          Pixabay License Summary
+        </a>
+      </p>
+    </section>
   );
 }

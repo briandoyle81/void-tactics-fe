@@ -6,8 +6,6 @@ import { FreeShipsCard } from "../FreeShipsCard";
 import type { RunPipState } from "../../utils/runProgress";
 import type { CommandDeckLayout } from "../../hooks/useCommandDeckLayout";
 import { TOURNAMENTS_ENABLED } from "../../config/alpha";
-import { useMusicTrack } from "../AudioControl";
-import { COMMAND_DECK_MUSIC } from "../../config/music";
 
 // The Command Deck hub (Play tab). Layout A is a grid of mode tiles; layout
 // B is a full-bleed Operations panel over art with a mode rail, kept for an
@@ -523,8 +521,6 @@ function LayoutB({ operations, yourTurnCount, openTournamentCount, onOpen }: Omi
 }
 
 export function CommandDeck({ layout, ...props }: CommandDeckProps) {
-  // The game's home screen has its own music (app/config/music.ts).
-  useMusicTrack(COMMAND_DECK_MUSIC);
   return (
     <section aria-label="Command Deck" className="w-full">
       {layout === "B" ? (

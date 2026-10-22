@@ -4,7 +4,8 @@ import React, { createContext, useCallback, useContext, useEffect, useId, useMem
 import { createPortal } from "react-dom";
 import { HudIconButton } from "./HudIconButton";
 import { playSoundEffect, useSoundEffectsSetting } from "../hooks/useSoundEffects";
-import { DEFAULT_MUSIC_TRACK, useGameMusic } from "../hooks/useGameMusic";
+import { useGameMusic } from "../hooks/useGameMusic";
+import { DEFAULT_MUSIC_TRACK } from "../config/music";
 
 // The game client's audio: AudioSettingsProvider (in app/(client)/layout.tsx)
 // owns the music and the sound-effects setting, so music keeps playing
@@ -153,11 +154,11 @@ export function AudioSettingsProvider({ children }: { children: React.ReactNode 
 
 /**
  * Plays `src` as the music while the calling screen is on screen (when music
- * is on); null asks for nothing. Tracks are listed in app/config/music.ts.
+ * is on); NO_MUSIC asks for silence. Tracks are in app/config/music.ts.
  */
-export function useMusicTrack(src: string | null) {
+export function useMusicTrack(src: string) {
   const { requestMusicTrack } = useAudioSettings();
-  useEffect(() => (src ? requestMusicTrack(src) : undefined), [requestMusicTrack, src]);
+  useEffect(() => requestMusicTrack(src), [requestMusicTrack, src]);
 }
 
 /** The speaker button: waves when anything is on, muted when nothing is. Opens the audio modal. */
