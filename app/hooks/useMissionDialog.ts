@@ -288,6 +288,10 @@ export function useMissionDialog({
       if (last.enemyShipsDisabled === undefined) last.enemyShipsDisabled = next.enemyShipsDisabled;
       if (last.myReactorDamage === undefined) last.myReactorDamage = next.myReactorDamage;
       if (last.enemyReactorDamage === undefined) last.enemyReactorDamage = next.enemyReactorDamage;
+      if (last.myShipsAtReactorLevel === undefined) last.myShipsAtReactorLevel = next.myShipsAtReactorLevel;
+      if (last.enemyShipsAtReactorLevel === undefined) {
+        last.enemyShipsAtReactorLevel = next.enemyShipsAtReactorLevel;
+      }
       if (last.myShipsRetreated === undefined) last.myShipsRetreated = next.myShipsRetreated;
       if (last.enemyShipsRetreated === undefined) last.enemyShipsRetreated = next.enemyShipsRetreated;
       if (last.myResourceTilesTaken === undefined) last.myResourceTilesTaken = next.myResourceTilesTaken;

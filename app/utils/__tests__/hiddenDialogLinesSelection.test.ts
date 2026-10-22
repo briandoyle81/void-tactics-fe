@@ -15,6 +15,8 @@ const base = {
   enemyShipsRetreated: 0,
   myReactorDamage: 0,
   enemyReactorDamage: 0,
+  myShipsAtReactorLevel: [],
+  enemyShipsAtReactorLevel: [],
   myResourceTilesTaken: 0,
   enemyResourceTilesTaken: 0,
   outcome: null,

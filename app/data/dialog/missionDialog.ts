@@ -23,6 +23,11 @@ import type { DialogCharacterId } from "./characters";
 //                    { type: "roundEnd", round: 2 }     omit round = every round
 //                    { type: "shipsDisabled", side: "enemy", count: 1 }
 //                    { type: "shipsDestroyed", side: "enemy", count: 1 }
+//                    { type: "reactorOverloadWarning", side: "player", level: 2 }
+//                      a ship on that side first reaches that overload
+//                      level (one ship's pips, not the fleet total). Omit
+//                      count to fire every time a new ship reaches it;
+//                      add count: 1 to fire once, when the first ship does
 //                    { type: "pointsScored", side: "player", points: 10 }
 //                    { type: "missionVictory" }   when the player wins
 //                    { type: "missionDefeat" }    when the player loses (incl. retreat)

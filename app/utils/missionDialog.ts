@@ -44,6 +44,13 @@ export interface DialogSnapshot {
   myReactorDamage: number;
   enemyReactorDamage: number;
   /**
+   * How many of this side's ships have reached each overload level so far
+   * (index = level). [2] is ships that have hit 2 pips on that one ship.
+   * Built by mergeDisabledShips from each ship's highest reactor level.
+   */
+  myShipsAtReactorLevel: number[];
+  enemyShipsAtReactorLevel: number[];
+  /**
    * Distinct resource (scoring) tiles a working ship of each side has stood
    * on so far this game: landing on one counts, holding it doesn't add
    * more. Built by mergeDisabledShips.
@@ -67,6 +74,8 @@ export type DialogObservation = Omit<
   | "enemyShipsDisabled"
   | "myReactorDamage"
   | "enemyReactorDamage"
+  | "myShipsAtReactorLevel"
+  | "enemyShipsAtReactorLevel"
   | "myResourceTilesTaken"
   | "enemyResourceTilesTaken"
 > & {
@@ -195,6 +204,25 @@ function mergeHighs(
 const sumValues = (record: Record<string, number>) =>
   Object.values(record).reduce((total, value) => total + value, 0);
 
+/** Index = overload level; value = distinct ships whose high is at least that. */
+function shipsAtReactorLevels(highs: Record<string, number>): number[] {
+  let max = 0;
+  for (const value of Object.values(highs)) if (value > max) max = value;
+  const counts = Array(max + 1).fill(0) as number[];
+  for (const value of Object.values(highs)) {
+    for (let level = 1; level <= value; level++) counts[level]++;
+  }
+  return counts;
+}
+
+function sameLevelCounts(a: number[] | undefined, b: number[] | undefined): boolean {
+  const len = Math.max(a?.length ?? 0, b?.length ?? 0);
+  for (let i = 1; i < len; i++) {
+    if ((a?.[i] ?? 0) !== (b?.[i] ?? 0)) return false;
+  }
+  return true;
+}
+
 /**
  * Folds the ships disabled right now into the game's running "ever
  * disabled" set, and each ship's reactor level into its running high, and
@@ -235,6 +263,8 @@ export function mergeDisabledShips(
       enemyShipsDisabled: enemy.length,
       myReactorDamage: sumValues(highs.player),
       enemyReactorDamage: sumValues(highs.enemy),
+      myShipsAtReactorLevel: shipsAtReactorLevels(highs.player),
+      enemyShipsAtReactorLevel: shipsAtReactorLevels(highs.enemy),
       myResourceTilesTaken: tiles.player.length,
       enemyResourceTilesTaken: tiles.enemy.length,
       outcome: observation.outcome,
@@ -259,6 +289,8 @@ export function isOpeningSnapshot(s: DialogSnapshot): boolean {
     s.enemyShipsDisabled === 0 &&
     (s.myReactorDamage ?? 0) === 0 &&
     (s.enemyReactorDamage ?? 0) === 0 &&
+    (s.myShipsAtReactorLevel?.[1] ?? 0) === 0 &&
+    (s.enemyShipsAtReactorLevel?.[1] ?? 0) === 0 &&
     (s.myResourceTilesTaken ?? 0) === 0 &&
     (s.enemyResourceTilesTaken ?? 0) === 0 &&
     s.outcome === null
@@ -276,6 +308,8 @@ export function snapshotsEqual(a: DialogSnapshot, b: DialogSnapshot): boolean {
     a.enemyShipsDisabled === b.enemyShipsDisabled &&
     a.myReactorDamage === b.myReactorDamage &&
     a.enemyReactorDamage === b.enemyReactorDamage &&
+    sameLevelCounts(a.myShipsAtReactorLevel, b.myShipsAtReactorLevel) &&
+    sameLevelCounts(a.enemyShipsAtReactorLevel, b.enemyShipsAtReactorLevel) &&
     a.myShipsRetreated === b.myShipsRetreated &&
     a.enemyShipsRetreated === b.enemyShipsRetreated &&
     a.myResourceTilesTaken === b.myResourceTilesTaken &&
@@ -296,6 +330,8 @@ export type DialogOccurrence =
   | { type: "pointsScored"; side: DialogSide; points: number }
   /** `total`: the side's reactor damage after this rise. */
   | { type: "reactorDamaged"; side: DialogSide; total: number }
+  /** `total`: how many of `side`'s ships have reached `level`. */
+  | { type: "reactorOverloadWarning"; side: DialogSide; level: number; total: number }
   | { type: "resourceTileTaken"; side: DialogSide; count: number }
   | { type: "missionVictory" }
   | { type: "missionDefeat" };
@@ -317,6 +353,8 @@ export function occurrenceKey(o: DialogOccurrence): string {
     case "reactorDamaged":
     case "shipsRetreated":
       return `${o.type}:${o.side}:${o.total}`;
+    case "reactorOverloadWarning":
+      return `reactorOverloadWarning:${o.side}:${o.level}:${o.total}`;
     case "resourceTileTaken":
       return `resourceTileTaken:${o.side}:${o.count}`;
   }
@@ -328,13 +366,14 @@ const OCCURRENCE_ORDER: Record<DialogOccurrence["type"], number> = {
   roundStart: 2,
   shipsDisabled: 3,
   reactorDamaged: 4,
-  shipsDestroyed: 5,
-  shipsRetreated: 5,
-  resourceTileTaken: 6,
-  pointsScored: 7,
+  reactorOverloadWarning: 5,
+  shipsDestroyed: 6,
+  shipsRetreated: 6,
+  resourceTileTaken: 7,
+  pointsScored: 8,
   // Last, so the final kill/score lines play before the debrief.
-  missionVictory: 8,
-  missionDefeat: 8,
+  missionVictory: 9,
+  missionDefeat: 9,
 };
 
 function occurrenceSortValue(o: DialogOccurrence): number {
@@ -354,6 +393,8 @@ function occurrenceSortValue(o: DialogOccurrence): number {
     case "reactorDamaged":
     case "shipsRetreated":
       return o.total;
+    case "reactorOverloadWarning":
+      return o.level * 100 + o.total;
     case "resourceTileTaken":
       return o.count;
   }
@@ -396,6 +437,11 @@ function shipsDisabledFor(s: DialogSnapshot, side: DialogSide): number {
 
 function reactorDamageFor(s: DialogSnapshot, side: DialogSide): number {
   return (side === "player" ? s.myReactorDamage : s.enemyReactorDamage) ?? 0;
+}
+
+function shipsAtReactorLevelFor(s: DialogSnapshot, side: DialogSide, level: number): number {
+  const counts = side === "player" ? s.myShipsAtReactorLevel : s.enemyShipsAtReactorLevel;
+  return counts?.[level] ?? 0;
 }
 
 function resourceTilesTakenFor(s: DialogSnapshot, side: DialogSide): number {
@@ -472,6 +518,19 @@ export function triggerOccurrences(
           : [];
       }
       return [{ type: "reactorDamaged", side: trigger.side, total: after }];
+    }
+    case "reactorOverloadWarning": {
+      const before = prev ? shipsAtReactorLevelFor(prev, trigger.side, trigger.level) : 0;
+      const after = shipsAtReactorLevelFor(next, trigger.side, trigger.level);
+      if (after <= before) return [];
+      // With `count`: once, when that many ships have reached the level.
+      // Without: every time a new ship does (one occurrence per update).
+      if (trigger.count != null) {
+        return before < trigger.count && trigger.count <= after
+          ? [{ type: "reactorOverloadWarning", side: trigger.side, level: trigger.level, total: trigger.count }]
+          : [];
+      }
+      return [{ type: "reactorOverloadWarning", side: trigger.side, level: trigger.level, total: after }];
     }
     case "missionVictory":
     case "missionDefeat": {

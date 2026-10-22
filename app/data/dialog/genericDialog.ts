@@ -21,6 +21,9 @@ import type { DialogCharacterId } from "./characters";
 //                       different resource tiles (1 = the first landing)
 //                     { type: "reactorDamaged", side: "player" }   every time;
 //                       add count: 3 to fire once, at 3 reactor damage total
+//                     { type: "reactorOverloadWarning", side: "player", level: 2 }
+//                       every time a ship first reaches 2 overload pips;
+//                       add count: 1 to fire once, when the first ship does
 //                     { type: "pointsScored", side: "player", points: 10 }
 //                     { type: "missionVictory" }   when the player wins
 //                     { type: "missionDefeat" }    when the player loses (incl. retreat)
@@ -173,5 +176,25 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     characterId: "hive",
     trigger: { type: "shipsDestroyed", side: "player", count: 3 },
     variants: ["Your hulls break so easily.", "We are many. You are fewer."],
+  },
+  {
+    id: "generic-reactor-overload-warning-player",
+    characterId: "adjutant",
+    trigger: { type: "reactorOverloadWarning", side: "player", level: 2 },
+    canHide: true,
+    variants: [
+      "EMERGENCY! One of our ships is nearing reactor critical! Get it off the field now, it's about to pop!",
+      "REACTOR WARNING! One of our ships is nearing critical! Move it before we lost it forever!",
+    ],
+  },
+  {
+    id: "generic-reactor-overload-warning-enemy",
+    characterId: "adjutant",
+    trigger: { type: "reactorOverloadWarning", side: "enemy", level: 2 },
+    canHide: true,
+    variants: [
+      "Detecting a critical reactor breach on the enemy ship.  One more shot should finish it off!",
+      "Critical reactor breach detected on the enemy ship.  It's about to go!",
+    ],
   },
 ];

@@ -21,6 +21,8 @@ const START: DialogSnapshot = {
   enemyShipsDisabled: 0,
   myReactorDamage: 0,
   enemyReactorDamage: 0,
+  myShipsAtReactorLevel: [],
+  enemyShipsAtReactorLevel: [],
   myResourceTilesTaken: 0,
   enemyResourceTilesTaken: 0,
   outcome: null,
@@ -304,11 +306,48 @@ describe("reactorDamaged", () => {
       });
     const first = mergeDisabledShips(observe({ a: 1 }), null);
     expect(first.snapshot.myReactorDamage).toBe(1);
+    expect(first.snapshot.myShipsAtReactorLevel[1]).toBe(1);
+    expect(first.snapshot.myShipsAtReactorLevel[2] ?? 0).toBe(0);
     const second = mergeDisabledShips(observe({ a: 2, b: 1 }), first.everDisabled, first.reactorHighs);
     expect(second.snapshot.myReactorDamage).toBe(3);
+    expect(second.snapshot.myShipsAtReactorLevel[1]).toBe(2);
+    expect(second.snapshot.myShipsAtReactorLevel[2]).toBe(1);
     // Ship a gone from the observation (destroyed or fled): its high stays.
     const third = mergeDisabledShips(observe({ b: 1 }), second.everDisabled, second.reactorHighs);
     expect(third.snapshot.myReactorDamage).toBe(3);
+    expect(third.snapshot.myShipsAtReactorLevel[2]).toBe(1);
+  });
+});
+
+describe("reactorOverloadWarning", () => {
+  const line = (level: number, count?: number): GenericDialogLine => ({
+    id: `overload-${level}${count != null ? `-${count}` : ""}`,
+    characterId: "adjutant",
+    trigger: {
+      type: "reactorOverloadWarning",
+      side: "player",
+      level,
+      ...(count != null ? { count } : {}),
+    },
+    variants: [`Ship at ${level}.`],
+  });
+
+  it("fires when any one ship first reaches the level, not on fleet total", () => {
+    const atLevel1 = snap({ myReactorDamage: 2, myShipsAtReactorLevel: [0, 2] });
+    const oneAt2 = snap({ myReactorDamage: 3, myShipsAtReactorLevel: [0, 2, 1] });
+    expect(select(START, atLevel1, [], [line(2)])).toHaveLength(0);
+    expect(select(atLevel1, oneAt2, [], [line(2)])).toHaveLength(1);
+    expect(select(atLevel1, oneAt2, [], [line(3)])).toHaveLength(0);
+  });
+
+  it("fires once at count ships, or every new ship without a count", () => {
+    const first = snap({ myShipsAtReactorLevel: [0, 1, 1] });
+    const second = snap({ myShipsAtReactorLevel: [0, 2, 2] });
+    expect(select(START, first, [], [line(2, 1)])).toHaveLength(1);
+    expect(select(first, second, [], [line(2, 1)])).toHaveLength(0);
+    expect(select(first, second, [], [line(2)])).toHaveLength(1);
+    expect(select(START, first, [], [line(2, 2)])).toHaveLength(0);
+    expect(select(first, second, [], [line(2, 2)])).toHaveLength(1);
   });
 });
 

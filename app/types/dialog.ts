@@ -72,15 +72,19 @@ export type DialogSide = "player" | "enemy";
  *   have left.
  * - `{ type: "pointsScored", side: "player", points: 10 }` — when that
  *   side's total score reaches `points`.
+ * - `{ type: "reactorOverloadWarning", side: "player", level: 2 }` — when a ship
+ *   on that side first reaches that reactor overload level (the pips on
+ *   one ship, not the fleet total). Without `count`: every time a new
+ *   ship reaches it. With `count`: once, when that many ships have.
  * - `{ type: "missionVictory" }` — when the player wins the mission.
  * - `{ type: "missionDefeat" }` — when the player loses it (destroyed,
  *   out-scored, or retreated). A draw triggers neither.
  *   Victory/defeat lines play as a debrief inside the result screen.
  *
  * When several events happen at once they play in this order: mission
- * start, round end, round start, ships disabled, reactor damage, ships
- * destroyed or retreated, resource tiles taken, points scored,
- * victory/defeat.
+ * start, round end, round start, ships disabled, reactor damage, reactor
+ * overload, ships destroyed or retreated, resource tiles taken, points
+ * scored, victory/defeat.
  */
 export type DialogTrigger =
   | { type: "missionStart" }
@@ -106,6 +110,12 @@ export type DialogTrigger =
    * `count`: once, when `side`'s total reactor damage this game reaches it.
    */
   | { type: "reactorDamaged"; side: DialogSide; count?: number }
+  /**
+   * A ship on `side` reaches reactor overload `level` (one ship's pips,
+   * e.g. 2). Without `count`: every time a new ship of that side first
+   * hits it. With `count`: once, when that many ships have.
+   */
+  | { type: "reactorOverloadWarning"; side: DialogSide; level: number; count?: number }
   /**
    * Fires once when ships of `side` have landed on `count` different
    * resource (scoring) tiles this game. count: 1 = the first landing.
