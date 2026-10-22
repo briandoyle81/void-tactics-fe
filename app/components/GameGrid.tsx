@@ -1125,6 +1125,9 @@ const GameGridBoard = React.memo(function GameGridBoard({
       <div
         ref={outerWrapperRef}
         className="relative w-full h-full min-h-0 px-0 lg:px-2 overflow-hidden"
+        // Zoomed in, touches on the board are the board's (one-finger pan,
+        // pinch; useGridPanZoom), so the browser doesn't scroll instead.
+        style={zoom.scale > 1 ? { touchAction: "none" } : undefined}
         onContextMenu={handleGridContextMenu}
       >
         {zoom.scale > 1 && (
