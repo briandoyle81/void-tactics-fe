@@ -572,6 +572,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                   gridContainerRef={gridContainerRef}
                   row={lastMoveOldPosition.row}
                   col={lastMoveOldPosition.col}
+                  // A replayed retreat plays its sound once per move.
+                  soundOnceKey={`retreat:${lastMoveShipId}:${lastMoveOldPosition.row},${lastMoveOldPosition.col}`}
                 />
               )}
             {(lastMoveActionType as ActionType) === ActionType.Retreat &&
@@ -811,6 +813,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                       targetRow={targetPosition.row}
                       targetCol={targetPosition.col}
                       facingRight={attackerIsCreator}
+                      soundOnceKey={lastMoveSoundKey}
                     />
                   ) : (
                     <PlasmaShootingAnimation
@@ -956,6 +959,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     originRow={origin.row}
                     originCol={origin.col}
                     range={range}
+                    // A replayed last move plays its sound once per move.
+                    soundOnceKey={`lightning:${lastMoveShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${origin.row},${origin.col}`}
                   />
                 );
               })()}
@@ -1170,6 +1175,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     attackerCol={attackerCol}
                     targetRow={targetPosition.row}
                     targetCol={targetPosition.col}
+                    // A replayed last move plays its sounds once per move.
+                    soundOnceKey={`attack-drones:${lastMoveShipId}:${lastMoveTargetShipId}:${lastMoveOldPosition?.row},${lastMoveOldPosition?.col}:${attackerRow},${attackerCol}`}
                   />
                 );
               })()}

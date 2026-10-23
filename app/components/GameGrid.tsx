@@ -17,7 +17,13 @@ import { GameGridTooltip, GameGridTooltipHoveredCell } from "./GameGridTooltip";
 import { GameGridTileTooltip } from "./GameGridTileTooltip";
 import { GameGridWeaponSelector } from "./GameGridWeaponSelector";
 import { GameGridConfirmWidget } from "./GameGridConfirmWidget";
-import { DestHoverProvider, useGridHoveredCell, useSetGridDestHoveredTile, useSetGridHoveredCell } from "./GridHover";
+import {
+  DestHoverProvider,
+  useGridDestHoveredTile,
+  useGridHoveredCell,
+  useSetGridDestHoveredTile,
+  useSetGridHoveredCell,
+} from "./GridHover";
 import { GameGridDestHoverRange } from "./GameGridDestHoverRange";
 
 const NOOP_SET_MOVE_TILE = () => {};
@@ -758,7 +764,8 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         isShipOwnedByCurrentPlayer={isShipOwnedByCurrentPlayer}
         movementTileSet={movementTileSet}
       />
-      <GameGridOverlays
+      <GameGridOverlaysWithDestHover
+        getHoverPreview={getHoverPreview}
         grid={grid}
         allShipPositions={allShipPositions}
         shipMap={shipMap}
@@ -811,6 +818,46 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
     </>
   );
 });
+
+/**
+ * GameGridOverlays, with click-to-move's hovered destination standing in for
+ * a drag: while a ship is selected with no destination picked and the
+ * pointer is on one of its movement tiles, the damage/repair labels (and the
+ * other drag-origin previews) come from that tile, as they do while dragging
+ * the ship there. Only this layer reads the hover, so the board's cells don't
+ * re-render on every tile (see DestHoverProvider).
+ */
+function GameGridOverlaysWithDestHover({
+  getHoverPreview,
+  ...props
+}: React.ComponentProps<typeof GameGridOverlays> & {
+  getHoverPreview?: GameGridProps["getHoverPreview"];
+}) {
+  const rawDest = useGridDestHoveredTile();
+  const dest =
+    rawDest != null &&
+    getHoverPreview != null &&
+    props.selectedShipId != null &&
+    !props.previewPosition &&
+    props.retreatPrepShipId == null &&
+    !props.draggedShipId &&
+    props.movementTileSet.has(`${rawDest.row},${rawDest.col}`)
+      ? rawDest
+      : null;
+  const hoverTargets = useMemo(
+    () => (dest && getHoverPreview ? getHoverPreview(dest).validTargets : null),
+    [dest, getHoverPreview],
+  );
+  if (!dest || !hoverTargets) return <GameGridOverlays {...props} />;
+  return (
+    <GameGridOverlays
+      {...props}
+      effectiveDragCell={dest}
+      effectiveDragShipId={props.selectedShipId}
+      effectiveValidTargets={hoverTargets}
+    />
+  );
+}
 
 const GameGridBoard = React.memo(function GameGridBoard({
   grid,

@@ -41,7 +41,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: October 22, 2026
+          Last updated: October 23, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -267,6 +267,14 @@ export default function AudioCreditsPage() {
             artist="tom091178"
             artistHref="https://pixabay.com/users/tom091178-52127885/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=562018"
             href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=562018"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Shocking Revelation"
+            file="nickpanek-dark-synthwave-instrumental-with-dubstep-elements-323643.mp3"
+            title="Dark Synthwave Instrumental with Dubstep Elements"
+            artist="Nicholas Panek"
+            artistHref="https://pixabay.com/users/nickpanek-38266323/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=323643"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=323643"
           />
 
           <section className="space-y-3">

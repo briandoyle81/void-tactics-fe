@@ -19,10 +19,11 @@ import { useWeaponSoundsMuted } from "./weaponSounds";
 // impact (railgun-impact.wav), both the railgun's own sounds and pitched a
 // little differently each time; the rounds it keeps firing after that are
 // silent. A replayed last move plays them once per move (soundOnceKey). The
-// Linear Accelerator has no sound yet.
+// Linear Accelerator plays the same two sounds 20% lower (and slower).
 const FIRE_SOUND = "/sound/railgun-fire.wav";
 const IMPACT_SOUND = "/sound/railgun-impact.wav";
 const PITCH_VARIATION = 0.05;
+const LINEAR_ACCELERATOR_PITCH = 0.8;
 const IMPACT_PLAYED_KEY = "vt-railgun-impact-played-v1";
 
 interface RailgunShootingAnimationProps {
@@ -460,7 +461,10 @@ export const RailgunShootingAnimation = React.memo(function RailgunShootingAnima
           impactsRef.current[slot] = impact;
           if (impactSoundsLeftRef.current > 0) {
             impactSoundsLeftRef.current -= 1;
-            playSoundEffect(IMPACT_SOUND, { pitchVariation: PITCH_VARIATION });
+            playSoundEffect(IMPACT_SOUND, {
+              pitch: isLinearAcceleratorRef.current ? LINEAR_ACCELERATOR_PITCH : 1,
+              pitchVariation: PITCH_VARIATION,
+            });
           }
           projectileRef.current = null;
           setHidden(projectileGroupRef.current, true);
@@ -514,10 +518,14 @@ export const RailgunShootingAnimation = React.memo(function RailgunShootingAnima
     const key = soundOnceKeyRef.current;
     const sounding =
       !soundsMuted &&
-      Number(variant) !== 2 &&
       (key == null || takeFirstPlay(IMPACT_PLAYED_KEY, key));
     impactSoundsLeftRef.current = sounding ? 1 : 0;
-    if (sounding) playSoundEffect(FIRE_SOUND, { pitchVariation: PITCH_VARIATION });
+    if (sounding) {
+      playSoundEffect(FIRE_SOUND, {
+        pitch: Number(variant) === 2 ? LINEAR_ACCELERATOR_PITCH : 1,
+        pitchVariation: PITCH_VARIATION,
+      });
+    }
     spawnProjectile();
   }, [attackerRow, attackerCol, targetRow, targetCol, variant, spawnProjectile, soundsMuted]);
 

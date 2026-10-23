@@ -3,6 +3,18 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { cellLayoutBox, gridLayoutSize, scaleCellPx } from "./gridLayout";
 import { createOverlaySizeSync, setCircle, setLine, startCancelledRaf } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// One burst of the laser drill (mining-drill.wav, 1.4 s: spin up, grind,
+// spin down) as the drill starts; the drilling after it is silent. A
+// replayed last move plays it once per move (soundOnceKey). It stops if the
+// drill goes away first (after DRILL_STOP_AFTER_MS, so React's quick
+// dev-mode remount doesn't cut it). Same as the Plasma Cannon's flame.
+const DRILL_SOUND = "/sound/mining-drill.wav";
+const DRILL_PLAYED_KEY = "vt-mining-drill-played-v1";
+const DRILL_STOP_AFTER_MS = 200;
 
 interface MiningDrillAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -11,6 +23,11 @@ interface MiningDrillAnimationProps {
   targetRow: number;
   targetCol: number;
   facingRight: boolean;
+  /**
+   * The last move being replayed: the drill sound plays once per key this
+   * session. Omitted (aiming preview), it plays each time the drill starts.
+   */
+  soundOnceKey?: string;
 }
 
 const CORE = "#fff6c8";
@@ -75,7 +92,13 @@ export const MiningDrillAnimation = React.memo(function MiningDrillAnimation({
   targetRow,
   targetCol,
   facingRight,
+  soundOnceKey,
 }: MiningDrillAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+  soundOnceKeyRef.current = soundOnceKey;
+  soundsMutedRef.current = soundsMuted;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const groupRef = useRef<SVGGElement | null>(null);
   const haloRef = useRef<SVGLineElement | null>(null);
@@ -182,8 +205,16 @@ export const MiningDrillAnimation = React.memo(function MiningDrillAnimation({
       setCircle(tipCoreRef.current, endX, endY, radius * 0.32);
     };
 
+    const key = soundOnceKeyRef.current;
+    const drill =
+      !soundsMutedRef.current && (key == null || takeFirstPlay(DRILL_PLAYED_KEY, key))
+        ? playSoundEffect(DRILL_SOUND)
+        : null;
+    const drillStartedAt = Date.now();
+
     const stopRaf = startCancelledRaf(paint);
     return () => {
+      if (drill && Date.now() - drillStartedAt > DRILL_STOP_AFTER_MS) drill.pause();
       stopRaf();
       ro?.disconnect();
     };

@@ -20,6 +20,8 @@ const ROGUELIKE_MISSION_MUSIC: Record<number, string> = {
   2: "/music/bransboynd-retro-game-402454.mp3",
   // Collision Course.
   3: "/music/tom091178-neon-dystopia-vaporwave-1-562018.mp3",
+  // Shocking Revelation.
+  5: "/music/nickpanek-dark-synthwave-instrumental-with-dubstep-elements-323643.mp3",
 };
 
 /**

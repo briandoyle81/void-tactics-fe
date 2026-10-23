@@ -388,197 +388,75 @@ export function computeShootingRange({
     return validShootingPositions;
   }
 
-  // Original logic for showing shooting range from all possible move positions
+  // No move entered: the threat range, every tile the ship could fire on
+  // this turn from somewhere it can end up. The origins are where it stands
+  // (holding position) and every tile it can move to (the same rule as
+  // computeMovementRange). Tiles it can't move into, like asteroids or tiles
+  // behind them, can still be fired on, so every other tile is checked
+  // against every origin, not just the ring past the movement distance.
   const startRow = currentPosition.position.row;
   const startCol = currentPosition.position.col;
-
-  // First, add all positions that are exactly 1 square away from any valid move position
-  // (ships can always shoot adjacent enemies, even in nebula)
+  const origins: { row: number; col: number }[] = [{ row: startRow, col: startCol }];
+  const originKeys = new Set<string>([`${startRow},${startCol}`]);
   for (
-    let row = Math.max(0, startRow - movementRange - 1);
-    row <= Math.min(gridHeight - 1, startRow + movementRange + 1);
-    row++
+    let moveRow = Math.max(0, startRow - movementRange);
+    moveRow <= Math.min(gridHeight - 1, startRow + movementRange);
+    moveRow++
   ) {
     for (
-      let col = Math.max(0, startCol - movementRange - 1);
-      col <= Math.min(gridWidth - 1, startCol + movementRange + 1);
-      col++
+      let moveCol = Math.max(0, startCol - movementRange);
+      moveCol <= Math.min(gridWidth - 1, startCol + movementRange);
+      moveCol++
     ) {
-      const distance = Math.abs(row - startRow) + Math.abs(col - startCol);
-
-      // Only check positions that are exactly 1 square away from any valid move position
-      if (distance === movementRange + 1) {
-        const isOccupied = shipPositions.some(
-          (pos) => pos.position.row === row && pos.position.col === col,
-        );
-
-        if (!isOccupied) {
-          // Check if this position is exactly 1 square away from any valid move position
-          let isAdjacentToMovePosition = false;
-
-          // Check all possible move positions
-          for (
-            let moveRow = Math.max(0, startRow - movementRange);
-            moveRow <= Math.min(gridHeight - 1, startRow + movementRange);
-            moveRow++
-          ) {
-            for (
-              let moveCol = Math.max(0, startCol - movementRange);
-              moveCol <= Math.min(gridWidth - 1, startCol + movementRange);
-              moveCol++
-            ) {
-              const moveDistance =
-                Math.abs(moveRow - startRow) + Math.abs(moveCol - startCol);
-              if (moveDistance <= movementRange && moveDistance > 0) {
-                // Check if this move position is not occupied
-                const isMoveOccupied = shipPositions.some(
-                  (pos) =>
-                    pos.position.row === moveRow &&
-                    pos.position.col === moveCol,
-                );
-
-                if (
-                  !isMoveOccupied &&
-                  hasMovementPath(
-                    startRow,
-                    startCol,
-                    moveRow,
-                    moveCol,
-                    impassableGrid,
-                    enemyOccupiedGrid,
-                  )
-                ) {
-                  // Check if this position is exactly 1 square away from this move position
-                  const adjacentDistance =
-                    Math.abs(moveRow - row) + Math.abs(moveCol - col);
-                  if (adjacentDistance === 1) {
-                    isAdjacentToMovePosition = true;
-                    break;
-                  }
-                }
-              }
-            }
-            if (isAdjacentToMovePosition) break;
-          }
-
-          if (isAdjacentToMovePosition) {
-            validShootingPositions.push({ row, col });
-          }
-        }
+      const moveDistance = Math.abs(moveRow - startRow) + Math.abs(moveCol - startCol);
+      if (moveDistance === 0 || moveDistance > movementRange) continue;
+      const isMoveOccupied = shipPositions.some(
+        (pos) => pos.position.row === moveRow && pos.position.col === moveCol,
+      );
+      if (
+        !isMoveOccupied &&
+        hasMovementPath(startRow, startCol, moveRow, moveCol, impassableGrid, enemyOccupiedGrid)
+      ) {
+        origins.push({ row: moveRow, col: moveCol });
+        originKeys.add(`${moveRow},${moveCol}`);
       }
     }
   }
 
-  // Then check all positions within movement + shooting range
+  // Ships can always shoot adjacent enemies, even in nebula; EMP, Repair and
+  // Flak ignore nebula; other weapons need line of sight.
+  const needsLineOfSight =
+    selectedWeaponType !== "special" ||
+    (specialType !== 1 && specialType !== 2 && specialType !== 3);
   const totalRange = movementRange + shootingRange;
+
   for (
-    let row = Math.max(0, startRow - totalRange);
-    row <= Math.min(gridHeight - 1, startRow + totalRange);
+    let row = Math.max(0, startRow - totalRange - 1);
+    row <= Math.min(gridHeight - 1, startRow + totalRange + 1);
     row++
   ) {
     for (
-      let col = Math.max(0, startCol - totalRange);
-      col <= Math.min(gridWidth - 1, startCol + totalRange);
+      let col = Math.max(0, startCol - totalRange - 1);
+      col <= Math.min(gridWidth - 1, startCol + totalRange + 1);
       col++
     ) {
-      const distance = Math.abs(row - startRow) + Math.abs(col - startCol);
+      // Tiles it can stand on are drawn as movement tiles instead.
+      if (originKeys.has(`${row},${col}`)) continue;
+      const isOccupied = shipPositions.some(
+        (pos) => pos.position.row === row && pos.position.col === col,
+      );
+      if (isOccupied) continue;
 
-      // Position must be within movement + shooting range, but not within just movement range
-      // (movement range positions are already highlighted as movement tiles)
-      // Also exclude positions that are exactly 1 square away (already added above)
-      if (
-        distance > movementRange &&
-        distance <= totalRange &&
-        distance !== 1
-      ) {
-        // Check if position is not occupied by another ship
-        const isOccupied = shipPositions.some(
-          (pos) => pos.position.row === row && pos.position.col === col,
+      const canShootFromSomewhere = origins.some((origin) => {
+        const shootDistance = Math.abs(origin.row - row) + Math.abs(origin.col - col);
+        if (shootDistance === 1) return true;
+        if (shootDistance > shootingRange) return false;
+        return (
+          !needsLineOfSight ||
+          hasLineOfSight(origin.row, origin.col, row, col, blockedGrid, enemyOccupiedGrid)
         );
-
-        if (!isOccupied) {
-          // Check if any valid move position can shoot to this target position
-          // We need to check if there's a valid move position that has line of sight to this target
-          let canShootFromSomewhere = false;
-
-          // Check all possible move positions
-          for (
-            let moveRow = Math.max(0, startRow - movementRange);
-            moveRow <= Math.min(gridHeight - 1, startRow + movementRange);
-            moveRow++
-          ) {
-            for (
-              let moveCol = Math.max(0, startCol - movementRange);
-              moveCol <= Math.min(gridWidth - 1, startCol + movementRange);
-              moveCol++
-            ) {
-              const moveDistance =
-                Math.abs(moveRow - startRow) + Math.abs(moveCol - startCol);
-              if (moveDistance <= movementRange && moveDistance > 0) {
-                // Check if this move position is not occupied
-                const isMoveOccupied = shipPositions.some(
-                  (pos) =>
-                    pos.position.row === moveRow &&
-                    pos.position.col === moveCol,
-                );
-
-                if (
-                  !isMoveOccupied &&
-                  hasMovementPath(
-                    startRow,
-                    startCol,
-                    moveRow,
-                    moveCol,
-                    impassableGrid,
-                    enemyOccupiedGrid,
-                  )
-                ) {
-                  // Check if this move position can shoot to the target
-                  const shootDistance =
-                    Math.abs(moveRow - row) + Math.abs(moveCol - col);
-
-                  // Ships can always shoot enemies that are exactly 1 square away
-                  // OR within their normal shooting range
-                  const canShoot =
-                    shootDistance === 1 || shootDistance <= shootingRange;
-
-                  if (canShoot) {
-                    // Ships can always shoot adjacent enemies (distance === 1) regardless of nebula squares
-                    // OR special abilities ignore nebula squares
-                    // OR regular weapons need line of sight
-                    const shouldCheckLineOfSight =
-                      shootDistance > 1 && // Not adjacent
-                      (selectedWeaponType !== "special" ||
-                        (specialType !== 1 &&
-                          specialType !== 2 &&
-                          specialType !== 3)); // Not EMP, Repair, or Flak
-
-                    if (
-                      !shouldCheckLineOfSight ||
-                      hasLineOfSight(
-                        moveRow,
-                        moveCol,
-                        row,
-                        col,
-                        blockedGrid,
-                        enemyOccupiedGrid,
-                      )
-                    ) {
-                      canShootFromSomewhere = true;
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-            if (canShootFromSomewhere) break;
-          }
-
-          if (canShootFromSomewhere) {
-            validShootingPositions.push({ row, col });
-          }
-        }
-      }
+      });
+      if (canShootFromSomewhere) validShootingPositions.push({ row, col });
     }
   }
 

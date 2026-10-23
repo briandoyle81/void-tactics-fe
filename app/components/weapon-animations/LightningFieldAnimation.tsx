@@ -7,6 +7,18 @@ import {
 } from "../../constants/animationTiming";
 import { GRID_DIMENSIONS } from "../../types/types";
 import { startCancelledRaf } from "./overlayPaint";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// One burst of the field's crackle (lightning-field.wav, 2.4 s: a creeping
+// hum, arcing sparks and big strikes) as the field appears; the looping
+// field after it is silent. A replayed last move plays it once per move
+// (soundOnceKey). It stops if the field goes away first (after
+// SOUND_STOP_AFTER_MS, so React's quick dev-mode remount doesn't cut it).
+const FIELD_SOUND = "/sound/lightning-field.wav";
+const FIELD_PLAYED_KEY = "vt-lightning-field-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
 
 type GridCell = { row: number; col: number };
 
@@ -15,6 +27,11 @@ interface LightningFieldAnimationProps {
   originRow: number;
   originCol: number;
   range: number;
+  /**
+   * The last move being replayed: the sound plays once per key this session.
+   * Omitted (aiming preview), it plays each time the field appears.
+   */
+  soundOnceKey?: string;
 }
 
 type SparkString = {
@@ -82,7 +99,22 @@ export const LightningFieldAnimation = React.memo(function LightningFieldAnimati
   originRow,
   originCol,
   range,
+  soundOnceKey,
 }: LightningFieldAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(FIELD_PLAYED_KEY, key))) return;
+    const audio = playSoundEffect(FIELD_SOUND);
+    const startedAt = Date.now();
+    return () => {
+      if (audio && Date.now() - startedAt > SOUND_STOP_AFTER_MS) audio.pause();
+    };
+  }, []);
+
   const fieldCells = useMemo(
     () => cellsInRange(originRow, originCol, range),
     [originRow, originCol, range],

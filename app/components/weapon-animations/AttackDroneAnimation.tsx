@@ -3,6 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { createOverlaySizeSync, setCircle, setLine, startCancelledRaf } from "./overlayPaint";
 import { gridLayoutSize } from "./gridLayout";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
 
 interface AttackDroneAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -10,6 +13,11 @@ interface AttackDroneAnimationProps {
   attackerCol: number;
   targetRow: number;
   targetCol: number;
+  /**
+   * The last move being replayed: the sounds play once per key this session.
+   * Omitted (aiming preview), they play each time the drones launch.
+   */
+  soundOnceKey?: string;
 }
 
 const DRONE_ORANGE = "#ff7a1a";
@@ -18,6 +26,23 @@ const CUT_WHITE = "#fff4d6";
 const DURATION_MS = 3200;
 const SPARKS_PER_DRONE = 4;
 const DRONE_COUNT = 4;
+/** Each drone's launch, after the first (the animation and its sounds). */
+const DRONE_LAUNCH_DELAYS_MS = [0, 150, 300, 450];
+
+// Each drone plays its own sounds, pitched a little differently each time:
+// an angry beep as it leaves the ship (attack-drone-launch.wav) and a
+// buzzsaw while it cuts (attack-drone-saw.wav, 1.15 s: its laser slash, from
+// SAW_START to 0.66 of the cycle). The loops after the first cycle are
+// silent. A replayed last move plays them once per move (soundOnceKey). They
+// stop if the drones go away first (after SOUND_STOP_AFTER_MS, so React's
+// quick dev-mode remount doesn't cut them).
+const LAUNCH_SOUND = "/sound/attack-drone-launch.wav";
+const SAW_SOUND = "/sound/attack-drone-saw.wav";
+/** The slash starts at 0.3 of the cycle (laserStrength). */
+const SAW_START_MS = DURATION_MS * 0.3;
+const DRONE_PITCH_VARIATION = 0.05;
+const DRONE_PLAYED_KEY = "vt-attack-drones-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -94,7 +119,32 @@ export const AttackDroneAnimation = React.memo(function AttackDroneAnimation({
   attackerCol,
   targetRow,
   targetCol,
+  soundOnceKey,
 }: AttackDroneAnimationProps) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+
+  // Each drone's beep as it launches, then its buzzsaw as it cuts.
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(DRONE_PLAYED_KEY, key))) return;
+    const startedAt = Date.now();
+    const playing: HTMLAudioElement[] = [];
+    const play = (src: string) => {
+      const audio = playSoundEffect(src, { pitchVariation: DRONE_PITCH_VARIATION });
+      if (audio) playing.push(audio);
+    };
+    const timers = DRONE_LAUNCH_DELAYS_MS.flatMap((delay) => [
+      window.setTimeout(() => play(LAUNCH_SOUND), delay),
+      window.setTimeout(() => play(SAW_SOUND), delay + SAW_START_MS),
+    ]);
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      if (Date.now() - startedAt > SOUND_STOP_AFTER_MS) playing.forEach((a) => a.pause());
+    };
+  }, []);
+
   const rootRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const droneRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -138,12 +188,8 @@ export const AttackDroneAnimation = React.memo(function AttackDroneAnimation({
 
   const drones = useMemo(
     () =>
-      [
-        { delayMs: 0, slashAngle: -0.85 },
-        { delayMs: 150, slashAngle: -0.18 },
-        { delayMs: 300, slashAngle: 0.52 },
-        { delayMs: 450, slashAngle: 1.18 },
-      ].map((d, i) => {
+      [-0.85, -0.18, 0.52, 1.18].map((slashAngle, i) => {
+        const d = { delayMs: DRONE_LAUNCH_DELAYS_MS[i], slashAngle };
         const outScale = 0.65 + Math.random() * 0.6;
         const backScale = 0.65 + Math.random() * 0.6;
         const sign = i % 2 === 0 ? 1 : -1;

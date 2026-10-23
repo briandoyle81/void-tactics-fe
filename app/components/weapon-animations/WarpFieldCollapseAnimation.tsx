@@ -1,12 +1,29 @@
 "use client";
 
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
+import { playSoundEffect } from "../../hooks/useSoundEffects";
+import { takeFirstPlay } from "./playOnce";
+import { useWeaponSoundsMuted } from "./weaponSounds";
+
+// The collapse's sound (warp-collapse.wav, 2.7 s: the field spirals down,
+// implodes at ~1.7 s as it closes, and its residue rings on) as the
+// animation starts. A replayed last move plays it once per move
+// (soundOnceKey). It stops if the collapse goes away first (after
+// SOUND_STOP_AFTER_MS, so React's quick dev-mode remount doesn't cut it).
+const COLLAPSE_SOUND = "/sound/warp-collapse.wav";
+const COLLAPSE_PLAYED_KEY = "vt-warp-collapse-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
 
 interface WarpFieldCollapseAnimationProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
   row: number;
   col: number;
+  /**
+   * The retreat being shown: the sound plays once per key this session.
+   * Omitted, it plays each time the collapse appears.
+   */
+  soundOnceKey?: string;
 }
 
 type WarpLayout = {
@@ -51,8 +68,22 @@ export const WarpFieldCollapseAnimation = React.memo(function WarpFieldCollapseA
   gridContainerRef,
   row,
   col,
+  soundOnceKey,
 }: WarpFieldCollapseAnimationProps) {
   const [layout, setLayout] = useState<WarpLayout | null>(null);
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(COLLAPSE_PLAYED_KEY, key))) return;
+    const audio = playSoundEffect(COLLAPSE_SOUND);
+    const startedAt = Date.now();
+    return () => {
+      if (audio && Date.now() - startedAt > SOUND_STOP_AFTER_MS) audio.pause();
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const measure = () => {

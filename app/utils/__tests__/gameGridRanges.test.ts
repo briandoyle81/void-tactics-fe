@@ -205,6 +205,47 @@ describe("computeShootingRange — basic", () => {
   });
 });
 
+describe("computeShootingRange — threat range with blocked movement", () => {
+  it("includes asteroid tiles inside the movement distance that it can fire on", () => {
+    // Ship at (5,8), movement 2, range 3; asteroids east of it.
+    const impassable = emptyGrid();
+    impassable[5][9] = true;
+    impassable[5][10] = true;
+    const result = computeShootingRange({
+      ...baseShootingParams(makeAttrs({ range: 3, movement: 2 })),
+      impassableGrid: impassable,
+    });
+    expect(result).toContainEqual({ row: 5, col: 9 });
+    expect(result).toContainEqual({ row: 5, col: 10 });
+  });
+
+  it("fires from holding position when every move is blocked", () => {
+    // Boxed in: no tile to move to, so the range is from where it stands.
+    const impassable = emptyGrid();
+    for (const [r, c] of [[4, 8], [6, 8], [5, 7], [5, 9]]) impassable[r][c] = true;
+    const result = computeShootingRange({
+      ...baseShootingParams(makeAttrs({ range: 3, movement: 2 })),
+      impassableGrid: impassable,
+    });
+    expect(result).toContainEqual({ row: 5, col: 11 });
+    expect(result).toContainEqual({ row: 5, col: 9 });
+    expect(result).not.toContainEqual({ row: 5, col: 12 });
+  });
+
+  it("doesn't count tiles it can't reach as places to fire from", () => {
+    // A wall east of the ship: it can't get past col 8, so col 12 (4 past
+    // the wall) is out of range 3 from every tile it can reach.
+    const impassable = emptyGrid();
+    for (let r = 0; r < GRID_H; r++) impassable[r][9] = true;
+    const result = computeShootingRange({
+      ...baseShootingParams(makeAttrs({ range: 3, movement: 2 })),
+      impassableGrid: impassable,
+    });
+    expect(result).toContainEqual({ row: 5, col: 11 });
+    expect(result).not.toContainEqual({ row: 5, col: 12 });
+  });
+});
+
 describe("computeShootingRange — line of sight", () => {
   it("blocks tiles behind a nebula wall", () => {
     // Ship at (5,8), target at (5,12). Place a blocker col at (5,9),(5,10),(5,11).
