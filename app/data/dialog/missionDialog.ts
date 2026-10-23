@@ -237,10 +237,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     trigger: { type: "missionDefeat" },
   },
   {
-    id: "roguelike-5-start",
+    id: "roguelike-4-start",
     characterId: "adjutant",
     text: "RED ALERT! RED ALERT!  Scanning the unknown ships.  Preliminary results suggests they're tougher than our ships.  Their weapons have huge power supplies, but focusing apertures suggest shorter range.  They're heavy, slow, and hit like a truck.",
-    mission: { kind: "roguelike", nodeId: 5 },
+    mission: { kind: "roguelike", nodeId: 4 },
     trigger: { type: "missionStart" },
     responses: [
       {
@@ -250,10 +250,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-5-enemy-resources-1",
+    id: "roguelike-4-enemy-resources-1",
     characterId: "drone",
     text: "A moment! Pardon! ’tis now that — in the mines, they seemed abating their speed; gradually the ship holding the flesh fled the bottom forthwith from the drones. These temporary apprehensions, and even so, after concluding his contributory work for that accursed ore",
-    mission: { kind: "roguelike", nodeId: 5 },
+    mission: { kind: "roguelike", nodeId: 4 },
     trigger: { type: "resourceTileTaken", side: "enemy", count: 1 },
     responses: [
       {
@@ -263,7 +263,7 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-5-player-resources-1",
+    id: "roguelike-4-player-resources-1",
     characterId: "drone",
     text: "That head this substance, organics digging would be a long experience what had gone down a peep through the footpath. I had hurried across the expanse - crackers, pitch, and fences, loud little genial, now, and give the metal, and aft the life.",
     mission: { kind: "roguelike", nodeId: 5 },
@@ -276,10 +276,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-5-victory",
+    id: "roguelike-4-victory",
     characterId: "adjutant",
     text: "They're backing off!  Is it just more, or do they seem to be learning more about us and about how things work every encounter. Sending out scouts now to explore the area.  I'll report back with what we find.",
-    mission: { kind: "roguelike", nodeId: 5 },
+    mission: { kind: "roguelike", nodeId: 4 },
     trigger: { type: "missionVictory" },
     responses: [
       {
@@ -297,10 +297,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-5-defeat",
+    id: "roguelike-4-defeat",
     characterId: "adjutant",
     text: "They beat us.  Whatever those ships are, they're stronger than ours and we couldn't figure out how to fight them.",
-    mission: { kind: "roguelike", nodeId: 5 },
+    mission: { kind: "roguelike", nodeId: 4 },
     trigger: { type: "missionDefeat" },
     responses: [
       {
