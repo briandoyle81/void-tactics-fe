@@ -56,7 +56,14 @@ export async function POST(
 
   const updated = await prisma.roguelikeRun.update({
     where: { id: run.id },
-    data: { currentNodeId: targetNodeId },
+    data: {
+      currentNodeId: targetNodeId,
+      // Same as RoguelikeMatch.enterResupplyNode: a nonzero override becomes
+      // the run's cost cap from here on.
+      ...(node.costCapOverride != null && node.costCapOverride > 0
+        ? { currentCostCap: node.costCapOverride }
+        : {}),
+    },
   });
 
   return NextResponse.json({ run: updated });

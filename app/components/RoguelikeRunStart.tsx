@@ -38,6 +38,7 @@ import {
   fleetBriefingStep,
 } from "./FleetBriefing";
 import { FreeShipsClaimAction, useFreeShipsClaim } from "./FreeShipsClaimAction";
+import { RoguelikeFleetSelectScreen } from "./operations/RoguelikeFleetSelectScreen";
 
 const SHIPS_PER_PAGE = 100;
 
@@ -237,125 +238,112 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
       });
 
   return (
-    <div className="flex flex-col gap-4 border-2 border-cyan p-3 font-mono md:p-6" style={{ borderRadius: 0 }}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-xl font-bold text-cyan">[SELECT YOUR FLEET]</h3>
-        {/* The step's one action, in the Start run spot. */}
-        <div className="flex flex-wrap gap-2.5 sm:justify-end">
-          {step === "claim" ? (
-            <>
-              <BuyPremiumPacksButton />
-              <FreeShipsClaimAction
-                status={claim.status}
-                refetch={claim.refetch}
-                className={FLEET_HEADER_ACTION_CLASS}
-                showCountdown
-                analyticsSurface="fleet_select"
-                onClaimed={refetchShips}
-              />
-            </>
-          ) : step === "construct" ? (
-            <ConstructShipsButton
-              unconstructedShips={unconstructedShips}
+    <RoguelikeFleetSelectScreen
+      title="[SELECT YOUR FLEET]"
+      headerAction={
+        step === "claim" ? (
+          <>
+            <BuyPremiumPacksButton />
+            <FreeShipsClaimAction
+              status={claim.status}
+              refetch={claim.refetch}
               className={FLEET_HEADER_ACTION_CLASS}
-              onConstructed={refetchShips}
+              showCountdown
+              analyticsSurface="fleet_select"
+              onClaimed={refetchShips}
             />
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleStartRun()}
-              disabled={isStarting || !rosterValid}
-              className={FLEET_HEADER_ACTION_CLASS}
-              style={{ borderRadius: 0 }}
-            >
-              {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {step != null && (
-        <FleetBriefing
-          step={step}
-          requirements={requirements}
-          minConstructed={MIN_CONSTRUCTED_SHIPS_FOR_RUN}
-          rosterCost={fleet.totalCost}
-          costLimit={costLimit}
-          requiredVariant={requiredVariant ?? 0}
-          hasFactionShips={constructedCount > 0}
-          selectedCount={fleet.selectedShips.length}
-        />
-      )}
-
-      <div
-        className="border border-solid p-3 sm:p-4"
-        style={{
-          backgroundColor: "var(--color-slate)",
-          borderColor: "var(--color-gunmetal)",
-          borderTopColor: "var(--color-steel)",
-          borderLeftColor: "var(--color-steel)",
-          borderRadius: 0,
-        }}
-      >
-        <div className="flex flex-col gap-4 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
-          <NavyFilterToolbar
-            activeFilters={filterState.activeFilters}
-            onRemoveFilter={filterState.removeFilterById}
-            onClearFilters={filterState.clearFilters}
-            sortBy={filterState.sortBy}
-            onSortByChange={filterState.setSortBy}
-            sortOrder={filterState.sortOrder}
-            onToggleSortOrder={() =>
-              filterState.setSortOrder(filterState.sortOrder === "asc" ? "desc" : "asc")
-            }
-            showFilterWindow={filterState.showFilterWindow}
-            onOpenFilterWindow={(anchor) => {
-              filterState.setFilterWindowAnchor(anchor);
-              filterState.setShowFilterWindow(true);
-            }}
-            onCloseFilterWindow={() => filterState.setShowFilterWindow(false)}
-            filterWindowAnchor={filterState.filterWindowAnchor}
-            draftCategory={filterState.draftCategory}
-            getSecondaryOptions={getNavyFilterSecondaryOptions}
-            onSelectCategory={(category) =>
-              filterState.selectDraftCategory(category, getNavyFilterSecondaryOptions)
-            }
-            onToggleFilterValue={filterState.toggleFilterValue}
-            onSetThreatFilter={filterState.setThreatFilter}
-            onSetDraftValue={filterState.setDraftValue}
+          </>
+        ) : step === "construct" ? (
+          <ConstructShipsButton
+            unconstructedShips={unconstructedShips}
+            className={FLEET_HEADER_ACTION_CLASS}
+            onConstructed={refetchShips}
           />
-
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleStartRun()}
+            disabled={isStarting || !rosterValid}
+            className={FLEET_HEADER_ACTION_CLASS}
+            style={{ borderRadius: 0 }}
+          >
+            {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
+          </button>
+        )
+      }
+      briefing={
+        step != null ? (
+          <FleetBriefing
+            step={step}
+            requirements={requirements}
+            minConstructed={MIN_CONSTRUCTED_SHIPS_FOR_RUN}
+            rosterCost={fleet.totalCost}
+            costLimit={costLimit}
+            requiredVariant={requiredVariant ?? 0}
+            hasFactionShips={constructedCount > 0}
+            selectedCount={fleet.selectedShips.length}
+          />
+        ) : null
+      }
+      filterToolbar={
+        <NavyFilterToolbar
+          activeFilters={filterState.activeFilters}
+          onRemoveFilter={filterState.removeFilterById}
+          onClearFilters={filterState.clearFilters}
+          sortBy={filterState.sortBy}
+          onSortByChange={filterState.setSortBy}
+          sortOrder={filterState.sortOrder}
+          onToggleSortOrder={() =>
+            filterState.setSortOrder(filterState.sortOrder === "asc" ? "desc" : "asc")
+          }
+          showFilterWindow={filterState.showFilterWindow}
+          onOpenFilterWindow={(anchor) => {
+            filterState.setFilterWindowAnchor(anchor);
+            filterState.setShowFilterWindow(true);
+          }}
+          onCloseFilterWindow={() => filterState.setShowFilterWindow(false)}
+          filterWindowAnchor={filterState.filterWindowAnchor}
+          draftCategory={filterState.draftCategory}
+          getSecondaryOptions={getNavyFilterSecondaryOptions}
+          onSelectCategory={(category) =>
+            filterState.selectDraftCategory(category, getNavyFilterSecondaryOptions)
+          }
+          onToggleFilterValue={filterState.toggleFilterValue}
+          onSetThreatFilter={filterState.setThreatFilter}
+          onSetDraftValue={filterState.setDraftValue}
+        />
+      }
+      countHeading={
         <ManageNavyShipsCountHeading
           shownCount={filteredAndSortedShips.length}
           totalCount={fleet.ships.length}
           perPage={SHIPS_PER_PAGE}
           page={filterState.page}
         />
-        {filteredAndSortedShips.length > SHIPS_PER_PAGE && (
+      }
+      pagination={
+        filteredAndSortedShips.length > SHIPS_PER_PAGE ? (
           <NavyPagination
             page={filterState.page}
             pageCount={filterState.pageCount(filteredAndSortedShips.length)}
             onPrev={filterState.prevPage}
             onNext={() => filterState.nextPage(filteredAndSortedShips.length)}
           />
-        )}
-      </div>
-
-      {shipsLoading ? (
-        <p className="text-sm text-text-muted">Loading your ships…</p>
-      ) : ships.length === 0 ? (
-        <EmptyHangar />
-      ) : (
-        <FleetShipListPanel
-          widthClass="w-full"
-          items={shipListItems}
-          gridColsClassName="grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
-        />
-      )}
-    </div>
+        ) : null
+      }
+      list={
+        shipsLoading ? (
+          <p className="text-sm text-text-muted">Loading your ships…</p>
+        ) : ships.length === 0 ? (
+          <EmptyHangar />
+        ) : (
+          <FleetShipListPanel
+            widthClass="w-full"
+            items={shipListItems}
+            gridColsClassName="grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
+          />
+        )
+      }
+    />
   );
 }

@@ -152,7 +152,7 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     responses: [
       {
         characterId: "adjutant",
-        text: "We're a little banged up from the last fight, so you might want to be cautious.  The layout of the dust clouds and debris fields favors our deployment.  Rather than fighting the enemy ships directly, you might want to focus on blocking them and securing the resource locations..",
+        text: "We're a little banged up from the last fight, so you might want to be cautious.  The layout of the dust clouds and debris fields favors our deployment.  Rather than fighting the enemy ships directly, you might want to focus on blocking them and securing the resource locations.",
       },
       {
         characterId: "prototypeDrone",

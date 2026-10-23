@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { requireAuth } from "@/app/lib/auth";
 import { getFactionName } from "@/app/config/factions";
+import { resupplyCostLimit } from "@/app/utils/resupplyFleet";
 
 export async function POST(req: NextRequest) {
   const { userId, error } = await requireAuth();
@@ -81,9 +82,10 @@ export async function POST(req: NextRequest) {
     : [];
   const newTotalCost =
     remainingShips.reduce((sum, s) => sum + s.cost, 0) + addedShips.reduce((sum, s) => sum + s.cost, 0);
-  if (newTotalCost > run.currentCostCap) {
+  const costLimit = resupplyCostLimit(run.currentCostCap, node.costCapOverride ?? 0);
+  if (newTotalCost > costLimit) {
     return NextResponse.json(
-      { error: `Roster cost would exceed this run's ${run.currentCostCap} limit` },
+      { error: `Roster cost would exceed this run's ${costLimit} limit` },
       { status: 400 },
     );
   }

@@ -219,9 +219,18 @@ export function RoguelikeGraph({
         const target = nodeById.get(nodeId);
         return run && target ? <RoguelikeCombatModal run={run} targetNode={target} onClose={close} onLaunched={close} /> : null;
       }}
-      renderResupplyPanel={() => {
+      renderResupplyPanel={(dismiss) => {
         const current = run ? nodeById.get(Number(run.currentNodeId)) : undefined;
-        return run && current ? <RoguelikeResupplyPanel run={run} node={current} onDone={onRunAdvanced} /> : null;
+        return run && current ? (
+          <RoguelikeResupplyPanel
+            run={run}
+            node={current}
+            onDone={() => {
+              onRunAdvanced();
+              dismiss();
+            }}
+          />
+        ) : null;
       }}
       renderSettings={(close) => (
         <RoguelikeSettingsModal campaignId={campaignId} onClose={close} onSaved={() => void refetchAutoHeal()} />

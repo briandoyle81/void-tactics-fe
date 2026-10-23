@@ -172,8 +172,8 @@ export function RoguelikeGraphWeb2({
         const target = nodeById.get(nodeId);
         return run && target ? <RoguelikeCombatModalWeb2 run={run} targetNode={target} onClose={close} onLaunched={close} /> : null;
       }}
-      renderResupplyPanel={() =>
-        run && currentNode ? <RoguelikeResupplyPanelWeb2 run={run} node={currentNode} onDone={() => {}} /> : null
+      renderResupplyPanel={(dismiss) =>
+        run && currentNode ? <RoguelikeResupplyPanelWeb2 run={run} node={currentNode} onDone={dismiss} /> : null
       }
       renderSettings={(close) =>
         campaign ? (

@@ -134,7 +134,8 @@ export function RunMap({
   renderNodeEditor: (args: RunMapNodeEditorArgs) => React.ReactNode;
   renderCombatModal: (nodeId: number, close: () => void) => React.ReactNode;
   /** Shown instead of the map while the run is at a resupply node. */
-  renderResupplyPanel: () => React.ReactNode;
+  /** Call `dismiss` after the player confirms so the map comes back. */
+  renderResupplyPanel: (dismiss: () => void) => React.ReactNode;
   renderSettings: (close: () => void) => React.ReactNode;
 }) {
   const [combatTargetNodeId, setCombatTargetNodeId] = React.useState<number | null>(null);
@@ -149,6 +150,7 @@ export function RunMap({
   // Edit Mode opens the selected node in a full-screen editor instead.
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [showRetreatConfirm, setShowRetreatConfirm] = React.useState(false);
+  const [dismissedResupplyNodeId, setDismissedResupplyNodeId] = React.useState<number | null>(null);
 
   const isBrowseMode = run == null;
   const byId = React.useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
@@ -352,8 +354,13 @@ export function RunMap({
     );
   }
 
-  if (!isBrowseMode && !editMode && currentNode!.kind === RoguelikeNodeKind.Resupply) {
-    return <>{renderResupplyPanel()}</>;
+  if (
+    !isBrowseMode &&
+    !editMode &&
+    currentNode!.kind === RoguelikeNodeKind.Resupply &&
+    dismissedResupplyNodeId !== currentNode!.id
+  ) {
+    return <>{renderResupplyPanel(() => setDismissedResupplyNodeId(currentNode!.id))}</>;
   }
 
   const mapAction = getRunMapAction({

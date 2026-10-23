@@ -31,6 +31,16 @@ const SNAP_COUNT = 7;
 const SNAP_PITCH_VARIATION = 0.05;
 const SNAP_PLAYED_KEY = "vt-laser-snap-played-v1";
 
+// The Mining Laser's burn: one orbit of the beam (mining-laser.wav, 2.8 s =
+// LASER_TRACE_PERIOD_MS: the continuous beam plus spitting sparks) as it
+// starts; later orbits are silent. A replayed last move plays it once per
+// move. It stops if the beam goes away first (after SOUND_STOP_AFTER_MS, so
+// React's quick dev-mode remount doesn't cut it).
+const MINING_SOUND = "/sound/mining-laser.wav";
+const MINING_PITCH_VARIATION = 0.05;
+const MINING_PLAYED_KEY = "vt-mining-laser-played-v1";
+const SOUND_STOP_AFTER_MS = 200;
+
 const BEAM_GREEN = "#6bff8f";
 const BEAM_CORE = "#eafff0";
 const TRAIL_TAIL = "#6e1610";
@@ -53,8 +63,9 @@ interface LaserShootingAnimationProps {
   /** Variant 2 is the Mining Laser: one green wander beam. Variant 1 is the red pulse volley. */
   variant?: number;
   /**
-   * The last move being replayed: the red laser's snaps play once per key
-   * this session. Omitted (aiming preview), they play each time it starts.
+   * The last move being replayed: the laser's sound (the red laser's snaps,
+   * the Mining Laser's burn) plays once per key this session. Omitted
+   * (aiming preview), it plays each time the beam starts.
    */
   soundOnceKey?: string;
 }
@@ -483,7 +494,20 @@ const MiningLaserAnimation = React.memo(function MiningLaserAnimation({
   targetRow,
   targetCol,
   facingRight,
+  soundOnceKey,
 }: Omit<LaserShootingAnimationProps, "variant">) {
+  const soundsMuted = useWeaponSoundsMuted();
+  const soundOnceKeyRef = useRef(soundOnceKey);
+  const soundsMutedRef = useRef(soundsMuted);
+  useEffect(() => {
+    const key = soundOnceKeyRef.current;
+    if (soundsMutedRef.current || (key != null && !takeFirstPlay(MINING_PLAYED_KEY, key))) return;
+    const audio = playSoundEffect(MINING_SOUND, { pitchVariation: MINING_PITCH_VARIATION });
+    const startedAt = Date.now();
+    return () => {
+      if (audio && Date.now() - startedAt > SOUND_STOP_AFTER_MS) audio.pause();
+    };
+  }, []);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const groupRef = useRef<SVGGElement | null>(null);
   const trailGroupRef = useRef<SVGGElement | null>(null);
@@ -761,7 +785,6 @@ export const LaserShootingAnimation = React.memo(function LaserShootingAnimation
   ...props
 }: LaserShootingAnimationProps) {
   if (Number(variant) === 2) {
-    // The Mining Laser has no sound yet (it ignores soundOnceKey).
     return <MiningLaserAnimation {...props} />;
   }
   return <Faction1LaserAnimation {...props} />;
