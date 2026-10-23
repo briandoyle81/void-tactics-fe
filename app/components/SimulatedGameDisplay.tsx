@@ -43,6 +43,8 @@ import {
   displayIdToBigint,
 } from "../utils/toGridDisplay";
 import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
+import { DialogPortrait } from "./DialogPortrait";
+import { useCrewReporter } from "./CrewReport";
 import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
 import { TUTORIAL_MUSIC } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
@@ -611,6 +613,8 @@ export function SimulatedGameDisplay({
   const { openAudioSettings } = useAudioSettings();
   // The tutorial mission has its own music (app/config/music.ts).
   useMusicTrack(TUTORIAL_MUSIC);
+  // The tutorial's speaker, on the phone tutorial tab (TutorialGridTaskPanel has its own).
+  const tutorialSpeaker = useCrewReporter("adjutant");
   // Reading-only steps (lockControls) switch the board and fleet list off.
   const controlsLocked = !!currentStep?.lockControls;
   /**
@@ -3278,14 +3282,31 @@ export function SimulatedGameDisplay({
                       }}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <h3
-                          className="min-w-0 text-sm font-bold uppercase tracking-wide text-cyan leading-tight"
-                          style={{
-                            ...STYLE_LABEL,
-                          }}
-                        >
-                          {tutorialGridPanelConfig.title}
-                        </h3>
+                        {/* Adjutant Bosch gives the tutorial's instructions, as on the desktop card. */}
+                        <div className="flex min-w-0 items-center gap-2">
+                          <DialogPortrait
+                            character={tutorialSpeaker.character}
+                            name={tutorialSpeaker.name}
+                            color={tutorialSpeaker.color}
+                            sizeClass="h-8 w-8"
+                          />
+                          <div className="min-w-0">
+                            <p
+                              className="truncate font-mono text-[9px] font-bold uppercase tracking-[0.18em] leading-tight"
+                              style={{ color: tutorialSpeaker.color }}
+                            >
+                              {tutorialSpeaker.name}
+                            </p>
+                            <h3
+                              className="min-w-0 text-sm font-bold uppercase tracking-wide text-cyan leading-tight"
+                              style={{
+                                ...STYLE_LABEL,
+                              }}
+                            >
+                              {tutorialGridPanelConfig.title}
+                            </h3>
+                          </div>
+                        </div>
                         <span className="shrink-0 text-[10px] font-mono text-text-muted">
                           {displayStepNumber}/{displayTotalSteps}
                         </span>

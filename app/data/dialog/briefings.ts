@@ -21,5 +21,14 @@ export const MISSION_BRIEFING_SPEAKERS: {
   characterId: DialogCharacterId;
 }[] = [
   { mission: { kind: "tutorial" }, characterId: "adjutant" },
-  { mission: { kind: "roguelike", nodeId: 1 }, characterId: "adjutant" },
+  // Adjutant Bosch briefs every Operations mission with text in nodeContent.ts.
+  { mission: { kind: "roguelike", nodeId: 1 }, characterId: "adjutant" }, // A Strange Encounter
+  { mission: { kind: "roguelike", nodeId: 2 }, characterId: "adjutant" }, // Digging Deeper
+  { mission: { kind: "roguelike", nodeId: 3 }, characterId: "adjutant" }, // Collision Course
+  { mission: { kind: "roguelike", nodeId: 4 }, characterId: "adjutant" }, // Resupply Station
+  { mission: { kind: "roguelike", nodeId: 5 }, characterId: "adjutant" }, // Shocking Revelation
+  { mission: { kind: "roguelike", nodeId: 6 }, characterId: "adjutant" }, // Counterattack
+  { mission: { kind: "roguelike", nodeId: 7 }, characterId: "adjutant" }, // Resupply Station
+  { mission: { kind: "roguelike", nodeId: 16 }, characterId: "adjutant" }, // Sneak Attack
+  { mission: { kind: "roguelike", nodeId: 31 }, characterId: "adjutant" }, // Repair Station DS7
 ];

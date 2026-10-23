@@ -171,20 +171,46 @@ export function RunMap({
     [nodes],
   );
 
+  // Resupply stops have no defeated flag, so the ones the run has passed
+  // are worked out for the star chart: the current stop once it's cleared,
+  // and an earlier stop whose next node the run reached (defeated or
+  // current) with no defeated combat node beside it leading there.
+  const passedResupplyIds = React.useMemo(() => {
+    const passed = new Set<number>();
+    if (isBrowseMode) return passed;
+    const nodeById = new Map(nodes.map((n) => [n.id, n]));
+    if (currentCleared && currentNode?.kind === RoguelikeNodeKind.Resupply) passed.add(currentNode.id);
+    for (const n of nodes) {
+      if (n.kind !== RoguelikeNodeKind.Resupply) continue;
+      const reachedChild = n.childIds.some((childId) => {
+        if (childId !== run.currentNodeId && !isDefeated(childId)) return false;
+        return !(prerequisitesById.get(childId) ?? []).some((pid) => {
+          if (pid === n.id) return false;
+          const prereq = nodeById.get(pid);
+          return prereq?.kind === RoguelikeNodeKind.Combat && isDefeated(pid);
+        });
+      });
+      if (reachedChild) passed.add(n.id);
+    }
+    return passed;
+  }, [nodes, isBrowseMode, run, currentNode, currentCleared, isDefeated, prerequisitesById]);
+
   const isCreatingNode = selectedNodeId === ADD_NODE_SENTINEL_ID;
 
   const canvasNodes: RunMapCanvasNode[] = React.useMemo(
     () =>
       nodes.map((n) => {
         const isCurrent = !isBrowseMode && n.id === run.currentNodeId;
-        const isCompleted = !isBrowseMode && n.kind === RoguelikeNodeKind.Combat && isDefeated(n.id);
+        const isCompleted =
+          !isBrowseMode &&
+          (n.kind === RoguelikeNodeKind.Combat ? isDefeated(n.id) : passedResupplyIds.has(n.id));
         const isNextStop = currentCleared && !!currentNode?.childIds.includes(n.id) && !isLocked(n.id);
         return {
           id: n.id,
           kind: n.kind,
           prerequisites: prerequisitesById.get(n.id) ?? [],
-          // Resupply nodes have no "completed" state: they render as the
-          // current position or a reachable/locked stop.
+          // Completed turns the lane into it solid green and the lanes out
+          // of it into the open path (CampaignGraphCanvas JumpLanes).
           completed: isCompleted,
           // With no run there's no current position: the root renders
           // unlocked, or every node in Edit Mode so an editor can edit any.
@@ -200,7 +226,7 @@ export function RunMap({
           connectHighlight: !connectMode ? undefined : connectMode.sourceNodeId === n.id ? "source" : "candidate",
         };
       }),
-    [nodes, isBrowseMode, run, currentNode, rootNodeId, isDefeated, isLocked, currentCleared, prerequisitesById, editMode, connectMode],
+    [nodes, isBrowseMode, run, currentNode, rootNodeId, isDefeated, isLocked, currentCleared, passedResupplyIds, prerequisitesById, editMode, connectMode],
   );
   // First Contact on the map: the pending first mission (no run yet), or
   // cleared once played or skipped. Not in Edit Mode (the real graph only).
