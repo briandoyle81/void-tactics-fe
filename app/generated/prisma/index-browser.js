@@ -327,7 +327,8 @@ exports.Prisma.RoguelikeRunScalarFieldEnum = {
   currentCostCap: 'currentCostCap',
   activeLobbyId: 'activeLobbyId',
   createdAt: 'createdAt',
-  endedAt: 'endedAt'
+  endedAt: 'endedAt',
+  droppedShipHp: 'droppedShipHp'
 };
 
 exports.Prisma.RoguelikeRosterShipScalarFieldEnum = {

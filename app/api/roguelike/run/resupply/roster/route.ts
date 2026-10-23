@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { requireAuth } from "@/app/lib/auth";
 import { getFactionName } from "@/app/config/factions";
-import { resupplyCostLimit } from "@/app/utils/resupplyFleet";
+import { resupplyCostLimit, carryRosterDamage, parseDroppedShipDamage } from "@/app/utils/resupplyFleet";
 
 export async function POST(req: NextRequest) {
   const { userId, error } = await requireAuth();
@@ -90,6 +90,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Damage carries like on chain: a dropped ship keeps it for the rest of the
+  // run (RoguelikeRun.droppedShipHp) and a re-added ship comes back with it.
+  const carried = carryRosterDamage(
+    parseDroppedShipDamage(run.droppedShipHp),
+    run.roster.filter((r) => removeShipIds.includes(r.shipId)).map((r) => ({ shipId: r.shipId, hp: r.hp })),
+    addShipIds,
+  );
+
   await prisma.$transaction(async (tx) => {
     if (removeShipIds.length > 0) {
       await tx.roguelikeRosterShip.deleteMany({ where: { runId: run.id, shipId: { in: removeShipIds } } });
@@ -97,10 +105,11 @@ export async function POST(req: NextRequest) {
     }
     if (addShipIds.length > 0) {
       await tx.roguelikeRosterShip.createMany({
-        data: addShipIds.map((shipId) => ({ runId: run.id, shipId, hp: 0 })),
+        data: addShipIds.map((shipId) => ({ runId: run.id, shipId, hp: carried.addedDamage.get(shipId) ?? 0 })),
       });
       await tx.ship.updateMany({ where: { id: { in: addShipIds } }, data: { inFleet: true } });
     }
+    await tx.roguelikeRun.update({ where: { id: run.id }, data: { droppedShipHp: carried.dropped } });
   });
 
   return NextResponse.json({ ok: true });

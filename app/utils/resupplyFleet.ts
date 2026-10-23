@@ -50,3 +50,41 @@ export function markRosterAvailableForSelect<
       : ship,
   );
 }
+
+/** Damage taken by each dropped ship this run (web2 RoguelikeRun.droppedShipHp), by ship id. */
+export type DroppedShipDamage = Record<string, number>;
+
+/**
+ * A resupply roster change on web2, carrying damage the way the chain does
+ * (RoguelikeRun.shipHPByGen keeps it per ship for the whole run): a dropped
+ * ship's damage is remembered, and a re-added ship comes back with it.
+ * Returns the new dropped-damage record and the damage each added ship joins
+ * the roster with.
+ */
+export function carryRosterDamage(
+  dropped: DroppedShipDamage,
+  removed: { shipId: number; hp: number }[],
+  addedShipIds: number[],
+): { dropped: DroppedShipDamage; addedDamage: Map<number, number> } {
+  const next: DroppedShipDamage = { ...dropped };
+  for (const { shipId, hp } of removed) {
+    if (hp > 0) next[String(shipId)] = hp;
+    else delete next[String(shipId)];
+  }
+  const addedDamage = new Map<number, number>();
+  for (const shipId of addedShipIds) {
+    addedDamage.set(shipId, next[String(shipId)] ?? 0);
+    delete next[String(shipId)];
+  }
+  return { dropped: next, addedDamage };
+}
+
+/** Reads a stored droppedShipHp value (JSON), ignoring anything malformed. */
+export function parseDroppedShipDamage(value: unknown): DroppedShipDamage {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const out: DroppedShipDamage = {};
+  for (const [id, hp] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof hp === "number" && Number.isFinite(hp) && hp > 0) out[id] = hp;
+  }
+  return out;
+}

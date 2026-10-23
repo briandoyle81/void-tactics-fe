@@ -25768,6 +25768,7 @@ export namespace Prisma {
     activeLobbyId: number
     createdAt: number
     endedAt: number
+    droppedShipHp: number
     _all: number
   }
 
@@ -25827,6 +25828,7 @@ export namespace Prisma {
     activeLobbyId?: true
     createdAt?: true
     endedAt?: true
+    droppedShipHp?: true
     _all?: true
   }
 
@@ -25927,6 +25929,7 @@ export namespace Prisma {
     activeLobbyId: number | null
     createdAt: Date
     endedAt: Date | null
+    droppedShipHp: JsonValue
     _count: RoguelikeRunCountAggregateOutputType | null
     _avg: RoguelikeRunAvgAggregateOutputType | null
     _sum: RoguelikeRunSumAggregateOutputType | null
@@ -25959,6 +25962,7 @@ export namespace Prisma {
     activeLobbyId?: boolean
     createdAt?: boolean
     endedAt?: boolean
+    droppedShipHp?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     campaign?: boolean | RoguelikeCampaignDefaultArgs<ExtArgs>
     roster?: boolean | RoguelikeRun$rosterArgs<ExtArgs>
@@ -25978,6 +25982,7 @@ export namespace Prisma {
     activeLobbyId?: boolean
     createdAt?: boolean
     endedAt?: boolean
+    droppedShipHp?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     campaign?: boolean | RoguelikeCampaignDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roguelikeRun"]>
@@ -25993,6 +25998,7 @@ export namespace Prisma {
     activeLobbyId?: boolean
     createdAt?: boolean
     endedAt?: boolean
+    droppedShipHp?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
     campaign?: boolean | RoguelikeCampaignDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roguelikeRun"]>
@@ -26008,9 +26014,10 @@ export namespace Prisma {
     activeLobbyId?: boolean
     createdAt?: boolean
     endedAt?: boolean
+    droppedShipHp?: boolean
   }
 
-  export type RoguelikeRunOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "generation" | "status" | "campaignId" | "currentNodeId" | "currentCostCap" | "activeLobbyId" | "createdAt" | "endedAt", ExtArgs["result"]["roguelikeRun"]>
+  export type RoguelikeRunOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "generation" | "status" | "campaignId" | "currentNodeId" | "currentCostCap" | "activeLobbyId" | "createdAt" | "endedAt" | "droppedShipHp", ExtArgs["result"]["roguelikeRun"]>
   export type RoguelikeRunInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
     campaign?: boolean | RoguelikeCampaignDefaultArgs<ExtArgs>
@@ -26048,6 +26055,7 @@ export namespace Prisma {
       activeLobbyId: number | null
       createdAt: Date
       endedAt: Date | null
+      droppedShipHp: Prisma.JsonValue
     }, ExtArgs["result"]["roguelikeRun"]>
     composites: {}
   }
@@ -26486,6 +26494,7 @@ export namespace Prisma {
     readonly activeLobbyId: FieldRef<"RoguelikeRun", 'Int'>
     readonly createdAt: FieldRef<"RoguelikeRun", 'DateTime'>
     readonly endedAt: FieldRef<"RoguelikeRun", 'DateTime'>
+    readonly droppedShipHp: FieldRef<"RoguelikeRun", 'Json'>
   }
     
 
@@ -38567,7 +38576,8 @@ export namespace Prisma {
     currentCostCap: 'currentCostCap',
     activeLobbyId: 'activeLobbyId',
     createdAt: 'createdAt',
-    endedAt: 'endedAt'
+    endedAt: 'endedAt',
+    droppedShipHp: 'droppedShipHp'
   };
 
   export type RoguelikeRunScalarFieldEnum = (typeof RoguelikeRunScalarFieldEnum)[keyof typeof RoguelikeRunScalarFieldEnum]
@@ -40373,6 +40383,7 @@ export namespace Prisma {
     activeLobbyId?: IntNullableFilter<"RoguelikeRun"> | number | null
     createdAt?: DateTimeFilter<"RoguelikeRun"> | Date | string
     endedAt?: DateTimeNullableFilter<"RoguelikeRun"> | Date | string | null
+    droppedShipHp?: JsonFilter<"RoguelikeRun">
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     campaign?: XOR<RoguelikeCampaignScalarRelationFilter, RoguelikeCampaignWhereInput>
     roster?: RoguelikeRosterShipListRelationFilter
@@ -40391,6 +40402,7 @@ export namespace Prisma {
     activeLobbyId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     endedAt?: SortOrderInput | SortOrder
+    droppedShipHp?: SortOrder
     user?: UserOrderByWithRelationInput
     campaign?: RoguelikeCampaignOrderByWithRelationInput
     roster?: RoguelikeRosterShipOrderByRelationAggregateInput
@@ -40412,6 +40424,7 @@ export namespace Prisma {
     activeLobbyId?: IntNullableFilter<"RoguelikeRun"> | number | null
     createdAt?: DateTimeFilter<"RoguelikeRun"> | Date | string
     endedAt?: DateTimeNullableFilter<"RoguelikeRun"> | Date | string | null
+    droppedShipHp?: JsonFilter<"RoguelikeRun">
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
     campaign?: XOR<RoguelikeCampaignScalarRelationFilter, RoguelikeCampaignWhereInput>
     roster?: RoguelikeRosterShipListRelationFilter
@@ -40430,6 +40443,7 @@ export namespace Prisma {
     activeLobbyId?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     endedAt?: SortOrderInput | SortOrder
+    droppedShipHp?: SortOrder
     _count?: RoguelikeRunCountOrderByAggregateInput
     _avg?: RoguelikeRunAvgOrderByAggregateInput
     _max?: RoguelikeRunMaxOrderByAggregateInput
@@ -40451,6 +40465,7 @@ export namespace Prisma {
     activeLobbyId?: IntNullableWithAggregatesFilter<"RoguelikeRun"> | number | null
     createdAt?: DateTimeWithAggregatesFilter<"RoguelikeRun"> | Date | string
     endedAt?: DateTimeNullableWithAggregatesFilter<"RoguelikeRun"> | Date | string | null
+    droppedShipHp?: JsonWithAggregatesFilter<"RoguelikeRun">
   }
 
   export type RoguelikeRosterShipWhereInput = {
@@ -42631,6 +42646,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user: UserCreateNestedOneWithoutRoguelikeRunsInput
     campaign: RoguelikeCampaignCreateNestedOneWithoutRunsInput
     roster?: RoguelikeRosterShipCreateNestedManyWithoutRunInput
@@ -42649,6 +42665,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedCreateNestedManyWithoutRunInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutRunInput
     lobbies?: LobbyUncheckedCreateNestedManyWithoutRoguelikeRunInput
@@ -42662,6 +42679,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user?: UserUpdateOneRequiredWithoutRoguelikeRunsNestedInput
     campaign?: RoguelikeCampaignUpdateOneRequiredWithoutRunsNestedInput
     roster?: RoguelikeRosterShipUpdateManyWithoutRunNestedInput
@@ -42680,6 +42698,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedUpdateManyWithoutRunNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutRunNestedInput
     lobbies?: LobbyUncheckedUpdateManyWithoutRoguelikeRunNestedInput
@@ -42696,6 +42715,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type RoguelikeRunUpdateManyMutationInput = {
@@ -42706,6 +42726,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type RoguelikeRunUncheckedUpdateManyInput = {
@@ -42719,6 +42740,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type RoguelikeRosterShipCreateInput = {
@@ -44897,6 +44919,7 @@ export namespace Prisma {
     activeLobbyId?: SortOrder
     createdAt?: SortOrder
     endedAt?: SortOrder
+    droppedShipHp?: SortOrder
   }
 
   export type RoguelikeRunAvgOrderByAggregateInput = {
@@ -48677,6 +48700,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     campaign: RoguelikeCampaignCreateNestedOneWithoutRunsInput
     roster?: RoguelikeRosterShipCreateNestedManyWithoutRunInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutRunInput
@@ -48693,6 +48717,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedCreateNestedManyWithoutRunInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutRunInput
     lobbies?: LobbyUncheckedCreateNestedManyWithoutRoguelikeRunInput
@@ -49122,6 +49147,7 @@ export namespace Prisma {
     activeLobbyId?: IntNullableFilter<"RoguelikeRun"> | number | null
     createdAt?: DateTimeFilter<"RoguelikeRun"> | Date | string
     endedAt?: DateTimeNullableFilter<"RoguelikeRun"> | Date | string | null
+    droppedShipHp?: JsonFilter<"RoguelikeRun">
   }
 
   export type UserCreateWithoutShipsInput = {
@@ -49816,6 +49842,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user: UserCreateNestedOneWithoutRoguelikeRunsInput
     campaign: RoguelikeCampaignCreateNestedOneWithoutRunsInput
     roster?: RoguelikeRosterShipCreateNestedManyWithoutRunInput
@@ -49833,6 +49860,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedCreateNestedManyWithoutRunInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutRunInput
   }
@@ -50247,6 +50275,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user?: UserUpdateOneRequiredWithoutRoguelikeRunsNestedInput
     campaign?: RoguelikeCampaignUpdateOneRequiredWithoutRunsNestedInput
     roster?: RoguelikeRosterShipUpdateManyWithoutRunNestedInput
@@ -50264,6 +50293,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedUpdateManyWithoutRunNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutRunNestedInput
   }
@@ -51821,6 +51851,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user: UserCreateNestedOneWithoutRoguelikeRunsInput
     roster?: RoguelikeRosterShipCreateNestedManyWithoutRunInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutRunInput
@@ -51837,6 +51868,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedCreateNestedManyWithoutRunInput
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutRunInput
     lobbies?: LobbyUncheckedCreateNestedManyWithoutRoguelikeRunInput
@@ -52888,6 +52920,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user: UserCreateNestedOneWithoutRoguelikeRunsInput
     campaign: RoguelikeCampaignCreateNestedOneWithoutRunsInput
     defeats?: RoguelikeNodeDefeatCreateNestedManyWithoutRunInput
@@ -52905,6 +52938,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     defeats?: RoguelikeNodeDefeatUncheckedCreateNestedManyWithoutRunInput
     lobbies?: LobbyUncheckedCreateNestedManyWithoutRoguelikeRunInput
   }
@@ -52975,6 +53009,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user?: UserUpdateOneRequiredWithoutRoguelikeRunsNestedInput
     campaign?: RoguelikeCampaignUpdateOneRequiredWithoutRunsNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutRunNestedInput
@@ -52992,6 +53027,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutRunNestedInput
     lobbies?: LobbyUncheckedUpdateManyWithoutRoguelikeRunNestedInput
   }
@@ -53052,6 +53088,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user: UserCreateNestedOneWithoutRoguelikeRunsInput
     campaign: RoguelikeCampaignCreateNestedOneWithoutRunsInput
     roster?: RoguelikeRosterShipCreateNestedManyWithoutRunInput
@@ -53069,6 +53106,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedCreateNestedManyWithoutRunInput
     lobbies?: LobbyUncheckedCreateNestedManyWithoutRoguelikeRunInput
   }
@@ -53133,6 +53171,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user?: UserUpdateOneRequiredWithoutRoguelikeRunsNestedInput
     campaign?: RoguelikeCampaignUpdateOneRequiredWithoutRunsNestedInput
     roster?: RoguelikeRosterShipUpdateManyWithoutRunNestedInput
@@ -53150,6 +53189,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedUpdateManyWithoutRunNestedInput
     lobbies?: LobbyUncheckedUpdateManyWithoutRoguelikeRunNestedInput
   }
@@ -54460,6 +54500,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type ShipUpdateWithoutOwnerInput = {
@@ -55025,6 +55066,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     campaign?: RoguelikeCampaignUpdateOneRequiredWithoutRunsNestedInput
     roster?: RoguelikeRosterShipUpdateManyWithoutRunNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutRunNestedInput
@@ -55041,6 +55083,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedUpdateManyWithoutRunNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutRunNestedInput
     lobbies?: LobbyUncheckedUpdateManyWithoutRoguelikeRunNestedInput
@@ -55056,6 +55099,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type RoguelikeRosterShipCreateManyShipInput = {
@@ -55565,6 +55609,7 @@ export namespace Prisma {
     activeLobbyId?: number | null
     createdAt?: Date | string
     endedAt?: Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type RoguelikeNodeUpdateWithoutCampaignInput = {
@@ -55618,6 +55663,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     user?: UserUpdateOneRequiredWithoutRoguelikeRunsNestedInput
     roster?: RoguelikeRosterShipUpdateManyWithoutRunNestedInput
     defeats?: RoguelikeNodeDefeatUpdateManyWithoutRunNestedInput
@@ -55634,6 +55680,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
     roster?: RoguelikeRosterShipUncheckedUpdateManyWithoutRunNestedInput
     defeats?: RoguelikeNodeDefeatUncheckedUpdateManyWithoutRunNestedInput
     lobbies?: LobbyUncheckedUpdateManyWithoutRoguelikeRunNestedInput
@@ -55649,6 +55696,7 @@ export namespace Prisma {
     activeLobbyId?: NullableIntFieldUpdateOperationsInput | number | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     endedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    droppedShipHp?: JsonNullValueInput | InputJsonValue
   }
 
   export type RoguelikeEdgeCreateManyParentInput = {

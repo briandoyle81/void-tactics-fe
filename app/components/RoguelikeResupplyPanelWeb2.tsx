@@ -2,6 +2,8 @@
 
 import React from "react";
 import { toast } from "react-hot-toast";
+import { formatUtc } from "../utils/formatUtc";
+import { RepairConfirmModal, type RepairConfirmShip } from "./RepairConfirmModal";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
 import { useOwnedShipsWeb2 } from "../hooks/useOwnedShipsWeb2";
@@ -21,6 +23,7 @@ import {
   markRosterAvailableForSelect,
   resupplyCostLimit,
   rosterModifyDiff,
+  parseDroppedShipDamage,
 } from "../utils/resupplyFleet";
 import { FLEET_HEADER_ACTION_CLASS } from "./FleetBriefing";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
@@ -93,21 +96,22 @@ export function RoguelikeResupplyPanelWeb2({
   const shipIdsForAttributes = React.useMemo(() => fleet.ships.map((s) => s.id), [fleet.ships]);
   const { attributesByShipId, isLoading: attributesLoading } =
     useShipAttributesByIdsWeb2(shipIdsForAttributes);
+  // Run damage for every ship on offer: roster ships, and ships dropped
+  // earlier in the run (they keep their damage, like on chain).
   const damageByShipId = React.useMemo(() => {
     const damage = new Map<number, number>();
+    Object.entries(parseDroppedShipDamage(run.droppedShipHp)).forEach(([id, hp]) => damage.set(Number(id), hp));
     run.roster.forEach((entry) => damage.set(entry.shipId, entry.hp));
     return damage;
-  }, [run.roster]);
+  }, [run.roster, run.droppedShipHp]);
   const attributesWithRosterHull = React.useMemo(
     () =>
       overlayHullPoints(attributesByShipId, (id) => {
-        if (!rosterIdSet.has(String(id))) return undefined;
-        return currentHullFromWeb2RosterHp(
-          damageByShipId.get(id) ?? 0,
-          attributesByShipId.get(id)?.maxHullPoints ?? 0,
-        );
+        const damage = damageByShipId.get(id);
+        if (damage == null) return undefined;
+        return currentHullFromWeb2RosterHp(damage, attributesByShipId.get(id)?.maxHullPoints ?? 0);
       }),
-    [attributesByShipId, damageByShipId, rosterIdSet],
+    [attributesByShipId, damageByShipId],
   );
 
   // Roster ships carry their live run hull, so their cards show it and an HP bar.
@@ -149,6 +153,32 @@ export function RoguelikeResupplyPanelWeb2({
     [selectedRosterKeys, attributesWithRosterHull],
   );
 
+  // The repair is confirmed in a modal first (RepairConfirmModal).
+  const [isRepairConfirmOpen, setIsRepairConfirmOpen] = React.useState(false);
+  const repairCostTotal = totalMissingHP * (repairCost?.repairCostPerHp ?? 0);
+  const repairShips: RepairConfirmShip[] = React.useMemo(
+    () =>
+      repairKeys.flatMap((id) => {
+        const attrs = attributesWithRosterHull.get(id);
+        if (!attrs) return [];
+        const ship = selectableShips.find((s) => s.id === id);
+        return [{ key: String(id), name: ship?.name || `Ship #${id}`, hull: attrs.hullPoints, maxHull: attrs.maxHullPoints }];
+      }),
+    [repairKeys, attributesWithRosterHull, selectableShips],
+  );
+  const handleRepair = async () => {
+    setIsRepairing(true);
+    try {
+      const result = await resupplyRepair(repairKeys);
+      setIsRepairConfirmOpen(false);
+      toast.success(`Repaired ${result.repaired.length} ship(s) for ${formatUtc(result.cost)} UTC.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to repair");
+    } finally {
+      setIsRepairing(false);
+    }
+  };
+
   const handleConfirm = async () => {
     if (fleet.selectedShips.length === 0) {
       toast.error("Select at least one ship for your roster");
@@ -183,56 +213,66 @@ export function RoguelikeResupplyPanelWeb2({
   };
 
   return (
-    <RoguelikeFleetPicker
-      title="[SELECT YOUR FLEET]"
-      headerAction={
-        <button
-          type="button"
-          onClick={() => void handleConfirm()}
-          disabled={isSaving || !rosterValid}
-          className={FLEET_HEADER_ACTION_CLASS}
-          style={{ borderRadius: 0 }}
-        >
-          {isSaving
-            ? "[UPDATING...]"
-            : `[CONFIRM FLEET (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
-        </button>
-      }
-      extra={
-        totalMissingHP > 0 ? (
-          <div className="flex flex-wrap items-center gap-3 border border-cyan/40 bg-cyan/10 p-3 text-xs">
-            <span className="text-cyan">
-              Repair cost: {totalMissingHP * (repairCost?.repairCostPerHp ?? 0)} UTC ({totalMissingHP} HP)
-            </span>
-            <button
-              type="button"
-              disabled={isRepairing}
-              onClick={async () => {
-                setIsRepairing(true);
-                try {
-                  const result = await resupplyRepair(repairKeys);
-                  toast.success(`Repaired ${result.repaired.length} ship(s) for ${result.cost} UTC.`);
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Failed to repair");
-                } finally {
-                  setIsRepairing(false);
-                }
-              }}
-              className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ borderRadius: 0 }}
-            >
-              {isRepairing ? "[REPAIRING...]" : `[REPAIR ${totalMissingHP} HP]`}
-            </button>
-          </div>
-        ) : null
-      }
-      ships={fleet.ships}
-      lockedVariant={fleet.lockedVariant}
-      isLoading={shipsLoading}
-      isEmpty={selectableShips.length === 0}
-      filterAndSort={filterAndSortShipsWeb2}
-      secondaryOptions={navyFilterSecondaryOptionsWeb2}
-      buildItems={buildItems}
-    />
+    <>
+      <RoguelikeFleetPicker
+        title="[SELECT YOUR FLEET]"
+        headerAction={
+          <button
+            type="button"
+            onClick={() => void handleConfirm()}
+            disabled={isSaving || !rosterValid}
+            className={FLEET_HEADER_ACTION_CLASS}
+            style={{ borderRadius: 0 }}
+          >
+            {isSaving
+              ? "[UPDATING...]"
+              : `[CONFIRM FLEET (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
+          </button>
+        }
+        extra={
+          totalMissingHP > 0 ? (
+            <div className="flex flex-wrap items-center gap-3 border border-cyan/40 bg-cyan/10 p-3 text-xs">
+              <span className="text-cyan">
+                Repair cost: {formatUtc(repairCostTotal)} UTC ({totalMissingHP} HP)
+              </span>
+              <button
+                type="button"
+                disabled={isRepairing}
+                onClick={() => setIsRepairConfirmOpen(true)}
+                className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ borderRadius: 0 }}
+              >
+                [REPAIR {totalMissingHP} HP]
+              </button>
+            </div>
+          ) : null
+        }
+        ships={fleet.ships}
+        lockedVariant={fleet.lockedVariant}
+        isLoading={shipsLoading}
+        isEmpty={selectableShips.length === 0}
+        filterAndSort={filterAndSortShipsWeb2}
+        secondaryOptions={navyFilterSecondaryOptionsWeb2}
+        buildItems={buildItems}
+      />
+      <RepairConfirmModal
+        show={isRepairConfirmOpen}
+        ships={repairShips}
+        totalHp={totalMissingHP}
+        costLabel={formatUtc(repairCostTotal)}
+        onCancel={() => setIsRepairConfirmOpen(false)}
+        confirmButton={
+          <button
+            type="button"
+            disabled={isRepairing}
+            onClick={() => void handleRepair()}
+            className="h-11 w-full border-2 border-phosphor-green bg-phosphor-green/10 px-4 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/20 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ borderRadius: 0 }}
+          >
+            {isRepairing ? "[REPAIRING...]" : "[CONFIRM REPAIR]"}
+          </button>
+        }
+      />
+    </>
   );
 }

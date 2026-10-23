@@ -66,6 +66,8 @@ export function getRunMapAction(input: RunMapActionInput): RunMapAction {
   if (input.isBrowseMode) return none("Start a run to enter");
 
   if (input.isCurrentNode) {
+    // At a resupply stop: back to its fleet and repairs (RunMap reopens it).
+    if (input.selectedKind === "resupply") return { type: "resupply", label: "Resupply Fleet", disabled: false };
     if (input.isDefeated) return none("Pick your next mission");
     // Relaunching while a match is live would revert; go back to it instead.
     if (input.hasActiveGame) return { type: "resume", label: "Return to battle", disabled: false };
@@ -78,7 +80,7 @@ export function getRunMapAction(input: RunMapActionInput): RunMapAction {
   if (input.selectedKind === "resupply") {
     return input.isEnteringResupply
       ? { type: "resupply", label: "Entering…", disabled: true }
-      : { type: "resupply", label: "Enter resupply", disabled: false };
+      : { type: "resupply", label: "Resupply Fleet", disabled: false };
   }
   if (input.isDefeated) return none("Already cleared");
   return { type: "warp", label: "Warp to mission", disabled: false };

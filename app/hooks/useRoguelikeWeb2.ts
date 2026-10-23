@@ -44,6 +44,8 @@ export interface RoguelikeRunWeb2 {
   campaign: RoguelikeCampaignWeb2;
   roster: RoguelikeRosterEntryWeb2[];
   defeatedNodeIds: number[];
+  /** Damage taken by ships dropped at a resupply this run, by ship id (they keep it). */
+  droppedShipHp?: Record<string, number>;
 }
 
 const RUN_QUERY_KEY = ["roguelike", "run", "web2"];

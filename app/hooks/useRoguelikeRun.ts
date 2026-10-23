@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import type { QueryClient } from "@tanstack/react-query";
 import { invalidateShipsReads } from "./useShipsContract";
@@ -80,26 +81,39 @@ export function useHasActiveRoguelikeRun(playerAddress: Address | undefined) {
   return { ...result, data: result.data as boolean | undefined };
 }
 
-/** Batched HP check for a roster (avoids a hook-per-ship loop). 0 means "not yet damaged this run" (fresh 100%), not literally 0 HP. */
+/**
+ * Batched run HP for any of the player's ships (one multicall, not a hook per
+ * ship). Stored per ship for the whole run, so a ship dropped at a resupply
+ * keeps its damage. 0 means "not yet damaged this run" (fresh 100%), not
+ * literally 0 HP.
+ */
 export function useRoguelikeRosterHP(
   playerAddress: Address | undefined,
   shipIds: bigint[],
 ) {
+  const contracts = useMemo(
+    () =>
+      shipIds.map((id) => ({
+        address: ROGUELIKE_RUN_ADDRESS,
+        abi: ROGUELIKE_RUN_ABI,
+        chainId: CHAIN_ID,
+        functionName: "getShipHP" as const,
+        args: playerAddress ? ([playerAddress, id] as const) : undefined,
+      })),
+    [playerAddress, shipIds],
+  );
   const result = useReadContracts({
-    contracts: shipIds.map((id) => ({
-      address: ROGUELIKE_RUN_ADDRESS,
-      abi: ROGUELIKE_RUN_ABI,
-      chainId: CHAIN_ID,
-      functionName: "getShipHP" as const,
-      args: playerAddress ? ([playerAddress, id] as const) : undefined,
-    })),
+    contracts,
     query: { enabled: !!playerAddress && shipIds.length > 0 },
   });
 
-  const hpByShipId = new Map<string, number>();
-  shipIds.forEach((id, i) => {
-    hpByShipId.set(id.toString(), (result.data?.[i]?.result as number | undefined) ?? 0);
-  });
+  const hpByShipId = useMemo(() => {
+    const map = new Map<string, number>();
+    shipIds.forEach((id, i) => {
+      map.set(id.toString(), (result.data?.[i]?.result as number | undefined) ?? 0);
+    });
+    return map;
+  }, [shipIds, result.data]);
 
   return { ...result, hpByShipId };
 }

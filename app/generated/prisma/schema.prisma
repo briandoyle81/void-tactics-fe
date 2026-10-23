@@ -420,6 +420,10 @@ model RoguelikeRun {
   activeLobbyId  Int?
   createdAt      DateTime           @default(now())
   endedAt        DateTime?
+  // Damage taken by ships dropped from the roster at a resupply, by ship id
+  // ({ "12": 22 }): they keep it for the rest of the run, like on chain
+  // (RoguelikeRun.shipHPByGen), and come back damaged if re-added.
+  droppedShipHp  Json               @default("{}")
 
   roster  RoguelikeRosterShip[]
   defeats RoguelikeNodeDefeat[]

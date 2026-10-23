@@ -391,7 +391,11 @@ export function RunMap({
     if (!selectedNode || isBrowseMode) return;
     if (mapAction.type === "resume") onResume?.();
     else if (mapAction.type === "warp") setCombatTargetNodeId(selectedNode.id);
-    else if (mapAction.type === "resupply") void handleEnterResupply(selectedNode.id);
+    else if (mapAction.type === "resupply") {
+      // The stop the run is at: reopen its panel. Otherwise enter the new one.
+      if (selectedNode.id === currentNode?.id) setDismissedResupplyNodeId(null);
+      else void handleEnterResupply(selectedNode.id);
+    }
   };
 
   const isSelectedConnectSource = !!selectedNode && connectMode?.sourceNodeId === selectedNode.id;

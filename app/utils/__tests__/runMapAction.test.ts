@@ -54,6 +54,14 @@ describe("getRunMapAction", () => {
     });
   });
 
+  it("offers the resupply panel at the resupply stop the run is at", () => {
+    expect(getRunMapAction({ ...base, selectedKind: "resupply", isCurrentNode: true, isReachableChild: false })).toEqual({
+      type: "resupply",
+      label: "Resupply Fleet",
+      disabled: false,
+    });
+  });
+
   it("returns to a live match instead of relaunching", () => {
     expect(getRunMapAction({ ...base, isCurrentNode: true, hasActiveGame: true })).toEqual({
       type: "resume",
