@@ -203,12 +203,17 @@ function useFleetPlacementCore<Id extends bigint | number, S extends FleetPlacem
     setSelectedShipId((prev) => (prev === shipId ? null : prev));
   }, []);
 
+  const isInZone = useCallback(
+    (row: number, col: number) =>
+      hasCustomZone
+        ? zoneTiles!.some((t) => t.row === row && t.col === col)
+        : row >= 0 && row < GRID_DIMENSIONS.HEIGHT && col >= zone.colMin && col <= zone.colMax,
+    [hasCustomZone, zoneTiles, zone],
+  );
+
   const moveShip = useCallback(
     (shipId: Id, row: number, col: number) => {
-      const inZone = hasCustomZone
-        ? zoneTiles!.some((t) => t.row === row && t.col === col)
-        : row >= 0 && row < GRID_DIMENSIONS.HEIGHT && col >= zone.colMin && col <= zone.colMax;
-      if (!inZone) return;
+      if (!isInZone(row, col)) return;
       const occupied = shipPositions.some(
         (p) => p.row === row && p.col === col && p.shipId !== shipId,
       );
@@ -225,7 +230,16 @@ function useFleetPlacementCore<Id extends bigint | number, S extends FleetPlacem
       );
       setSelectedShipId(null);
     },
-    [shipPositions, selectedShips, zone, hasCustomZone, zoneTiles],
+    [shipPositions, selectedShips, isInZone],
+  );
+
+  // A ship can sit outside this side's zone when its position came from
+  // somewhere other than moveShip: a loaded saved fleet, or the map's
+  // custom zone arriving after the ships were placed. The launch would
+  // revert, so the deploy button stays off until they're moved in.
+  const hasShipsOutsideZone = useMemo(
+    () => shipPositions.some((p) => !isInZone(p.row, p.col)),
+    [shipPositions, isInZone],
   );
 
   const clearSelection = useCallback(() => {
@@ -325,6 +339,7 @@ function useFleetPlacementCore<Id extends bigint | number, S extends FleetPlacem
     isOverLimit,
     isUnder90Percent,
     hasMovedShip,
+    hasShipsOutsideZone,
     hasStaleCostsVersion,
     maxShips: hasCustomZone ? zoneTiles!.length : MAX_SHIPS_PER_FLEET,
   };

@@ -104,7 +104,7 @@ export function RoguelikeCombatModalWeb2({
   }, [attributesByShipId, run.roster]);
 
   const handleLaunch = async () => {
-    if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip) return;
+    if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip || fleet.hasShipsOutsideZone) return;
     setIsSubmitting(true);
     try {
       // The enter-combat route pairs startingPositions[i] with run.roster[i],

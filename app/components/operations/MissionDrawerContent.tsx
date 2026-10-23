@@ -21,6 +21,7 @@ const DISPLAY_FONT = { fontFamily: "var(--font-rajdhani), 'Arial Black', sans-se
 export function MissionDrawerContent({
   title,
   titleStatus,
+  completed = false,
   kindLabel,
   briefing,
   enemyFleet,
@@ -29,6 +30,8 @@ export function MissionDrawerContent({
 }: {
   title: string;
   titleStatus: NodeContentStatus | undefined;
+  /** Cleared or passed (the star chart's green node): green, "- Completed". */
+  completed?: boolean;
   kindLabel: string;
   briefing: ReactNode;
   /** Combat nodes only; null while loading. */
@@ -41,10 +44,11 @@ export function MissionDrawerContent({
     <div className="flex flex-col gap-4 p-4 pr-10 font-mono md:pr-4">
       <div className="flex items-baseline justify-between gap-3">
         <h3
-          className={`text-2xl font-bold uppercase leading-tight tracking-wider ${nodeContentTextClass(titleStatus, "text-cyan")}`}
+          className={`text-2xl font-bold uppercase leading-tight tracking-wider ${nodeContentTextClass(titleStatus, completed ? "text-phosphor-green" : "text-cyan")}`}
           style={DISPLAY_FONT}
         >
           {title}
+          {completed && " - Completed"}
         </h3>
         <span className="shrink-0 border border-steel px-2 py-0.5 text-[10px] uppercase tracking-wider text-text-secondary">
           {kindLabel}

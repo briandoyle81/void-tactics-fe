@@ -10,12 +10,20 @@ import { DEFAULT_MUSIC_TRACK, NO_MUSIC } from "../config/music";
 // choices are in app/config/music.ts), or NO_MUSIC for silence. When it
 // changes, the old one fades out and the new one fades in. Each track keeps
 // its place, so going back to one resumes it.
+//
+// Played through Web Audio from a fully decoded buffer, not an <audio>
+// element: an element streams and decodes as it plays, so a busy tab or a
+// slow range request drops out mid-track, and its loop leaves a gap. A
+// looping AudioBufferSourceNode plays from memory on the audio thread, and
+// the fades are gain ramps there too.
 
 const MUSIC_VOLUME = 0.35;
 const DEFAULT_VOLUME = 0.5;
-const FADE_MS = 600;
+const FADE_S = 0.6;
 const STORAGE_KEY = "vt-music-enabled";
 const VOLUME_KEY = "vt-music-volume";
+/** Decoded tracks kept in memory (about 50 MB each); older ones are decoded again if needed. */
+const MAX_DECODED_TRACKS = 3;
 
 function readVolume(): number {
   try {
@@ -27,28 +35,86 @@ function readVolume(): number {
   }
 }
 
-/** Ramps `audio` to `to` over FADE_MS; returns a cancel function. */
-function fadeTo(audio: HTMLAudioElement, to: number, onDone?: () => void): () => void {
-  const from = audio.volume;
-  const start = performance.now();
-  const timer = window.setInterval(() => {
-    const u = Math.min(1, (performance.now() - start) / FADE_MS);
-    audio.volume = from + (to - from) * u;
-    if (u >= 1) {
-      window.clearInterval(timer);
-      onDone?.();
-    }
-  }, 30);
-  return () => window.clearInterval(timer);
+interface TrackState {
+  src: string;
+  gain: GainNode;
+  buffer: AudioBuffer | null;
+  loading: Promise<AudioBuffer | null> | null;
+  source: AudioBufferSourceNode | null;
+  /** Context time the source started, and the track offset it started at. */
+  startedAt: number;
+  startOffset: number;
+  /** Where to resume, in seconds into the track. */
+  offset: number;
+  /** Pending stop after a fade out. */
+  stopTimer: number | null;
+  lastUsed: number;
+}
+
+let sharedContext: AudioContext | null = null;
+function getContext(): AudioContext | null {
+  if (sharedContext) return sharedContext;
+  const Ctor =
+    typeof window === "undefined"
+      ? undefined
+      : (window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+  if (!Ctor) return null;
+  // iOS silences Web Audio with the ring switch unless the session is "playback".
+  try {
+    const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = "playback";
+  } catch {
+    // not supported
+  }
+  sharedContext = new Ctor();
+  return sharedContext;
+}
+
+function rampGain(ctx: AudioContext, gain: GainNode, to: number, seconds: number) {
+  const now = ctx.currentTime;
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  if (seconds > 0) gain.gain.linearRampToValueAtTime(to, now + seconds);
+  else gain.gain.setValueAtTime(to, now);
+}
+
+/** Stops the track's source, remembering where it was. */
+function stopSource(ctx: AudioContext, t: TrackState) {
+  if (t.stopTimer != null) {
+    window.clearTimeout(t.stopTimer);
+    t.stopTimer = null;
+  }
+  if (!t.source || !t.buffer) return;
+  t.offset = (t.startOffset + (ctx.currentTime - t.startedAt)) % t.buffer.duration;
+  try {
+    t.source.stop();
+  } catch {
+    // already stopped
+  }
+  t.source.disconnect();
+  t.source = null;
+}
+
+function startSource(ctx: AudioContext, t: TrackState) {
+  if (t.source || !t.buffer) return;
+  const source = ctx.createBufferSource();
+  source.buffer = t.buffer;
+  source.loop = true;
+  source.connect(t.gain);
+  t.startOffset = t.offset % t.buffer.duration;
+  t.startedAt = ctx.currentTime;
+  source.start(0, t.startOffset);
+  t.source = source;
 }
 
 export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
   const [enabled, setEnabled] = useState(false);
   const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
   /** The track playing (or last played), so a change fades it out. */
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  /** One element per track, so each resumes where it left off. */
-  const tracksRef = useRef(new Map<string, HTMLAudioElement>());
+  const currentRef = useRef<string | null>(null);
+  /** One state per track, so each resumes where it left off. */
+  const tracksRef = useRef(new Map<string, TrackState>());
   const volumeRef = useRef(volume);
   volumeRef.current = volume;
 
@@ -63,59 +129,132 @@ export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
 
   // A volume change applies to the playing track at once.
   useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = MUSIC_VOLUME * volume;
+    const ctx = sharedContext;
+    const t = currentRef.current ? tracksRef.current.get(currentRef.current) : undefined;
+    if (ctx && t?.source) rampGain(ctx, t.gain, MUSIC_VOLUME * volume, 0.05);
   }, [volume]);
 
   useEffect(() => {
-    const prev = audioRef.current;
+    const tracks = tracksRef.current;
+    const prevSrc = currentRef.current;
+    const prev = prevSrc ? tracks.get(prevSrc) : undefined;
+    const ctx = enabled ? getContext() : sharedContext;
+    if (!ctx) return;
+
+    const fadeOut = (t: TrackState) => {
+      if (!t.source) return;
+      rampGain(ctx, t.gain, 0, FADE_S);
+      if (t.stopTimer != null) window.clearTimeout(t.stopTimer);
+      t.stopTimer = window.setTimeout(() => {
+        t.stopTimer = null;
+        stopSource(ctx, t);
+      }, FADE_S * 1000 + 50);
+    };
+
     if (!enabled) {
-      prev?.pause();
+      if (prev) stopSource(ctx, prev);
       return;
     }
-    const cancels: Array<() => void> = [];
-    const prevPlaying = prev != null && !prev.paused;
-
     if (track === NO_MUSIC) {
       // Silence: fade out whatever's playing (it resumes from here later).
-      if (prev && prevPlaying) cancels.push(fadeTo(prev, 0, () => prev.pause()), () => prev.pause());
-      return () => cancels.forEach((cancel) => cancel());
+      if (prev) fadeOut(prev);
+      return;
     }
 
-    const target = MUSIC_VOLUME * volumeRef.current;
-    let audio = tracksRef.current.get(track);
-    if (!audio) {
-      audio = new Audio(track);
-      audio.loop = true;
-      tracksRef.current.set(track, audio);
+    let t = tracks.get(track);
+    if (!t) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(ctx.destination);
+      t = {
+        src: track,
+        gain,
+        buffer: null,
+        loading: null,
+        source: null,
+        startedAt: 0,
+        startOffset: 0,
+        offset: 0,
+        stopTimer: null,
+        lastUsed: 0,
+      };
+      tracks.set(track, t);
     }
-    if (prev && prev !== audio && prevPlaying) {
-      // Crossfade from the old track.
-      cancels.push(fadeTo(prev, 0, () => prev.pause()), () => prev.pause());
-      audio.volume = 0;
-      cancels.push(fadeTo(audio, target));
-    } else {
-      audio.volume = target;
-    }
-    if (audio.paused && process.env.NODE_ENV !== "production") console.info("[music] playing", track);
-    audioRef.current = audio;
-    const playing = audio;
-    // Browsers block playback until the page has had a click or tap (e.g.
-    // after a reload with music on), so retry on the first one.
-    const onGesture = () => {
-      void playing.play().catch(() => {});
+    const target = t;
+    target.lastUsed = performance.now();
+    const crossfade = !!prev && prev !== target && !!prev.source;
+    if (prev && prev !== target) fadeOut(prev);
+    currentRef.current = track;
+
+    let cancelled = false;
+    const begin = () => {
+      if (cancelled || !target.buffer) return;
+      if (target.stopTimer != null) {
+        // Coming back before the fade out finished: keep the source going.
+        window.clearTimeout(target.stopTimer);
+        target.stopTimer = null;
+      }
+      const wasPlaying = !!target.source;
+      startSource(ctx, target);
+      rampGain(ctx, target.gain, MUSIC_VOLUME * volumeRef.current, crossfade || wasPlaying ? FADE_S : 0.05);
+      if (process.env.NODE_ENV !== "production" && !wasPlaying) console.info("[music] playing", track);
     };
-    playing.play().catch(() => {
+
+    if (target.buffer) {
+      begin();
+    } else {
+      if (!target.loading) {
+        target.loading = fetch(track)
+          .then((res) => {
+            if (!res.ok) throw new Error(`${res.status}`);
+            return res.arrayBuffer();
+          })
+          .then((data) => ctx.decodeAudioData(data))
+          .then((buffer) => {
+            target.buffer = buffer;
+            return buffer;
+          })
+          .catch((err) => {
+            console.warn("[music] couldn't load", track, err);
+            return null;
+          })
+          .finally(() => {
+            target.loading = null;
+          });
+      }
+      void target.loading.then(begin);
+    }
+
+    // Drop the decoded audio of tracks not heard in a while.
+    const idle = [...tracks.values()]
+      .filter((s) => s !== target && !s.source && s.buffer)
+      .sort((a, b) => b.lastUsed - a.lastUsed)
+      .slice(MAX_DECODED_TRACKS - 1);
+    for (const s of idle) s.buffer = null;
+
+    // Browsers keep the context suspended until the page has had a click or
+    // tap (e.g. after a reload with music on), so resume on the first one.
+    const onGesture = () => {
+      void ctx.resume().catch(() => {});
+    };
+    if (ctx.state !== "running") {
+      void ctx.resume().catch(() => {});
       window.addEventListener("pointerdown", onGesture, { once: true });
-    });
+      window.addEventListener("keydown", onGesture, { once: true });
+    }
     return () => {
+      cancelled = true;
       window.removeEventListener("pointerdown", onGesture);
-      cancels.forEach((cancel) => cancel());
+      window.removeEventListener("keydown", onGesture);
     };
   }, [enabled, track]);
 
   useEffect(() => {
     const tracks = tracksRef.current;
-    return () => tracks.forEach((audio) => audio.pause());
+    return () => {
+      const ctx = sharedContext;
+      if (ctx) tracks.forEach((t) => stopSource(ctx, t));
+    };
   }, []);
 
   const setOn = useCallback((next: boolean) => {

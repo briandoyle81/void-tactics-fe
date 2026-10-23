@@ -24,6 +24,8 @@ export interface FleetCreateButtonState {
   costLimit: number;
   isUnder90Percent: boolean;
   hasMovedShip: boolean;
+  /** A placed ship is off this side's deployment tiles (useFleetPlacement's hasShipsOutsideZone). */
+  hasShipsOutsideZone: boolean;
   hasStaleCosts: boolean;
   /** Overrides the default "CREATE FLEET (n)" label once nothing else
    * (busy/over-limit/etc.) applies — e.g. "LAUNCH MISSION (n)" for a
@@ -38,6 +40,7 @@ function getCreateButtonLabel(state: FleetCreateButtonState): string {
   }
   if (state.isOverLimit) return `OVER ${state.costLimit} THREAT LIMIT`;
   if (state.isUnder90Percent) return `NEED ${Math.round(state.costLimit * 0.9)} POINTS`;
+  if (state.hasShipsOutsideZone) return "SHIPS OUTSIDE DEPLOYMENT";
   if (!state.hasMovedShip) return "MOVE AT LEAST ONE SHIP FORWARD";
   if (state.hasStaleCosts) return "COST VERSION OUT OF DATE (MANAGE NAVY)";
   return state.readyLabel ?? `CREATE FLEET (${state.selectedCount})`;
@@ -51,6 +54,7 @@ function isCreateButtonDisabled(state: FleetCreateButtonState): boolean {
     state.isOverLimit ||
     state.isUnder90Percent ||
     !state.hasMovedShip ||
+    state.hasShipsOutsideZone ||
     state.hasStaleCosts
   );
 }

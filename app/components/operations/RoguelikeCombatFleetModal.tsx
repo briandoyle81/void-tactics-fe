@@ -17,6 +17,7 @@ interface CombatFleet<Id, S extends { traits: { variant: number } }> {
   selectedShips: Id[];
   shipPositions: { shipId: Id; row: number; col: number }[];
   hasMovedShip: boolean;
+  hasShipsOutsideZone: boolean;
   totalCost: number;
   fleetFilters: FleetFilters;
   setFleetFilters: (updater: (prev: FleetFilters) => FleetFilters) => void;
@@ -104,6 +105,7 @@ export function RoguelikeCombatFleetModal<Id, S extends { traits: { variant: num
         costLimit: 0,
         isUnder90Percent: false,
         hasMovedShip: fleet.hasMovedShip,
+        hasShipsOutsideZone: fleet.hasShipsOutsideZone,
         hasStaleCosts: false,
         readyLabel: `LAUNCH MISSION (${fleet.selectedShips.length})`,
       }}

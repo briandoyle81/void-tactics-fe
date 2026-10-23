@@ -130,7 +130,7 @@ export function RunMap({
   onResume?: () => void;
   onAddChild: (parentId: number, childId: number) => Promise<unknown>;
   /** The selected node's mission drawer (enemy fleet, dossier). */
-  renderDrawer: (node: RunMapNode, ctx: { isCleared: boolean }) => React.ReactNode;
+  renderDrawer: (node: RunMapNode, ctx: { isCleared: boolean; isCompleted: boolean }) => React.ReactNode;
   renderNodeEditor: (args: RunMapNodeEditorArgs) => React.ReactNode;
   renderCombatModal: (nodeId: number, close: () => void) => React.ReactNode;
   /** Shown instead of the map while the run is at a resupply node. */
@@ -430,7 +430,10 @@ export function RunMap({
   const drawer = editMode ? null : isTutorialPreludeSelected ? (
     <TutorialPreludeDrawer completed={showClearedPrelude} />
   ) : selectedNode ? (
-    renderDrawer(selectedNode, { isCleared: isSelectedNodeDefeated })
+    renderDrawer(selectedNode, {
+      isCleared: isSelectedNodeDefeated,
+      isCompleted: selectedNode.kind === RoguelikeNodeKind.Combat ? isSelectedNodeDefeated : passedResupplyIds.has(selectedNode.id),
+    })
   ) : null;
 
   const missionPeek: MissionPeek | null = editMode

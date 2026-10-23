@@ -1,9 +1,11 @@
 "use client";
 import { useCallback } from "react";
-import { useReadContract, useWriteContract } from "wagmi";
+import { useConfig, useReadContract, useWriteContract } from "wagmi";
+import { estimateGas } from "wagmi/actions";
 import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
+import { encodeFunctionData, type Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { paddedGasLimit } from "../utils/gasLimit";
 
 // SinglePlayerMatch is Base Sepolia only today — pin to that chain directly
 // rather than following the connected wallet/picker chain, same pattern as
@@ -31,11 +33,15 @@ const TAKE_AI_TURN_GAS_LIMIT = 2_500_000n;
 // fleet-size rebalance. Unlike takeAITurn this isn't flat across nodes, but
 // there's no per-node cost table wired into the frontend (and unused gas
 // from the limit isn't spent, just capped), so one generously-padded
-// constant covers every node rather than trying to track per-map costs.
-const START_NODE_MATCH_GAS_LIMIT = 5_500_000n;
+// constant used to cover every node. A bigger fleet outgrows any one
+// number, so it's now estimated per call (paddedGasLimit), never below the
+// old limit, with a large fallback if the estimate fails.
+const START_NODE_MATCH_GAS_FLOOR = 5_500_000n;
+const START_NODE_MATCH_GAS_FALLBACK = 10_000_000n;
 
 export function useSinglePlayerMatch() {
   const { writeContractAsync } = useWriteContract();
+  const config = useConfig();
 
   // Builds the human's fleet and starts the Game session in one call —
   // replaces the old acceptMatch/setupAIFleet two-step (removed from the
@@ -44,16 +50,28 @@ export function useSinglePlayerMatch() {
   // computing it (the offset is an implementation detail, not something to
   // hardcode — see docs/singleplayer-frontend-integration.md).
   const startNodeMatch = useCallback(
-    (nodeId: bigint, shipIds: bigint[], positions: { row: number; col: number }[]) =>
-      writeContractAsync({
+    async (nodeId: bigint, shipIds: bigint[], positions: { row: number; col: number }[]) => {
+      const args = [nodeId, shipIds, positions];
+      const gas = await paddedGasLimit(
+        () =>
+          estimateGas(config, {
+            to: SINGLE_PLAYER_MATCH_ADDRESS,
+            data: encodeFunctionData({ abi: SINGLE_PLAYER_MATCH_ABI, functionName: "startNodeMatch", args }),
+            chainId: CHAIN_ID,
+          }),
+        START_NODE_MATCH_GAS_FLOOR,
+        START_NODE_MATCH_GAS_FALLBACK,
+      );
+      return writeContractAsync({
         address: SINGLE_PLAYER_MATCH_ADDRESS,
         abi: SINGLE_PLAYER_MATCH_ABI,
         functionName: "startNodeMatch",
-        args: [nodeId, shipIds, positions],
+        args,
         chainId: CHAIN_ID,
-        gas: START_NODE_MATCH_GAS_LIMIT,
-      }),
-    [writeContractAsync],
+        gas,
+      });
+    },
+    [writeContractAsync, config],
   );
 
   const takeAITurn = useCallback(

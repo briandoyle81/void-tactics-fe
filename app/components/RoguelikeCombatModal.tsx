@@ -143,7 +143,7 @@ export function RoguelikeCombatModal({
   }, [attributesWithRosterHull]);
 
   const handleLaunch = async () => {
-    if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip) return;
+    if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip || fleet.hasShipsOutsideZone) return;
     setIsSubmitting(true);
     try {
       // enterCombatNode pairs positions[i] with run.rosterShipIds[i], so send

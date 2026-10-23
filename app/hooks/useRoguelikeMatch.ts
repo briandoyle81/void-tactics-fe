@@ -2,13 +2,14 @@
 
 import { useCallback } from "react";
 import { useConfig, useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "wagmi/actions";
+import { estimateGas, waitForTransactionReceipt } from "wagmi/actions";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateShipsReads } from "./useShipsContract";
 import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
+import { encodeFunctionData, type Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 import { RoguelikePosition } from "../types/roguelike";
+import { paddedGasLimit } from "../utils/gasLimit";
 import {
   trackMissionStarted,
   trackResupplyEntered,
@@ -28,9 +29,12 @@ const TAKE_AI_TURN_GAS_LIMIT = 2_500_000n;
 
 // enterCombatNode is the call that actually places the AI fleet and starts
 // the Game session (startRun itself only reserves the human roster via
-// Fleets, no AI placement) — same cost shape as SinglePlayerMatch.
-// startNodeMatch, so budget the same generous limit.
-const ENTER_COMBAT_NODE_GAS_LIMIT = 5_500_000n;
+// Fleets, no AI placement). Its cost grows with both fleets (~6M for a
+// 7-ship fleet on Collision Course), so it's estimated per call
+// (paddedGasLimit): never below the old fixed limit, and a large fallback
+// if the estimate fails. Base Sepolia's block limit is 30M.
+const ENTER_COMBAT_NODE_GAS_FLOOR = 5_500_000n;
+const ENTER_COMBAT_NODE_GAS_FALLBACK = 10_000_000n;
 
 export function useRoguelikeMatchContract() {
   return {
@@ -85,11 +89,22 @@ export function useRoguelikeMatch() {
 
   const enterCombatNode = useCallback(
     async (targetNodeId: bigint, positions: RoguelikePosition[]) => {
-      const hash = await writeAndWait("enterCombatNode", [targetNodeId, positions], ENTER_COMBAT_NODE_GAS_LIMIT);
+      const args = [targetNodeId, positions];
+      const gas = await paddedGasLimit(
+        () =>
+          estimateGas(config, {
+            to: ROGUELIKE_MATCH_ADDRESS,
+            data: encodeFunctionData({ abi: ROGUELIKE_MATCH_ABI, functionName: "enterCombatNode", args }),
+            chainId: CHAIN_ID,
+          }),
+        ENTER_COMBAT_NODE_GAS_FLOOR,
+        ENTER_COMBAT_NODE_GAS_FALLBACK,
+      );
+      const hash = await writeAndWait("enterCombatNode", args, gas);
       trackMissionStarted({ appMode: "web3", gameMode: "roguelike", nodeId: targetNodeId });
       return hash;
     },
-    [writeAndWait],
+    [writeAndWait, config],
   );
 
   const enterResupplyNode = useCallback(

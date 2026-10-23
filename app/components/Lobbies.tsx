@@ -2389,6 +2389,7 @@ const Lobbies: React.FC = () => {
                 costLimit,
                 isUnder90Percent,
                 hasMovedShip,
+                hasShipsOutsideZone: fleet.hasShipsOutsideZone,
                 hasStaleCosts: selectedFleetHasStaleCostsVersion,
               }}
               onCreateFleet={() => handleCreateFleet(selectedLobby)}

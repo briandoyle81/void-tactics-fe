@@ -196,12 +196,13 @@ export function RoguelikeGraph({
       onEnterResupply={handleEnterResupply}
       onResume={() => run && navigateToGame(address, run.activeGameId)}
       onAddChild={(parent, child) => admin.addChild(BigInt(parent), BigInt(child))}
-      renderDrawer={(node, { isCleared }) => {
+      renderDrawer={(node, { isCleared, isCompleted }) => {
         const full = nodeById.get(node.id);
         return full ? (
           <Web3MissionDrawer
             node={full}
             isCleared={isCleared}
+            isCompleted={isCompleted}
             costCap={run ? Number(run.currentCostCap) : null}
             autoHealPercent={autoHealPercent ?? 0}
           />
@@ -243,11 +244,13 @@ export function RoguelikeGraph({
 function Web3MissionDrawer({
   node,
   isCleared,
+  isCompleted,
   costCap,
   autoHealPercent,
 }: {
   node: RoguelikeNodeWithContent;
   isCleared: boolean;
+  isCompleted: boolean;
   costCap: number | null;
   autoHealPercent: number;
 }) {
@@ -271,6 +274,7 @@ function Web3MissionDrawer({
     <MissionDrawerContent
       title={node.title}
       titleStatus={node.titleStatus}
+      completed={isCompleted}
       kindLabel={isCombat ? "Combat" : "Resupply"}
       briefing={
         <MissionBriefing

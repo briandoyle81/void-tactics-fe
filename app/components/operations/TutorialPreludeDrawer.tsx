@@ -22,6 +22,7 @@ export function TutorialPreludeDrawer({ completed = false }: { completed?: boole
     <MissionDrawerContent
       title={TUTORIAL_PRELUDE.title}
       titleStatus="ok"
+      completed={completed}
       kindLabel="Combat"
       briefing={
         <MissionBriefing mission={{ kind: "tutorial" }} text={TUTORIAL_PRELUDE.briefing} status="ok" compact />

@@ -150,12 +150,13 @@ export function RoguelikeGraphWeb2({
       onRetreat={handleRetreat}
       onEnterResupply={handleEnterResupply}
       onAddChild={(parent, child) => admin.addChild(parent, child)}
-      renderDrawer={(node, { isCleared }) => {
+      renderDrawer={(node, { isCleared, isCompleted }) => {
         const full = nodeById.get(node.id);
         return full ? (
           <Web2MissionDrawer
             node={full}
             isCleared={isCleared}
+            isCompleted={isCompleted}
             costCap={run ? run.currentCostCap : null}
             autoHealPercent={campaign?.autoHealPercent ?? 0}
           />
@@ -188,11 +189,13 @@ export function RoguelikeGraphWeb2({
 function Web2MissionDrawer({
   node,
   isCleared,
+  isCompleted,
   costCap,
   autoHealPercent,
 }: {
   node: RoguelikeNodeWeb2WithContent;
   isCleared: boolean;
+  isCompleted: boolean;
   costCap: number | null;
   autoHealPercent: number;
 }) {
@@ -204,6 +207,7 @@ function Web2MissionDrawer({
     <MissionDrawerContent
       title={node.title}
       titleStatus={node.titleStatus}
+      completed={isCompleted}
       kindLabel={isCombat ? "Combat" : "Resupply"}
       briefing={
         <MissionBriefing

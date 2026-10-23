@@ -1106,6 +1106,7 @@ const LobbiesWeb2: React.FC = () => {
                 costLimit: lobbyCostLimit,
                 isUnder90Percent: fleet.isUnder90Percent,
                 hasMovedShip: fleet.hasMovedShip,
+                hasShipsOutsideZone: fleet.hasShipsOutsideZone,
                 hasStaleCosts: false,
               }}
               onCreateFleet={() => handleCreateFleetModal(lobby.basic.id)}

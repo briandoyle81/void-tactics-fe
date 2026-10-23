@@ -127,7 +127,11 @@ export function RoguelikeNodeCard({
 
       <span
         className={`line-clamp-2 w-full break-words text-center text-[10px] uppercase tracking-wider ${nodeContentTextClass(titleStatus, "")}`}
-        style={titleStatus === "ok" ? { color: "var(--color-text-primary)" } : undefined}
+        style={
+          titleStatus === "ok"
+            ? { color: node.completed ? "var(--color-phosphor-green)" : "var(--color-text-primary)" }
+            : undefined
+        }
       >
         {title}
       </span>
