@@ -5,26 +5,19 @@ import { toast } from "react-hot-toast";
 import { useOwnedShipsWeb2 } from "../hooks/useOwnedShipsWeb2";
 import { useShipAttributesByIdsWeb2 } from "../hooks/useShipAttributesByIdsWeb2";
 import { useFleetPlacementWeb2 } from "../hooks/useFleetPlacement";
-import { useNavyFilterState } from "../hooks/useNavyFilterState";
 import { useRoguelikeCampaignWeb2, useRoguelikeMatchWeb2 } from "../hooks/useRoguelikeWeb2";
 import { buildFleetShipListItemsWeb2 } from "../utils/buildFleetShipListItemsWeb2";
 import {
   navyFilterSecondaryOptionsWeb2,
   filterAndSortShipsWeb2,
 } from "../utils/navyFiltersWeb2";
-import type { NavyFilterCategory } from "../utils/navyFilters";
-import { FleetShipListPanel } from "./FleetShipListPanel";
 import {
   BuyPremiumPacksButton,
-  EmptyHangar,
   FLEET_HEADER_ACTION_CLASS,
   FleetBriefing,
   fleetBriefingStep,
 } from "./FleetBriefing";
 import { FreeShipsClaimAction, useFreeShipsClaim } from "./FreeShipsClaimAction";
-import { NavyFilterToolbar } from "./NavyFilterToolbar";
-import { ManageNavyShipsCountHeading } from "./ManageNavyShipsCountHeading";
-import { NavyPagination } from "./NavyPagination";
 import { DUPLICATE_SHIP_ID_TOAST, hasDuplicateShipIds } from "../utils/fleetShipIds";
 import {
   MIN_CONSTRUCTED_SHIPS_FOR_RUN,
@@ -32,9 +25,7 @@ import {
   isRunEligibleConstructedShip,
 } from "../utils/roguelikeRunRequirements";
 import { constructAllShipsWeb2 } from "../utils/constructShipsWeb2";
-import { RoguelikeFleetSelectScreen } from "./operations/RoguelikeFleetSelectScreen";
-
-const SHIPS_PER_PAGE = 100;
+import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
 
 const DEFAULT_ROGUELIKE_CAMPAIGN_ID = 1;
 
@@ -68,53 +59,23 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
     requiredVariant,
   });
 
-  const variantScopedShips = React.useMemo(
-    () =>
-      fleet.lockedVariant != null
-        ? fleet.ships.filter((s) => s.traits.variant === fleet.lockedVariant)
-        : fleet.ships,
-    [fleet.ships, fleet.lockedVariant],
-  );
-
-  const filterState = useNavyFilterState(SHIPS_PER_PAGE);
-  const getNavyFilterSecondaryOptions = React.useCallback(
-    (category: NavyFilterCategory) => navyFilterSecondaryOptionsWeb2(category, variantScopedShips),
-    [variantScopedShips],
-  );
-
-  const filteredAndSortedShips = React.useMemo(
-    () =>
-      filterAndSortShipsWeb2(
-        variantScopedShips,
-        filterState.activeFilters,
-        filterState.sortBy,
-        filterState.sortOrder,
-        new Set(),
-      ),
-    [variantScopedShips, filterState.activeFilters, filterState.sortBy, filterState.sortOrder],
-  );
-  const paginatedShips = React.useMemo(
-    () => filterState.paginate(filteredAndSortedShips),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filteredAndSortedShips, filterState.page],
-  );
-
   const shipIdsForAttributes = React.useMemo(() => fleet.ships.map((s) => s.id), [fleet.ships]);
   const { attributesByShipId, isLoading: attributesLoading } =
     useShipAttributesByIdsWeb2(shipIdsForAttributes);
 
-  const shipListItems = buildFleetShipListItemsWeb2({
-    ships: paginatedShips,
-    selectedShips: fleet.selectedShips,
-    addShip: fleet.addShip,
-    removeShip: fleet.removeShip,
-    setDraggedShipId: fleet.setDraggedShipId,
-    setDragOverPosition: fleet.setDragOverPosition,
-    attributesMap: attributesByShipId,
-    attributesLoading,
-    showInGameProperties: true,
-    flipShips: false,
-  });
+  const buildItems = (pageShips: typeof fleet.ships) =>
+    buildFleetShipListItemsWeb2({
+      ships: pageShips,
+      selectedShips: fleet.selectedShips,
+      addShip: fleet.addShip,
+      removeShip: fleet.removeShip,
+      setDraggedShipId: fleet.setDraggedShipId,
+      setDragOverPosition: fleet.setDragOverPosition,
+      attributesMap: attributesByShipId,
+      attributesLoading,
+      showInGameProperties: true,
+      flipShips: false,
+    });
 
   const isOverCap = fleet.totalCost > costLimit && costLimit > 0;
 
@@ -200,7 +161,7 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
       });
 
   return (
-    <RoguelikeFleetSelectScreen
+    <RoguelikeFleetPicker
       title="[SELECT YOUR FLEET]"
       headerAction={
         step === "claim" ? (
@@ -251,65 +212,13 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
           />
         ) : null
       }
-      filterToolbar={
-        <NavyFilterToolbar
-          activeFilters={filterState.activeFilters}
-          onRemoveFilter={filterState.removeFilterById}
-          onClearFilters={filterState.clearFilters}
-          sortBy={filterState.sortBy}
-          onSortByChange={filterState.setSortBy}
-          sortOrder={filterState.sortOrder}
-          onToggleSortOrder={() =>
-            filterState.setSortOrder(filterState.sortOrder === "asc" ? "desc" : "asc")
-          }
-          showFilterWindow={filterState.showFilterWindow}
-          onOpenFilterWindow={(anchor) => {
-            filterState.setFilterWindowAnchor(anchor);
-            filterState.setShowFilterWindow(true);
-          }}
-          onCloseFilterWindow={() => filterState.setShowFilterWindow(false)}
-          filterWindowAnchor={filterState.filterWindowAnchor}
-          draftCategory={filterState.draftCategory}
-          getSecondaryOptions={getNavyFilterSecondaryOptions}
-          onSelectCategory={(category) =>
-            filterState.selectDraftCategory(category, getNavyFilterSecondaryOptions)
-          }
-          onToggleFilterValue={filterState.toggleFilterValue}
-          onSetThreatFilter={filterState.setThreatFilter}
-          onSetDraftValue={filterState.setDraftValue}
-        />
-      }
-      countHeading={
-        <ManageNavyShipsCountHeading
-          shownCount={filteredAndSortedShips.length}
-          totalCount={fleet.ships.length}
-          perPage={SHIPS_PER_PAGE}
-          page={filterState.page}
-        />
-      }
-      pagination={
-        filteredAndSortedShips.length > SHIPS_PER_PAGE ? (
-          <NavyPagination
-            page={filterState.page}
-            pageCount={filterState.pageCount(filteredAndSortedShips.length)}
-            onPrev={filterState.prevPage}
-            onNext={() => filterState.nextPage(filteredAndSortedShips.length)}
-          />
-        ) : null
-      }
-      list={
-        shipsLoading ? (
-          <p className="text-sm text-text-muted">Loading your ships…</p>
-        ) : ships.length === 0 ? (
-          <EmptyHangar />
-        ) : (
-          <FleetShipListPanel
-            widthClass="w-full"
-            items={shipListItems}
-            gridColsClassName="grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
-          />
-        )
-      }
+      ships={fleet.ships}
+      lockedVariant={fleet.lockedVariant}
+      isLoading={shipsLoading}
+      isEmpty={ships.length === 0}
+      filterAndSort={filterAndSortShipsWeb2}
+      secondaryOptions={navyFilterSecondaryOptionsWeb2}
+      buildItems={buildItems}
     />
   );
 }

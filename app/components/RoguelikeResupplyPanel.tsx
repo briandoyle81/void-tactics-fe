@@ -10,18 +10,13 @@ import { TransactionButton } from "./TransactionButton";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useFleetShipAttributes } from "../hooks/useFleetShipAttributes";
 import { useFleetPlacement } from "../hooks/useFleetPlacement";
-import { useNavyFilterState } from "../hooks/useNavyFilterState";
 import { useRoguelikeRunView } from "../hooks/useGameLens";
 import { useRepairCostPerHP, useRoguelikeResupply, ROGUELIKE_RESUPPLY_ADDRESS } from "../hooks/useRoguelikeResupply";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import { RoguelikeRun, RoguelikeNode } from "../types/roguelike";
 import { DUPLICATE_SHIP_ID_TOAST, hasDuplicateShipIds } from "../utils/fleetShipIds";
 import { buildFleetShipListItems } from "../utils/buildFleetShipListItems";
-import {
-  filterAndSortShips,
-  navyFilterSecondaryOptions,
-  type NavyFilterCategory,
-} from "../utils/navyFilters";
+import { filterAndSortShips, navyFilterSecondaryOptions } from "../utils/navyFilters";
 import { currentHullFromOnchainRosterHp, overlayHullPoints } from "../utils/rosterHull";
 import {
   isResupplyCandidate,
@@ -29,15 +24,9 @@ import {
   resupplyCostLimit,
   rosterModifyDiff,
 } from "../utils/resupplyFleet";
-import { FleetShipListPanel } from "./FleetShipListPanel";
-import { NavyFilterToolbar } from "./NavyFilterToolbar";
-import { ManageNavyShipsCountHeading } from "./ManageNavyShipsCountHeading";
-import { NavyPagination } from "./NavyPagination";
-import { EmptyHangar, FLEET_HEADER_ACTION_CLASS } from "./FleetBriefing";
+import { FLEET_HEADER_ACTION_CLASS } from "./FleetBriefing";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
-import { RoguelikeFleetSelectScreen } from "./operations/RoguelikeFleetSelectScreen";
-
-const SHIPS_PER_PAGE = 100;
+import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
 
 const UTC_APPROVE_ABI = [
   {
@@ -59,9 +48,10 @@ interface RoguelikeResupplyPanelProps {
 }
 
 /**
- * Resupply uses the same hangar picker as run start (RoguelikeRunStart):
- * select ships, see used/max points, confirm. Cards show live roster hull
- * and the cost cap is the node's new maximum.
+ * Resupply uses the same fleet picker as run start (RoguelikeFleetPicker,
+ * shared with RoguelikeRunStart): select ships, see used/max points,
+ * confirm. Roster ships' cards show their live run hull and an HP bar, and
+ * the cost cap is the node's new maximum.
  */
 export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyPanelProps) {
   const { address } = useAccount();
@@ -112,36 +102,6 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
   );
   useSeedCombatRoster(fleet, rosterShips);
 
-  const variantScopedShips = React.useMemo(
-    () =>
-      fleet.lockedVariant != null
-        ? fleet.ships.filter((s) => s.traits.variant === fleet.lockedVariant)
-        : fleet.ships,
-    [fleet.ships, fleet.lockedVariant],
-  );
-
-  const filterState = useNavyFilterState(SHIPS_PER_PAGE);
-  const getNavyFilterSecondaryOptions = React.useCallback(
-    (category: NavyFilterCategory) => navyFilterSecondaryOptions(category, variantScopedShips),
-    [variantScopedShips],
-  );
-  const filteredAndSortedShips = React.useMemo(
-    () =>
-      filterAndSortShips(
-        variantScopedShips,
-        filterState.activeFilters,
-        filterState.sortBy,
-        filterState.sortOrder,
-        new Set(),
-      ),
-    [variantScopedShips, filterState.activeFilters, filterState.sortBy, filterState.sortOrder],
-  );
-  const paginatedShips = React.useMemo(
-    () => filterState.paginate(filteredAndSortedShips),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filteredAndSortedShips, filterState.page],
-  );
-
   const shipIdsForAttributes = React.useMemo(() => fleet.ships.map((s) => s.id), [fleet.ships]);
   const { attributesMap, attributesLoading } = useFleetShipAttributes(
     shipIdsForAttributes,
@@ -160,18 +120,20 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
     [attributesMap, hpByShipId, rosterIdSet],
   );
 
-  const shipListItems = buildFleetShipListItems({
-    ships: paginatedShips,
-    selectedShips: fleet.selectedShips,
-    addShip: fleet.addShip,
-    removeShip: fleet.removeShip,
-    setDraggedShipId: fleet.setDraggedShipId,
-    setDragOverPosition: fleet.setDragOverPosition,
-    attributesMap: attributesWithRosterHull,
-    attributesLoading,
-    showInGameProperties: true,
-    flipShips: false,
-  });
+  // Roster ships carry their live run hull, so their cards show it and an HP bar.
+  const buildItems = (pageShips: typeof fleet.ships) =>
+    buildFleetShipListItems({
+      ships: pageShips,
+      selectedShips: fleet.selectedShips,
+      addShip: fleet.addShip,
+      removeShip: fleet.removeShip,
+      setDraggedShipId: fleet.setDraggedShipId,
+      setDragOverPosition: fleet.setDragOverPosition,
+      attributesMap: attributesWithRosterHull,
+      attributesLoading,
+      showInGameProperties: true,
+      flipShips: false,
+    });
 
   const isOverCap = fleet.totalCost > costLimit && costLimit > 0;
   const rosterValid = fleet.selectedShips.length > 0 && !isOverCap;
@@ -265,7 +227,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
   };
 
   return (
-    <RoguelikeFleetSelectScreen
+    <RoguelikeFleetPicker
       title="[SELECT YOUR FLEET]"
       headerAction={
         <button
@@ -345,65 +307,13 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
           </div>
         ) : null
       }
-      filterToolbar={
-        <NavyFilterToolbar
-          activeFilters={filterState.activeFilters}
-          onRemoveFilter={filterState.removeFilterById}
-          onClearFilters={filterState.clearFilters}
-          sortBy={filterState.sortBy}
-          onSortByChange={filterState.setSortBy}
-          sortOrder={filterState.sortOrder}
-          onToggleSortOrder={() =>
-            filterState.setSortOrder(filterState.sortOrder === "asc" ? "desc" : "asc")
-          }
-          showFilterWindow={filterState.showFilterWindow}
-          onOpenFilterWindow={(anchor) => {
-            filterState.setFilterWindowAnchor(anchor);
-            filterState.setShowFilterWindow(true);
-          }}
-          onCloseFilterWindow={() => filterState.setShowFilterWindow(false)}
-          filterWindowAnchor={filterState.filterWindowAnchor}
-          draftCategory={filterState.draftCategory}
-          getSecondaryOptions={getNavyFilterSecondaryOptions}
-          onSelectCategory={(category) =>
-            filterState.selectDraftCategory(category, getNavyFilterSecondaryOptions)
-          }
-          onToggleFilterValue={filterState.toggleFilterValue}
-          onSetThreatFilter={filterState.setThreatFilter}
-          onSetDraftValue={filterState.setDraftValue}
-        />
-      }
-      countHeading={
-        <ManageNavyShipsCountHeading
-          shownCount={filteredAndSortedShips.length}
-          totalCount={fleet.ships.length}
-          perPage={SHIPS_PER_PAGE}
-          page={filterState.page}
-        />
-      }
-      pagination={
-        filteredAndSortedShips.length > SHIPS_PER_PAGE ? (
-          <NavyPagination
-            page={filterState.page}
-            pageCount={filterState.pageCount(filteredAndSortedShips.length)}
-            onPrev={filterState.prevPage}
-            onNext={() => filterState.nextPage(filteredAndSortedShips.length)}
-          />
-        ) : null
-      }
-      list={
-        shipsLoading ? (
-          <p className="text-sm text-text-muted">Loading your ships…</p>
-        ) : selectableShips.length === 0 ? (
-          <EmptyHangar />
-        ) : (
-          <FleetShipListPanel
-            widthClass="w-full"
-            items={shipListItems}
-            gridColsClassName="grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
-          />
-        )
-      }
+      ships={fleet.ships}
+      lockedVariant={fleet.lockedVariant}
+      isLoading={shipsLoading}
+      isEmpty={selectableShips.length === 0}
+      filterAndSort={filterAndSortShips}
+      secondaryOptions={navyFilterSecondaryOptions}
+      buildItems={buildItems}
     />
   );
 }
