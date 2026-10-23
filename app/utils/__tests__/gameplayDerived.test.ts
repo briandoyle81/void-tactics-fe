@@ -111,12 +111,9 @@ const gridArgs = {
   gridWidth: 5,
   gridHeight: 4,
   aliveShipPositions: [pos(1, 1, 1), pos(2, 2, 3)],
-  allShipPositions: [pos(1, 1, 1), pos(2, 2, 3), pos(3, 0, 4, 1)],
   selectedShipId: null,
   previewPosition: null,
   hidePreview: false,
-  lastMove: null,
-  showLastMove: false,
 };
 
 describe("buildDisplayGrid", () => {
@@ -130,21 +127,5 @@ describe("buildDisplayGrid", () => {
     const staged = { ...gridArgs, selectedShipId: 1, previewPosition: { row: 3, col: 0 } };
     expect(buildDisplayGrid(staged)[3][0]).toMatchObject({ shipId: 1, isPreview: true });
     expect(buildDisplayGrid({ ...staged, hidePreview: true })[3][0]).toBeNull();
-  });
-  it("shows the last move's ghost at its old tile and its destroyed target", () => {
-    const grid = buildDisplayGrid({
-      ...gridArgs,
-      lastMove: { shipId: 2, oldRow: 3, oldCol: 3, actionType: ActionType.Shoot, targetShipId: 3 },
-      showLastMove: true,
-    });
-    expect(grid[3][3]).toMatchObject({ shipId: 2, isPreview: true });
-    expect(grid[0][4]).toMatchObject({ shipId: 3, status: 1 });
-  });
-  it("draws no ghost when the ship didn't move, or when the last move is hidden", () => {
-    const held = { shipId: 2, oldRow: 2, oldCol: 3, actionType: ActionType.Pass, targetShipId: 0 };
-    const grid = buildDisplayGrid({ ...gridArgs, lastMove: held, showLastMove: true });
-    expect(grid.flat().filter((c) => c?.isPreview)).toHaveLength(0);
-    const moved = { ...held, oldRow: 3 };
-    expect(buildDisplayGrid({ ...gridArgs, lastMove: moved, showLastMove: false })[3][3]).toBeNull();
   });
 });

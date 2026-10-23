@@ -42,7 +42,7 @@ export function usePendingMove({
       keyRef.current += 1;
       const move = buildPendingMove({ ...params, key: keyRef.current, phase: "signing" });
       setPendingMove(move);
-      return move.key;
+      return move;
     },
     [],
   );

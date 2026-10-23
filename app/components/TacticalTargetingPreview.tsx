@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActionType, Attributes, GRID_DIMENSIONS, Ship } from "../types/types";
 import { GridShipPosition } from "../types/gridDisplay";
-import type { Web2LastMove } from "../types/web2Game";
 import { generateRandomShip } from "../utils/generateRandomShip";
 import { calculateAttributesFromContracts } from "../utils/shipAttributesCalculator";
 import { toGameplayShip, toGridShip } from "../utils/toGridDisplay";
@@ -21,6 +20,8 @@ import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
 import { GameBoardLayout } from "./GameBoardLayout";
 import { useInView } from "../hooks/useInView";
 import { usePageVisible } from "../hooks/usePageVisible";
+import { useMovePlayback } from "../hooks/useMovePlayback";
+import { landShipPositions } from "../utils/movePlaybackBoard";
 
 // Info-page replacement for missile-clip.gif: a small, non-interactive
 // autoplay loop built from the SAME real components/state machine the
@@ -121,16 +122,6 @@ const COMMITTED_POSITIONS: GridShipPosition[] = POSITIONS.map((p) =>
   p.shipId === ALLY_ID ? { ...p, position: ALLY_DEST } : p,
 );
 
-const DEMO_LAST_MOVE: Web2LastMove = {
-  shipId: ALLY_ID,
-  oldRow: ALLY_START.row,
-  oldCol: ALLY_START.col,
-  newRow: ALLY_DEST.row,
-  newCol: ALLY_DEST.col,
-  actionType: ActionType.Shoot,
-  targetShipId: ENEMY_ID,
-  timestamp: 0,
-};
 
 const COMMITTED_MOVED_SET = new Set<number>([ALLY_ID]);
 
@@ -147,8 +138,9 @@ const DEMO_MAP_GRIDS = buildMapGridsFromContractMap(
   HERO_DEMO_IMPASSABLE,
 );
 
-// select ship -> propose move -> lock target -> last-move replay -> reset
-const PHASE_DURATIONS = [1000, 1000, 1600, 1800, 2600];
+// select ship -> propose move -> lock target -> the move plays back -> reset.
+// The last phase covers the slide and one laser volley, then the result.
+const PHASE_DURATIONS = [1000, 1000, 1600, 1800, 3400];
 // Fire is "clicked" this long into the lock-target phase, before the shot.
 const FIRE_CLICK_MS = 1200;
 
@@ -302,20 +294,47 @@ export function TacticalTargetingPreview() {
 
   const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid } = DEMO_MAP_GRIDS;
 
+  // The submitted move plays back (useMovePlayback): the ally slides to its
+  // tile and fires once, then the board shows the hit.
   const showLastMove = phase === 4;
+  const playback = useMovePlayback();
+  const { enqueue: enqueuePlayback, reset: resetPlayback } = playback;
+  const demoCycleRef = useRef(0);
+  useEffect(() => {
+    if (!showLastMove) {
+      resetPlayback();
+      return;
+    }
+    demoCycleRef.current += 1;
+    enqueuePlayback([
+      {
+        key: `demo:${demoCycleRef.current}`,
+        shipId: ALLY_ID,
+        from: ALLY_START,
+        to: ALLY_DEST,
+        actionType: ActionType.Shoot,
+        targetShipId: ENEMY_ID,
+      },
+    ]);
+  }, [showLastMove, enqueuePlayback, resetPlayback]);
+  const showResult = showLastMove && !playback.isPlaying;
+  const gridPlayback = useMemo(
+    () => ({ active: playback.active, onPhaseDone: playback.advance }),
+    [playback.active, playback.advance],
+  );
 
   const attributesById = useMemo(() => {
     const map = new Map<number, Attributes>();
     if (ships) {
       map.set(ALLY_ID, ships.allyAttrs);
-      map.set(ENEMY_ID, showLastMove ? ships.enemyHitAttrs : ships.enemyAttrs);
+      map.set(ENEMY_ID, showResult ? ships.enemyHitAttrs : ships.enemyAttrs);
       map.set(BG_ALLY_1_ID, ships.bgAlly1Attrs);
       map.set(BG_ALLY_2_ID, ships.bgAlly2Attrs);
       map.set(BG_ENEMY_1_ID, ships.bgEnemy1Attrs);
       map.set(BG_ENEMY_2_ID, ships.bgEnemy2Attrs);
     }
     return map;
-  }, [ships, showLastMove]);
+  }, [ships, showResult]);
   const getShipAttributes = useCallback(
     (shipId: number) => attributesById.get(shipId) ?? null,
     [attributesById],
@@ -352,9 +371,18 @@ export function TacticalTargetingPreview() {
     return map;
   }, [ships]);
 
-  const shipPositions = showLastMove ? COMMITTED_POSITIONS : POSITIONS;
-  const demoLastMove = showLastMove ? DEMO_LAST_MOVE : null;
-  const movedShipIdsSet = showLastMove ? COMMITTED_MOVED_SET : EMPTY_MOVED_SET;
+  // While it plays, the board is the one from before the move; the ally
+  // reaches its tile as the slide ends (landShipPositions).
+  const shipPositions = useMemo(
+    () =>
+      showResult
+        ? COMMITTED_POSITIONS
+        : showLastMove
+          ? landShipPositions(POSITIONS, playback.landed, playback.active?.move.key ?? null)
+          : POSITIONS,
+    [showResult, showLastMove, playback.landed, playback.active],
+  );
+  const movedShipIdsSet = showResult ? COMMITTED_MOVED_SET : EMPTY_MOVED_SET;
 
   const interaction = useGameplayInteraction({
     gridWidth: GRID_WIDTH,
@@ -371,7 +399,6 @@ export function TacticalTargetingPreview() {
     isSubmitting: false,
     blockedGrid,
     impassableGrid,
-    lastMove: demoLastMove,
     selectedShipId: showLastMove ? null : selectedShipId,
     setSelectedShipId,
     draggedShipId,
@@ -489,31 +516,7 @@ export function TacticalTargetingPreview() {
             isCurrentPlayerTurn={true}
             isShipOwnedByCurrentPlayer={interaction.isShipOwnedByCurrentPlayer}
             movedShipIdsSet={movedShipIdsSet}
-            lastMoveShipId={showLastMove ? DEMO_LAST_MOVE.shipId : null}
-            lastMoveOldPosition={
-              showLastMove
-                ? { row: DEMO_LAST_MOVE.oldRow, col: DEMO_LAST_MOVE.oldCol }
-                : null
-            }
-            lastMoveNewPosition={
-              showLastMove
-                ? { row: DEMO_LAST_MOVE.newRow, col: DEMO_LAST_MOVE.newCol }
-                : null
-            }
-            lastMoveResolvedTo={
-              showLastMove
-                ? {
-                    shipId: DEMO_LAST_MOVE.shipId,
-                    row: DEMO_LAST_MOVE.newRow,
-                    col: DEMO_LAST_MOVE.newCol,
-                  }
-                : null
-            }
-            lastMoveActionType={showLastMove ? DEMO_LAST_MOVE.actionType : null}
-            lastMoveTargetShipId={
-              showLastMove ? DEMO_LAST_MOVE.targetShipId : null
-            }
-            lastMoveIsCurrentPlayer={showLastMove ? true : undefined}
+            playback={gridPlayback}
             specialType={interaction.specialType}
             specialRange={interaction.specialRange}
             blockedGrid={blockedGrid}

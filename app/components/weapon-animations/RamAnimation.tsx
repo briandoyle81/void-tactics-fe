@@ -8,13 +8,12 @@ import { takeFirstPlay } from "./playOnce";
 import { useWeaponSoundsMuted } from "./weaponSounds";
 import { cellCenterOnGrid, gridLayoutSize } from "./gridLayout";
 
-// Last-move effect for a Ram (variant 1's FactionAbility): the rammer's
-// charge streaks from where it started to the victim's tile, a flash and
-// sparks mark the impact, and the victim tumbles off the board away from
-// the rammer (it fled, it wasn't destroyed). The rammer itself is drawn by
-// its grid cell, which already shows it on the victim's tile (see
-// ramLastMove.ts). Loops while the last move is on screen, like the shot
-// effects; the crash sound and a board shake happen once per ram
+// A Ram (variant 1's FactionAbility) as it plays back (MovePlaybackLayer):
+// the rammer's charge streaks from where it started to the victim's tile, a
+// flash and sparks mark the impact, and the victim tumbles off the board
+// away from the rammer (it fled, it wasn't destroyed). The rammer itself has
+// just slid onto the victim's tile (boardMoveFromRaw). Playback runs one
+// cycle (.weapon-once); the crash sound and a board shake happen once per ram
 // (remembered for the browser session, so a refresh doesn't replay them).
 // Keyframes are in globals.css (ram-*); prefers-reduced-motion leaves only
 // the flash.

@@ -3,8 +3,9 @@
 import React from "react";
 import { destroyedShipImage } from "../utils/shipRenderer/stateArt";
 import Image from "next/image";
-import { Attributes, ActionType } from "../types/types";
+import { Attributes } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
+import { useMovePlaybackContext } from "./MovePlaybackContext";
 import { GridShipImage } from "./GridShipImage";
 import { calculateShipRank } from "../utils/shipLevel";
 import { setMirroredDragImage } from "../utils/dragShipImage";
@@ -100,18 +101,6 @@ interface GameGridCellProps {
   onlyOnceGrid: boolean[][];
   getShipAttributes: (shipId: number) => Attributes | null;
   address: string | undefined;
-  highlightedMovePosition?: Position | null;
-  lastMoveShipId?: number | null;
-  lastMoveOldPosition?: Position | null;
-  /** Real "did this move actually end up here" position — direct comparison
-   * target for the new-position tile highlight, rather than inferring "new"
-   * from "matches lastMoveShipId and isn't at old position" (that heuristic
-   * misfires on a leftover ghost cell from an earlier, already-superseded
-   * move — see isLastMoveNewPosition's doc for the failure mode). */
-  lastMoveNewPosition?: Position | null;
-  lastMoveActionType?: ActionType | null;
-  lastMoveTargetShipId?: number | null;
-  lastMoveIsCurrentPlayer?: boolean | undefined;
   isRammingMovePreview?: boolean;
   /** Staged hold: preview sits on the selected ship's current tile. */
   isHoldPreviewActive?: boolean;
@@ -130,7 +119,6 @@ interface GameGridCellProps {
   validTargetIdSet: Set<number>;
   assistableTargetIdSet: Set<number>;
   assistableTargetsFromStartIdSet: Set<number>;
-  lastMoveActionNum: number;
   projectedDamageByShipId: Map<number, number>;
   projectedRepairByShipId: Map<number, number>;
   destroyPreviewShipIds: Set<number>;
@@ -185,14 +173,6 @@ export const GameGridCell = React.memo(function GameGridCell({
   scoringGrid,
   onlyOnceGrid,
   getShipAttributes,
-  address,
-  highlightedMovePosition,
-  lastMoveShipId,
-  lastMoveOldPosition,
-  lastMoveNewPosition,
-  lastMoveActionType,
-  lastMoveTargetShipId,
-  lastMoveIsCurrentPlayer,
   isRammingMovePreview = false,
   isHoldPreviewActive = false,
   factionAbilityIsHeal = false,
@@ -209,7 +189,6 @@ export const GameGridCell = React.memo(function GameGridCell({
   validTargetIdSet,
   assistableTargetIdSet,
   assistableTargetsFromStartIdSet,
-  lastMoveActionNum,
   projectedDamageByShipId,
   projectedRepairByShipId,
   destroyPreviewShipIds,
@@ -228,30 +207,21 @@ export const GameGridCell = React.memo(function GameGridCell({
   setHoveredMoveTile,
   moveHoverDisabled,
 }: GameGridCellProps) {
+                const { hiddenShipIds: playbackHiddenShipIds } = useMovePlaybackContext();
                 const ship = cell ? shipMap.get(cell.shipId) : null;
                 const cellStatus = cell?.status ?? 0;
                 const isCellDestroyed = cellStatus === 1;
                 const isCellFled = cellStatus === 2;
-                const isLastMoveDestroyedTargetCell =
-                  !!cell &&
-                  isCellDestroyed &&
-                  lastMoveTargetShipId != null &&
-                  cell.shipId === lastMoveTargetShipId;
-                const isLastMoveAttackTargetCell =
-                  !!cell &&
-                  lastMoveTargetShipId != null &&
-                  cell.shipId === lastMoveTargetShipId &&
-                  (lastMoveActionNum === ActionType.Shoot ||
-                    lastMoveActionNum === ActionType.Special ||
-                    lastMoveActionNum === ActionType.FactionAbility);
+                // A ship sliding or fleeing as its move plays back is drawn by
+                // MovePlaybackLayer, not its cell.
+                const isPlaybackHidden = !!cell && playbackHiddenShipIds.has(cell.shipId);
                 const shouldRenderShipContent =
-                  !!cell && !isCellFled && (!isCellDestroyed || isLastMoveDestroyedTargetCell);
+                  !!cell &&
+                  !isCellFled &&
+                  !isPlaybackHidden &&
+                  !isCellDestroyed;
                 const isSelected = selectedShipId === cell?.shipId;
                 const isMovementTile = movementTileSet.has(`${rowIndex},${colIndex}`);
-                const isHighlightedMove =
-                  highlightedMovePosition &&
-                  highlightedMovePosition.row === rowIndex &&
-                  highlightedMovePosition.col === colIndex;
                 // Suppress base shooting range when drag/hover is active, or when RAM mode is
                 // selected (ram has no weapon range overlay — movement range shows instead).
                 const isShootingTile = !effectiveDragCell && selectedWeaponType !== "ram" &&
@@ -263,39 +233,13 @@ export const GameGridCell = React.memo(function GameGridCell({
 
                 // Check if this ship has already moved this round
                 const hasShipMoved = cell && movedShipIdsSet.has(cell.shipId);
-                // Compared directly against the real new-position coordinate
-                // rather than inferred as "matches lastMoveShipId and isn't
-                // the old-position cell" — that heuristic misfires when the
-                // grid still has a leftover ghost from an earlier, already-
-                // superseded move with the same shipId (e.g. right after a
-                // hold-and-fire submit, before game.lastMove itself has
-                // refetched), mislabeling that stale ghost as "new position"
-                // instead of correctly showing nothing extra.
-                const isLastMoveNewPosition =
-                  !!cell &&
-                  lastMoveShipId === cell.shipId &&
-                  lastMoveNewPosition != null &&
-                  rowIndex === lastMoveNewPosition.row &&
-                  colIndex === lastMoveNewPosition.col;
-                const isLastMoveOldPosition =
-                  !!cell &&
-                  lastMoveShipId === cell.shipId &&
-                  lastMoveOldPosition != null &&
-                  rowIndex === lastMoveOldPosition.row &&
-                  colIndex === lastMoveOldPosition.col;
-                // Two inverted states, same hologram language:
-                // preview: From is the live ship, To (and weapon fire) are holograms.
-                // last-move: From is the hologram, To is the live ship.
-                // Weapon fire always originates at To.
+                // A proposed move: From is the live ship, To (and weapon fire)
+                // are holograms. Weapon fire always originates at To.
                 const isProposedMoveToHologram =
                   !!cell &&
                   selectedShipId === cell.shipId &&
                   !!cell.isPreview &&
                   previewPosition != null;
-                const isLastMoveFromHologram =
-                  isLastMoveOldPosition &&
-                  !isLastMoveNewPosition &&
-                  lastMoveActionType !== ActionType.Retreat;
                 const isHoldPreview =
                   isHoldPreviewActive &&
                   !!cell &&
@@ -303,17 +247,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                   previewPosition != null &&
                   previewPosition.row === rowIndex &&
                   previewPosition.col === colIndex;
-                const isLastMoveHold =
-                  !!cell &&
-                  lastMoveShipId === cell.shipId &&
-                  lastMoveOldPosition != null &&
-                  lastMoveNewPosition != null &&
-                  lastMoveActionType !== ActionType.Retreat &&
-                  lastMoveOldPosition.row === lastMoveNewPosition.row &&
-                  lastMoveOldPosition.col === lastMoveNewPosition.col &&
-                  rowIndex === lastMoveNewPosition.row &&
-                  colIndex === lastMoveNewPosition.col;
-                const isHoldHologramPulse = isHoldPreview || isLastMoveHold;
+                const isHoldHologramPulse = isHoldPreview;
                 const isOptimisticSos =
                   !!cell &&
                   !destroyPreviewShipIds.has(cell.shipId) &&
@@ -327,16 +261,8 @@ export const GameGridCell = React.memo(function GameGridCell({
                 const isMoveHologramShip =
                   !!cell &&
                   !isHoldHologramPulse &&
-                  (isLastMoveFromHologram ||
-                    isProposedMoveToHologram ||
-                    isSosPreviewHologram);
-                // Last-move To keeps ship art/star color so the destination
-                // still reads as that ship. Last-move From is the hologram.
-                const showMovedGrayscale = !!(
-                  hasShipMoved &&
-                  !isLastMoveNewPosition &&
-                  !isLastMoveFromHologram
-                );
+                  (isProposedMoveToHologram || isSosPreviewHologram);
+                const showMovedGrayscale = !!hasShipMoved;
 
                 // Check if this cell contains a valid target
                 // When dragging, use dragValidTargets; otherwise use validTargets
@@ -709,17 +635,8 @@ export const GameGridCell = React.memo(function GameGridCell({
                   scoringGrid[rowIndex]?.[colIndex] ?? 0;
                 const isImpassableTile =
                   impassableGrid?.[rowIndex]?.[colIndex] === true;
-                // Real ship, move-preview ghost, or last-move ghost on a scoring zone
-                const hasShipLayerOnScoringTile =
-                  cell != null && scoringPoints > 0;
-                // Last-move "new position" highlight can sit on scoring before grid cell sync
-                const isLastMoveHighlightedOnScoring =
-                  highlightedMovePosition != null &&
-                  highlightedMovePosition.row === rowIndex &&
-                  highlightedMovePosition.col === colIndex &&
-                  scoringPoints > 0;
-                const showScoringOccupiedWash =
-                  hasShipLayerOnScoringTile || isLastMoveHighlightedOnScoring;
+                // Real ship or move-preview ghost on a scoring zone
+                const showScoringOccupiedWash = cell != null && scoringPoints > 0;
                 const isOnlyOnceScoringActive =
                   onlyOnceGrid[rowIndex][colIndex] && scoringPoints > 0;
                 const showOnlyOnceOccupiedWash =
@@ -785,22 +702,16 @@ export const GameGridCell = React.memo(function GameGridCell({
                         cell?.isPreview &&
                         previewPosition !== null &&
                         selectedShipId !== null;
-                      // Hold (same-tile): pulse hologram wash ↔ regular selected / last-move tile.
+                      // Hold (same-tile): pulse hologram wash ↔ regular selected tile.
                       if (isHoldHologramPulse && !isSelectedTarget && !isHidingDestinationPreview) {
-                        return isHoldPreview
-                          ? "hold-hologram-cell-preview"
-                          : "hold-hologram-cell-last-move";
+                        return "hold-hologram-cell-preview";
                       }
-                      // Preview To and last-move From: same green hologram wash.
-                      // Preview From stays the live selected tile.
-                      if (
-                        isLastMoveFromHologram ||
-                        (isProposedMovePreview && !isHidingDestinationPreview)
-                      ) {
+                      // Preview To: green hologram wash. Preview From stays the
+                      // live selected tile.
+                      if (isProposedMovePreview && !isHidingDestinationPreview) {
                         const baseBg = "bg-phosphor-green/20 ring-2 ring-inset ring-phosphor-green";
 
-                        // Last-move From is the hologram ghost of that mover, so keep the green wash.
-                        if (hasShipMoved && !isLastMoveFromHologram) {
+                        if (hasShipMoved) {
                           return "cursor-not-allowed";
                         }
                         if (isSelectedTarget) {
@@ -1037,11 +948,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                     {/* Movement range highlight */}
                     {isMovementTile && (
                       <div
-                        className={`absolute inset-0 z-[3] border-1 pointer-events-none ${
-                          isHighlightedMove
-                            ? "border-amber/50 bg-amber/20 animate-pulse"
-                            : "border-phosphor-green/50 bg-phosphor-green/10"
-                        }`}
+                        className="absolute inset-0 z-[3] border-1 pointer-events-none border-phosphor-green/50 bg-phosphor-green/10"
                       />
                     )}
 
@@ -1110,53 +1017,32 @@ export const GameGridCell = React.memo(function GameGridCell({
                       </>
                     )}
 
-                    {/* Critical hull glow effect for 0 HP ships (not last-move attack target; that uses team-colored border below) */}
+                    {/* Critical hull glow effect for 0 HP ships */}
                     {cell &&
                       (() => {
                         const attributes = getShipAttributes(cell.shipId);
                         const isLiveSos =
                           !!attributes && attributes.hullPoints === 0;
                         return isLiveSos || isOptimisticSos || isSosPreviewHologram;
-                      })() &&
-                      !isLastMoveAttackTargetCell && (
+                      })() && (
                         <div className="absolute inset-0 z-[5] border-2 border-warning-red bg-warning-red/10 pointer-events-none animate-pulse" />
-                      )}
-
-                    {/* Retreat last move: outline on the cell (blue = current player, red = opponent) */}
-                    {(lastMoveActionType as ActionType) ===
-                      ActionType.Retreat &&
-                      lastMoveOldPosition != null &&
-                      rowIndex === lastMoveOldPosition.row &&
-                      colIndex === lastMoveOldPosition.col && (
-                        <div
-                          className={`absolute inset-0 ring-4 border-2 border-dashed rounded-sm pointer-events-none z-20 ${
-                            lastMoveIsCurrentPlayer === true
-                              ? "ring-cyan border-cyan bg-cyan/20"
-                              : lastMoveIsCurrentPlayer === false
-                                ? "ring-warning-red border-warning-red bg-warning-red/20"
-                                : "ring-amber border-amber bg-amber/20"
-                          }`}
-                        />
                       )}
 
                     {cell &&
                       (() => {
                         const shouldPreviewDestroyedTarget =
                           destroyPreviewShipIds.has(cell.shipId);
-                        const shouldShowDestroyedArt =
-                          isLastMoveDestroyedTargetCell || shouldPreviewDestroyedTarget;
-                        if (!shouldShowDestroyedArt) return null;
+                        if (!shouldPreviewDestroyedTarget) return null;
                         // A staged kill is a prediction: the destroyed art as
                         // a hologram, in the same language as the preview To
                         // ship and the SOS preview. Solid once the shot is
-                        // submitted or the kill is the last move.
+                        // submitted.
                         const isDestroyHologram =
-                          !isLastMoveDestroyedTargetCell &&
                           !isSubmitting &&
                           destroyHologramShipIds.has(cell.shipId);
 
                         // Keep destroyed art above the ship stack (z-[16]) so it
-                        // remains visible in move preview and last-move states.
+                        // remains visible in move preview.
                         return (
                           <div
                             className={`absolute inset-0 z-[17] flex items-center justify-center pointer-events-none${
@@ -1165,11 +1051,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                           >
                             <img
                               src={destroyedShipImage(ship?.traits.variant)}
-                              alt={
-                                isLastMoveDestroyedTargetCell
-                                  ? "Destroyed ship"
-                                  : "Predicted destroyed target ship"
-                              }
+                              alt="Predicted destroyed target ship"
                               className={`w-[98%] h-[98%] object-contain${isDestroyHologram ? "" : " opacity-75"}`}
                               style={{
                                 transform: cell.isCreator
@@ -1181,7 +1063,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                         );
                       })()}
                     {/* Moved this round: grey veil under the ship, above scoring art. */}
-                    {cell && movedShipIdsSet.has(cell.shipId) && !isLastMoveFromHologram && (
+                    {cell && movedShipIdsSet.has(cell.shipId) && (
                       <div
                         className="absolute inset-0 z-[10] pointer-events-none bg-steel/60"
                         aria-hidden
@@ -1195,13 +1077,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                       <>
                       <div
                         className={`relative isolate z-20 h-full w-full${
-                          isHoldHologramPulse
-                            ? ""
-                            : isMoveHologramShip
-                              ? isLastMoveFromHologram
-                                ? " move-hologram move-hologram-steady"
-                                : " move-hologram"
-                              : ""
+                          isHoldHologramPulse ? "" : isMoveHologramShip ? " move-hologram" : ""
                         }`}
                         draggable={
                           isCurrentPlayerTurn &&
@@ -1314,68 +1190,17 @@ export const GameGridCell = React.memo(function GameGridCell({
                                 ? "[&_img]:scale-x-[-1]"
                                 : ""
                           } ${(() => {
-                            // Last move old position: hide ghost when showing Retreat zoom-off
-                            if (
-                              lastMoveShipId === cell.shipId &&
-                              lastMoveOldPosition &&
-                              rowIndex === lastMoveOldPosition.row &&
-                              colIndex === lastMoveOldPosition.col &&
-                              lastMoveActionType === ActionType.Retreat
-                            ) {
-                              return "opacity-0 pointer-events-none";
-                            }
-                            // Last-move From is the hologram ghost (full strength, matches preview To).
-                            // Last-move To and preview From stay full-color live ships.
-                            if (
-                              lastMoveShipId === cell.shipId &&
-                              lastMoveOldPosition &&
-                              rowIndex === lastMoveOldPosition.row &&
-                              colIndex === lastMoveOldPosition.col
-                            ) {
+                            // Proposed move preview (to position): 100% opacity
+                            if (cell.isPreview && previewPosition !== null && selectedShipId !== null) {
                               return "";
                             }
-
-                            // Last move new position: 100% opacity (no class = default 100%)
-                            if (
-                              lastMoveShipId &&
-                              lastMoveShipId === cell.shipId &&
-                              lastMoveOldPosition &&
-                              (rowIndex !== lastMoveOldPosition.row ||
-                                colIndex !== lastMoveOldPosition.col) &&
-                              !cell.isPreview
-                            ) {
-                              return ""; // No opacity class = 100% opacity
-                            }
-
-                            // Proposed move preview (to position): 100% opacity
-                            if (
-                              cell.isPreview &&
-                              previewPosition !== null &&
-                              selectedShipId !== null &&
-                              !(
-                                lastMoveShipId === cell.shipId &&
-                                lastMoveOldPosition &&
-                                rowIndex === lastMoveOldPosition.row &&
-                                colIndex === lastMoveOldPosition.col
-                              )
-                            ) {
-                              return ""; // No opacity class = 100% opacity
-                            }
-
-                            // Preview cells: animation only. Last-move From is a
-                            // steady hologram, not the 1s preview pulse.
-                            if (
-                              cell.isPreview &&
-                              !isLastMoveFromHologram &&
-                              !isHoldHologramPulse
-                            ) {
+                            // Other preview cells: the preview pulse.
+                            if (cell.isPreview && !isHoldHologramPulse) {
                               return "animate-pulse-preview";
                             }
-
                             return "";
                           })()}`;
-                          const shouldHideShipArt =
-                            isLastMoveDestroyedTargetCell || shouldPreviewDestroyedTarget;
+                          const shouldHideShipArt = shouldPreviewDestroyedTarget;
 
                           return (
                             <div
@@ -1566,16 +1391,10 @@ export const GameGridCell = React.memo(function GameGridCell({
                           const isProposedMovePreview =
                             cell.isPreview &&
                             previewPosition !== null &&
-                            selectedShipId !== null &&
-                            !(
-                              lastMoveShipId === cell.shipId &&
-                              lastMoveOldPosition &&
-                              rowIndex === lastMoveOldPosition.row &&
-                              colIndex === lastMoveOldPosition.col
-                            );
+                            selectedShipId !== null;
 
                           let teamPulseClasses = "";
-                          if (isProposedMovePreview || isLastMoveFromHologram) {
+                          if (isProposedMovePreview) {
                             teamPulseClasses = "";
                           } else if (cell.isPreview) {
                             teamPulseClasses = "animate-pulse-preview";
@@ -1655,33 +1474,14 @@ export const GameGridCell = React.memo(function GameGridCell({
                           const isProposedMovePreview =
                             isPreviewCell &&
                             previewPosition !== null &&
-                            selectedShipId !== null &&
-                            !isLastMoveOldPosition;
+                            selectedShipId !== null;
 
-                          const shouldShowBorder =
-                            isPreviewCell ||
-                            isLastMoveOldPosition ||
-                            isLastMoveNewPosition ||
-                            isLastMoveAttackTargetCell;
-
-                          if (!shouldShowBorder) return null;
+                          if (!isPreviewCell) return null;
 
                           // Preview To: solid green hologram. Preview From has no extra border
-                          // (live selected tile). Last-move From: dashed hologram. Last-move To: solid team.
-                          const isDashed =
-                            isLastMoveOldPosition && !isLastMoveAttackTargetCell;
-                          // Don't animate "from" position, new position of last move, or last move old position
-                          const shouldAnimate =
-                            isPreviewCell &&
-                            !isProposedMovePreview &&
-                            !isLastMoveOldPosition;
-
-                          // Explicitly ensure proposed move previews are solid
-                          const borderStyle = isProposedMovePreview
-                            ? "border-solid"
-                            : isDashed
-                              ? "border-dashed"
-                              : "border-solid";
+                          // (live selected tile).
+                          const shouldAnimate = !isProposedMovePreview;
+                          const borderStyle = "border-solid";
 
                           // Make proposed move preview borders thicker
                           const borderWidth = isProposedMovePreview
@@ -1697,26 +1497,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                                 : "animate-pulse-original"
                               : "";
 
-                          // Last move outline: mover old/new tiles use the moving ship's team (viewer =
-                          // current player). Attack/special *target* tile uses the *target* ship's team
-                          // so a shot into an enemy cell stays red and a shot into your ship stays blue.
-                          const isLastMoveCell =
-                            isLastMoveOldPosition || isLastMoveNewPosition;
-                          const borderColor = isProposedMovePreview || isLastMoveFromHologram
-                            ? "border-phosphor-green"
-                            : isLastMoveAttackTargetCell
-                            ? !address
-                              ? "border-amber"
-                              : isShipOwnedByCurrentPlayer(cell.shipId)
-                                ? "border-cyan"
-                                : "border-warning-red"
-                            : isLastMoveCell
-                              ? lastMoveIsCurrentPlayer === true
-                                ? "border-cyan"
-                                : lastMoveIsCurrentPlayer === false
-                                  ? "border-warning-red"
-                                  : "border-amber"
-                              : "border-amber";
+                          const borderColor = isProposedMovePreview ? "border-phosphor-green" : "border-amber";
 
                           return (
                             <div

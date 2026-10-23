@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import { useRoguelikeMatch } from "./useRoguelikeMatch";
 import { refetchUntilChanged } from "../utils/refetchUntilChanged";
+import { dispatchGameMoves, moveLogsFromReceipt } from "../utils/gameMoveLogs";
 import { trackAITurnFailed } from "../utils/analytics/gameEvents";
 
 // Parallel to useAITurnLoop.ts (SinglePlayerMatch), calling
@@ -71,7 +72,10 @@ export function useRoguelikeAITurnLoop({
       (batchMoves > 1 ? takeAITurns(gameId, batchMoves) : takeAITurn(gameId))
         .then(async (hash) => {
           if (publicClient) {
-            await publicClient.waitForTransactionReceipt({ hash });
+            const receipt = await publicClient.waitForTransactionReceipt({ hash });
+            // Each AI move in this transaction plays back on the board, in
+            // order, without waiting for the event poll (gameMoveLogs.ts).
+            dispatchGameMoves(moveLogsFromReceipt(receipt.logs));
           }
           setMoveCount((c) => c + 1);
           // Not awaited: the loop moves on as soon as fresh state lands

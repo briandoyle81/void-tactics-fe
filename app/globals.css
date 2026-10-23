@@ -1458,6 +1458,13 @@ select:focus {
   mix-blend-mode: screen;
 }
 
+/* A move playing back fires its weapon once (MovePlaybackLayer): CSS-looped
+   effects inside (repair drones, the ram) run one cycle and stop. */
+.weapon-once,
+.weapon-once * {
+  animation-iteration-count: 1 !important;
+}
+
 .weapon-hologram {
   filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(7) brightness(1.25)
     drop-shadow(0 0 2px var(--color-phosphor-green))

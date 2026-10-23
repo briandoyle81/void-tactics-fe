@@ -24,8 +24,7 @@ import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataVi
 import { useDamageCalculation } from "../hooks/useDamageCalculation";
 import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
 import { usePendingMove } from "../hooks/usePendingMove";
-import { applyPendingMoveToGame, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
-import { lastMoveEndPosition } from "../utils/ramLastMove";
+import { applyPendingMoveToGame, boardMoveFromPending, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
 import { RoundStartModal } from "./RoundStartModal";
 import { useOpeningLineReport } from "./useOpeningLineReport";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
@@ -99,6 +98,28 @@ import type { DialogMission } from "../types/dialog";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
+import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } from "../hooks/useMovePlayback";
+
+/** Replay autoplay: the pause after a turn's move has played, before the next. */
+const REPLAY_AUTOPLAY_PAUSE_MS = 600;
+import { boardMoveFromRaw, landShipPositions, type RawMove } from "../utils/movePlaybackBoard";
+
+/** The web2 held board with landed moves applied (useHeldBoard). */
+function landWeb2Positions(game: Web2GameDataView, landed: BoardMove[], activeKey: string | null): Web2GameDataView {
+  return { ...game, shipPositions: landShipPositions(game.shipPositions, landed, activeKey) };
+}
+
+function toRawMove(m: { shipId: number; oldRow: number; oldCol: number; newRow: number; newCol: number; actionType: number; targetShipId: number }): RawMove {
+  return {
+    shipId: m.shipId,
+    oldRow: m.oldRow,
+    oldCol: m.oldCol,
+    newRow: m.newRow,
+    newCol: m.newCol,
+    actionType: Number(m.actionType),
+    targetShipId: m.targetShipId,
+  };
+}
 
 // Web2-mode counterpart to `GameDisplay.tsx`. Genuinely playable (grid
 // interaction via the shared <GameGrid> and useGameplayInteraction hook,
@@ -189,7 +210,7 @@ function GameDisplayWeb2({
     markSent: markPendingMoveSent,
     fail: failPendingMove,
   } = pendingMove;
-  const game = useMemo(
+  const liveGame = useMemo(
     () => applyPendingMoveToGame(chainGame, pendingMove.pendingMove, (n) => n),
     [chainGame, pendingMove.pendingMove],
   );
@@ -209,6 +230,83 @@ function GameDisplayWeb2({
   const [replayStep, setReplayStep] = useState<number | null>(null);
   const [replayAutoPlay, setReplayAutoPlay] = useState(false);
   const replayAutoPlayRef = React.useRef(false);
+
+  // ── Move playback (docs/eth-global-remote/animation-redesign) ─────────────
+  // Same as GameDisplay.tsx: your move plays from SUBMIT, each enemy move as
+  // it arrives (a burst the stream skipped is filled from the turn history),
+  // and `game` is the board from just before a move while it plays.
+  const isPlayerInGame =
+    !!userId && (chainGame.metadata.creator === userId || chainGame.metadata.joiner === userId);
+  const playerIsCreator = chainGame.metadata.creator === userId;
+  const chainShipPositionsRef = React.useRef(chainGame.shipPositions);
+  chainShipPositionsRef.current = chainGame.shipPositions;
+  const isMyShipId = useCallback(
+    (shipId: number) => {
+      if (!isPlayerInGame) return false;
+      const p = chainShipPositionsRef.current.find((sp) => sp.shipId === shipId);
+      return p ? p.isCreator === playerIsCreator : false;
+    },
+    [isPlayerInGame, playerIsCreator],
+  );
+  const shipVariantsRef = React.useRef(new Map<number, number>());
+  const drawnShipPositionsRef = React.useRef(chainGame.shipPositions);
+  const toBoardMove = useCallback(
+    (key: string, raw: RawMove) =>
+      boardMoveFromRaw(key, raw, {
+        moverVariant: shipVariantsRef.current.get(raw.shipId),
+        targetPosition: raw.targetShipId
+          ? (drawnShipPositionsRef.current.find((p) => p.shipId === raw.targetShipId)?.position ?? null)
+          : null,
+      }),
+    [],
+  );
+  const chainLastMoveRaw = useMemo<RawMove | null>(
+    () => (chainGame.lastMove && chainGame.lastMove.shipId !== 0 ? toRawMove(chainGame.lastMove) : null),
+    [chainGame.lastMove],
+  );
+  const livePlayback = useLiveMovePlayback({
+    lastMove: chainLastMoveRaw,
+    lastMoveKey: lastMoveKey(chainGame.lastMove),
+    isMine: isMyShipId,
+    toBoardMove,
+    disabled: replayStep !== null,
+  });
+  const { playback, enqueueEnemy, enqueueOwn } = livePlayback;
+  const game = useHeldBoard(liveGame, livePlayback.hold, playback, landWeb2Positions);
+  drawnShipPositionsRef.current = game.shipPositions;
+  // A burst: the enemy moved more than one ship since the last data seen
+  // (same round), so fetch the turn history for the ones in between.
+  const prevChainRef = React.useRef(chainGame);
+  React.useEffect(() => {
+    const prev = prevChainRef.current;
+    prevChainRef.current = chainGame;
+    if (!isPlayerInGame || replayStep !== null || prev === chainGame) return;
+    if (prev.turnState.currentRound !== chainGame.turnState.currentRound) return;
+    const enemyMoved = (g: Web2GameDataView) => (playerIsCreator ? g.joinerMovedShipIds : g.creatorMovedShipIds).length;
+    const gap = enemyMoved(chainGame) - enemyMoved(prev);
+    if (gap <= 1) return;
+    let cancelled = false;
+    apiFetch<{ turns: Array<{ id: number; snapshot: Web2GameDataView | null }> }>(`/api/games/${gameId}/replay`).then(
+      (res) => {
+        if (cancelled || !res) return;
+        const recent = res.turns.slice(-gap).filter((t) => t.snapshot?.lastMove && t.snapshot.lastMove.shipId !== 0);
+        enqueueEnemy(recent.map((t) => ({ key: `turn:${t.id}`, raw: toRawMove(t.snapshot!.lastMove!) })));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [chainGame, isPlayerInGame, playerIsCreator, replayStep, gameId, enqueueEnemy]);
+  const playbackActive = useMemo(() => {
+    const active = playback.active;
+    if (!active || active.move.killsTarget != null || !active.move.targetShipId) return active;
+    const target = chainGame.shipPositions.find((p) => p.shipId === active.move.targetShipId);
+    return { ...active, move: { ...active.move, killsTarget: target?.status === 1 } };
+  }, [playback.active, chainGame.shipPositions]);
+  const gridPlayback = useMemo(
+    () => ({ active: playbackActive, onPhaseDone: playback.advance }),
+    [playbackActive, playback.advance],
+  );
 
   React.useEffect(() => {
     if (!showReplay) {
@@ -231,35 +329,50 @@ function GameDisplayWeb2({
   React.useEffect(() => {
     replayAutoPlayRef.current = replayAutoPlay;
   }, [replayAutoPlay]);
-  React.useEffect(() => {
-    if (!replayAutoPlay || !replayData) return;
-    const total = replayData.turns.length;
-    if (total === 0) return;
-    const timer = setInterval(() => {
-      if (!replayAutoPlayRef.current) {
-        clearInterval(timer);
-        return;
-      }
-      setReplayStep((s) => {
-        if (s === null) return s;
-        if (s >= total - 1) {
-          replayAutoPlayRef.current = false;
-          setReplayAutoPlay(false);
-          return s;
-        }
-        return s + 1;
-      });
-    }, 1200);
-    return () => clearInterval(timer);
-  }, [replayAutoPlay, replayData?.turns.length]);
-
   const isReplaying = replayStep !== null && !!replayData && replayData.turns.length > 0;
   const replaySnapshotGame: Web2GameDataView | null = isReplaying
     ? replayStep! < 0
       ? replayData!.initialState
       : (replayData!.turns[replayStep!]?.snapshot ?? null)
     : null;
-  const displayGame = replaySnapshotGame ?? game;
+  // Stepping a replay forward plays that turn's move like a live one.
+  const replayPlayback = useReplayPlayback<Web2GameDataView>({
+    step: isReplaying ? replayStep : null,
+    snapshot: replaySnapshotGame,
+    lastMoveOf: (g) => (g.lastMove && g.lastMove.shipId !== 0 ? toRawMove(g.lastMove) : null),
+    toBoardMove: (key, raw, before, after) =>
+      boardMoveFromRaw(key, raw, {
+        moverVariant: shipVariantsRef.current.get(raw.shipId),
+        targetPosition: raw.targetShipId
+          ? (before.shipPositions.find((p) => p.shipId === raw.targetShipId)?.position ?? null)
+          : null,
+        killsTarget:
+          raw.targetShipId > 0 && after.shipPositions.find((p) => p.shipId === raw.targetShipId)?.status === 1,
+      }),
+    applyLanded: landWeb2Positions,
+  });
+  const displayGame = replayPlayback.board ?? game;
+  const boardPlayback = isReplaying ? replayPlayback.gridPlayback : gridPlayback;
+
+  // Autoplay steps on once the current turn's move has played back.
+  const replayMovePlaying = replayPlayback.isPlaying;
+  const replayTurnCount = replayData?.turns.length ?? 0;
+  React.useEffect(() => {
+    if (!replayAutoPlay || replayTurnCount === 0 || replayMovePlaying) return;
+    const timer = setTimeout(() => {
+      if (!replayAutoPlayRef.current) return;
+      setReplayStep((s) => {
+        if (s === null) return s;
+        if (s >= replayTurnCount - 1) {
+          replayAutoPlayRef.current = false;
+          setReplayAutoPlay(false);
+          return s;
+        }
+        return s + 1;
+      });
+    }, REPLAY_AUTOPLAY_PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [replayAutoPlay, replayTurnCount, replayMovePlaying, replayStep]);
 
   useGameStreamWeb2(gameId, !readOnly);
 
@@ -270,6 +383,7 @@ function GameDisplayWeb2({
     gameShips.forEach((s) => map.set(s.id, s));
     return map;
   }, [gameShips]);
+  shipMap.forEach((ship, id) => shipVariantsRef.current.set(id, Number(ship.traits.variant)));
 
   // GameEvents.tsx is number/string-native — build a string-keyed view of
   // shipMap for it here rather than changing shipMap's own number keys.
@@ -623,7 +737,6 @@ function GameDisplayWeb2({
     isSubmitting,
     blockedGrid,
     impassableGrid,
-    lastMove: game.lastMove ?? null,
     selectedShipId,
     setSelectedShipId,
     draggedShipId,
@@ -812,7 +925,7 @@ function GameDisplayWeb2({
     // the proposal locked and its button pending until the POST settles.
     submitLockRef.current = true;
     setIsSubmitting(true);
-    const key = capturePendingMove({
+    const captured = capturePendingMove({
       shipId: payload.shipId,
       actionType: payload.actionType,
       targetShipId: payload.targetShipId,
@@ -824,7 +937,18 @@ function GameDisplayWeb2({
       effect,
       baselineLastMoveKey: lastMoveKey(chainGame.lastMove),
     });
+    const key = captured.key;
     markPendingMoveSent(key);
+    // It plays on the board straight away (it resets if the POST fails).
+    enqueueOwn(boardMoveFromPending(captured), {
+      shipId: payload.shipId,
+      oldRow: current.row,
+      oldCol: current.col,
+      newRow: payload.row,
+      newCol: payload.col,
+      actionType: payload.actionType,
+      targetShipId: payload.targetShipId,
+    });
     try {
       // buildActionPayload already returns ActionType.FactionAbility (with
       // the real target) for a ram/repair move — web2's engine implements
@@ -871,8 +995,9 @@ function GameDisplayWeb2({
       refetchGame();
       refetch?.();
     } catch (e) {
-      // Back to no move entered.
+      // Back to no move entered, and the board resets.
       failPendingMove(key);
+      playback.reset();
       submitLockRef.current = false;
       clearProposal();
       clearOptimisticSos();
@@ -886,6 +1011,8 @@ function GameDisplayWeb2({
       setIsSubmitting(false);
     }
   }, [
+    enqueueOwn,
+    playback,
     analyticsGameMode,
     interaction.ramActionError,
     buildActionPayload,
@@ -929,37 +1056,6 @@ function GameDisplayWeb2({
 
   // A submitted-but-unconfirmed move is already folded into `game`.
   const lastMove = isReplaying ? (replaySnapshotGame?.lastMove ?? undefined) : game.lastMove;
-  const lastMoveShipId = lastMove?.shipId ?? null;
-  const lastMoveOldPosition = useMemo(
-    () => (lastMove ? { row: lastMove.oldRow, col: lastMove.oldCol } : null),
-    [lastMove],
-  );
-  // Where the last mover ended up (a Ram ends on the victim's tile, not the
-  // recorded one — see ramLastMove.ts).
-  const lastMoveShipPositions = isReplaying ? replaySnapshotGame?.shipPositions : game.shipPositions;
-  const lastMoveNewPosition = useMemo(
-    () =>
-      lastMove
-        ? lastMove.newRow < 0 || lastMove.newCol < 0
-          ? { row: lastMove.newRow, col: lastMove.newCol }
-          : lastMoveEndPosition({
-              lastMove,
-              moverVariant: shipMap.get(lastMove.shipId)?.traits.variant,
-              shipPositions: lastMoveShipPositions ?? [],
-            })
-        : null,
-    [lastMove, shipMap, lastMoveShipPositions],
-  );
-  const lastMoveResolvedTo = useMemo(
-    () =>
-      lastMove && lastMoveNewPosition && lastMoveNewPosition.row >= 0 && lastMoveNewPosition.col >= 0
-        ? { shipId: lastMove.shipId, row: lastMoveNewPosition.row, col: lastMoveNewPosition.col }
-        : null,
-    [lastMove, lastMoveNewPosition],
-  );
-  const lastMoveActionType = lastMove?.actionType ?? null;
-  const lastMoveTargetShipId = lastMove?.targetShipId ?? null;
-  const lastMoveIsCurrentPlayer = lastMove ? shipMap.get(lastMove.shipId)?.owner === userId : undefined;
 
   const gameEventsLastMove = useMemo<GameEventsLastMove | undefined>(
     () =>
@@ -1190,6 +1286,7 @@ function GameDisplayWeb2({
   // (side rail vs. narrow tabbed column) differs.
   const gameGridNode = (
     <GameGrid
+      playback={boardPlayback}
       grid={displayGrid}
       allShipPositions={game.shipPositions}
       shipMap={shipMap}
@@ -1226,13 +1323,6 @@ function GameDisplayWeb2({
       disableTooltips={false}
       address={userId ?? undefined}
       currentTurn={game.turnState.currentTurn}
-      lastMoveShipId={lastMoveShipId}
-      lastMoveOldPosition={lastMoveOldPosition}
-      lastMoveNewPosition={lastMoveNewPosition}
-      lastMoveResolvedTo={lastMoveResolvedTo}
-      lastMoveActionType={lastMoveActionType}
-      lastMoveTargetShipId={lastMoveTargetShipId}
-      lastMoveIsCurrentPlayer={lastMoveIsCurrentPlayer}
       isRammingMovePreview={isRammingMovePreview}
       isFactionAbilitySupported
       factionAbilityRange={selectedShipFactionAbility?.range}

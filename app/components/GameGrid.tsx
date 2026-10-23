@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef } from "react";
-import { Attributes, ActionType } from "../types/types";
+import { Attributes } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { useGridCellSets } from "../hooks/useGridCellSets";
 import { useGridPanZoom } from "../hooks/useGridPanZoom";
@@ -25,6 +25,10 @@ import {
   useSetGridHoveredCell,
 } from "./GridHover";
 import { GameGridDestHoverRange } from "./GameGridDestHoverRange";
+import { MovePlaybackContext, useMovePlaybackContext, type MovePlaybackValue } from "./MovePlaybackContext";
+import { MovePlaybackLayer, playbackHiddenShipIds } from "./MovePlaybackLayer";
+import type { ActivePlayback, PlaybackPhase } from "../hooks/useMovePlayback";
+import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
 
 const NOOP_SET_MOVE_TILE = () => {};
 
@@ -147,18 +151,6 @@ interface GameGridProps {
   disableTooltips: boolean;
   address: string | undefined;
   currentTurn: string;
-  highlightedMovePosition?: { row: number; col: number } | null;
-  lastMoveShipId?: number | null;
-  lastMoveOldPosition?: { row: number; col: number } | null; // Old position for last move preview
-  // New position for the last move (to position). When playing back weapon
-  // effects for the last move, the beam should originate from this "to"
-  // position rather than the old position.
-  lastMoveNewPosition?: { row: number; col: number } | null;
-  /** Last mover's to-tile for weapon-effect aiming, even when last-move chrome is hidden. */
-  lastMoveResolvedTo?: { shipId: number; row: number; col: number } | null;
-  lastMoveActionType?: ActionType | null; // When Retreat, show warp collapse at old position
-  lastMoveTargetShipId?: number | null;
-  lastMoveIsCurrentPlayer?: boolean | undefined; // true = blue outline, false = red outline
   /** Ramming preview destination tile. */
   rammingPreviewPosition?: { row: number; col: number } | null;
   /** True when the staged move is a ramming move. */
@@ -168,8 +160,6 @@ interface GameGridProps {
   factionAbilityRange?: number | undefined;
   factionAbilityIsHeal?: boolean;
   factionAbilityStrength?: number;
-  /** When set, last-move EMP replay still shows while a ship is selected (e.g. tutorial ship-destruction). */
-  showLastMoveEmpReplayWhenSelected?: boolean;
   retreatPrepShipId?: number | null;
   retreatPrepIsCreator?: boolean | null; // For retreat prep flip direction
   /**
@@ -245,6 +235,14 @@ interface GameGridProps {
    * `GameGridTooltip`.
    */
   renderShipCard: (hoveredCell: GameGridTooltipHoveredCell) => React.ReactNode | null;
+  /**
+   * The move playing back (useMovePlayback): MovePlaybackLayer draws it and
+   * calls onPhaseDone as each phase ends. Omitted: nothing plays.
+   */
+  playback?: {
+    active: ActivePlayback | null;
+    onPhaseDone: (key: string, phase: PlaybackPhase) => void;
+  };
 }
 
 type HoveredCell = {
@@ -277,13 +275,6 @@ const GameGridCells = React.memo(function GameGridCells({
   onlyOnceGrid,
   getShipAttributes,
   address,
-  highlightedMovePosition,
-  lastMoveShipId,
-  lastMoveOldPosition,
-  lastMoveNewPosition,
-  lastMoveActionType,
-  lastMoveTargetShipId,
-  lastMoveIsCurrentPlayer,
   isRammingMovePreview,
   isHoldPreviewActive,
   factionAbilityIsHeal,
@@ -300,7 +291,6 @@ const GameGridCells = React.memo(function GameGridCells({
   validTargetIdSet,
   assistableTargetIdSet,
   assistableTargetsFromStartIdSet,
-  lastMoveActionNum,
   projectedDamageByShipId,
   projectedRepairByShipId,
   destroyPreviewShipIds,
@@ -340,13 +330,6 @@ const GameGridCells = React.memo(function GameGridCells({
   onlyOnceGrid: boolean[][];
   getShipAttributes: GameGridProps["getShipAttributes"];
   address: string | undefined;
-  highlightedMovePosition?: { row: number; col: number } | null;
-  lastMoveShipId?: number | null;
-  lastMoveOldPosition?: { row: number; col: number } | null;
-  lastMoveNewPosition?: { row: number; col: number } | null;
-  lastMoveActionType?: ActionType | null;
-  lastMoveTargetShipId?: number | null;
-  lastMoveIsCurrentPlayer?: boolean;
   isRammingMovePreview: boolean;
   isHoldPreviewActive: boolean;
   factionAbilityIsHeal: boolean;
@@ -363,7 +346,6 @@ const GameGridCells = React.memo(function GameGridCells({
   validTargetIdSet: Set<number>;
   assistableTargetIdSet: Set<number>;
   assistableTargetsFromStartIdSet: Set<number>;
-  lastMoveActionNum: number;
   projectedDamageByShipId: Map<number, number>;
   projectedRepairByShipId: Map<number, number>;
   destroyPreviewShipIds: Set<number>;
@@ -443,13 +425,6 @@ const GameGridCells = React.memo(function GameGridCells({
             onlyOnceGrid={onlyOnceGrid}
             getShipAttributes={getShipAttributes}
             address={address}
-            highlightedMovePosition={highlightedMovePosition}
-            lastMoveShipId={lastMoveShipId}
-            lastMoveOldPosition={lastMoveOldPosition}
-            lastMoveNewPosition={lastMoveNewPosition}
-            lastMoveActionType={lastMoveActionType}
-            lastMoveTargetShipId={lastMoveTargetShipId}
-            lastMoveIsCurrentPlayer={lastMoveIsCurrentPlayer}
             isRammingMovePreview={isRammingMovePreview}
             isHoldPreviewActive={isHoldPreviewActive}
             factionAbilityIsHeal={factionAbilityIsHeal}
@@ -466,7 +441,6 @@ const GameGridCells = React.memo(function GameGridCells({
             validTargetIdSet={validTargetIdSet}
             assistableTargetIdSet={assistableTargetIdSet}
             assistableTargetsFromStartIdSet={assistableTargetsFromStartIdSet}
-            lastMoveActionNum={lastMoveActionNum}
             projectedDamageByShipId={projectedDamageByShipId}
             projectedRepairByShipId={projectedRepairByShipId}
             destroyPreviewShipIds={destroyPreviewShipIds}
@@ -513,19 +487,11 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   onlyOnceGrid,
   getShipAttributes,
   address,
-  highlightedMovePosition,
-  lastMoveShipId,
-  lastMoveOldPosition,
-  lastMoveNewPosition,
-  lastMoveActionType,
-  lastMoveTargetShipId,
-  lastMoveIsCurrentPlayer,
   isRammingMovePreview,
   isHoldPreviewActive,
   factionAbilityIsHeal,
   isFactionAbilitySupported,
   factionAbilityStrength,
-  showLastMoveEmpReplayWhenSelected,
   retreatPrepShipId,
   retreatPrepIsCreator,
   isMyTurn,
@@ -543,7 +509,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   labelTargets,
   assistableTargetIdSet,
   assistableTargetsFromStartIdSet,
-  lastMoveActionNum,
   projectedDamageByShipId,
   projectedRepairByShipId,
   destroyPreviewShipIds,
@@ -595,19 +560,11 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   onlyOnceGrid: boolean[][];
   getShipAttributes: GameGridProps["getShipAttributes"];
   address: string | undefined;
-  highlightedMovePosition?: { row: number; col: number } | null;
-  lastMoveShipId?: number | null;
-  lastMoveOldPosition?: { row: number; col: number } | null;
-  lastMoveNewPosition?: { row: number; col: number } | null;
-  lastMoveActionType?: ActionType | null;
-  lastMoveTargetShipId?: number | null;
-  lastMoveIsCurrentPlayer?: boolean;
   isRammingMovePreview: boolean;
   isHoldPreviewActive: boolean;
   factionAbilityIsHeal: boolean;
   isFactionAbilitySupported: boolean;
   factionAbilityStrength?: number;
-  showLastMoveEmpReplayWhenSelected: boolean;
   retreatPrepShipId?: number | null;
   retreatPrepIsCreator?: boolean | null;
   isMyTurn: boolean;
@@ -625,7 +582,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   labelTargets?: Array<{ shipId: number; position: { row: number; col: number } }>;
   assistableTargetIdSet: Set<number>;
   assistableTargetsFromStartIdSet: Set<number>;
-  lastMoveActionNum: number;
   projectedDamageByShipId: Map<number, number>;
   projectedRepairByShipId: Map<number, number>;
   destroyPreviewShipIds: Set<number>;
@@ -696,13 +652,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         onlyOnceGrid={onlyOnceGrid}
         getShipAttributes={getShipAttributes}
         address={address}
-        highlightedMovePosition={highlightedMovePosition}
-        lastMoveShipId={lastMoveShipId}
-        lastMoveOldPosition={lastMoveOldPosition}
-        lastMoveNewPosition={lastMoveNewPosition}
-        lastMoveActionType={lastMoveActionType}
-        lastMoveTargetShipId={lastMoveTargetShipId}
-        lastMoveIsCurrentPlayer={lastMoveIsCurrentPlayer}
         isRammingMovePreview={isRammingMovePreview}
         isHoldPreviewActive={isHoldPreviewActive}
         factionAbilityIsHeal={factionAbilityIsHeal}
@@ -719,7 +668,6 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         validTargetIdSet={validTargetIdSet}
         assistableTargetIdSet={assistableTargetIdSet}
         assistableTargetsFromStartIdSet={assistableTargetsFromStartIdSet}
-        lastMoveActionNum={lastMoveActionNum}
         projectedDamageByShipId={projectedDamageByShipId}
         projectedRepairByShipId={projectedRepairByShipId}
         destroyPreviewShipIds={destroyPreviewShipIds}
@@ -756,14 +704,15 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         effectiveDragCell={effectiveDragCell}
         isHoveringDestinationAsValidTarget={isHoveringDestinationAsValidTarget}
         retreatPrepShipId={retreatPrepShipId}
-        lastMoveOldPosition={lastMoveOldPosition}
-        lastMoveNewPosition={lastMoveNewPosition}
-        lastMoveShipId={lastMoveShipId}
-        lastMoveActionType={lastMoveActionType}
         allShipPositions={allShipPositions}
         isShipOwnedByCurrentPlayer={isShipOwnedByCurrentPlayer}
         movementTileSet={movementTileSet}
+        impassableGrid={impassableGrid}
+        getShipAttributes={getShipAttributes}
       />
+      {/* Aiming previews fire silently; a move's sounds play once, as it
+          plays back (MovePlaybackLayer below). */}
+      <WeaponSoundsMuted value={true}>
       <GameGridOverlaysWithDestHover
         getHoverPreview={getHoverPreview}
         grid={grid}
@@ -787,16 +736,10 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         calculateDamage={calculateDamage}
         getShipAttributes={getShipAttributes}
         gridContainerRef={gridContainerRef}
-        lastMoveShipId={lastMoveShipId}
-        lastMoveOldPosition={lastMoveOldPosition}
-        lastMoveNewPosition={lastMoveNewPosition}
-        lastMoveActionType={lastMoveActionType}
-        lastMoveTargetShipId={lastMoveTargetShipId}
         rammingPreviewPosition={rammingPreviewPosition}
         isRammingMovePreview={isRammingMovePreview}
         factionAbilityIsHeal={factionAbilityIsHeal}
         factionAbilityStrength={factionAbilityStrength}
-        showLastMoveEmpReplayWhenSelected={showLastMoveEmpReplayWhenSelected}
         retreatPrepShipId={retreatPrepShipId}
         tutorialHighlightCells={tutorialHighlightCells}
         movementTileSet={movementTileSet}
@@ -805,6 +748,15 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         flakEffectCells={flakEffectCells}
         findShipPositionById={findShipPositionById}
         useCompactMobileDamageLabels={useCompactMobileDamageLabels}
+      />
+      </WeaponSoundsMuted>
+      <BoardPlayback
+        gridContainerRef={gridContainerRef}
+        grid={grid}
+        allShipPositions={allShipPositions}
+        shipMap={shipMap}
+        impassableGrid={impassableGrid}
+        getShipAttributes={getShipAttributes}
       />
       <GameGridTileTooltip gridContainerRef={gridContainerRef} disabled={disableTooltips || !!draggedShipId} />
       <GameGridTooltip
@@ -859,6 +811,24 @@ function GameGridOverlaysWithDestHover({
   );
 }
 
+/** The move playing back (MovePlaybackContext), drawn over the board. */
+function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer>, "active" | "onPhaseDone" | "allShipPositions"> & {
+  allShipPositions?: readonly GridShipPosition[];
+}) {
+  const { active, onPhaseDone } = useMovePlaybackContext();
+  if (!active) return null;
+  return (
+    <MovePlaybackLayer
+      {...props}
+      allShipPositions={props.allShipPositions ?? EMPTY_SHIP_POSITIONS}
+      active={active}
+      onPhaseDone={onPhaseDone}
+    />
+  );
+}
+
+const EMPTY_SHIP_POSITIONS: readonly GridShipPosition[] = [];
+
 const GameGridBoard = React.memo(function GameGridBoard({
   grid,
   allShipPositions,
@@ -892,21 +862,12 @@ const GameGridBoard = React.memo(function GameGridBoard({
   disableTooltips,
   address,
   currentTurn,
-  highlightedMovePosition,
-  lastMoveShipId,
-  lastMoveOldPosition,
-  lastMoveNewPosition,
-  lastMoveResolvedTo,
-  lastMoveActionType,
-  lastMoveTargetShipId,
-  lastMoveIsCurrentPlayer,
   rammingPreviewPosition = null,
   isRammingMovePreview = false,
   isFactionAbilitySupported = false,
   factionAbilityRange,
   factionAbilityIsHeal = false,
   factionAbilityStrength,
-  showLastMoveEmpReplayWhenSelected = false,
   retreatPrepShipId,
   retreatPrepIsCreator,
   tutorialHighlightCells,
@@ -1023,9 +984,6 @@ const GameGridBoard = React.memo(function GameGridBoard({
     return null;
   }, [grid, selectedShipId]);
 
-  const lastMoveActionNum =
-    lastMoveActionType != null ? Number(lastMoveActionType) : NaN;
-
   const {
     directedWeaponBeamTargetId,
     flakEffectCells,
@@ -1054,10 +1012,6 @@ const GameGridBoard = React.memo(function GameGridBoard({
     specialRange,
     isCurrentPlayerTurn,
     isShipOwnedByCurrentPlayer,
-    lastMoveTargetShipId,
-    lastMoveShipId,
-    lastMoveNewPosition,
-    lastMoveResolvedTo,
     factionAbilityIsHeal,
     factionAbilityStrength,
     calculateDamage,
@@ -1236,19 +1190,11 @@ const GameGridBoard = React.memo(function GameGridBoard({
             onlyOnceGrid={onlyOnceGrid}
             getShipAttributes={getShipAttributes}
             address={address}
-            highlightedMovePosition={highlightedMovePosition}
-            lastMoveShipId={lastMoveShipId}
-            lastMoveOldPosition={lastMoveOldPosition}
-            lastMoveNewPosition={lastMoveNewPosition}
-            lastMoveActionType={lastMoveActionType}
-            lastMoveTargetShipId={lastMoveTargetShipId}
-            lastMoveIsCurrentPlayer={lastMoveIsCurrentPlayer}
             isRammingMovePreview={Boolean(isRammingMovePreview)}
             isHoldPreviewActive={isHoldPreviewActive}
             factionAbilityIsHeal={factionAbilityIsHeal}
             isFactionAbilitySupported={isFactionAbilitySupported}
             factionAbilityStrength={factionAbilityStrength}
-            showLastMoveEmpReplayWhenSelected={showLastMoveEmpReplayWhenSelected}
             retreatPrepShipId={retreatPrepShipId}
             retreatPrepIsCreator={retreatPrepIsCreator}
             isMyTurn={isMyTurn}
@@ -1266,7 +1212,6 @@ const GameGridBoard = React.memo(function GameGridBoard({
             labelTargets={labelTargets}
             assistableTargetIdSet={assistableTargetIdSet}
             assistableTargetsFromStartIdSet={assistableTargetsFromStartIdSet}
-            lastMoveActionNum={lastMoveActionNum}
             projectedDamageByShipId={projectedDamageByShipId}
             projectedRepairByShipId={projectedRepairByShipId}
             destroyPreviewShipIds={destroyPreviewShipIds}
@@ -1392,7 +1337,18 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
         : null,
     [isSubmitting, selectedShipId, previewPosition, targetShipId, retreatPrepShipId, movementRange],
   );
+  const playbackActive = props.playback?.active ?? null;
+  const playbackOnPhaseDone = props.playback?.onPhaseDone;
+  const playbackValue = React.useMemo<MovePlaybackValue>(
+    () => ({
+      active: playbackActive,
+      onPhaseDone: playbackOnPhaseDone ?? NOOP_PHASE_DONE,
+      hiddenShipIds: playbackHiddenShipIds(playbackActive, props.shipMap),
+    }),
+    [playbackActive, playbackOnPhaseDone, props.shipMap],
+  );
   return (
+    <MovePlaybackContext.Provider value={playbackValue}>
     <DestHoverProvider>
       {submittedProposal ? (
         <GameGridBoard
@@ -1415,5 +1371,8 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
         <GameGridBoard {...props} />
       )}
     </DestHoverProvider>
+    </MovePlaybackContext.Provider>
   );
 });
+
+const NOOP_PHASE_DONE = () => {};

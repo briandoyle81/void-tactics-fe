@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSelectedChainId } from "../config/networks";
 import { baseSepolia } from "viem/chains";
 import { SINGLE_PLAYER_MATCH_ADDRESS } from "./useSinglePlayerMatch";
+import { dispatchGameMoves, MOVE_EVENT, toGameMoveLogs } from "../utils/gameMoveLogs";
 import { ROGUELIKE_MATCH_ADDRESS } from "./useRoguelikeMatch";
 import { usePageVisible, useWindowFocused } from "./usePageVisible";
 import {
@@ -35,7 +36,9 @@ const GAME_STARTED_EVENT = eventAbi(CONTRACT_ABIS.GAME as Abi, "GameStarted");
 const AI_TURN_TAKEN_EVENT = eventAbi(CONTRACT_ABIS.SINGLE_PLAYER_MATCH as Abi, "AITurnTaken");
 const GAME_RESERVED_EVENT = eventAbi(CONTRACT_ABIS.LOBBIES as Abi, "GameReserved");
 
-const GAME_CHAIN_EVENTS = [GAME_UPDATE_EVENT, GAME_STARTED_EVENT, AI_TURN_TAKEN_EVENT] as const;
+// Game's per-action Move event: the open match plays each move back in order
+// (gameMoveLogs.ts). Same log poll, no extra request.
+const GAME_CHAIN_EVENTS = [GAME_UPDATE_EVENT, GAME_STARTED_EVENT, AI_TURN_TAKEN_EVENT, MOVE_EVENT] as const;
 const PICKER_CHAIN_EVENTS = [TRANSFER_EVENT, GAME_RESERVED_EVENT] as const;
 const ALL_EVENTS = [...GAME_CHAIN_EVENTS, ...PICKER_CHAIN_EVENTS] as const;
 
@@ -271,6 +274,7 @@ export function ContractEventsHost() {
       if (groups.GameUpdate) handleGameUpdateLogs(groups.GameUpdate);
       if (groups.GameStarted) handleGameStartedLogs(groups.GameStarted);
       if (groups.AITurnTaken) handleAITurnTakenLogs(groups.AITurnTaken);
+      if (groups.Move) dispatchGameMoves(toGameMoveLogs(groups.Move));
       if (!matchViewOpenRef.current) {
         if (groups.Transfer) handleShipTransferLogs(groups.Transfer);
         if (groups.GameReserved) handleGameReservedLogs(groups.GameReserved);

@@ -1,0 +1,17 @@
+We're getting rid of the last move UI. Document it before destroying it.
+
+Don't touch replay mode.
+
+The sequence for the player's own ships:
+
+1. Everything up to when the player hits submit works exactly the same, except no weapon sound effects are played
+2. After hitting submit, if the player ship has moved, animate it moving to the new spot.
+   a. You'll have to create a second pathing algorithm. Use this to have the arrow go from the from position, to the too position while avoiding impassible tiles and enemy ships.
+3. Once the ship reaches the new spot, or skipping step 2 if the ship did not move, play the weapon animation exactly once, with sound also exactly once.
+4. End the weapon animation and clear all last move and hologram and arrow effects.
+5. If the transaction reverts, reset the board.
+
+The sequence for enemy ships, whether AI or human
+
+1. Everything works the same until you receive the last-move for the enemy ship
+2. Instead of showing the last move UI, show the enemy move and any firing or special weapons effects exactly the same as you would animate a player move/shoot/special

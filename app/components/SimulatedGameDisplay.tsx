@@ -13,6 +13,7 @@ import {
   TutorialContextValue,
   TutorialShipId,
   TutorialAction,
+  SimulatedGameState,
 } from "../types/onboarding";
 import {
   ALL_TUTORIAL_SHIPS,
@@ -72,7 +73,6 @@ import { GameBoardLayout } from "./GameBoardLayout";
 import { MissionDialogPanel } from "./MissionDialogPanel";
 import { useMissionDialog } from "../hooks/useMissionDialog";
 import { buildDialogSnapshot } from "../utils/missionDialog";
-import { lastMoveEndPosition } from "../utils/ramLastMove";
 import type { DialogMission } from "../types/dialog";
 import {
   GameEvents,
@@ -148,6 +148,13 @@ import {
   TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING,
 } from "./TutorialGridPanelConfigs";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
+import { useHeldBoard, useMovePlayback, type BoardMove } from "../hooks/useMovePlayback";
+import { boardMoveFromRaw, landShipPositions } from "../utils/movePlaybackBoard";
+
+/** The tutorial's held board with landed moves applied (useHeldBoard). */
+function landTutorialPositions(state: SimulatedGameState, landed: BoardMove[], activeKey: string | null): SimulatedGameState {
+  return { ...state, shipPositions: landShipPositions(state.shipPositions, landed, activeKey) };
+}
 
 const NO_LABEL_TARGETS: Array<{ shipId: number; position: { row: number; col: number } }> = [];
 
@@ -317,7 +324,7 @@ export function SimulatedGameDisplay({
   });
 
   const {
-    gameState,
+    gameState: liveTutorialState,
     currentStep,
     currentStepIndex,
     displayStepNumber,
@@ -333,6 +340,66 @@ export function SimulatedGameDisplay({
     previousStep,
     resetTutorial,
   } = tutorialContext;
+
+  // ── Move playback (docs/eth-global-remote/animation-redesign) ─────────────
+  // Same board playback as the live games (GameDisplay.tsx): each move the
+  // tutorial applies, yours or the scripted enemy's, plays out (the ship
+  // slides along its route, its weapon fires once) before the board shows
+  // the result. `gameState` is the board from just before it while it plays.
+  const playback = useMovePlayback();
+  const tutorialLastMove = liveTutorialState.lastMove;
+  const tutorialLastMoveKey = tutorialLastMove
+    ? `${tutorialLastMove.shipId}:${tutorialLastMove.actionType}:${tutorialLastMove.targetShipId ?? ""}:${tutorialLastMove.oldRow},${tutorialLastMove.oldCol}:${tutorialLastMove.newRow},${tutorialLastMove.newCol}`
+    : "";
+  const [settledTutorialMoveKey, setSettledTutorialMoveKey] = useState(tutorialLastMoveKey);
+  const tutorialMoveArrived = tutorialLastMoveKey !== settledTutorialMoveKey && !!tutorialLastMove;
+  const tutorialMoveCountRef = useRef(0);
+  /** Ship variants, for a Ram's end tile (filled in once shipMap exists below). */
+  const tutorialShipVariantsRef = useRef(new Map<number, number>());
+  const gameState = useHeldBoard(
+    liveTutorialState,
+    playback.isPlaying || tutorialMoveArrived,
+    playback,
+    landTutorialPositions,
+  );
+  const heldTutorialPositionsRef = useRef(gameState.shipPositions);
+  heldTutorialPositionsRef.current = gameState.shipPositions;
+  useEffect(() => {
+    if (!tutorialMoveArrived || !tutorialLastMove) return;
+    setSettledTutorialMoveKey(tutorialLastMoveKey);
+    tutorialMoveCountRef.current += 1;
+    const targetId = tutorialLastMove.targetShipId ? Number(tutorialLastMove.targetShipId) : 0;
+    const target = targetId
+      ? heldTutorialPositionsRef.current.find((p) => Number(p.shipId) === targetId)
+      : undefined;
+    const liveTarget = targetId
+      ? liveTutorialState.shipPositions.find((p) => Number(p.shipId) === targetId)
+      : undefined;
+    playback.enqueue([
+      boardMoveFromRaw(
+        `tutorial:${tutorialMoveCountRef.current}:${tutorialLastMoveKey}`,
+        {
+          shipId: Number(tutorialLastMove.shipId),
+          oldRow: tutorialLastMove.oldRow,
+          oldCol: tutorialLastMove.oldCol,
+          newRow: tutorialLastMove.newRow,
+          newCol: tutorialLastMove.newCol,
+          actionType: Number(tutorialLastMove.actionType),
+          targetShipId: targetId,
+        },
+        {
+          moverVariant: tutorialShipVariantsRef.current.get(Number(tutorialLastMove.shipId)),
+          targetPosition: target?.position ?? null,
+          killsTarget: liveTarget?.status === 1,
+        },
+      ),
+    ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialMoveArrived, tutorialLastMoveKey]);
+  const gridPlayback = useMemo(
+    () => ({ active: playback.active, onPhaseDone: playback.advance }),
+    [playback.active, playback.advance],
+  );
 
   const [claimCompleteCached, setClaimCompleteCached] = useState(false);
 
@@ -772,6 +839,7 @@ export function SimulatedGameDisplay({
     );
   }, [tutorialShipsFingerprint]);
   /* eslint-enable react-hooks/exhaustive-deps */
+  shipMap.forEach((ship, id) => tutorialShipVariantsRef.current.set(Number(id), Number(ship.traits.variant)));
 
   // GameEvents.tsx is number/string-native (shared with web2) — build a
   // string-keyed view of shipMap for it here rather than changing the
@@ -978,14 +1046,6 @@ export function SimulatedGameDisplay({
     return !!attrs && attrs.hullPoints === 0;
   }, [selectedShipId, getShipAttributes]);
 
-  const tutorialLastMoveGhostVisible = useMemo(
-    () =>
-      selectedShipId === null &&
-      tutorialDisplayLastMove != null &&
-      tutorialDisplayLastMove.shipId !== undefined,
-    [selectedShipId, tutorialDisplayLastMove],
-  );
-
   const setWeaponTypeFromGrid = useCallback(
     (type: "weapon" | "special" | "ram") => {
       if (selectedShipId != null && type !== "ram") {
@@ -999,9 +1059,7 @@ export function SimulatedGameDisplay({
 
   useLayoutEffect(() => {
     if (selectedShipId === null) {
-      if (!tutorialLastMoveGhostVisible) {
-        setSelectedWeaponType("weapon");
-      }
+      setSelectedWeaponType("weapon");
       return;
     }
 
@@ -1029,7 +1087,7 @@ export function SimulatedGameDisplay({
     // shipMap / getShipAttributes / preference identity would overwrite a
     // ram/special switch as soon as the player locked a target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedShipId, tutorialLastMoveGhostVisible]);
+  }, [selectedShipId]);
 
   /**
    * Pulse the Submit / Submit Retreat button (same idea as tutorial highlight)
@@ -1160,65 +1218,16 @@ export function SimulatedGameDisplay({
   // Check line of sight between two positions
   // Create a 2D array to represent the grid
   // The board's cells (shared with the live games' useGameplayInteraction).
-  // The last move shows whenever no ship is selected.
   const grid = useMemo(() => {
-    const lm = tutorialDisplayLastMove;
-    const allPositions = gameState.shipPositions.map((p) => ({
-      shipId: Number(p.shipId),
-      position: p.position,
-      isCreator: p.isCreator,
-      isPreview: p.isPreview,
-      status: p.status,
-    }));
-    // A stale persisted state can omit the Anvil's destroyed status at the
-    // ship-destruction step; the scripted state still places it so the EMP
-    // aftermath reads.
-    const lmTarget = lm?.targetShipId ? Number(lm.targetShipId) : 0;
-    if (
-      currentStep?.id === "ship-destruction" &&
-      lmTarget !== 0 &&
-      !allPositions.some((p) => p.shipId === lmTarget && p.status === 1)
-    ) {
-      const scripted = getScriptedStateForTutorialStepId("ship-destruction")?.shipPositions.find(
-        (p) => Number(p.shipId) === lmTarget,
-      );
-      if (scripted) {
-        allPositions.push({
-          shipId: lmTarget,
-          position: scripted.position,
-          isCreator: scripted.isCreator,
-          isPreview: scripted.isPreview,
-          status: 1,
-        });
-      }
-    }
     return buildDisplayGrid({
       gridWidth: GRID_WIDTH,
       gridHeight: GRID_HEIGHT,
       aliveShipPositions: rangeAlivePositions,
-      allShipPositions: allPositions,
       selectedShipId: selectedShipId != null ? Number(selectedShipId) : null,
       previewPosition,
       hidePreview: false,
-      lastMove: lm
-        ? {
-            shipId: Number(lm.shipId),
-            oldRow: lm.oldRow,
-            oldCol: lm.oldCol,
-            actionType: Number(lm.actionType) as ActionType,
-            targetShipId: lmTarget,
-          }
-        : null,
-      showLastMove: selectedShipId === null && lm != null && lm.shipId !== undefined,
     });
-  }, [
-    rangeAlivePositions,
-    gameState.shipPositions,
-    tutorialDisplayLastMove,
-    selectedShipId,
-    previewPosition,
-    currentStep?.id,
-  ]);
+  }, [rangeAlivePositions, selectedShipId, previewPosition]);
 
   // Calculate movement range for selected ship.
   // Mirrors the main GameDisplay logic, then applies tutorial step constraints.
@@ -1298,24 +1307,6 @@ export function SimulatedGameDisplay({
           }),
     [isConfirmingMove, computedActionType, selectedWeaponType, specialType, targetShipId, selectedShip],
   );
-
-  // Last-move new position pulse on the grid when no ship is selected (in-game parity).
-  const highlightedMovePosition = useMemo(() => {
-    // When showing last move (no ship selected), highlight the new position (same as in-game)
-    if (
-      selectedShipId === null &&
-      tutorialDisplayLastMove &&
-      tutorialDisplayLastMove.actionType !== ActionType.Retreat &&
-      tutorialDisplayLastMove.newRow >= 0 &&
-      tutorialDisplayLastMove.newCol >= 0
-    ) {
-      return {
-        row: tutorialDisplayLastMove.newRow,
-        col: tutorialDisplayLastMove.newCol,
-      };
-    }
-    return null;
-  }, [selectedShipId, tutorialDisplayLastMove]);
 
   /**
    * Grid positions for the tutorial highlight (yellow pulse): step 3 on player
@@ -1609,69 +1600,6 @@ export function SimulatedGameDisplay({
     useSideLayout,
     highlightDoneStepId,
   ]);
-
-  // Where the last mover ended up (a Ram ends on the victim's tile, not the
-  // recorded one — see ramLastMove.ts). Same as the live views.
-  const tutorialLastMoveEnd = useMemo(() => {
-    const lm = tutorialDisplayLastMove;
-    if (!lm || lm.newRow < 0 || lm.newCol < 0) return null;
-    return lastMoveEndPosition({
-      lastMove: lm,
-      moverVariant: shipMap.get(BigInt(lm.shipId))?.traits.variant,
-      shipPositions: gameState.shipPositions,
-    });
-  }, [tutorialDisplayLastMove, shipMap, gameState.shipPositions]);
-
-  // Last move UI props for GameGrid (same as in-game: ghost at old position, pulse at new)
-  const lastMoveProps = useMemo(() => {
-    if (selectedShipId !== null) {
-      return {
-        lastMoveShipId: null as bigint | null,
-        lastMoveOldPosition: null as { row: number; col: number } | null,
-        lastMoveNewPosition: null as { row: number; col: number } | null,
-        lastMoveActionType: null as ActionType | null,
-        lastMoveTargetShipId: null as bigint | null,
-        lastMoveIsCurrentPlayer: undefined as boolean | undefined,
-      };
-    }
-    if (!tutorialDisplayLastMove) {
-      return {
-        lastMoveShipId: null as bigint | null,
-        lastMoveOldPosition: null as { row: number; col: number } | null,
-        lastMoveNewPosition: null as { row: number; col: number } | null,
-        lastMoveActionType: null as ActionType | null,
-        lastMoveTargetShipId: null as bigint | null,
-        lastMoveIsCurrentPlayer: undefined as boolean | undefined,
-      };
-    }
-    const lm = tutorialDisplayLastMove;
-    const ship = shipMap.get(BigInt(lm.shipId));
-    const lmAction = Number(lm.actionType);
-    return {
-      lastMoveShipId: BigInt(lm.shipId),
-      lastMoveOldPosition: { row: lm.oldRow, col: lm.oldCol },
-      lastMoveNewPosition: tutorialLastMoveEnd ?? { row: lm.newRow, col: lm.newCol },
-      // Coerce so GameGrid strict checks (e.g. EMP) match after JSON or mixed types
-      lastMoveActionType: lmAction as ActionType,
-      lastMoveTargetShipId:
-        (lmAction === ActionType.Shoot ||
-          lmAction === ActionType.Special ||
-          lmAction === ActionType.FactionAbility) &&
-        lm.targetShipId &&
-        lm.targetShipId !== "0"
-          ? BigInt(lm.targetShipId)
-          : null,
-      lastMoveIsCurrentPlayer: ship
-        ? ship.owner === TUTORIAL_PLAYER_ADDRESS
-        : undefined,
-    };
-  }, [tutorialDisplayLastMove, shipMap, selectedShipId, tutorialLastMoveEnd]);
-
-  const lastMoveResolvedTo = useMemo(() => {
-    const lm = tutorialDisplayLastMove;
-    if (!lm || !tutorialLastMoveEnd) return null;
-    return { shipId: Number(lm.shipId), row: tutorialLastMoveEnd.row, col: tutorialLastMoveEnd.col };
-  }, [tutorialDisplayLastMove, tutorialLastMoveEnd]);
 
   // Last move object for GameEvents panel (adapt tutorial lastMove to onchain LastMove shape).
   // Hidden while any ship is selected (matches live game); proposed moves use the submit panel.
@@ -2735,12 +2663,6 @@ export function SimulatedGameDisplay({
     () => toGridIdSet(gridMovedShipIdsSet),
     [gridMovedShipIdsSet],
   );
-  const lastMoveShipIdForDisplay =
-    lastMoveProps.lastMoveShipId != null ? Number(lastMoveProps.lastMoveShipId) : null;
-  const lastMoveTargetShipIdForDisplay =
-    lastMoveProps.lastMoveTargetShipId != null
-      ? Number(lastMoveProps.lastMoveTargetShipId)
-      : null;
   const retreatPrepShipIdForDisplay =
     retreatPrepShipId != null ? Number(retreatPrepShipId) : null;
 
@@ -3642,6 +3564,7 @@ export function SimulatedGameDisplay({
                 >
                   <div className="absolute inset-0 min-h-0 overflow-hidden">
                     <GameGrid
+                      playback={gridPlayback}
                       grid={gridForDisplay}
                       allShipPositions={allShipPositionsForDisplay}
                       shipMap={shipMapForDisplay}
@@ -3674,18 +3597,6 @@ export function SimulatedGameDisplay({
                       disableTooltips={true}
                       address={TUTORIAL_PLAYER_ADDRESS}
                       currentTurn={gameState.turnState.currentTurn}
-                      highlightedMovePosition={highlightedMovePosition}
-                      lastMoveShipId={lastMoveShipIdForDisplay}
-                      lastMoveOldPosition={lastMoveProps.lastMoveOldPosition}
-                      lastMoveNewPosition={lastMoveProps.lastMoveNewPosition}
-                      lastMoveResolvedTo={lastMoveResolvedTo}
-                      lastMoveActionType={lastMoveProps.lastMoveActionType}
-                      lastMoveTargetShipId={lastMoveTargetShipIdForDisplay}
-                      lastMoveIsCurrentPlayer={lastMoveProps.lastMoveIsCurrentPlayer}
-                      showLastMoveEmpReplayWhenSelected={
-                        currentStep?.id === "ship-destruction" ||
-                        currentStep?.id === "destroy-disabled"
-                      }
                       retreatPrepShipId={retreatPrepShipIdForDisplay}
                       retreatPrepIsCreator={retreatPrepIsCreator}
                       tutorialHighlightCells={tutorialHighlightCells}
@@ -4102,6 +4013,7 @@ export function SimulatedGameDisplay({
               )}
               <div className="absolute inset-0 min-h-0 overflow-hidden">
                 <GameGrid
+                  playback={gridPlayback}
                   grid={gridForDisplay}
                   allShipPositions={allShipPositionsForDisplay}
                   shipMap={shipMapForDisplay}
@@ -4134,20 +4046,6 @@ export function SimulatedGameDisplay({
                   disableTooltips={controlsLocked}
                   address={TUTORIAL_PLAYER_ADDRESS}
                   currentTurn={gameState.turnState.currentTurn}
-                  highlightedMovePosition={highlightedMovePosition}
-                  lastMoveShipId={lastMoveShipIdForDisplay}
-                  lastMoveOldPosition={lastMoveProps.lastMoveOldPosition}
-                  lastMoveNewPosition={lastMoveProps.lastMoveNewPosition}
-                  lastMoveResolvedTo={lastMoveResolvedTo}
-                  lastMoveActionType={lastMoveProps.lastMoveActionType}
-                  lastMoveTargetShipId={lastMoveTargetShipIdForDisplay}
-                  lastMoveIsCurrentPlayer={
-                    lastMoveProps.lastMoveIsCurrentPlayer
-                  }
-                  showLastMoveEmpReplayWhenSelected={
-                    currentStep?.id === "ship-destruction" ||
-                    currentStep?.id === "destroy-disabled"
-                  }
                   retreatPrepShipId={retreatPrepShipIdForDisplay}
                   retreatPrepIsCreator={retreatPrepIsCreator}
                   tutorialHighlightCells={tutorialHighlightCells}

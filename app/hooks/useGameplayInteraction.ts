@@ -1,7 +1,6 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActionType, Attributes, canonicalSpecialSlot } from "../types/types";
 import { GridShipPosition } from "../types/gridDisplay";
-import type { Web2LastMove } from "../types/web2Game";
 import {
   computeMovementRange,
   computeShootingRange,
@@ -85,8 +84,6 @@ export interface UseGameplayInteractionParams {
    * caller's behavior before this existed.
    */
   impassableGrid?: boolean[][];
-  /** Authoritative last move from fresh data (live game state, or a replay snapshot) — used for grid ghosting and to auto-clear the optimistic overlay. */
-  lastMove: Web2LastMove | null;
   /**
    * `selectedShipId`/`draggedShipId` are controlled (owned by the caller,
    * not this hook) because resolving their special-weapon range/data
@@ -135,7 +132,6 @@ export function useGameplayInteraction({
   isSubmitting,
   blockedGrid,
   impassableGrid,
-  lastMove,
   selectedShipId,
   setSelectedShipId,
   draggedShipId,
@@ -840,33 +836,15 @@ export function useGameplayInteraction({
   }, [allShipPositions]);
 
   const displayGrid: (GridShipPosition | null)[][] = useMemo(() => {
-    // The last move shows when nothing is selected and no move is being proposed.
-    const isProposingNow =
-      selectedShipId !== null &&
-      currentTurn === playerAddress &&
-      previewPosition !== null &&
-      shipMap.get(selectedShipId)?.owner === playerAddress;
     return buildDisplayGrid({
       gridWidth,
       gridHeight,
       aliveShipPositions,
-      allShipPositions,
       selectedShipId,
       previewPosition,
       hidePreview: isSubmitting,
-      lastMove: lastMove
-        ? {
-            shipId: lastMove.shipId,
-            oldRow: lastMove.oldRow,
-            oldCol: lastMove.oldCol,
-            actionType: lastMove.actionType,
-            targetShipId: lastMove.targetShipId,
-          }
-        : null,
-      showLastMove:
-        !isGameOver && lastMove != null && lastMove.shipId !== 0 && selectedShipId === null && !isProposingNow,
     });
-  }, [aliveShipPositions, allShipPositions, selectedShipId, previewPosition, currentTurn, playerAddress, isGameOver, lastMove, shipMap, gridHeight, gridWidth, isSubmitting]);
+  }, [aliveShipPositions, selectedShipId, previewPosition, gridHeight, gridWidth, isSubmitting]);
 
   return {
     // state

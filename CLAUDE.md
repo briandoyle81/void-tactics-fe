@@ -71,6 +71,7 @@ Four testnets are configured: **Base Sepolia** (84532, the default), **Flow Test
 - **Contract events:** watch with `useCombinedEventWatch` (one log poll for many events/contracts, handler via ref), gated on `usePageVisible()`. Don't add per-event `useWatchContractEvent` watchers. Event ABIs come from the deployed artifacts (`eventAbi`), not hand-copied.
 - **Aggregate reads:** prefer `GameLens` views (`app/hooks/useGameLens.ts`) over chains of dependent reads. Admin-edited data uses `ADMIN_DATA_STALE_MS`.
 - `window.__vtRpcUsage` (and the dev console's `[rpc]` summary) shows requests by method.
+- **Moves play back on the board; there is no last-move UI** (`docs/last-move-ui.md` records the old one). Every move (yours from SUBMIT, each enemy move from Game's `Move` events or, failing that, `lastMove`, and each replay step) goes through `useMovePlayback` / `useLiveMovePlayback` / `useReplayPlayback` (`app/hooks/useMovePlayback.ts`): the ship slides along `findMovePath` (`app/utils/movePath.ts`, around asteroids and enemy ships), its weapon fires once (`MovePlaybackLayer`, lengths in `app/utils/weaponPlayback.ts`), and the board is held at its pre-move state (`useHeldBoard`) until the queue drains. Aiming previews are silent; a move's sounds play once during playback.
 
 ## Navigation state lives in the URL
 

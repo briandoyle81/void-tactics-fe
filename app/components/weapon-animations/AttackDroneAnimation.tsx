@@ -18,6 +18,8 @@ interface AttackDroneAnimationProps {
    * Omitted (aiming preview), they play each time the drones launch.
    */
   soundOnceKey?: string;
+  /** One cycle of the swarm (a move playing back), then the drones stay gone. */
+  once?: boolean;
 }
 
 const DRONE_ORANGE = "#ff7a1a";
@@ -120,7 +122,9 @@ export const AttackDroneAnimation = React.memo(function AttackDroneAnimation({
   targetRow,
   targetCol,
   soundOnceKey,
+  once = false,
 }: AttackDroneAnimationProps) {
+  const onceRef = useRef(once);
   const soundsMuted = useWeaponSoundsMuted();
   const soundOnceKeyRef = useRef(soundOnceKey);
   const soundsMutedRef = useRef(soundsMuted);
@@ -307,7 +311,11 @@ export const AttackDroneAnimation = React.memo(function AttackDroneAnimation({
       } = layout;
 
       drones.forEach((d, i) => {
-        const p = cycleP(now, startedAtRef.current, d.delayMs);
+        // Played once, a drone that has finished its cycle stays hidden.
+        const p =
+          onceRef.current && cycleIndex(now, startedAtRef.current, d.delayMs) > 0
+            ? 0
+            : cycleP(now, startedAtRef.current, d.delayMs);
         const dirx = Math.cos(d.slashAngle);
         const diry = Math.sin(d.slashAngle);
         const perpx = -diry;

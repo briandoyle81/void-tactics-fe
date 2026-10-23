@@ -102,42 +102,26 @@ export function computeConfirmWidgetLabel({
 }
 
 /** The last move, as the board draws it. */
-export interface DisplayLastMove {
-  shipId: number;
-  oldRow: number;
-  oldCol: number;
-  actionType: ActionType;
-  targetShipId: number;
-}
-
 /**
- * The board's cells: alive ships, the selected ship's staged destination as
- * a preview copy, and (when `showLastMove`) the last move's ghost at its old
- * tile and its destroyed target. The ghost uses where the ship is now, not
- * the move's recorded tile: a Ram ends on the victim's tile.
+ * The board's cells: alive ships and the selected ship's staged destination
+ * as a preview copy. (Moves play back on the board instead of leaving a
+ * last-move ghost: MovePlaybackLayer.)
  */
 export function buildDisplayGrid({
   gridWidth,
   gridHeight,
   aliveShipPositions,
-  allShipPositions,
   selectedShipId,
   previewPosition,
   hidePreview,
-  lastMove,
-  showLastMove,
 }: {
   gridWidth: number;
   gridHeight: number;
   aliveShipPositions: readonly GridShipPosition[];
-  /** Includes destroyed ships (for the last move's destroyed target). */
-  allShipPositions: readonly GridShipPosition[];
   selectedShipId: number | null;
   previewPosition: { row: number; col: number } | null;
   /** No staged-move ghost (while submitting, the board shows the predicted result). */
   hidePreview: boolean;
-  lastMove: DisplayLastMove | null;
-  showLastMove: boolean;
 }): (GridShipPosition | null)[][] {
   const inBounds = (row: number, col: number) =>
     row >= 0 && row < gridHeight && col >= 0 && col < gridWidth;
@@ -157,30 +141,6 @@ export function buildDisplayGrid({
       };
     }
   });
-
-  if (showLastMove && lastMove) {
-    const moved = aliveShipPositions.find((pos) => pos.shipId === lastMove.shipId);
-    if (moved) {
-      const oldPos = { row: lastMove.oldRow, col: lastMove.oldCol };
-      const newPos = moved.position;
-      const didMove = oldPos.row !== newPos.row || oldPos.col !== newPos.col;
-      if (didMove && inBounds(oldPos.row, oldPos.col) && !grid[oldPos.row][oldPos.col]) {
-        grid[oldPos.row][oldPos.col] = { ...moved, position: oldPos, isPreview: true };
-      }
-    }
-
-    const isTargeting =
-      lastMove.actionType === ActionType.Shoot || lastMove.actionType === ActionType.Special;
-    if (isTargeting && lastMove.targetShipId !== 0) {
-      const destroyed = allShipPositions.find(
-        (sp) => sp.shipId === lastMove.targetShipId && sp.status === 1,
-      );
-      if (destroyed) {
-        const { row, col } = destroyed.position;
-        if (inBounds(row, col) && !grid[row][col]) grid[row][col] = destroyed;
-      }
-    }
-  }
 
   return grid;
 }

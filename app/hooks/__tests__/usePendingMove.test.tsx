@@ -42,7 +42,7 @@ describe("usePendingMove", () => {
     const { result } = setup();
     let key = 0;
     act(() => {
-      key = result.current.capture(captureParams("a"));
+      key = result.current.capture(captureParams("a")).key;
     });
     expect(result.current.pendingMove?.phase).toBe("signing");
     expect(result.current.isAwaitingSync).toBe(false);
@@ -53,7 +53,7 @@ describe("usePendingMove", () => {
   it("stays pending while fresh data still has the pre-submit lastMove, resolves once it changes", () => {
     const { result, rerender, onResolved } = setup();
     act(() => {
-      const key = result.current.capture(captureParams("a"));
+      const key = result.current.capture(captureParams("a")).key;
       result.current.markSent(key);
     });
     rerender({ chainLastMoveKey: "a", isGameOver: false });
@@ -79,7 +79,7 @@ describe("usePendingMove", () => {
     const { result } = setup();
     let key = 0;
     act(() => {
-      key = result.current.capture(captureParams("a"));
+      key = result.current.capture(captureParams("a")).key;
       result.current.markSent(key);
     });
     let first = false;
@@ -97,7 +97,7 @@ describe("usePendingMove", () => {
   it("clears when the game ends", () => {
     const { result, rerender } = setup();
     act(() => {
-      const key = result.current.capture(captureParams("a"));
+      const key = result.current.capture(captureParams("a")).key;
       result.current.markSent(key);
     });
     rerender({ chainLastMoveKey: "a", isGameOver: true });

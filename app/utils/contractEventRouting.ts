@@ -8,6 +8,7 @@ export const WATCHED_EVENT_NAMES = [
   "GameStarted",
   "AITurnTaken",
   "GameReserved",
+  "Move",
 ] as const;
 
 export type WatchedEventName = (typeof WATCHED_EVENT_NAMES)[number];

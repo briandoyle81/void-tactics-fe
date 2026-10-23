@@ -286,3 +286,29 @@ export function applyPendingMoveToGame<
     lastMove,
   };
 }
+
+/**
+ * Your submitted move as a playback move (useMovePlayback): it plays as soon
+ * as you submit. Keyed by the move's content, so the same move echoed back
+ * by fresh data or a Move event isn't played again.
+ */
+export function boardMoveFromPending(move: PendingMove): {
+  key: string;
+  shipId: number;
+  from: { row: number; col: number };
+  to: { row: number; col: number };
+  actionType: number;
+  targetShipId: number;
+  killsTarget: boolean;
+} {
+  const retreat = move.actionType === ActionType.Retreat;
+  return {
+    key: `own:${move.key}:${move.submittedAt}`,
+    shipId: move.shipId,
+    from: { row: move.oldRow, col: move.oldCol },
+    to: retreat ? { row: move.oldRow, col: move.oldCol } : { row: move.finalRow, col: move.finalCol },
+    actionType: move.actionType,
+    targetShipId: move.targetShipId,
+    killsTarget: move.targetShipId > 0 && move.removedShipIds[move.targetShipId] === 1,
+  };
+}

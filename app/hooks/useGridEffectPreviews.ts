@@ -40,15 +40,6 @@ export function useGridEffectPreviews(params: {
   specialRange?: number;
   isCurrentPlayerTurn: boolean;
   isShipOwnedByCurrentPlayer: (shipId: number) => boolean;
-  lastMoveTargetShipId?: number | null;
-  lastMoveShipId?: number | null;
-  lastMoveNewPosition?: { row: number; col: number } | null;
-  /**
-   * Last mover's destination even when last-move ghosts/arrows are hidden
-   * (a ship is selected). Weapon beams must aim here, not at the from-tile
-   * ghost left on the grid.
-   */
-  lastMoveResolvedTo?: { shipId: number; row: number; col: number } | null;
   factionAbilityIsHeal?: boolean;
   factionAbilityStrength?: number;
   calculateDamage: (
@@ -86,27 +77,14 @@ export function useGridEffectPreviews(params: {
     specialRange,
     isCurrentPlayerTurn,
     isShipOwnedByCurrentPlayer,
-    lastMoveTargetShipId,
-    lastMoveShipId,
-    lastMoveNewPosition,
-    lastMoveResolvedTo,
     factionAbilityIsHeal = false,
     factionAbilityStrength,
     calculateDamage,
     getShipAttributes,
   } = params;
 
-  /**
-   * Beam target for directed main weapons. With a ship selected, only the
-   * player's picked `targetShipId` applies — with or without a destination.
-   * Falling back to `lastMoveTargetShipId` there would replay the *previous*
-   * move's victim (e.g. opponent shot the player's ship) from the selected
-   * attacker, which looks like friendly fire.
-   */
-  const directedWeaponBeamTargetId = React.useMemo(() => {
-    if (selectedShipId != null) return targetShipId || null;
-    return targetShipId || lastMoveTargetShipId || null;
-  }, [selectedShipId, targetShipId, lastMoveTargetShipId]);
+  /** Beam target for directed main weapons: the player's picked target. */
+  const directedWeaponBeamTargetId = targetShipId || null;
 
   const flakEffectCells = React.useMemo(() => {
     if (selectedWeaponType !== "special" || specialType !== 3) return EMPTY_RANGE_CELLS;
@@ -375,21 +353,7 @@ export function useGridEffectPreviews(params: {
     (shipId: number | null | undefined): { row: number; col: number } | null => {
       if (shipId == null) return null;
 
-      const resolved =
-        lastMoveResolvedTo && lastMoveResolvedTo.shipId === shipId
-          ? lastMoveResolvedTo
-          : lastMoveShipId != null &&
-              lastMoveShipId === shipId &&
-              lastMoveNewPosition != null
-            ? { shipId, row: lastMoveNewPosition.row, col: lastMoveNewPosition.col }
-            : null;
-      if (resolved && resolved.row >= 0 && resolved.col >= 0) {
-        return { row: resolved.row, col: resolved.col };
-      }
-
-      // Prefer the real ship. Last-move ghosts reuse the same shipId on the
-      // from-tile with isPreview, and a row-major scan would hit that first
-      // whenever the ship moved down or right.
+      // Prefer the real ship over a move-preview ghost with the same id.
       let previewMatch: { row: number; col: number } | null = null;
       for (let r = 0; r < grid.length; r++) {
         const row = grid[r];
@@ -414,7 +378,7 @@ export function useGridEffectPreviews(params: {
 
       return null;
     },
-    [grid, allShipPositions, lastMoveResolvedTo, lastMoveShipId, lastMoveNewPosition],
+    [grid, allShipPositions],
   );
 
   return {
