@@ -29,6 +29,8 @@ import { RunMap, type RunMapNode } from "./operations/RunMap";
 import { useRunRosterHullWeb2 } from "../hooks/useRunRosterHull";
 import { aiConfigToPreviewShipWeb2 } from "../utils/aiShipConfigWeb2";
 import { trackRunRetreated } from "../utils/analytics/gameEvents";
+import { usePrefetchMapsWeb2 } from "../hooks/useMapWeb2";
+import { upcomingMissionNodeIds } from "../utils/missionMaps";
 
 const DEFAULT_ROGUELIKE_CAMPAIGN_ID = 1;
 const MISSION_EDIT_MODE_KEY = "mission-edit-mode-web2";
@@ -122,6 +124,17 @@ export function RoguelikeGraphWeb2({
       toast.error(e instanceof Error ? e.message : "Failed to enter resupply node");
     }
   };
+
+  // Preload the maps of the missions coming up, so their battles open on a
+  // drawn board (useMapWeb2 reads the same cache).
+  const upcomingMapIds = React.useMemo(() => {
+    const ids = upcomingMissionNodeIds(nodes, run?.currentNodeId ?? null, campaign?.rootNodeId ?? null)
+      .map((id) => nodeById.get(id))
+      .map((n) => (n && (n.kind as RoguelikeNodeKind) === RoguelikeNodeKind.Combat ? (n.mapId ?? 0) : 0))
+      .filter((mapId) => mapId > 0);
+    return [...new Set(ids)];
+  }, [nodes, nodeById, run?.currentNodeId, campaign?.rootNodeId]);
+  usePrefetchMapsWeb2(upcomingMapIds);
 
   return (
     <RunMap

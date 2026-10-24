@@ -41,7 +41,9 @@ import {
   TurnCountdownBar,
 } from "./TurnCountdown";
 import { GridHoverProvider } from "./GridHover";
-import { useGetGameMapState } from "../hooks/useMapsContract";
+import { useGetGameMapState, usePresetMapState } from "../hooks/useMapsContract";
+import { nodeMapId } from "../utils/missionMaps";
+import { MapLoadingOverlay } from "./MapLoadingOverlay";
 import {
   useGameContract,
   useGetGame,
@@ -687,6 +689,20 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     Number(game.metadata.gameId),
     { chainSource: "picker" },
   );
+  // An Operations mission starts on an exact copy of its node's preset map,
+  // which the run map preloads (missionMaps.ts): draw that while the game's
+  // own map state loads. Only for the run's live match, whose node is the
+  // run's current one.
+  const isRoguelikeMapGame =
+    game.metadata.orchestrator?.toLowerCase() === ROGUELIKE_MATCH_ADDRESS.toLowerCase();
+  const { data: runForMap } = useGetRoguelikeRun(address as `0x${string}` | undefined, isRoguelikeMapGame);
+  const presetMapId =
+    isRoguelikeMapGame && runForMap && runForMap.activeGameId === game.metadata.gameId
+      ? nodeMapId(Number(runForMap.currentNodeId))
+      : null;
+  const { data: presetMapState } = usePresetMapState(gameMapState ? null : presetMapId);
+  /** Neither the game's map nor its mission's preset map is in yet: the board waits behind MapLoadingOverlay. */
+  const isWaitingForMap = mapLoading && !presetMapState;
 
   // Create grids from contract map (same format as tutorial map grids).
   // getGameMapState's 3rd return value (impassablePositions) is the
@@ -694,8 +710,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // blocking — see
   // docs/eth-global-remote/frontend-handoff-maps-and-deployment-zones-2026-09-23.md §1.
   const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid } = React.useMemo(() => {
-    const { blockedPositions, scoringPositions, impassablePositions } =
-      readGameMapState(gameMapState);
+    const { blockedPositions, scoringPositions, impassablePositions } = gameMapState
+      ? readGameMapState(gameMapState)
+      : (presetMapState ?? readGameMapState(undefined));
     return buildMapGridsFromContractMap(
       blockedPositions,
       scoringPositions,
@@ -703,7 +720,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       GRID_HEIGHT,
       impassablePositions,
     );
-  }, [gameMapState]);
+  }, [gameMapState, presetMapState]);
 
   // Get all ship IDs that may need rendering in this view.
   // Include active IDs plus any IDs present in shipPositions (destroyed/fled can
@@ -2233,7 +2250,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   }
 
   // Show loading state while ships and map data are being fetched
-  if (shipsLoading || mapLoading) {
+  if (shipsLoading) {
     return (
       <div className="w-full sm:w-[92%] mx-auto space-y-6">
         <div className="flex items-center justify-between">
@@ -2834,6 +2851,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   if (isLandscapeMobile) {
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
+      {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <FullscreenPrompt />
@@ -3226,6 +3244,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   return (
     <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
+      {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
     <GridHoverProvider>
     <div
       ref={gameViewRootRef}

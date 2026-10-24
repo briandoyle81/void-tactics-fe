@@ -19,6 +19,7 @@ import { useGameShipsWeb2 } from "../hooks/useGameShipsWeb2";
 import { useGameStreamWeb2 } from "../hooks/useGameStreamWeb2";
 import { useGamePolling } from "../hooks/useGamePolling";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
+import { MapLoadingOverlay } from "./MapLoadingOverlay";
 import { mapTileArtFor } from "../utils/mapTileArt";
 import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
 import { useDamageCalculation } from "../hooks/useDamageCalculation";
@@ -434,7 +435,10 @@ function GameDisplayWeb2({
     scoringGrid: mapScoringGrid,
     onlyOnceGrid: mapOnlyOnceGrid,
     impassableGrid,
+    isLoading: mapLoading,
   } = useMapWeb2(game.mapId, game.gridDimensions.gridWidth, game.gridDimensions.gridHeight);
+  /** The map's tiles aren't in yet (the Operations map preloads upcoming missions' maps): the board waits behind MapLoadingOverlay. */
+  const isWaitingForMap = mapLoading;
   // One-time tiles this game has paid out show empty, as web3's map state
   // does: as of the board on screen (a replay step shows the tiles claimed
   // by then). The score's (+N) projection reads the live game's tiles.
@@ -1765,6 +1769,7 @@ function GameDisplayWeb2({
   if (isLandscapeMobile) {
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
+      {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <FullscreenPrompt />
@@ -1856,6 +1861,7 @@ function GameDisplayWeb2({
 
   return (
     <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
+      {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
     <GridHoverProvider>
     <div
       ref={gameViewRootRef}

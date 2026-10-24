@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
 import { buildMapGridsFromContractMap, type MapGrids } from "../utils/mapGridUtils";
 import { parseZoneTiles, type ZoneTile } from "../utils/deploymentZone";
@@ -18,14 +18,26 @@ interface MapTilesResponse {
 
 const NO_ZONE: ZoneTile[] = [];
 
-export function useMapWeb2(mapId: number, gridWidth: number, gridHeight: number) {
-  const { data, isLoading, error } = useQuery({
+/** A map's tiles: one query per map id, shared by battles and the Operations map's preloading. */
+function mapWeb2Query(mapId: number) {
+  return {
     queryKey: ["mapWeb2", mapId],
     queryFn: () => apiFetch<MapTilesResponse>(`/api/maps/${mapId}`),
     enabled: mapId > 0,
     staleTime: Infinity, // maps never change
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  };
+}
+
+/** Loads these maps into the cache ahead of their battles (the Operations map's upcoming missions). */
+export function usePrefetchMapsWeb2(mapIds: readonly number[]) {
+  useQueries({ queries: mapIds.map((id) => ({ ...mapWeb2Query(id), notifyOnChangeProps: [] as const })) });
+}
+
+export function useMapWeb2(mapId: number, gridWidth: number, gridHeight: number) {
+  const { data, isLoading, error } = useQuery({
+    ...mapWeb2Query(mapId),
     notifyOnChangeProps: ["data", "error"],
   });
 

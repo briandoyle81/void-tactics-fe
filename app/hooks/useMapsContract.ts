@@ -114,6 +114,51 @@ export function useGetPresetMapImpassable(
   });
 }
 
+/**
+ * A preset map's terrain and scoring tiles in getGameMapState's shape
+ * (readGameMapState): a game starts on an exact copy of its preset map, so
+ * a battle can draw this while its own map state loads, and the Operations
+ * map preloads it for the missions coming up. One multicall, cached for the
+ * session (preset maps don't change mid-run); the same key everywhere.
+ */
+export function usePresetMapState(mapId: number | null) {
+  const pickerChainId = useSelectedChainId();
+  const { MAPS } = getContractAddresses(pickerChainId);
+  const enabled = mapId != null && isValidPositiveInt(mapId);
+  const contracts = useMemo(
+    () =>
+      enabled
+        ? (["getPresetMap", "getPresetScoringMap", "getPresetMapImpassable"] as const).map((functionName) => ({
+            address: MAPS as `0x${string}`,
+            abi: CONTRACT_ABIS.MAPS as Abi,
+            chainId: pickerChainId,
+            functionName,
+            args: [BigInt(mapId!)],
+          }))
+        : [],
+    [enabled, MAPS, pickerChainId, mapId],
+  );
+  const { data, isLoading } = useReadContracts({
+    contracts,
+    query: {
+      enabled,
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      notifyOnChangeProps: ["data"],
+    },
+  });
+  const state = useMemo(() => {
+    if (!data || data.some((r) => r.status !== "success")) return undefined;
+    return {
+      blockedPositions: data[0].result as unknown[],
+      scoringPositions: data[1].result as unknown[],
+      impassablePositions: data[2].result as unknown[],
+    };
+  }, [data]);
+  return { data: state, isLoading: enabled && isLoading };
+}
+
 export function useMapExists(mapId: number) {
   const enabled = isValidPositiveInt(mapId);
   return useMapsRead("mapExists", enabled ? [BigInt(mapId)] : undefined, {

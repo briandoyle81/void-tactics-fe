@@ -33,6 +33,8 @@ import { RunMap, type RunMapNode } from "./operations/RunMap";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useRunRosterHullWeb3 } from "../hooks/useRunRosterHull";
 import { trackRunRetreated } from "../utils/analytics/gameEvents";
+import { usePresetMapState } from "../hooks/useMapsContract";
+import { rememberNodeMaps, upcomingMissionNodeIds } from "../utils/missionMaps";
 
 const NO_SHIP_IDS: bigint[] = [];
 // Only campaign 1 exists today.
@@ -51,6 +53,12 @@ interface RoguelikeGraphProps {
   onRunAdvanced: () => void;
   tutorial?: { onStart: () => void; onSkip: () => void };
   tutorialDone?: boolean;
+}
+
+/** Loads a preset map into the cache ahead of its battle. */
+function PresetMapPrefetch({ mapId }: { mapId: number }) {
+  usePresetMapState(mapId);
+  return null;
 }
 
 const toRunMapNode = (n: RoguelikeNodeWithContent): RunMapNode => ({
@@ -168,7 +176,33 @@ export function RoguelikeGraph({
     }
   };
 
+  // Battles know their node, not their map: remember each node's map, and
+  // preload the maps of the missions coming up so their battles open on a
+  // drawn board (GameDisplay reads the same cache; see missionMaps.ts).
+  React.useEffect(() => {
+    rememberNodeMaps(
+      campaignNodes
+        .filter((n) => n.kind === RoguelikeNodeKind.Combat)
+        .map((n) => ({ nodeId: Number(n.id), mapId: Number(n.mapId) })),
+    );
+  }, [campaignNodes]);
+  const upcomingMapIds = React.useMemo(() => {
+    const ids = upcomingMissionNodeIds(
+      nodes,
+      run ? Number(run.currentNodeId) : null,
+      rootNodeIdRaw != null ? Number(rootNodeIdRaw) : null,
+    )
+      .map((id) => nodeById.get(id))
+      .filter((n) => n != null && n.kind === RoguelikeNodeKind.Combat && n.mapId > 0n)
+      .map((n) => Number(n!.mapId));
+    return [...new Set(ids)];
+  }, [nodes, nodeById, run, rootNodeIdRaw]);
+
   return (
+    <>
+    {upcomingMapIds.map((mapId) => (
+      <PresetMapPrefetch key={mapId} mapId={mapId} />
+    ))}
     <RunMap
       run={run ? { currentNodeId: Number(run.currentNodeId), hasActiveGame: run.activeGameId !== 0n } : null}
       nodes={nodes}
@@ -237,6 +271,7 @@ export function RoguelikeGraph({
         <RoguelikeSettingsModal campaignId={campaignId} onClose={close} onSaved={() => void refetchAutoHeal()} />
       )}
     />
+    </>
   );
 }
 
