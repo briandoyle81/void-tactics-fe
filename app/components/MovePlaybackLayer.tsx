@@ -79,7 +79,11 @@ export function MovePlaybackLayer({
   allShipPositions: readonly GridShipPosition[];
   shipMap: Map<number, GridShip>;
   impassableGrid?: boolean[][];
-  getShipAttributes: (shipId: number) => { hullPoints: number } | null;
+  getShipAttributes: (shipId: number) => {
+    hullPoints: number;
+    maxHullPoints: number;
+    reactorCriticalTimer: number;
+  } | null;
   /** The map's background image, behind the cinematic's panels. */
   background: string;
 }) {
@@ -170,6 +174,9 @@ export function MovePlaybackLayer({
         defender={targetShip}
         attackerIsCreator={isCreator}
         killsTarget={!!move.killsTarget}
+        defenderDisabled={getShipAttributes(targetShip.id)?.hullPoints === 0}
+        defenderStatus={getShipAttributes(targetShip.id)}
+        defenderStatusAfter={move.targetAfter ?? null}
         soundOnceKey={soundOnceKey}
         background={background}
       />,

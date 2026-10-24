@@ -1,4 +1,4 @@
-import type { BoardMove } from "../hooks/useMovePlayback";
+import type { BoardMove, TargetStatusAfter } from "../hooks/useMovePlayback";
 
 // The held board while moves play back (useHeldBoard): each move that has
 // reached its tile puts its ship there; a finished move also takes its
@@ -58,7 +58,12 @@ export function moveContentKey(m: RawMove): string {
 export function boardMoveFromRaw(
   key: string,
   m: RawMove,
-  ctx: { moverVariant: number | null | undefined; targetPosition: { row: number; col: number } | null; killsTarget?: boolean },
+  ctx: {
+    moverVariant: number | null | undefined;
+    targetPosition: { row: number; col: number } | null;
+    killsTarget?: boolean;
+    targetAfter?: TargetStatusAfter;
+  },
 ): BoardMove {
   const isRam = m.actionType === ACTION_FACTION_ABILITY && Number(ctx.moverVariant) !== 2;
   const retreat = m.actionType === ACTION_RETREAT;
@@ -75,5 +80,24 @@ export function boardMoveFromRaw(
     actionType: m.actionType,
     targetShipId: m.targetShipId,
     killsTarget: ctx.killsTarget,
+    targetAfter: ctx.targetAfter,
   };
+}
+
+/**
+ * A ship's hull and reactor damage in a game (shipIds and shipAttributes run
+ * in parallel in every mode), for a move's `targetAfter`. Undefined when the
+ * ship isn't in it.
+ */
+export function shipStatusIn(
+  game: {
+    shipIds: readonly (number | bigint | string)[];
+    shipAttributes: readonly { hullPoints: number; reactorCriticalTimer: number }[];
+  },
+  shipId: number,
+): TargetStatusAfter | undefined {
+  if (!shipId) return undefined;
+  const i = game.shipIds.findIndex((id) => Number(id) === shipId);
+  const attrs = i >= 0 ? game.shipAttributes[i] : undefined;
+  return attrs ? { hullPoints: attrs.hullPoints, reactorCriticalTimer: attrs.reactorCriticalTimer } : undefined;
 }

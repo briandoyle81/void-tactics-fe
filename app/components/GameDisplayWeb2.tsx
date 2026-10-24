@@ -103,7 +103,7 @@ import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } 
 
 /** Replay autoplay: the pause after a turn's move has played, before the next. */
 const REPLAY_AUTOPLAY_PAUSE_MS = 600;
-import { boardMoveFromRaw, landShipPositions, type RawMove } from "../utils/movePlaybackBoard";
+import { boardMoveFromRaw, landShipPositions, type RawMove, shipStatusIn } from "../utils/movePlaybackBoard";
 
 /** The web2 held board with landed moves applied (useHeldBoard). */
 function landWeb2Positions(game: Web2GameDataView, landed: BoardMove[], activeKey: string | null): Web2GameDataView {
@@ -301,10 +301,19 @@ function GameDisplayWeb2({
   }, [chainGame, isPlayerInGame, playerIsCreator, replayStep, gameId, enqueueEnemy]);
   const playbackActive = useMemo(() => {
     const active = playback.active;
-    if (!active || active.move.killsTarget != null || !active.move.targetShipId) return active;
+    if (!active || !active.move.targetShipId) return active;
+    if (active.move.killsTarget != null && active.move.targetAfter) return active;
     const target = chainGame.shipPositions.find((p) => p.shipId === active.move.targetShipId);
-    return { ...active, move: { ...active.move, killsTarget: target?.status === 1 } };
-  }, [playback.active, chainGame.shipPositions]);
+    return {
+      ...active,
+      move: {
+        ...active.move,
+        killsTarget: active.move.killsTarget ?? target?.status === 1,
+        // The target's hull after the move: yours predicted, an enemy's from the server.
+        targetAfter: active.move.targetAfter ?? shipStatusIn(liveGame, active.move.targetShipId),
+      },
+    };
+  }, [playback.active, chainGame.shipPositions, liveGame]);
   const gridPlayback = useMemo(
     () => ({ active: playbackActive, onPhaseDone: playback.advance }),
     [playbackActive, playback.advance],
@@ -350,6 +359,7 @@ function GameDisplayWeb2({
           : null,
         killsTarget:
           raw.targetShipId > 0 && after.shipPositions.find((p) => p.shipId === raw.targetShipId)?.status === 1,
+        targetAfter: shipStatusIn(after, raw.targetShipId),
       }),
     applyLanded: landWeb2Positions,
   });

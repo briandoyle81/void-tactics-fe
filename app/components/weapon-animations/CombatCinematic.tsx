@@ -5,6 +5,7 @@ import { GRID_DIMENSIONS, getMainWeaponName, getSpecialName } from "../../types/
 import type { GridShip } from "../../types/gridDisplay";
 import { weaponOnceMs, type WeaponEffectKind } from "../../utils/weaponPlayback";
 import { GridShipImage } from "../GridShipImage";
+import { SosHullFires } from "../SosHullFires";
 import { LaserShootingAnimation } from "./LaserShootingAnimation";
 import { RailgunShootingAnimation } from "./RailgunShootingAnimation";
 import { MissileShootingAnimation } from "./MissileShootingAnimation";
@@ -14,6 +15,7 @@ import { EmpWaveAnimation } from "./EmpWaveAnimation";
 import { AttackDroneAnimation } from "./AttackDroneAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs } from "./ShipExplosionSound";
 import { WeaponSoundsMuted } from "./weaponSounds";
+import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
 
 // Cinematic combat (Settings › Combat › Cinematic, useCombatView): an attack
 // on an enemy ship plays as two overlapping comic panels over the board
@@ -54,11 +56,21 @@ const ANCHOR_B: Pt = { x: 73, y: 72 };
 const CELL_OF_STAGE_H = 0.22;
 
 // Timeline, ms from mount.
-const B_IN_MS = 220;
-const PANEL_IN_MS = 360;
-const FIRE_AT_MS = 750;
+const B_IN_MS = 330;
+const PANEL_IN_MS = 540;
+const FIRE_AT_MS = 1125;
 const HOLD_AFTER_MS = 500;
-const PANEL_OUT_MS = 280;
+const PANEL_OUT_MS = 420;
+const BACKDROP_FADE_MS = 300;
+/** The hull bar drains from the hit to the end of the firing, and over at least this long. */
+const MIN_HULL_DRAIN_MS = 500;
+/** A killing blow empties the bar this fast, then the wreck replaces the ship. */
+const KILL_HULL_DRAIN_MS = 400;
+
+function hullDrainMs(effect: WeaponEffectKind, killsTarget: boolean): number {
+  if (killsTarget) return KILL_HULL_DRAIN_MS;
+  return Math.max(MIN_HULL_DRAIN_MS, FIRE_AT_MS + weaponOnceMs(effect, STAGED_DISTANCE) - hitAtMs(effect));
+}
 
 /** Whether an attack plays as a cinematic: a weapon fired at an enemy ship. */
 export function cinematicCovers(effect: WeaponEffectKind): boolean {
@@ -92,6 +104,15 @@ function weaponName(effect: WeaponEffectKind, ship: GridShip): string {
   if (effect.kind === "emp" || effect.kind === "attackDrones") return getSpecialName(Number(ship.equipment.special), variant);
   return "";
 }
+
+/**
+ * The weapon gets its own compositor layer. Without it, it shares a layer
+ * with its zoomed, clipped panel, and every frame of the effect re-rasters
+ * that panel at the screen's full pixel density, in both panels: measured
+ * at phone density with a throttled CPU, raster time was 2-6x the on-board
+ * effect's (plasma ~1000 ms vs ~160 ms over 7 s); with this, ~230 ms.
+ */
+const WEAPON_LAYER_STYLE: React.CSSProperties = { willChange: "transform" };
 
 const mirrorPts = (pts: Pt[]) => pts.map((p) => ({ x: 100 - p.x, y: p.y }));
 const polyCss = (pts: Pt[]) => `polygon(${pts.map((p) => `${p.x}% ${p.y}%`).join(", ")})`;
@@ -142,6 +163,10 @@ function CinematicPanel({
   stage,
   ship,
   shipFacesRight,
+  shipDisabled = false,
+  shipStatus,
+  shipStatusAfter = null,
+  hullDrainMs = MIN_HULL_DRAIN_MS,
   background,
   enterFrom,
   state,
@@ -160,6 +185,13 @@ function CinematicPanel({
   stage: { w: number; h: number };
   ship: GridShip;
   shipFacesRight: boolean;
+  /** Drawn the way the board draws a disabled (0 hull) ship: tilted, hull on fire. */
+  shipDisabled?: boolean;
+  /** The ship's hull bar and reactor damage, drawn as on the board. Omitted: neither. */
+  shipStatus?: CinematicShipStatus | null;
+  /** Set when the hit lands: the hull bar drains to it. */
+  shipStatusAfter?: TargetStatusAfter | null;
+  hullDrainMs?: number;
   background: string;
   enterFrom: Pt;
   state: PanelState;
@@ -228,7 +260,7 @@ function CinematicPanel({
         transition:
           state === "out"
             ? `transform ${PANEL_OUT_MS}ms cubic-bezier(.6,0,.8,.4), opacity ${PANEL_OUT_MS}ms linear`
-            : `transform ${PANEL_IN_MS}ms cubic-bezier(.2,1.4,.4,1), opacity 120ms linear`,
+            : `transform ${PANEL_IN_MS}ms cubic-bezier(.2,1.4,.4,1), opacity 180ms linear`,
       }}
     >
       <div ref={shakeRef} className="absolute inset-0">
@@ -251,12 +283,25 @@ function CinematicPanel({
               className="absolute"
               style={{ left: focus.col * CELL, top: focus.row * CELL, width: CELL, height: CELL }}
             >
-              <GridShipImage
-                ship={ship}
-                className={`h-full w-full ${shipFacesRight ? "[&_img]:scale-x-[-1]" : ""}`}
-                hideRankStars
-                showLoadingState={false}
-              />
+              <div className={`relative h-full w-full origin-center ${shipDisabled ? "sos-art-tilt rotate-[15deg]" : ""}`}>
+                <div className={`relative h-full w-full ${shipDisabled && shipFacesRight ? "scale-x-[-1]" : ""}`}>
+                  <GridShipImage
+                    ship={ship}
+                    className={`h-full w-full ${!shipDisabled && shipFacesRight ? "[&_img]:scale-x-[-1]" : ""}`}
+                    hideRankStars
+                    showLoadingState={false}
+                  />
+                  {shipDisabled && <SosHullFires shipId={ship.id} />}
+                </div>
+              </div>
+              {shipStatus && (
+                <ShipStatusMarks
+                  status={shipStatus}
+                  after={shipStatusAfter}
+                  drainMs={hullDrainMs}
+                  reactorOnLeft={shipFacesRight}
+                />
+              )}
             </div>
             {children}
           </div>
@@ -310,6 +355,75 @@ function CinematicPanel({
   );
 }
 
+/** A ship's condition when the shot is fired. */
+export interface CinematicShipStatus {
+  hullPoints: number;
+  maxHullPoints: number;
+  reactorCriticalTimer: number;
+}
+
+/**
+ * The board's hull bar (top of the tile; red at 25% or less) and reactor
+ * damage marks (bottom corner, up to 3), in the staged cell's 50px units.
+ * Once `after` is set (the hit has landed), the bar drains to it over
+ * `drainMs` and the reactor marks show the new damage.
+ */
+function ShipStatusMarks({
+  status,
+  after,
+  drainMs,
+  reactorOnLeft,
+}: {
+  status: CinematicShipStatus;
+  after: TargetStatusAfter | null;
+  drainMs: number;
+  reactorOnLeft: boolean;
+}) {
+  const { maxHullPoints } = status;
+  const hullPoints = after ? after.hullPoints : status.hullPoints;
+  const reactorCriticalTimer = after ? after.reactorCriticalTimer : status.reactorCriticalTimer;
+  const pct = maxHullPoints > 0 ? Math.max(0, Math.min(100, (hullPoints / maxHullPoints) * 100)) : 0;
+  const marks = Math.min(Math.max(0, reactorCriticalTimer), 3);
+  // A ship knocked to 0 keeps its (empty) bar until the panel goes.
+  const showBar = status.hullPoints > 0;
+  return (
+    <>
+      {showBar && (
+        <div className="pointer-events-none absolute left-0 right-0 top-0 z-[30] px-0.5" dir="ltr">
+          <div className="relative h-1 w-full overflow-hidden" style={{ backgroundColor: "var(--color-gunmetal)" }}>
+            <div
+              className="absolute left-0 top-0 h-full"
+              style={{
+                width: `${pct}%`,
+                backgroundColor: pct <= 25 ? "var(--color-warning-red)" : "var(--color-phosphor-green)",
+                transition: `width ${drainMs}ms linear, background-color ${drainMs}ms linear`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+      {marks > 0 && (
+        <div
+          className={`pointer-events-none absolute bottom-0 z-[22] flex items-end ${reactorOnLeft ? "left-0" : "right-0"}`}
+          style={{ margin: 1, gap: 1 }}
+        >
+          {Array.from({ length: marks }, (_, i) => (
+            <div
+              key={i}
+              className="flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-warning-red/90 leading-none"
+              style={{ width: 9, height: 9 }}
+            >
+              <span className="font-mono leading-none" style={{ fontSize: 7 }}>
+                ✕
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export interface CombatCinematicProps {
   effect: WeaponEffectKind;
   attacker: GridShip;
@@ -317,6 +431,12 @@ export interface CombatCinematicProps {
   /** The creator's ships face right and fire from the left. */
   attackerIsCreator: boolean;
   killsTarget: boolean;
+  /** The target is disabled (0 hull) when the shot is fired. */
+  defenderDisabled?: boolean;
+  /** The target's hull and reactor damage when the shot is fired. */
+  defenderStatus?: CinematicShipStatus | null;
+  /** ...and once it lands: the hull bar drains to it from the hit. */
+  defenderStatusAfter?: TargetStatusAfter | null;
   /** The move's sound key: its sounds play once per key, as on the board. */
   soundOnceKey: string;
   /** The map's background image (mapBackgroundFor), behind both panels. */
@@ -334,6 +454,9 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   defender,
   attackerIsCreator,
   killsTarget,
+  defenderDisabled = false,
+  defenderStatus = null,
+  defenderStatusAfter = null,
   soundOnceKey,
   background,
 }: CombatCinematicProps) {
@@ -378,7 +501,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
         setB("out");
       }, outMs),
     ];
-    if (killsTarget) timers.push(window.setTimeout(() => setWrecked(true), hitMs + 250));
+    if (killsTarget) timers.push(window.setTimeout(() => setWrecked(true), hitMs + KILL_HULL_DRAIN_MS + 50));
     return () => timers.forEach((t) => window.clearTimeout(t));
     // One run per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -407,7 +530,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
       style={{
         background: "color-mix(in srgb, var(--color-near-black) 72%, transparent)",
         opacity: a === "waiting" ? 0 : 1,
-        transition: "opacity 200ms linear",
+        transition: `opacity ${BACKDROP_FADE_MS}ms linear`,
       }}
       aria-hidden
     >
@@ -432,7 +555,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             boardRef={boardA}
           >
             {firing && (
-              <div className="weapon-once pointer-events-none absolute inset-0">
+              <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
                 <StagedWeapon {...weaponProps} boardRef={boardA} soundOnceKey={soundOnceKey} />
               </div>
             )}
@@ -445,6 +568,10 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             stage={stage}
             ship={wreck}
             shipFacesRight={!attackerIsCreator}
+            shipDisabled={defenderDisabled && !wrecked}
+            shipStatus={wrecked ? null : defenderStatus}
+            shipStatusAfter={hit > 0 ? defenderStatusAfter : null}
+            hullDrainMs={hullDrainMs(effect, killsTarget)}
             background={background}
             enterFrom={{ x: 18 * dir, y: 14 }}
             state={b}
@@ -458,7 +585,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             {/* The same shot, from the same moment; its sounds are A's. */}
             <WeaponSoundsMuted value={true}>
               {firing && (
-                <div className="weapon-once pointer-events-none absolute inset-0">
+                <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
                   <StagedWeapon {...weaponProps} boardRef={boardB} soundOnceKey={`${soundOnceKey}:defender`} />
                 </div>
               )}

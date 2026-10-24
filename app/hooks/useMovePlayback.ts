@@ -23,6 +23,14 @@ export interface BoardMove {
   targetShipId: number;
   /** The target was destroyed by this move: its explosion plays after the hit. */
   killsTarget?: boolean;
+  /** The target's hull and reactor damage once this move lands (the cinematic's hull bar drains to it). */
+  targetAfter?: TargetStatusAfter;
+}
+
+/** A ship's hull and reactor damage, as a move leaves them. */
+export interface TargetStatusAfter {
+  hullPoints: number;
+  reactorCriticalTimer: number;
 }
 
 export type PlaybackPhase = "moving" | "firing";

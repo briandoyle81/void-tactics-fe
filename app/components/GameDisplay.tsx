@@ -138,7 +138,7 @@ import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } 
 
 /** Replay autoplay: the pause after a turn's move has played, before the next. */
 const REPLAY_AUTOPLAY_PAUSE_MS = 600;
-import { boardMoveFromRaw, landShipPositions, type RawMove } from "../utils/movePlaybackBoard";
+import { boardMoveFromRaw, landShipPositions, type RawMove, shipStatusIn } from "../utils/movePlaybackBoard";
 import { registerGameMoves } from "../utils/gameMoveLogs";
 
 /** The web3 held board with landed moves applied (useHeldBoard). */
@@ -339,12 +339,22 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     [initialGame.metadata.gameId, enqueueEnemy],
   );
   // A kill: the target is destroyed in the chain data by the time it fires.
+  // The target's hull after the move comes from the live board (yours
+  // predicted from the pending move, an enemy's from the chain).
   const playbackActive = React.useMemo(() => {
     const active = playback.active;
-    if (!active || active.move.killsTarget != null || !active.move.targetShipId) return active;
+    if (!active || !active.move.targetShipId) return active;
+    if (active.move.killsTarget != null && active.move.targetAfter) return active;
     const target = chainGame.shipPositions.find((p) => Number(p.shipId) === active.move.targetShipId);
-    return { ...active, move: { ...active.move, killsTarget: target?.status === 1 } };
-  }, [playback.active, chainGame.shipPositions]);
+    return {
+      ...active,
+      move: {
+        ...active.move,
+        killsTarget: active.move.killsTarget ?? target?.status === 1,
+        targetAfter: active.move.targetAfter ?? shipStatusIn(liveGame, active.move.targetShipId),
+      },
+    };
+  }, [playback.active, chainGame.shipPositions, liveGame]);
   const gridPlayback = React.useMemo(
     () => ({ active: playbackActive, onPhaseDone: playback.advance }),
     [playbackActive, playback.advance],
@@ -371,6 +381,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         killsTarget:
           raw.targetShipId > 0 &&
           after.shipPositions.find((p) => Number(p.shipId) === raw.targetShipId)?.status === 1,
+        targetAfter: shipStatusIn(after, raw.targetShipId),
       }),
     applyLanded: landWeb3Positions,
   });

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useMovePlayback, type BoardMove } from "../useMovePlayback";
-import { landShipPositions } from "../../utils/movePlaybackBoard";
+import { landShipPositions, shipStatusIn } from "../../utils/movePlaybackBoard";
 
 const move = (key: string, overrides: Partial<BoardMove> = {}): BoardMove => ({
   key,
@@ -71,5 +71,24 @@ describe("landShipPositions", () => {
   it("a retreat leaves the board", () => {
     const landed = landShipPositions(positions, [move("a", { actionType: 2, to: { row: 0, col: 0 } })], "a");
     expect(landed[0].status).toBe(2);
+  });
+});
+
+describe("shipStatusIn", () => {
+  const game = {
+    shipIds: [10n, 20n],
+    shipAttributes: [
+      { hullPoints: 80, reactorCriticalTimer: 0 },
+      { hullPoints: 12, reactorCriticalTimer: 2 },
+    ],
+  };
+
+  it("reads a ship's hull and reactor damage by id", () => {
+    expect(shipStatusIn(game, 20)).toEqual({ hullPoints: 12, reactorCriticalTimer: 2 });
+  });
+
+  it("is undefined for no target or a ship not in the game", () => {
+    expect(shipStatusIn(game, 0)).toBeUndefined();
+    expect(shipStatusIn(game, 30)).toBeUndefined();
   });
 });

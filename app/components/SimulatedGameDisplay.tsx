@@ -150,7 +150,7 @@ import {
 } from "./TutorialGridPanelConfigs";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 import { useHeldBoard, useMovePlayback, type BoardMove } from "../hooks/useMovePlayback";
-import { boardMoveFromRaw, landShipPositions } from "../utils/movePlaybackBoard";
+import { boardMoveFromRaw, landShipPositions, shipStatusIn } from "../utils/movePlaybackBoard";
 
 /** The tutorial's held board with landed moves applied (useHeldBoard). */
 function landTutorialPositions(state: SimulatedGameState, landed: BoardMove[], activeKey: string | null): SimulatedGameState {
@@ -407,6 +407,7 @@ export function SimulatedGameDisplay({
           moverVariant: tutorialShipVariantsRef.current.get(Number(tutorialLastMove.shipId)),
           targetPosition: target?.position ?? null,
           killsTarget: liveTarget?.status === 1,
+          targetAfter: shipStatusIn(liveTutorialState, targetId),
         },
       ),
     ]);
