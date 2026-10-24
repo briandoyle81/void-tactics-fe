@@ -37,7 +37,8 @@ import { useCombatView } from "../hooks/useCombatView";
 // onPhaseDone(key, phase) as each phase ends; when the queue is empty nothing
 // is drawn. Lives in GameGrid, so web3, web2, the tutorial and replay share it.
 // With Combat view set to Cinematic (useCombatView), an attack on an enemy
-// ship fires in CombatCinematic's two panels over the board instead: the
+// ship (or a repair on another friendly one) plays in CombatCinematic's two
+// panels over the board instead: the
 // board's weapon (and its sounds) isn't mounted for that move, and the
 // firing phase lasts the cinematic's length.
 
@@ -132,7 +133,13 @@ export function MovePlaybackLayer({
     : null;
   const distanceCells = move && targetPos ? Math.hypot(move.to.row - targetPos.row, move.to.col - targetPos.col) : 0;
   const targetShip = move?.targetShipId ? shipMap.get(move.targetShipId) : undefined;
-  const cinematic = combatView === "cinematic" && cinematicCovers(effect) && !!targetShip && !!targetPos;
+  // A ship repairing itself stays on the board: the cinematic needs two ships.
+  const cinematic =
+    combatView === "cinematic" &&
+    cinematicCovers(effect) &&
+    !!targetShip &&
+    !!targetPos &&
+    move?.targetShipId !== move?.shipId;
   const fireMs = cinematic ? cinematicDurationMs(effect) : weaponOnceMs(effect, distanceCells);
 
   // Skip a phase with nothing to draw (a hold doesn't slide; Pass fires nothing).

@@ -13,6 +13,7 @@ import { PlasmaShootingAnimation } from "./PlasmaShootingAnimation";
 import { MiningDrillAnimation } from "./MiningDrillAnimation";
 import { EmpWaveAnimation } from "./EmpWaveAnimation";
 import { AttackDroneAnimation } from "./AttackDroneAnimation";
+import { RepairDroneAnimation } from "./RepairDroneAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs } from "./ShipExplosionSound";
 import { WeaponSoundsMuted } from "./weaponSounds";
 import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
@@ -21,7 +22,9 @@ import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
 // on an enemy ship plays as two overlapping comic panels over the board
 // instead of on it. The attacker's panel is top left when the creator
 // attacks and top right when the joiner does; the defender's is in the
-// opposite bottom corner, on top.
+// opposite bottom corner, on top. A repair on a friendly ship plays the same
+// way: the healer's panel, then the patient's, captioned as a repair, both
+// in the side's colour, with the hull bar filling instead of draining.
 //
 // Each panel is a zoomed window onto the same staged 17x11 board, with the
 // two ships a fixed distance apart. The game's own weapon component runs in
@@ -79,9 +82,9 @@ function hullDrainMs(effect: WeaponEffectKind, killsTarget: boolean): number {
  */
 export const CinematicHostContext = createContext<React.RefObject<HTMLElement | null> | null>(null);
 
-/** Whether an attack plays as a cinematic: a weapon fired at an enemy ship. */
+/** Whether a move plays as a cinematic: a weapon fired at an enemy ship, or a repair on a friendly one. */
 export function cinematicCovers(effect: WeaponEffectKind): boolean {
-  return effect.kind === "main" || effect.kind === "emp" || effect.kind === "attackDrones";
+  return effect.kind === "main" || effect.kind === "emp" || effect.kind === "attackDrones" || effect.kind === "repair";
 }
 
 /** The cinematic's whole length: panels in, one firing, a beat, panels out. */
@@ -91,7 +94,8 @@ export function cinematicDurationMs(effect: WeaponEffectKind): number {
 
 /** When the shot lands, ms after mount (the timing the game's explosion sound uses). */
 function hitAtMs(effect: WeaponEffectKind): number {
-  if (effect.kind === "attackDrones") return FIRE_AT_MS + 3200 * 0.3;
+  // Drones reach the target about 30% into their 3.2 s flight.
+  if (effect.kind === "attackDrones" || effect.kind === "repair") return FIRE_AT_MS + 3200 * 0.3;
   if (effect.kind !== "main") return FIRE_AT_MS + 300;
   return (
     FIRE_AT_MS +
@@ -109,6 +113,8 @@ function weaponName(effect: WeaponEffectKind, ship: GridShip): string {
   const variant = Number(ship.traits.variant);
   if (effect.kind === "main") return getMainWeaponName(effect.mainWeapon, effect.variant);
   if (effect.kind === "emp" || effect.kind === "attackDrones") return getSpecialName(Number(ship.equipment.special), variant);
+  // Both repairs (variant 1's special, variant 2's faction ability) are drones.
+  if (effect.kind === "repair") return "Repair Drones";
   return "";
 }
 
@@ -158,6 +164,7 @@ function StagedWeapon({
   };
   if (effect.kind === "emp") return <EmpWaveAnimation {...aim} />;
   if (effect.kind === "attackDrones") return <AttackDroneAnimation {...aim} once />;
+  if (effect.kind === "repair") return <RepairDroneAnimation {...aim} />;
   if (effect.kind !== "main") return null;
   if (effect.mainWeapon === 0) return <LaserShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} />;
   if (effect.mainWeapon === 1) return <RailgunShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} />;
@@ -187,6 +194,7 @@ function CinematicPanel({
   state,
   shake,
   flash,
+  flashKind = "hit",
   caption,
   captionColor,
   captionAt,
@@ -213,6 +221,8 @@ function CinematicPanel({
   state: PanelState;
   shake: number;
   flash: number;
+  /** "heal": a repair lands with a green glow instead of the hit's white-red flash. */
+  flashKind?: "hit" | "heal";
   caption: string | null;
   /** The side's colour: yours cyan, theirs red. */
   captionColor: string;
@@ -243,15 +253,21 @@ function CinematicPanel({
   useEffect(() => {
     if (!flash || !flashRef.current) return;
     flashRef.current.animate(
-      [
-        { filter: "brightness(1)" },
-        { filter: "brightness(3.2) saturate(0.2)", offset: 0.12 },
-        { filter: "brightness(1.4) sepia(1) hue-rotate(-40deg) saturate(4)", offset: 0.4 },
-        { filter: "brightness(1)" },
-      ],
+      flashKind === "heal"
+        ? [
+            { filter: "brightness(1)" },
+            { filter: "brightness(1.8) drop-shadow(0 0 6px var(--color-phosphor-green))", offset: 0.3 },
+            { filter: "brightness(1)" },
+          ]
+        : [
+            { filter: "brightness(1)" },
+            { filter: "brightness(3.2) saturate(0.2)", offset: 0.12 },
+            { filter: "brightness(1.4) sepia(1) hue-rotate(-40deg) saturate(4)", offset: 0.4 },
+            { filter: "brightness(1)" },
+          ],
       { duration: 520, easing: "ease-out" },
     );
-  }, [flash]);
+  }, [flash, flashKind]);
 
   const scale = (stage.h * CELL_OF_STAGE_H) / CELL;
   const cx = (focus.col + 0.5) * CELL;
@@ -530,6 +546,8 @@ export const CombatCinematic = React.memo(function CombatCinematic({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A repair's patient is on the healer's side.
+  const isRepair = effect.kind === "repair";
   const flip = !attackerIsCreator;
   const stagedAttacker = flip ? mirrorCell(STAGE_ATTACKER) : STAGE_ATTACKER;
   const stagedDefender = flip ? mirrorCell(STAGE_DEFENDER) : STAGE_DEFENDER;
@@ -572,7 +590,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             state={a}
             shake={0}
             flash={0}
-            caption={shipCaption(attacker, `Attacking · ${weaponName(effect, attacker)}`)}
+            caption={shipCaption(attacker, `${isRepair ? "Repairing" : "Attacking"} · ${weaponName(effect, attacker)}`)}
             captionColor={attackerIsMine ? MY_COLOR : THEIR_COLOR}
             captionAt="top"
             captionSide={attackerIsCreator ? "left" : "right"}
@@ -591,7 +609,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             focus={stagedDefender}
             stage={stage}
             ship={wreck}
-            shipFacesRight={!attackerIsCreator}
+            shipFacesRight={isRepair ? attackerIsCreator : !attackerIsCreator}
             shipDisabled={defenderDisabled && !wrecked}
             shipStatus={wrecked ? null : defenderStatus}
             shipStatusAfter={hit > 0 ? defenderStatusAfter : null}
@@ -599,10 +617,14 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             background={background}
             enterFrom={{ x: 18 * dir, y: 14 }}
             state={b}
-            shake={hit}
+            shake={isRepair ? 0 : hit}
             flash={hit}
-            caption={shipCaption(defender, wrecked ? "Destroyed" : "Defending")}
-            captionColor={attackerIsMine ? THEIR_COLOR : MY_COLOR}
+            flashKind={isRepair ? "heal" : "hit"}
+            caption={shipCaption(
+              defender,
+              isRepair ? (hit > 0 ? "Repaired" : "Receiving repairs") : wrecked ? "Destroyed" : "Defending",
+            )}
+            captionColor={isRepair === attackerIsMine ? MY_COLOR : THEIR_COLOR}
             captionAt="bottom"
             captionSide={attackerIsCreator ? "right" : "left"}
             boardRef={boardB}

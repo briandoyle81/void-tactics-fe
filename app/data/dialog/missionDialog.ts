@@ -310,10 +310,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-16-start",
+    id: "roguelike-5-start",
     characterId: "adjutant",
     text: "Admiral, get a look at that ship!  It's got some kind of unsanctioned modifications that make it as effective as a ship with a veteran crew.  I think that shipyard is putting on final finishing, which means the weapons aren't active and the reactor is cold.",
-    mission: { kind: "roguelike", nodeId: 16 },
+    mission: { kind: "roguelike", nodeId: 5 },
     trigger: { type: "missionStart" },
     responses: [
       {
@@ -331,10 +331,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-16-victory",
+    id: "roguelike-5-victory",
     characterId: "adjutant",
     text: "We did it! Crews are boarding the shipyard now and will report back momentarily.",
-    mission: { kind: "roguelike", nodeId: 16 },
+    mission: { kind: "roguelike", nodeId: 5 },
     trigger: { type: "missionVictory" },
     responses: [
       {
@@ -356,10 +356,10 @@ export const MISSION_DIALOG_LINES: MissionDialogLine<DialogCharacterId>[] = [
     ],
   },
   {
-    id: "roguelike-16-defeat",
+    id: "roguelike-5-defeat",
     characterId: "adjutant",
     text: "We've lost, admiral.  The enemy fleet was too big to take us on.",
-    mission: { kind: "roguelike", nodeId: 16 },
+    mission: { kind: "roguelike", nodeId: 5 },
     trigger: { type: "missionDefeat" },
   },
   {
