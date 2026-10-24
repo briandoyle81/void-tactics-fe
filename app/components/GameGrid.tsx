@@ -812,10 +812,10 @@ function GameGridOverlaysWithDestHover({
 }
 
 /** The move playing back (MovePlaybackContext), drawn over the board. */
-function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer>, "active" | "onPhaseDone" | "allShipPositions"> & {
+function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer>, "active" | "onPhaseDone" | "allShipPositions" | "background"> & {
   allShipPositions?: readonly GridShipPosition[];
 }) {
-  const { active, onPhaseDone } = useMovePlaybackContext();
+  const { active, onPhaseDone, background } = useMovePlaybackContext();
   if (!active) return null;
   return (
     <MovePlaybackLayer
@@ -823,6 +823,7 @@ function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer
       allShipPositions={props.allShipPositions ?? EMPTY_SHIP_POSITIONS}
       active={active}
       onPhaseDone={onPhaseDone}
+      background={background}
     />
   );
 }
@@ -1339,13 +1340,18 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
   );
   const playbackActive = props.playback?.active ?? null;
   const playbackOnPhaseDone = props.playback?.onPhaseDone;
+  const playbackBackground = React.useMemo(
+    () => mapBackgroundFor(props.blockedGrid, props.scoringGrid, props.onlyOnceGrid, props.impassableGrid),
+    [props.blockedGrid, props.scoringGrid, props.onlyOnceGrid, props.impassableGrid],
+  );
   const playbackValue = React.useMemo<MovePlaybackValue>(
     () => ({
       active: playbackActive,
       onPhaseDone: playbackOnPhaseDone ?? NOOP_PHASE_DONE,
       hiddenShipIds: playbackHiddenShipIds(playbackActive, props.shipMap),
+      background: playbackBackground,
     }),
-    [playbackActive, playbackOnPhaseDone, props.shipMap],
+    [playbackActive, playbackOnPhaseDone, props.shipMap, playbackBackground],
   );
   return (
     <MovePlaybackContext.Provider value={playbackValue}>

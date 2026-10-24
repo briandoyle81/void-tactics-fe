@@ -11,6 +11,8 @@ export interface MovePlaybackValue {
   active: ActivePlayback | null;
   onPhaseDone: (key: string, phase: PlaybackPhase) => void;
   hiddenShipIds: Set<number>;
+  /** The map's background image (mapBackgroundFor), for the combat cinematic's panels. */
+  background: string;
 }
 
 const NOOP = () => {};
@@ -20,6 +22,7 @@ export const MovePlaybackContext = createContext<MovePlaybackValue>({
   active: null,
   onPhaseDone: NOOP,
   hiddenShipIds: NO_IDS,
+  background: "",
 });
 
 export function useMovePlaybackContext(): MovePlaybackValue {

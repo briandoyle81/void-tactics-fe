@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import type { ActivePlayback, PlaybackPhase } from "../hooks/useMovePlayback";
 import { routeForShip } from "../utils/movePath";
@@ -21,13 +22,19 @@ import { RamAnimation } from "./weapon-animations/RamAnimation";
 import { FleeAnimation } from "./weapon-animations/FleeAnimation";
 import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs, type KillingBlow } from "./weapon-animations/ShipExplosionSound";
+import { CombatCinematic, cinematicCovers, cinematicDurationMs } from "./weapon-animations/CombatCinematic";
 import { cellsInManhattanRange, flakArrayRange, lightningFieldRange } from "./GameGridOverlays";
+import { useCombatView } from "../hooks/useCombatView";
 
 // Draws the move that's playing back (useMovePlayback): while "moving", the
 // route arrow and the ship sliding along it; while "firing", the arrow and
 // the ship's weapon fired once (weaponOnceMs), with its sound once. Calls
 // onPhaseDone(key, phase) as each phase ends; when the queue is empty nothing
 // is drawn. Lives in GameGrid, so web3, web2, the tutorial and replay share it.
+// With Combat view set to Cinematic (useCombatView), an attack on an enemy
+// ship fires in CombatCinematic's two panels over the board instead: the
+// board's weapon (and its sounds) isn't mounted for that move, and the
+// firing phase lasts the cinematic's length.
 
 type Position = { row: number; col: number };
 
@@ -63,6 +70,7 @@ export function MovePlaybackLayer({
   shipMap,
   impassableGrid,
   getShipAttributes,
+  background,
 }: {
   active: ActivePlayback | null;
   onPhaseDone: (key: string, phase: PlaybackPhase) => void;
@@ -72,7 +80,10 @@ export function MovePlaybackLayer({
   shipMap: Map<number, GridShip>;
   impassableGrid?: boolean[][];
   getShipAttributes: (shipId: number) => { hullPoints: number } | null;
+  /** The map's background image, behind the cinematic's panels. */
+  background: string;
 }) {
+  const combatView = useCombatView();
   // Each ship's side as last seen: a retreating ship may already be gone.
   const lastSeenIsCreatorRef = useRef(new Map<number, boolean>());
   allShipPositions.forEach((p) => lastSeenIsCreatorRef.current.set(p.shipId, p.isCreator));
@@ -107,7 +118,9 @@ export function MovePlaybackLayer({
     ? (allShipPositions.find((p) => p.shipId === move.targetShipId)?.position ?? null)
     : null;
   const distanceCells = move && targetPos ? Math.hypot(move.to.row - targetPos.row, move.to.col - targetPos.col) : 0;
-  const fireMs = weaponOnceMs(effect, distanceCells);
+  const targetShip = move?.targetShipId ? shipMap.get(move.targetShipId) : undefined;
+  const cinematic = combatView === "cinematic" && cinematicCovers(effect) && !!targetShip && !!targetPos;
+  const fireMs = cinematic ? cinematicDurationMs(effect) : weaponOnceMs(effect, distanceCells);
 
   // Skip a phase with nothing to draw (a hold doesn't slide; Pass fires nothing).
   const onPhaseDoneRef = useRef(onPhaseDone);
@@ -145,6 +158,24 @@ export function MovePlaybackLayer({
   }
 
   const soundOnceKey = `playback:${move.key}`;
+  if (cinematic && targetShip) {
+    // Over the board's viewport, outside its pan/zoom transform.
+    const viewport = gridContainerRef.current?.parentElement;
+    if (!viewport) return null;
+    return createPortal(
+      <CombatCinematic
+        key={move.key}
+        effect={effect}
+        attacker={ship}
+        defender={targetShip}
+        attackerIsCreator={isCreator}
+        killsTarget={!!move.killsTarget}
+        soundOnceKey={soundOnceKey}
+        background={background}
+      />,
+      viewport,
+    );
+  }
   const attacker = move.to;
   const blow: KillingBlow =
     effect.kind === "ram"

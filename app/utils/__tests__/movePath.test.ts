@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findMovePath, lShapedPath, pathCorners } from "../movePath";
+import { findMovePath, lShapedPath, pathCorners, routeForShip } from "../movePath";
 
 const W = 17;
 const H = 11;
@@ -52,5 +52,43 @@ describe("findMovePath", () => {
 
   it("is just the tile for a hold", () => {
     expect(findMovePath({ row: 3, col: 3 }, { row: 3, col: 3 }, { width: W, height: H })).toEqual([{ row: 3, col: 3 }]);
+  });
+});
+
+describe("routeForShip", () => {
+  const from = { row: 5, col: 2 };
+  const to = { row: 5, col: 6 };
+  const mover = { shipId: 1, position: from, isCreator: true };
+
+  it("moves straight through a friendly ship", () => {
+    const path = routeForShip({
+      shipId: 1,
+      from,
+      to,
+      shipPositions: [mover, { shipId: 2, position: { row: 5, col: 4 }, isCreator: true }],
+    });
+    expect(pathCorners(path)).toEqual([from, to]);
+  });
+
+  it("goes around an enemy ship", () => {
+    const path = routeForShip({
+      shipId: 1,
+      from,
+      to,
+      shipPositions: [mover, { shipId: 3, position: { row: 5, col: 4 }, isCreator: false }],
+    });
+    expect(path).not.toContainEqual({ row: 5, col: 4 });
+    expect(isConnected(path)).toBe(true);
+  });
+
+  it("moves through a disabled enemy ship", () => {
+    const path = routeForShip({
+      shipId: 1,
+      from,
+      to,
+      shipPositions: [mover, { shipId: 3, position: { row: 5, col: 4 }, isCreator: false }],
+      isDisabled: (id) => id === 3,
+    });
+    expect(pathCorners(path)).toEqual([from, to]);
   });
 });

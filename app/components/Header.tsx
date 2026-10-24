@@ -29,6 +29,7 @@ import type { StoreSection } from "./storeSections";
 import { HudIconButton } from "./HudIconButton";
 import { AudioControl, useAudioSettings } from "./AudioControl";
 import { useDebugModeSetting } from "../hooks/useDebugMode";
+import { COMBAT_VIEW_LABEL, useCombatViewSetting } from "../hooks/useCombatView";
 import { formatDec } from "../utils/formatDec";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useUserBalanceWeb2 } from "../hooks/useUserBalanceWeb2";
@@ -967,6 +968,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
 
   const { music, soundEffects } = useAudioSettings();
   const debugMode = useDebugModeSetting();
+  const combatView = useCombatViewSetting();
   const isSignedIn = showWeb2Panel || showWeb3Panel;
   const callsign = showWeb2Panel
     ? (web2Username ?? web2Email ?? "Commander")
@@ -1280,6 +1282,20 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                         </HeaderMenuItem>
                       </>
                     )}
+
+                    <SettingsHeading>Combat</SettingsHeading>
+                    <button
+                      type="button"
+                      onClick={combatView.toggle}
+                      aria-label={`Combat view: ${COMBAT_VIEW_LABEL[combatView.view]}. Switch to ${
+                        COMBAT_VIEW_LABEL[combatView.view === "cinematic" ? "board" : "cinematic"]
+                      }`}
+                      className={`${menuItemClass} justify-between text-cyan`}
+                      style={{ fontFamily: MONO_FONT }}
+                    >
+                      Combat view
+                      <span className="text-phosphor-green">{COMBAT_VIEW_LABEL[combatView.view]}</span>
+                    </button>
 
                     <SettingsHeading>Audio</SettingsHeading>
                     <button

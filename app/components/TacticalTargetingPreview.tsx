@@ -17,6 +17,7 @@ import {
 } from "../data/content/heroDemoMap";
 import { GameGrid } from "./GameGrid";
 import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
+import { CombatViewOverride } from "../hooks/useCombatView";
 import { GameBoardLayout } from "./GameBoardLayout";
 import { useInView } from "../hooks/useInView";
 import { usePageVisible } from "../hooks/usePageVisible";
@@ -493,6 +494,8 @@ export function TacticalTargetingPreview() {
         }}
       >
         {/* A marketing page: the demo's weapons stay silent. */}
+        {/* A board demo: combat plays on the board whatever the visitor's Combat view. */}
+        <CombatViewOverride value="board">
         <WeaponSoundsMuted value={true}>
         <GameBoardLayout isCurrentPlayerTurn={true}>
           <GameGrid
@@ -542,6 +545,7 @@ export function TacticalTargetingPreview() {
           />
         </GameBoardLayout>
         </WeaponSoundsMuted>
+        </CombatViewOverride>
       </div>
 
       {/* Click-blocker: GameGridWeaponSelector/GameGridConfirmWidget/the HOLD

@@ -18,6 +18,10 @@ import { describeTile, tileTooltipLabel } from "../utils/tileTooltip";
 import type { TileArtSlice } from "../utils/mapTileArt";
 import { TileArtSliceView } from "./TileArtSliceView";
 import { TerrainArt } from "./TerrainArt";
+import { terrainFullArt } from "../utils/terrainEdges";
+
+/** A nebula tile's own full-square art (the resource art is drawn above it). */
+const NEBULA_FULL_ART = terrainFullArt("nebula");
 
 /**
  * Splits a cell's highlight classes: the `ring…` classes (inset borders) go
@@ -892,31 +896,6 @@ export const GameGridCell = React.memo(function GameGridCell({
                           : {};
                       })())}
                   >
-                    {/* Crystal / gold under terrain so a scoring tile that is
-                        also impassable still reads as a hazard. */}
-                    {onlyOnceGrid[rowIndex][colIndex] && (
-                      <div className="pointer-events-none absolute inset-0 z-0">
-                        <Image
-                          src="/img/crystal.png"
-                          alt="Crystal deposit"
-                          fill
-                          className={`object-cover ${isImpassableTile ? "opacity-25" : "opacity-80"}`}
-                        />
-                      </div>
-                    )}
-
-                    {scoringGrid[rowIndex][colIndex] > 0 &&
-                      !onlyOnceGrid[rowIndex][colIndex] && (
-                        <div className="pointer-events-none absolute inset-0 z-0">
-                          <Image
-                            src="/img/gold-deposit.png"
-                            alt="Gold deposit"
-                            fill
-                            className={`object-cover ${isImpassableTile ? "opacity-25" : "opacity-80"}`}
-                          />
-                        </div>
-                      )}
-
                     {showOnlyOnceOccupiedWash && (
                       <div
                         className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-sky-400/58 via-cyan-500/72 to-teal-800/84 shadow-[inset_0_0_32px_rgba(34,211,238,0.34)]"
@@ -936,8 +915,35 @@ export const GameGridCell = React.memo(function GameGridCell({
                     {/* Terrain: full art on the tile, edge pieces on the tiles next to it
                         (app/utils/terrainEdges.ts). Nebula (blocked line of sight), then
                         asteroids (impassable) above it so a dual-tagged cell still reads
-                        as impassable. */}
-                    <TerrainArt pieces={nebulaPieces} layer={1} />
+                        as impassable. The crystal / gold sits above a nebula tile's full
+                        square but below the edge pieces spilling in from its neighbours,
+                        and below asteroids, so an impassable scoring tile still reads as
+                        a hazard. */}
+                    {nebulaPieces.includes(NEBULA_FULL_ART) && <TerrainArt pieces={nebulaPieces} layer={1} />}
+                    {onlyOnceGrid[rowIndex][colIndex] && (
+                      <div className="pointer-events-none absolute inset-0 z-[1]">
+                        <Image
+                          src="/img/crystal.png"
+                          alt="Crystal deposit"
+                          fill
+                          className={`object-cover ${isImpassableTile ? "opacity-25" : "opacity-80"}`}
+                        />
+                      </div>
+                    )}
+
+                    {scoringGrid[rowIndex][colIndex] > 0 &&
+                      !onlyOnceGrid[rowIndex][colIndex] && (
+                        <div className="pointer-events-none absolute inset-0 z-[1]">
+                          <Image
+                            src="/img/gold-deposit.png"
+                            alt="Gold deposit"
+                            fill
+                            className={`object-cover ${isImpassableTile ? "opacity-25" : "opacity-80"}`}
+                          />
+                        </div>
+                      )}
+
+                    {!nebulaPieces.includes(NEBULA_FULL_ART) && <TerrainArt pieces={nebulaPieces} layer={1} />}
                     <TerrainArt pieces={asteroidPieces} layer={2} />
 
                     {/* Selection and range borders, above the terrain art. */}

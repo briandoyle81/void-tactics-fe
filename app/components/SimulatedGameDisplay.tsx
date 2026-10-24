@@ -47,6 +47,7 @@ import { TutorialGridTaskPanel } from "./TutorialGridTaskPanel";
 import { DialogPortrait } from "./DialogPortrait";
 import { useCrewReporter } from "./CrewReport";
 import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
+import { COMBAT_VIEW_LABEL, useCombatViewSetting } from "../hooks/useCombatView";
 import { TUTORIAL_MUSIC } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
@@ -356,9 +357,11 @@ export function SimulatedGameDisplay({
   const tutorialMoveCountRef = useRef(0);
   /** Ship variants, for a Ram's end tile (filled in once shipMap exists below). */
   const tutorialShipVariantsRef = useRef(new Map<number, number>());
+  /** A move is playing back (or just arrived to play): the round report waits for it. */
+  const isMovePlaybackBusy = playback.isPlaying || tutorialMoveArrived;
   const gameState = useHeldBoard(
     liveTutorialState,
-    playback.isPlaying || tutorialMoveArrived,
+    isMovePlaybackBusy,
     playback,
     landTutorialPositions,
   );
@@ -367,6 +370,19 @@ export function SimulatedGameDisplay({
   useEffect(() => {
     if (!tutorialMoveArrived || !tutorialLastMove) return;
     setSettledTutorialMoveKey(tutorialLastMoveKey);
+    // Only a move made from the board on screen plays: after a jump
+    // (reload into a later step, Prev, Reset) the held board is an older
+    // one, so the ship isn't on the move's From tile and the move would
+    // play over the wrong board, routed around ships that aren't there.
+    const moverOnBoard = heldTutorialPositionsRef.current.find(
+      (p) => Number(p.shipId) === Number(tutorialLastMove.shipId),
+    );
+    if (
+      !moverOnBoard ||
+      moverOnBoard.position.row !== tutorialLastMove.oldRow ||
+      moverOnBoard.position.col !== tutorialLastMove.oldCol
+    )
+      return;
     tutorialMoveCountRef.current += 1;
     const targetId = tutorialLastMove.targetShipId ? Number(tutorialLastMove.targetShipId) : 0;
     const target = targetId
@@ -678,6 +694,7 @@ export function SimulatedGameDisplay({
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
+  const combatView = useCombatViewSetting();
   // The tutorial mission has its own music (app/config/music.ts).
   useMusicTrack(TUTORIAL_MUSIC);
   // The tutorial's speaker, on the phone tutorial tab (TutorialGridTaskPanel has its own).
@@ -2447,9 +2464,9 @@ export function SimulatedGameDisplay({
   ]);
 
   // The round report: a step's own (stepReportInfo, with Bosch's note) or
-  // the round-change one. Mounted in both layouts below.
-  const roundReportModal =
-    isStepReportOpen && stepReportInfo ? (
+  // the round-change one. Mounted in both layouts below, once every move
+  // and attack has finished playing back.
+  const roundReportModal = isMovePlaybackBusy ? null : isStepReportOpen && stepReportInfo ? (
       <RoundStartModal
         key={`step-report-${currentStep?.id}`}
         round={stepReportInfo.round}
@@ -3173,6 +3190,7 @@ export function SimulatedGameDisplay({
                 maxScore={Number(maxScore)}
                 menuItems={[
                   { label: "Audio", onClick: openAudioSettings },
+                  { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
                   { label: "Reset tutorial", onClick: () => resetTutorial(), tone: "warn" },
                   ...(onBack ? [{ label: exitLabel, onClick: onBack }] : []),
                 ]}

@@ -30,6 +30,7 @@ import { GameTooltipShipCard } from "./GameTooltipShipCard";
 import { gameFleetPanelLabel } from "../utils/gameFleetPanelLabel";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
 import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
+import { COMBAT_VIEW_LABEL, useCombatViewSetting } from "../hooks/useCombatView";
 import { battleMusic } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
@@ -223,6 +224,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
+  const combatView = useCombatViewSetting();
   const [isMobileFleetModalOpen, setIsMobileFleetModalOpen] = React.useState(false);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = React.useState(false);
   const [mobileLeftPanelTab, setMobileLeftPanelTab] = React.useState<
@@ -2815,6 +2817,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               menuItems={[
                 { label: "Sync", onClick: () => refetchGame() },
                 { label: "Audio", onClick: openAudioSettings },
+                  { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
               ]}
             />
 
@@ -3168,7 +3171,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             onPrimaryAction={handleResultPrimaryAction}
           />
         )}
-        {roundStartInfo && !isGameOver && (
+        {roundStartInfo && !isGameOver && !livePlayback.hold && (
           <RoundStartModal
             key={roundStartInfo.round.toString()}
             round={roundStartInfo.round}
@@ -3846,7 +3849,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           onPrimaryAction={handleResultPrimaryAction}
         />
       )}
-      {roundStartInfo && !isGameOver && (
+      {roundStartInfo && !isGameOver && !livePlayback.hold && (
         <RoundStartModal
           key={roundStartInfo.round.toString()}
           round={roundStartInfo.round}

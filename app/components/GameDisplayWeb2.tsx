@@ -58,6 +58,7 @@ import { toShipCardDataWeb2 } from "../utils/toShipCardData";
 import { GameScoreBox } from "./GameScoreBox";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
 import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
+import { COMBAT_VIEW_LABEL, useCombatViewSetting } from "../hooks/useCombatView";
 import { battleMusic } from "../config/music";
 import { FullscreenPrompt } from "./FullscreenPrompt";
 import { RotateToLandscapePrompt, rotatePromptTurnLabel } from "./RotateToLandscapePrompt";
@@ -171,6 +172,7 @@ function GameDisplayWeb2({
   const chromeOnSide = chromeLayout === "side";
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
+  const combatView = useCombatViewSetting();
   const useSideLayout = chromeOnSide && !isLandscapeMobile;
   const sideChrome = gameViewSideChrome(isPortraitTablet);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = useState(false);
@@ -1197,7 +1199,8 @@ function GameDisplayWeb2({
     />
   );
 
-  const roundStartModalNode = roundStartInfo && !isGameOver && (
+  // After every move and attack has played back (livePlayback.hold).
+  const roundStartModalNode = roundStartInfo && !isGameOver && !livePlayback.hold && (
     <RoundStartModal
       key={roundStartInfo.round.toString()}
       round={roundStartInfo.round}
@@ -1723,6 +1726,7 @@ function GameDisplayWeb2({
                 menuItems={[
                   { label: "Sync", onClick: () => refetchGame() },
                   { label: "Audio", onClick: openAudioSettings },
+                  { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
                 ]}
               />
 
