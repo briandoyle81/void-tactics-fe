@@ -752,6 +752,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
       </WeaponSoundsMuted>
       <BoardPlayback
         gridContainerRef={gridContainerRef}
+        isShipOwnedByCurrentPlayer={isShipOwnedByCurrentPlayer}
         grid={grid}
         allShipPositions={allShipPositions}
         shipMap={shipMap}

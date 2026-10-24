@@ -13,6 +13,7 @@ export function toGridShip(ship: Ship): GridShip {
   return {
     ...toShipVisual(ship),
     id: Number(ship.id),
+    name: ship.name,
   };
 }
 

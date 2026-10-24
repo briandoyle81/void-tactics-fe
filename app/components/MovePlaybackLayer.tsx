@@ -76,6 +76,7 @@ export function MovePlaybackLayer({
   impassableGrid,
   getShipAttributes,
   background,
+  isShipOwnedByCurrentPlayer,
 }: {
   active: ActivePlayback | null;
   onPhaseDone: (key: string, phase: PlaybackPhase) => void;
@@ -91,6 +92,8 @@ export function MovePlaybackLayer({
   } | null;
   /** The map's background image, behind the cinematic's panels. */
   background: string;
+  /** Whose ship it is, for the cinematic's captions (blue yours, red theirs). */
+  isShipOwnedByCurrentPlayer?: (shipId: number) => boolean;
 }) {
   const combatView = useCombatView();
   const cinematicHost = useContext(CinematicHostContext);
@@ -180,6 +183,7 @@ export function MovePlaybackLayer({
         attacker={ship}
         defender={targetShip}
         attackerIsCreator={isCreator}
+        attackerIsMine={isShipOwnedByCurrentPlayer?.(move.shipId) ?? false}
         killsTarget={!!move.killsTarget}
         defenderDisabled={getShipAttributes(targetShip.id)?.hullPoints === 0}
         defenderStatus={getShipAttributes(targetShip.id)}

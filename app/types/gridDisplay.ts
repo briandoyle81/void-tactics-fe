@@ -26,4 +26,6 @@ export interface GridShipPosition {
 
 export interface GridShip extends ShipVisual {
   id: number;
+  /** The ship's name, where the board has it (the combat cinematic's captions). */
+  name?: string;
 }

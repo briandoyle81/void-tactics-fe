@@ -121,6 +121,14 @@ function weaponName(effect: WeaponEffectKind, ship: GridShip): string {
  */
 const WEAPON_LAYER_STYLE: React.CSSProperties = { willChange: "transform" };
 
+const MY_COLOR = "var(--color-cyan)";
+const THEIR_COLOR = "var(--color-warning-red)";
+
+/** "<Ship name> Attacking · Railgun"; just the role when the board has no name. */
+function shipCaption(ship: GridShip, role: string): string {
+  return ship.name ? `${ship.name} ${role}` : role;
+}
+
 const mirrorPts = (pts: Pt[]) => pts.map((p) => ({ x: 100 - p.x, y: p.y }));
 const polyCss = (pts: Pt[]) => `polygon(${pts.map((p) => `${p.x}% ${p.y}%`).join(", ")})`;
 const polyPoints = (pts: Pt[]) => pts.map((p) => `${p.x},${p.y}`).join(" ");
@@ -180,6 +188,7 @@ function CinematicPanel({
   shake,
   flash,
   caption,
+  captionColor,
   captionAt,
   captionSide,
   z,
@@ -205,6 +214,8 @@ function CinematicPanel({
   shake: number;
   flash: number;
   caption: string | null;
+  /** The side's colour: yours cyan, theirs red. */
+  captionColor: string;
   captionAt: "top" | "bottom";
   captionSide: "left" | "right";
   z: number;
@@ -345,10 +356,12 @@ function CinematicPanel({
         </svg>
         {caption && (
           <div
-            className="absolute border-2 border-near-black bg-text-primary px-2 py-0.5 font-bold uppercase tracking-wider text-near-black"
+            className="absolute max-w-[46%] truncate border-2 bg-near-black px-2 py-0.5 font-bold uppercase tracking-wider"
             style={{
               ...(captionAt === "top" ? { top: `calc(${minY}% + 0.6rem)` } : { bottom: `calc(${100 - maxY}% + 0.6rem)` }),
               ...captionX,
+              color: captionColor,
+              borderColor: captionColor,
               boxShadow: "3px 3px 0 var(--color-near-black)",
               fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
               fontSize: "clamp(11px, 2.4cqh, 20px)",
@@ -437,6 +450,8 @@ export interface CombatCinematicProps {
   defender: GridShip;
   /** The creator's ships face right and fire from the left. */
   attackerIsCreator: boolean;
+  /** The attacker is the viewer's ship: its caption is cyan and the target's red (else the other way round). */
+  attackerIsMine: boolean;
   killsTarget: boolean;
   /** The target is disabled (0 hull) when the shot is fired. */
   defenderDisabled?: boolean;
@@ -460,6 +475,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   attacker,
   defender,
   attackerIsCreator,
+  attackerIsMine,
   killsTarget,
   defenderDisabled = false,
   defenderStatus = null,
@@ -556,7 +572,8 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             state={a}
             shake={0}
             flash={0}
-            caption={`Attacking · ${weaponName(effect, attacker)}`}
+            caption={shipCaption(attacker, `Attacking · ${weaponName(effect, attacker)}`)}
+            captionColor={attackerIsMine ? MY_COLOR : THEIR_COLOR}
             captionAt="top"
             captionSide={attackerIsCreator ? "left" : "right"}
             boardRef={boardA}
@@ -584,7 +601,8 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             state={b}
             shake={hit}
             flash={hit}
-            caption={wrecked ? "Destroyed" : "Defending"}
+            caption={shipCaption(defender, wrecked ? "Destroyed" : "Defending")}
+            captionColor={attackerIsMine ? THEIR_COLOR : MY_COLOR}
             captionAt="bottom"
             captionSide={attackerIsCreator ? "right" : "left"}
             boardRef={boardB}
