@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CAMPAIGN_NODE_WIDTH, CAMPAIGN_NODE_HEIGHT, CAMPAIGN_NODE_CIRCLE_OFFSET_Y } from "./CampaignNodeCard";
+import { layoutRoute, routeLanePath, type RouteLayout, type RouteVisibility } from "../utils/routeChart";
 
 const MIN_COL_WIDTH = 230;
 const ROW_HEIGHT = 170;
@@ -36,6 +37,8 @@ interface GraphLayout<TNode extends CampaignGraphCanvasNode> {
   width: number;
   height: number;
   vertical: boolean;
+  /** The charted-route layout (app/utils/routeChart.ts), when the chart draws one. */
+  route?: RouteLayout & RouteVisibility;
 }
 
 // Depth = 1 + max(prerequisite depths), root nodes (no prerequisites) sit
@@ -123,6 +126,35 @@ function layoutGraphVertical<TNode extends CampaignGraphCanvasNode>(
   return { columns, positions, width, height: columns.length * VERTICAL_TIER_HEIGHT, vertical: true };
 }
 
+// The charted route (app/utils/routeChart.ts): the steps wind across the
+// chart; the columns stay the depth tiers, so lanes and selection work as before.
+function layoutGraphRoute<TNode extends CampaignGraphCanvasNode>(
+  columns: TNode[][],
+  availableWidth: number,
+  padding: number,
+  narrow: boolean,
+  visibility: RouteVisibility,
+): GraphLayout<TNode> {
+  // Stops at the edges keep their whole label on the chart (the phone's
+  // padding is narrower than half a node card).
+  const inset = Math.max(0, CAMPAIGN_NODE_WIDTH / 2 - padding);
+  const route = layoutRoute({
+    steps: columns.map((c) => c ?? []),
+    width: Math.max(0, availableWidth - inset * 2),
+    narrow,
+  });
+  const positions = new Map<number, NodePosition>();
+  route.positions.forEach((p, id) => positions.set(id, { x: p.x + inset, y: p.y, col: p.step }));
+  return {
+    columns,
+    positions,
+    width: availableWidth,
+    height: route.height,
+    vertical: narrow,
+    route: { ...route, width: availableWidth, ...visibility },
+  };
+}
+
 // Starfield backdrop — two stacked CSS-only repeating radial-gradient
 // layers (no images/canvas): a static field for texture, plus a dimmer
 // twinkling field for ambient motion (disabled under prefers-reduced-motion
@@ -175,14 +207,18 @@ function JumpLanes({
   selectedNodeId: number | null;
 }) {
   const edges: React.ReactNode[] = [];
+  const route = layout.route;
   layout.columns.flat().forEach((node) => {
     const to = layout.positions.get(node.id);
     if (!to) return;
+    if (route && !route.visibleIds.has(node.id)) return;
+    const isSkipped = !!route?.skippedIds.has(node.id);
     const isSelectedRoute = selectedNodeId != null && node.id === selectedNodeId && !node.completed;
     node.prerequisites.forEach((prereqId) => {
       const prereq = layout.columns.flat().find((n) => n.id === prereqId);
       const from = layout.positions.get(prereqId);
       if (!prereq || !from) return;
+      if (route && !route.visibleIds.has(prereqId)) return;
 
       const isCleared = node.completed;
       const isFrontier = !isCleared && prereq.completed;
@@ -195,8 +231,8 @@ function JumpLanes({
         stroke,
         strokeWidth: isFrontier || isCleared ? 2 : 1.5,
         strokeDasharray: isCleared ? undefined : isFrontier ? "6 6" : "3 5",
-        className: isFrontier ? "campaign-lane-active" : undefined,
-        opacity: isCleared || isFrontier ? 0.9 : 0.8,
+        className: isFrontier && !isSkipped ? "campaign-lane-active" : undefined,
+        opacity: isSkipped ? 0.35 : isCleared || isFrontier ? 0.9 : 0.8,
         fill: "none",
       };
       const glowOuterProps = {
@@ -220,7 +256,16 @@ function JumpLanes({
       const key = `${prereqId}-${node.id}`;
       const colSpan = Math.abs(to.col - from.col);
 
-      if (colSpan > 1) {
+      if (route) {
+        const d = routeLanePath({ x: from.x, y: fromY }, { x: to.x, y: toY }, route);
+        if (isSelectedRoute) {
+          edges.push(<path key={`${key}-glow-outer`} d={d} {...glowOuterProps} />);
+          edges.push(<path key={`${key}-glow-core`} d={d} {...glowCoreProps} />);
+        }
+        edges.push(
+          <path key={key} d={d} {...commonProps} {...(isSkipped ? { stroke: "var(--color-text-secondary)", strokeDasharray: "3 5" } : {})} />,
+        );
+      } else if (colSpan > 1) {
         const midX = (from.x + to.x) / 2;
         const midY = (fromY + toY) / 2;
         // Bow across the tiers (sideways when the route runs down).
@@ -246,10 +291,76 @@ function JumpLanes({
     });
   });
 
+  // The way on from what's visible: a short trail toward each hidden
+  // mission that fades out, so the route reads as going somewhere unseen.
+  const trails: React.ReactNode[] = [];
+  if (route) {
+    layout.columns.flat().forEach((node) => {
+      const to = layout.positions.get(node.id);
+      if (!to || route.visibleIds.has(node.id)) return;
+      node.prerequisites.forEach((prereqId) => {
+        const from = layout.positions.get(prereqId);
+        if (!from || !route.visibleIds.has(prereqId) || route.skippedIds.has(prereqId)) return;
+        const fromY = from.y + CAMPAIGN_NODE_CIRCLE_OFFSET_Y;
+        const toY = to.y + CAMPAIGN_NODE_CIRCLE_OFFSET_Y;
+        const endX = from.x + (to.x - from.x) * TRAIL_REACH;
+        const endY = fromY + (toY - fromY) * TRAIL_REACH;
+        const id = `trail-${prereqId}-${node.id}`;
+        trails.push(
+          <linearGradient key={`${id}-g`} id={id} gradientUnits="userSpaceOnUse" x1={from.x} y1={fromY} x2={endX} y2={endY}>
+            <stop offset="0" stopColor="var(--color-text-secondary)" stopOpacity={0.8} />
+            <stop offset="1" stopColor="var(--color-text-secondary)" stopOpacity={0} />
+          </linearGradient>,
+          <line
+            key={id}
+            x1={from.x}
+            y1={fromY}
+            x2={endX}
+            y2={endY}
+            stroke={`url(#${id})`}
+            strokeWidth={1.5}
+            strokeDasharray="3 5"
+          />,
+        );
+      });
+    });
+  }
+
   return (
-    <svg className="pointer-events-none absolute inset-0" width={layout.width} height={layout.height}>
+    <svg className="pointer-events-none absolute inset-0 overflow-visible" width={layout.width} height={layout.height}>
+      {trails}
       {edges}
     </svg>
+  );
+}
+
+/** How far a trail toward a hidden mission reaches before it has faded out. */
+const TRAIL_REACH = 0.55;
+
+/**
+ * The charted route's unexplored space: everything beyond what the run has
+ * reached is dimmed, as if out of sensor range.
+ */
+function ExploredGlow({ layout, padding }: { layout: GraphLayout<CampaignGraphCanvasNode>; padding: number }) {
+  const route = layout.route;
+  if (!route) return null;
+  const seen = [...route.visibleIds].map((id) => layout.positions.get(id)).filter((p) => p != null);
+  if (seen.length === 0) return null;
+  const minX = Math.min(...seen.map((p) => p.x));
+  const maxX = Math.max(...seen.map((p) => p.x));
+  const minY = Math.min(...seen.map((p) => p.y));
+  const maxY = Math.max(...seen.map((p) => p.y));
+  const cx = (minX + maxX) / 2 + padding;
+  const cy = (minY + maxY) / 2 + padding;
+  const rx = (maxX - minX) / 2 + 220;
+  const ry = (maxY - minY) / 2 + 180;
+  return (
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{
+        background: `radial-gradient(ellipse ${rx}px ${ry}px at ${cx}px ${cy}px, rgba(12,17,23,0) 0%, rgba(12,17,23,0) 60%, rgba(8,11,15,0.85) 100%)`,
+      }}
+    />
   );
 }
 
@@ -266,6 +377,11 @@ export interface CampaignGraphCanvasProps<TNode extends CampaignGraphCanvasNode>
   bare?: boolean;
   /** Image drawn under the starfield (app/config/art.ts). */
   backdropSrc?: string | null;
+  /**
+   * Draw the charted route (app/utils/routeChart.ts): a winding layout that
+   * shows only these missions. Omitted: the depth-column chart of every node.
+   */
+  route?: RouteVisibility | null;
 }
 
 // Shared campaign-graph canvas (depth-tiered columns, SVG prerequisite
@@ -287,6 +403,7 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
   children,
   bare = false,
   backdropSrc,
+  route = null,
 }: CampaignGraphCanvasProps<TNode>) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
@@ -312,10 +429,12 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
     : MIN_COL_WIDTH;
   const layout = React.useMemo(
     () =>
-      isNarrow
-        ? layoutGraphVertical(columns, containerWidth - VERTICAL_PADDING * 2)
-        : layoutGraph(columns, colWidth),
-    [columns, colWidth, isNarrow, containerWidth],
+      route
+        ? layoutGraphRoute(columns, Math.max(0, (containerWidth ?? MIN_COL_WIDTH * 3) - padding * 2 - 1), padding, isNarrow, route)
+        : isNarrow
+          ? layoutGraphVertical(columns, containerWidth - VERTICAL_PADDING * 2)
+          : layoutGraph(columns, colWidth),
+    [columns, colWidth, isNarrow, containerWidth, route, padding],
   );
   const canvasHeight = isNarrow
     ? layout.height + padding * 2
@@ -384,6 +503,7 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
         >
           <div className="relative" style={{ width: layout.width + padding * 2, height: canvasHeight }}>
             <Starfield backdropSrc={backdropSrc} />
+            <ExploredGlow layout={layout} padding={padding} />
             <div
               className="absolute"
               style={{ left: padding, top: contentTop, width: layout.width, height: layout.height }}
@@ -392,6 +512,7 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
               {layout.columns.flat().map((node) => {
                 const pos = layout.positions.get(node.id);
                 if (!pos) return null;
+                if (layout.route && !layout.route.visibleIds.has(node.id)) return null;
                 return (
                   <div
                     key={node.id}

@@ -23,6 +23,8 @@ export interface RoguelikeNodeCardNode {
    * cleared, or the next stop from the current node), or the map is in
    * browse/Edit Mode. Nodes further ahead stay unselectable. */
   selectable: boolean;
+  /** Off a route the run didn't take (the charted route, app/utils/routeChart.ts): drawn dimmed. */
+  skipped?: boolean;
 }
 
 const STAR_SIZE = 18;
@@ -72,7 +74,7 @@ export function RoguelikeNodeCard({
       className={`group relative flex flex-col items-center gap-3 font-mono ${
         node.selectable ? "cursor-pointer" : "cursor-not-allowed"
       } ${
-        connectHighlight === "invalid" ? "opacity-40" : ""
+        connectHighlight === "invalid" || node.skipped ? "opacity-40" : ""
       }`}
       style={{ width: CAMPAIGN_NODE_WIDTH, height: CAMPAIGN_NODE_HEIGHT }}
     >
@@ -113,7 +115,8 @@ export function RoguelikeNodeCard({
         style={{
           width: STAR_SIZE,
           height: STAR_SIZE,
-          backgroundColor: node.completed || node.unlocked || node.isCurrent ? starColor : "var(--color-near-black)",
+          backgroundColor:
+            !node.skipped && (node.completed || node.unlocked || node.isCurrent) ? starColor : "var(--color-near-black)",
           border: `2px solid ${
             connectHighlight === "source"
               ? "var(--color-amber)"
@@ -134,6 +137,7 @@ export function RoguelikeNodeCard({
         }
       >
         {title}
+        {node.skipped && <span className="block text-text-secondary">Skipped</span>}
       </span>
     </button>
   );

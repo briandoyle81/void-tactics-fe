@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { createContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GRID_DIMENSIONS, getMainWeaponName, getSpecialName } from "../../types/types";
 import type { GridShip } from "../../types/gridDisplay";
 import { weaponOnceMs, type WeaponEffectKind } from "../../utils/weaponPlayback";
@@ -71,6 +71,13 @@ function hullDrainMs(effect: WeaponEffectKind, killsTarget: boolean): number {
   if (killsTarget) return KILL_HULL_DRAIN_MS;
   return Math.max(MIN_HULL_DRAIN_MS, FIRE_AT_MS + weaponOnceMs(effect, STAGED_DISTANCE) - hitAtMs(effect));
 }
+
+/**
+ * Where the cinematic draws: by default over the board's viewport (the grid's
+ * parent). A board shown through a crop (the website's hero demo, which
+ * renders a bigger board than it shows) names its visible window instead.
+ */
+export const CinematicHostContext = createContext<React.RefObject<HTMLElement | null> | null>(null);
 
 /** Whether an attack plays as a cinematic: a weapon fired at an enemy ship. */
 export function cinematicCovers(effect: WeaponEffectKind): boolean {

@@ -106,6 +106,7 @@ import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } 
 /** Replay autoplay: the pause after a turn's move has played, before the next. */
 const REPLAY_AUTOPLAY_PAUSE_MS = 600;
 import { boardMoveFromRaw, landShipPositions, type RawMove, shipStatusIn } from "../utils/movePlaybackBoard";
+import { openClientTab } from "../utils/clientNavigation";
 
 /** The web2 held board with landed moves applied (useHeldBoard). */
 function landWeb2Positions(game: Web2GameDataView, landed: BoardMove[], activeKey: string | null): Web2GameDataView {
@@ -491,6 +492,13 @@ function GameDisplayWeb2({
   // Roguelike combat node is a *subset* of this (see isSinglePlayerGame/
   // isRoguelikeGame below) — a plain vs-AI skirmish lobby is neither.
   const isVsAIGame = game.metadata.joiner === AI_USER_ID;
+  // Back from a battle against the AI returns to the Operations map it was
+  // launched from (history.back() when that's the previous entry), not the
+  // Battles list. The result screen's own buttons pick their destination.
+  const handleBack = useCallback(() => {
+    if (isVsAIGame) openClientTab("Mission", { back: true });
+    else onBack();
+  }, [isVsAIGame, onBack]);
   const isAITurn = isVsAIGame && game.turnState.currentTurn === AI_USER_ID;
   // Mirrors GameDisplay.tsx's isSinglePlayerGame/isRoguelikeGame split (there
   // driven by which orchestrator contract owns the match; here driven by
@@ -1506,7 +1514,7 @@ function GameDisplayWeb2({
         turnLabel={rotatePromptTurnLabel(gameWinnerResult, isCurrentPlayerTurn)}
         turnTone={gameWinnerResult ? "over" : isCurrentPlayerTurn ? "mine" : "theirs"}
         clock={isVsAIGame ? undefined : { turnTimeSec, turnStartTimeMs }}
-        onBack={onBack}
+        onBack={handleBack}
       />
     );
   }
@@ -1764,7 +1772,7 @@ function GameDisplayWeb2({
           <div className="flex h-full min-h-0 min-w-[12rem] flex-1 items-center justify-center">
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">
               <LandscapeBattleHeader
-                onBack={onBack}
+                onBack={handleBack}
                 round={game.turnState.currentRound}
                 turnLabel={rotatePromptTurnLabel(gameWinnerResult, isCurrentPlayerTurn, true)}
                 turnTone={gameWinnerResult ? "over" : isCurrentPlayerTurn ? "mine" : "theirs"}
@@ -1872,7 +1880,7 @@ function GameDisplayWeb2({
           <div className="flex shrink-0 flex-col items-stretch gap-3">
             <button
               type="button"
-              onClick={onBack}
+              onClick={handleBack}
               className="flex min-h-0 items-center justify-center px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider transition-colors duration-150"
               style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", color: "var(--color-text-secondary)", backgroundColor: "var(--color-steel)", borderRadius: 0 }}
             >

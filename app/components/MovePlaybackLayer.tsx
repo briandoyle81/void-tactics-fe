@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useContext, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import type { ActivePlayback, PlaybackPhase } from "../hooks/useMovePlayback";
@@ -22,7 +22,12 @@ import { RamAnimation } from "./weapon-animations/RamAnimation";
 import { FleeAnimation } from "./weapon-animations/FleeAnimation";
 import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs, type KillingBlow } from "./weapon-animations/ShipExplosionSound";
-import { CombatCinematic, cinematicCovers, cinematicDurationMs } from "./weapon-animations/CombatCinematic";
+import {
+  CinematicHostContext,
+  CombatCinematic,
+  cinematicCovers,
+  cinematicDurationMs,
+} from "./weapon-animations/CombatCinematic";
 import { cellsInManhattanRange, flakArrayRange, lightningFieldRange } from "./GameGridOverlays";
 import { useCombatView } from "../hooks/useCombatView";
 
@@ -88,6 +93,7 @@ export function MovePlaybackLayer({
   background: string;
 }) {
   const combatView = useCombatView();
+  const cinematicHost = useContext(CinematicHostContext);
   // Each ship's side as last seen: a retreating ship may already be gone.
   const lastSeenIsCreatorRef = useRef(new Map<number, boolean>());
   allShipPositions.forEach((p) => lastSeenIsCreatorRef.current.set(p.shipId, p.isCreator));
@@ -163,8 +169,9 @@ export function MovePlaybackLayer({
 
   const soundOnceKey = `playback:${move.key}`;
   if (cinematic && targetShip) {
-    // Over the board's viewport, outside its pan/zoom transform.
-    const viewport = gridContainerRef.current?.parentElement;
+    // Over the board's viewport, outside its pan/zoom transform (or the
+    // window a cropped board is shown through).
+    const viewport = cinematicHost?.current ?? gridContainerRef.current?.parentElement;
     if (!viewport) return null;
     return createPortal(
       <CombatCinematic

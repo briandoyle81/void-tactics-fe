@@ -43,7 +43,7 @@ const getServerSnapshot = (): CombatView => "cinematic";
 
 /**
  * A board that always plays combat one way, whatever the setting: the
- * website's hero demo is a board demo, so it stays on the board.
+ * website's hero demo plays its shot as the cinematic (on the board on phones).
  */
 const CombatViewOverrideContext = createContext<CombatView | null>(null);
 export const CombatViewOverride = CombatViewOverrideContext.Provider;

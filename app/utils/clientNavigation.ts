@@ -16,13 +16,18 @@ export { CLIENT_TAB_SLUGS, clientTabFromSlug, type ClientTab } from "../config/c
  */
 export function openClientTab(
   tab: ClientTab,
-  options: { params?: UrlParamUpdates; replace?: boolean } = {},
+  options: {
+    params?: UrlParamUpdates;
+    replace?: boolean;
+    /** An in-app back button to `tab`: history.back() when that's where it came from (setUrlParams). */
+    back?: boolean;
+  } = {},
 ): void {
   const slug = CLIENT_TAB_SLUGS[tab];
   const sameTab = getUrlParam("tab") === slug;
   setUrlParams(
     { tab: slug, ...options.params },
-    { replace: options.replace, clear: sameTab ? [] : CLIENT_CHILD_PARAMS },
+    { replace: options.replace, back: options.back, clear: sameTab ? [] : CLIENT_CHILD_PARAMS },
   );
 }
 

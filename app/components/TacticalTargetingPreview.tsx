@@ -18,6 +18,7 @@ import {
 import { GameGrid } from "./GameGrid";
 import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
 import { CombatViewOverride } from "../hooks/useCombatView";
+import { CinematicHostContext } from "./weapon-animations/CombatCinematic";
 import { GameBoardLayout } from "./GameBoardLayout";
 import { useInView } from "../hooks/useInView";
 import { usePageVisible } from "../hooks/usePageVisible";
@@ -140,8 +141,25 @@ const DEMO_MAP_GRIDS = buildMapGridsFromContractMap(
 );
 
 // select ship -> propose move -> lock target -> the move plays back -> reset.
-// The last phase covers the slide and one laser volley, then the result.
-const PHASE_DURATIONS = [1000, 1000, 1600, 1800, 3400];
+// The last phase lasts as long as the move's playback (the slide, then the
+// shot as a combat cinematic), then holds the result for RESULT_HOLD_MS.
+const PHASE_DURATIONS = [1000, 1000, 1600, 1800, 0];
+const RESULT_HOLD_MS = 1400;
+const LAST_PHASE = PHASE_DURATIONS.length - 1;
+/** Phones (below md): the hero is too small for the cinematic's panels, so the shot plays on the board. */
+const NARROW_HERO_QUERY = "(max-width: 767px)";
+
+function useNarrowHero(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_HERO_QUERY);
+    const sync = () => setNarrow(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return narrow;
+}
 // Fire is "clicked" this long into the lock-target phase, before the shot.
 const FIRE_CLICK_MS = 1200;
 
@@ -282,6 +300,7 @@ export function TacticalTargetingPreview() {
   // The autoplay re-renders the whole board every phase: pause it while the
   // preview is scrolled away or the tab is hidden.
   const rootRef = useRef<HTMLDivElement>(null);
+  const narrowHero = useNarrowHero();
   const isInView = useInView(rootRef);
   const isPageVisible = usePageVisible();
   const isPlaying = isInView && isPageVisible;
@@ -456,14 +475,18 @@ export function TacticalTargetingPreview() {
     else if (phase === 3) setTargetShipId(ENEMY_ID);
   }, [phase, resetSelection, setPreviewPosition, setTargetShipId]);
 
+  const playbackBusy = playback.isPlaying;
   useEffect(() => {
     if (!isPlaying) return;
+    // The last phase waits out the playback (it starts in an effect, so a
+    // timer set before it does is cleared when it starts).
+    if (phase === LAST_PHASE && playbackBusy) return;
     const t = setTimeout(
       () => setPhase((p) => (p + 1) % PHASE_DURATIONS.length),
-      PHASE_DURATIONS[phase],
+      phase === LAST_PHASE ? RESULT_HOLD_MS : PHASE_DURATIONS[phase],
     );
     return () => clearTimeout(t);
-  }, [phase, isPlaying]);
+  }, [phase, isPlaying, playbackBusy]);
 
   if (!ships) {
     // Same root element type as the board below, so React keeps this DOM
@@ -494,8 +517,11 @@ export function TacticalTargetingPreview() {
         }}
       >
         {/* A marketing page: the demo's weapons stay silent. */}
-        {/* A board demo: combat plays on the board whatever the visitor's Combat view. */}
-        <CombatViewOverride value="board">
+        {/* The shot plays as a combat cinematic, whatever the visitor's
+            Combat view, over this visible window rather than the bigger
+            board behind it; on phones, on the board. */}
+        <CinematicHostContext.Provider value={rootRef}>
+        <CombatViewOverride value={narrowHero ? "board" : "cinematic"}>
         <WeaponSoundsMuted value={true}>
         <GameBoardLayout isCurrentPlayerTurn={true}>
           <GameGrid
@@ -546,6 +572,7 @@ export function TacticalTargetingPreview() {
         </GameBoardLayout>
         </WeaponSoundsMuted>
         </CombatViewOverride>
+        </CinematicHostContext.Provider>
       </div>
 
       {/* Click-blocker: GameGridWeaponSelector/GameGridConfirmWidget/the HOLD

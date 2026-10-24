@@ -141,6 +141,7 @@ import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } 
 const REPLAY_AUTOPLAY_PAUSE_MS = 600;
 import { boardMoveFromRaw, landShipPositions, type RawMove, shipStatusIn } from "../utils/movePlaybackBoard";
 import { registerGameMoves } from "../utils/gameMoveLogs";
+import { openClientTab } from "../utils/clientNavigation";
 
 /** The web3 held board with landed moves applied (useHeldBoard). */
 function landWeb3Positions(game: GameDataView, landed: BoardMove[], activeKey: string | null): GameDataView {
@@ -908,6 +909,13 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     game.metadata.orchestrator?.toLowerCase() ===
     ROGUELIKE_MATCH_ADDRESS.toLowerCase();
   const isVsAIGame = isSinglePlayerGame || isRoguelikeGame;
+  // Back from a battle against the AI returns to the Operations map it was
+  // launched from (history.back() when that's the previous entry), not the
+  // Battles list. The result screen's own buttons pick their destination.
+  const handleBack = React.useCallback(() => {
+    if (isVsAIGame) openClientTab("Mission", { back: true });
+    else onBack();
+  }, [isVsAIGame, onBack]);
   // Analytics: game_ended once when this match finishes while watched.
   const analyticsGameMode = gameModeOf({ isRoguelikeGame, isSinglePlayerGame, isVsAIGame });
   useTrackGameEnded({
@@ -2126,7 +2134,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         turnLabel={rotatePromptTurnLabel(gameWinnerResult, isMyTurnEffective)}
         turnTone={gameWinnerResult ? "over" : isMyTurnEffective ? "mine" : "theirs"}
         clock={isVsAIGame ? undefined : { turnTimeSec, turnStartTimeMs }}
-        onBack={onBack}
+        onBack={handleBack}
       />
     );
   }
@@ -2137,7 +2145,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <div className="w-full sm:w-[92%] mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider transition-colors duration-150"
             style={{
               ...STYLE_LABEL,
@@ -2173,7 +2181,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <div className="w-full sm:w-[92%] mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider transition-colors duration-150"
             style={{
               ...STYLE_LABEL,
@@ -2231,7 +2239,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={onBack}
+              onClick={handleBack}
               className="px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider transition-colors duration-150"
               style={{
                 ...STYLE_LABEL,
@@ -2837,7 +2845,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           >
             <div className="relative flex h-[min(100%,39rem)] min-h-0 w-full max-w-[18rem] flex-col pl-1 pr-2 py-2">
             <LandscapeBattleHeader
-              onBack={onBack}
+              onBack={handleBack}
               round={game.turnState.currentRound}
               turnLabel={rotatePromptTurnLabel(gameWinnerResult, isMyTurnEffective, true)}
               turnTone={gameWinnerResult ? "over" : isMyTurnEffective ? "mine" : "theirs"}
@@ -3254,7 +3262,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           >
             <div className="flex items-center justify-between gap-2">
               <button
-                onClick={onBack}
+                onClick={handleBack}
                 className="px-2 py-1 border border-solid text-xs uppercase font-semibold tracking-wider"
                 style={{
                   ...STYLE_LABEL,
@@ -3344,7 +3352,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             <div className="flex w-full min-w-0 items-stretch gap-2">
               <div className="flex w-1/5 min-h-0 shrink-0 justify-start">
           <button
-            onClick={onBack}
+            onClick={handleBack}
                   className="flex min-h-0 w-full items-center justify-center px-4 py-2 border-2 border-solid uppercase font-semibold tracking-wider transition-colors duration-150"
             style={{
               ...STYLE_LABEL,

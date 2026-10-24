@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { RoguelikeNodeKind } from "../../types/roguelike";
 import type { NodeContentStatus } from "../../hooks/useNodeContent";
 import { buildRoguelikePrerequisites } from "../../utils/roguelikeGraphLayout";
+import { computeRouteVisibility } from "../../utils/routeChart";
 import { CampaignGraphCanvas } from "../CampaignGraphCanvas";
 import { RoguelikeNodeCard, type RoguelikeNodeCardNode } from "../RoguelikeNodeCard";
 import { CampaignEditModeToggle } from "../CampaignEditModeToggle";
@@ -232,28 +233,46 @@ export function RunMap({
   // cleared once played or skipped. Not in Edit Mode (the real graph only).
   const showTutorialPrelude = isBrowseMode && !editMode && !!tutorial;
   const showClearedPrelude = !editMode && !showTutorialPrelude && tutorialDone;
-  const mapNodes: RunMapCanvasNode[] = editMode
-    ? [
-        ...canvasNodes,
-        {
-          id: ADD_NODE_SENTINEL_ID,
-          kind: RoguelikeNodeKind.Combat,
-          prerequisites: [],
-          completed: false,
-          unlocked: true,
-          isCurrent: false,
-          selectable: true,
-          title: "+ ADD NODE",
-          titleStatus: "ok",
-          editMode: true,
-          connectHighlight: connectMode ? "invalid" : undefined,
-        },
-      ]
-    : showTutorialPrelude || showClearedPrelude
-      ? withTutorialPrelude<RunMapCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE, {
-          done: showClearedPrelude,
-        })
-      : canvasNodes;
+  const mapNodes: RunMapCanvasNode[] = React.useMemo(
+    () =>
+      editMode
+        ? [
+            ...canvasNodes,
+            {
+              id: ADD_NODE_SENTINEL_ID,
+              kind: RoguelikeNodeKind.Combat,
+              prerequisites: [],
+              completed: false,
+              unlocked: true,
+              isCurrent: false,
+              selectable: true,
+              title: "+ ADD NODE",
+              titleStatus: "ok",
+              editMode: true,
+              connectHighlight: connectMode ? "invalid" : undefined,
+            },
+          ]
+        : showTutorialPrelude || showClearedPrelude
+          ? withTutorialPrelude<RunMapCanvasNode>(canvasNodes, rootNodeId, TUTORIAL_PRELUDE_CANVAS_NODE, {
+              done: showClearedPrelude,
+            })
+          : canvasNodes,
+    [editMode, canvasNodes, connectMode, showTutorialPrelude, showClearedPrelude, rootNodeId],
+  );
+  // Play mode charts only the route reached so far (app/utils/routeChart.ts):
+  // cleared missions, where the run is and what comes next, plus the
+  // branches it didn't take, dimmed. Edit Mode charts every node.
+  const routeVisibility = React.useMemo(
+    () => (editMode ? null : computeRouteVisibility(mapNodes)),
+    [editMode, mapNodes],
+  );
+  const chartNodes: RunMapCanvasNode[] = React.useMemo(
+    () =>
+      routeVisibility
+        ? mapNodes.map((n) => (routeVisibility.skippedIds.has(n.id) ? { ...n, skipped: true, selectable: false } : n))
+        : mapNodes,
+    [mapNodes, routeVisibility],
+  );
   const isTutorialPreludeSelected =
     (showTutorialPrelude || showClearedPrelude) && selectedNodeId === TUTORIAL_PRELUDE_NODE_ID;
 
@@ -495,7 +514,8 @@ export function RunMap({
           <CampaignGraphCanvas
             bare
             backdropSrc={ART_SLOTS.runMapBackdrop.src}
-            nodes={mapNodes}
+            nodes={chartNodes}
+            route={routeVisibility}
             selectedNodeId={selectedNodeId}
             onSelectNode={handleSelectNode}
             renderNode={(node, isSelected, onSelect) => (
