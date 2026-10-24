@@ -5,6 +5,7 @@ import { buildMapGridsFromContractMap } from "../utils/mapGridUtils";
 import { applyGameAction, GameActionError, GameActionInput } from "./gameEngineWeb2";
 import { decideAIMove } from "./aiBehaviorWeb2";
 import { ActionType, Archetype, ScoringPosition } from "../types/types";
+import { unclaimedScoringPositions } from "../utils/claimedScoringTiles";
 import type { Web2GameDataView } from "../types/web2Game";
 import { GamePhase } from "../generated/prisma";
 
@@ -65,7 +66,11 @@ export async function takeAiTurn(gameId: number): Promise<AiTurnResult> {
 
   const mapId = state.mapId || game.lobby.mapId || 0;
   const mapData = mapId ? await getMapTiles(mapId) : null;
-  const scoringPositions = mapData ? (mapData.scoringTiles as unknown as ScoringPosition[]) : [];
+  // Less the one-time tiles this game has already paid out: nothing left to take there.
+  const scoringPositions = unclaimedScoringPositions(
+    mapData ? (mapData.scoringTiles as unknown as ScoringPosition[]) : [],
+    state.claimedScoringTiles,
+  );
   const { blockedGrid } = buildMapGridsFromContractMap(
     mapData ? (mapData.blockedTiles as unknown as Array<{ row: number; col: number }>) : [],
     scoringPositions,

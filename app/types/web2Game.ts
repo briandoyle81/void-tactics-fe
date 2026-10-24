@@ -84,6 +84,12 @@ export interface Web2GameDataView {
   creatorMovedShipIds: number[];
   joinerMovedShipIds: number[];
   lastMove?: Web2LastMove;
+  /**
+   * One-time scoring tiles already paid out this game: they score nothing
+   * more and the board shows them empty (Game.sol zeroes them; see
+   * app/utils/claimedScoringTiles.ts). Absent on games from before this.
+   */
+  claimedScoringTiles?: { row: number; col: number }[];
 }
 
 /** Winner sentinel for a tied game (web2-native; see no-crossover rule — never a fake `0x...` address). */

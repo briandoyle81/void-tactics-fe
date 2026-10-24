@@ -5,6 +5,7 @@ import { buildMapGridsFromContractMap } from "../utils/mapGridUtils";
 import { hasLineOfSight, buildEnemyOccupiedGrid } from "../utils/gameGridRanges";
 import { computeMovementRange } from "../utils/gameGridRangesWeb2";
 import { ActionType, ScoringPosition } from "../types/types";
+import { unclaimedScoringPositions } from "../utils/claimedScoringTiles";
 import type { Web2GameDataView, Web2LastMove } from "../types/web2Game";
 import { WEB2_TIE_SENTINEL } from "../types/web2Game";
 import { GamePhase } from "../generated/prisma";
@@ -388,9 +389,11 @@ export async function applyGameAction(
   // validation. Cached by mapId — see getMapTiles.ts — since map tiles are
   // static after creation but this runs on every single action submission.
   const mapData = game.lobby.mapId ? await getMapTiles(game.lobby.mapId) : null;
-  const rawScoringTiles = mapData
-    ? (mapData.scoringTiles as unknown as ScoringPosition[])
-    : [];
+  // Less the one-time tiles this game has already paid out.
+  const rawScoringTiles = unclaimedScoringPositions(
+    mapData ? (mapData.scoringTiles as unknown as ScoringPosition[]) : [],
+    state.claimedScoringTiles,
+  );
   const { scoringGrid, blockedGrid, impassableGrid } = buildMapGridsFromContractMap(
     mapData ? (mapData.blockedTiles as unknown as Array<{ row: number; col: number }>) : [],
     rawScoringTiles,
@@ -678,17 +681,30 @@ export async function applyGameAction(
       .every((id) => newState.joinerMovedShipIds.some((mid) => mid === id));
 
     if (allCreatorMoved && allJoinerMoved) {
-      // Round end: award scoring points first (disabled ships on tiles still score)
-      for (const pos of newState.shipPositions) {
-        const pts = scoringGrid[pos.position.row]?.[pos.position.col] ?? 0;
-        if (pts > 0) {
-          if (newState.creatorActiveShipIds.some((id) => id === pos.shipId)) {
-            newState = { ...newState, creatorScore: newState.creatorScore + pts };
-          } else if (newState.joinerActiveShipIds.some((id) => id === pos.shipId)) {
-            newState = { ...newState, joinerScore: newState.joinerScore + pts };
-          }
-        }
+      // Round end: award scoring points first, as Game.sol's _handleEndOfRound
+      // does. Each scoring tile with a ship on it scores its points for that
+      // ship's side, unless the ship is disabled (0 hull). A one-time tile is
+      // then claimed: it scores nothing for the rest of the game.
+      let creatorRoundPoints = 0;
+      let joinerRoundPoints = 0;
+      const claimed = [...(newState.claimedScoringTiles ?? [])];
+      for (const tile of rawScoringTiles) {
+        if (tile.points <= 0) continue;
+        const pos = newState.shipPositions.find(
+          (p) => p.position.row === tile.row && p.position.col === tile.col && (p.status ?? 0) === 0,
+        );
+        if (!pos || getShipHp(pos.shipId) <= 0) continue;
+        if (newState.creatorActiveShipIds.some((id) => id === pos.shipId)) creatorRoundPoints += tile.points;
+        else if (newState.joinerActiveShipIds.some((id) => id === pos.shipId)) joinerRoundPoints += tile.points;
+        else continue;
+        if (tile.onlyOnce) claimed.push({ row: tile.row, col: tile.col });
       }
+      newState = {
+        ...newState,
+        creatorScore: newState.creatorScore + creatorRoundPoints,
+        joinerScore: newState.joinerScore + joinerRoundPoints,
+        ...(claimed.length > (newState.claimedScoringTiles?.length ?? 0) ? { claimedScoringTiles: claimed } : {}),
+      };
 
       // Round-end reactor tick: every active 0-HP ship gains +1 reactor damage.
       // Ships reaching timer >= 3 are destroyed (removed from board and active lists).

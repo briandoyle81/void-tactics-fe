@@ -10,6 +10,9 @@ export interface GameScoreData {
   myScore: number;
   opponentScore: number;
   maxScore: number;
+  /** Points each side scores at the end of this round as the board stands (projectRoundPoints). */
+  myRoundPoints?: number;
+  opponentRoundPoints?: number;
 }
 
 /** `"tie"` only ever comes from web2 — web3's contract has no tie outcome. */

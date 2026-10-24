@@ -55,7 +55,9 @@ import { GameGrid } from "./GameGrid";
 import { GameGridTooltipHoveredCell } from "./GameGridTooltip";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
 import { toShipCardDataWeb2 } from "../utils/toShipCardData";
-import { GameScoreBox } from "./GameScoreBox";
+import { GameScoreBox, GameScoreTiles } from "./GameScoreBox";
+import { projectRoundPoints } from "../utils/roundScoreProjection";
+import { withoutClaimedTiles } from "../utils/claimedScoringTiles";
 import { GameTurnTimerPanel } from "./GameTurnTimerPanel";
 import { AudioControl, useAudioSettings, useMusicTrack } from "./AudioControl";
 import { COMBAT_VIEW_LABEL, useCombatViewSetting } from "../hooks/useCombatView";
@@ -426,10 +428,26 @@ function GameDisplayWeb2({
     return map;
   }, [shipMap]);
 
-  const { blockedGrid, scoringGrid, onlyOnceGrid, impassableGrid } = useMapWeb2(
-    game.mapId,
-    game.gridDimensions.gridWidth,
-    game.gridDimensions.gridHeight,
+  const {
+    blockedGrid,
+    scoringGrid: mapScoringGrid,
+    onlyOnceGrid: mapOnlyOnceGrid,
+    impassableGrid,
+  } = useMapWeb2(game.mapId, game.gridDimensions.gridWidth, game.gridDimensions.gridHeight);
+  // One-time tiles this game has paid out show empty, as web3's map state
+  // does: as of the board on screen (a replay step shows the tiles claimed
+  // by then). The score's (+N) projection reads the live game's tiles.
+  const scoringGrid = useMemo(
+    () => withoutClaimedTiles(mapScoringGrid, displayGame.claimedScoringTiles, 0),
+    [mapScoringGrid, displayGame.claimedScoringTiles],
+  );
+  const onlyOnceGrid = useMemo(
+    () => withoutClaimedTiles(mapOnlyOnceGrid, displayGame.claimedScoringTiles, false),
+    [mapOnlyOnceGrid, displayGame.claimedScoringTiles],
+  );
+  const liveScoringGrid = useMemo(
+    () => withoutClaimedTiles(mapScoringGrid, game.claimedScoringTiles, 0),
+    [mapScoringGrid, game.claimedScoringTiles],
   );
 
   const shipIdsRef = React.useRef(game.shipIds);
@@ -1114,6 +1132,27 @@ function GameDisplayWeb2({
       userId,
     ],
   );
+  // What each side scores at the end of this round as the board stands: 32(+10)/80.
+  const roundPoints = useMemo(
+    () =>
+      projectRoundPoints({
+        shipPositions: game.shipPositions,
+        scoringGrid: liveScoringGrid,
+        hullPointsOf: (id) => getShipAttributes(id)?.hullPoints,
+      }),
+    // getShipAttributes reads refs; shipAttributes is what changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [game.shipPositions, game.shipAttributes, liveScoringGrid],
+  );
+  const isCreatorForScore = game.metadata.creator === userId;
+  const scoreView = useMemo(
+    () => ({
+      ...gameScoreData,
+      myRoundPoints: isCreatorForScore ? roundPoints.creator : roundPoints.joiner,
+      opponentRoundPoints: isCreatorForScore ? roundPoints.joiner : roundPoints.creator,
+    }),
+    [gameScoreData, roundPoints, isCreatorForScore],
+  );
   const { myScore, opponentScore, maxScore } = gameScoreData;
 
   // End-of-game result screen (GameResultModal) — mirrors GameDisplay.tsx's
@@ -1733,6 +1772,8 @@ function GameDisplayWeb2({
                 myScore={Number(myScore)}
                 opponentScore={Number(opponentScore)}
                 maxScore={Number(maxScore)}
+                myRoundPoints={scoreView.myRoundPoints}
+                opponentRoundPoints={scoreView.opponentRoundPoints}
                 menuItems={[
                   { label: "Sync", onClick: () => refetchGame() },
                   { label: "Audio", onClick: openAudioSettings },
@@ -1752,16 +1793,7 @@ function GameDisplayWeb2({
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {mobileLeftPanelTab === "status" ? (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div className="border border-solid px-1.5 py-1 text-xs" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-near-black)" }}>
-                        <span className="text-text-muted">Me </span>
-                        <span className="font-mono text-white">{myScore}/{maxScore}</span>
-                      </div>
-                      <div className="border border-solid px-1.5 py-1 text-xs" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-near-black)" }}>
-                        <span className="text-text-muted">Opp </span>
-                        <span className="font-mono text-white">{opponentScore}/{maxScore}</span>
-                      </div>
-                    </div>
+                    <GameScoreTiles score={scoreView} />
                     {!isGameOver && renderTurnTimerPanel()}
                   </div>
                 ) : null}
@@ -1855,7 +1887,7 @@ function GameDisplayWeb2({
               <AudioControl />
             </div>
             {!isGameOver && renderTurnTimerPanel()}
-            <GameScoreBox score={gameScoreData} />
+            <GameScoreBox score={scoreView} />
             {gameWinnerResult ? (
               <div
                 className="border-2 border-solid px-3 py-2 text-center uppercase font-bold tracking-wider"

@@ -41,7 +41,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: October 23, 2026
+          Last updated: October 24, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -275,6 +275,22 @@ export default function AudioCreditsPage() {
             artist="Nicholas Panek"
             artistHref="https://pixabay.com/users/nickpanek-38266323/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=323643"
             href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=323643"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Counterattack"
+            file="psychronic-flight-of-the-cosmos-433848.mp3"
+            title="Flight of the Cosmos"
+            artist="Douglas Gustafson"
+            artistHref="https://pixabay.com/users/psychronic-13092015/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=433848"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=433848"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Sneak Attack and Repair Station DS7"
+            file="alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3"
+            title="Cyber Dark Future Electronic Sport Industrial Technology"
+            artist="Dmitry Taras"
+            artistHref="https://pixabay.com/users/alivetunesmusic-21339672/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=194353"
+            href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=194353"
           />
 
           <section className="space-y-3">

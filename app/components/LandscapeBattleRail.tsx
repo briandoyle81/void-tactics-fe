@@ -2,6 +2,7 @@
 
 import React from "react";
 import { TurnCountdownBar, TurnCountdownText } from "./TurnCountdown";
+import { formatScore } from "../utils/roundScoreProjection";
 
 // The phone-landscape battle rail's shared pieces, used by GameDisplay,
 // GameDisplayWeb2 and SimulatedGameDisplay: a one-row header (Back, round,
@@ -129,6 +130,8 @@ export function LandscapeBattleHeader({
   myScore,
   opponentScore,
   maxScore,
+  myRoundPoints,
+  opponentRoundPoints,
   menuItems,
 }: {
   onBack?: () => void;
@@ -140,6 +143,9 @@ export function LandscapeBattleHeader({
   myScore: number;
   opponentScore: number;
   maxScore: number;
+  /** Points each side scores at round end as the board stands: 32(+10). */
+  myRoundPoints?: number;
+  opponentRoundPoints?: number;
   menuItems: RailMenuItem[];
 }) {
   return (
@@ -172,9 +178,9 @@ export function LandscapeBattleHeader({
             )}
           </p>
           <p className="truncate font-mono text-xs leading-tight" aria-label={`Score ${myScore} to ${opponentScore}, ${maxScore} to win`}>
-            <span className="text-cyan">{myScore}</span>
+            <span className="text-cyan">{formatScore(myScore, myRoundPoints)}</span>
             <span className="text-text-muted"> – </span>
-            <span className="text-warning-red">{opponentScore}</span>
+            <span className="text-warning-red">{formatScore(opponentScore, opponentRoundPoints)}</span>
             <span className="text-text-muted"> /{maxScore}</span>
           </p>
         </div>

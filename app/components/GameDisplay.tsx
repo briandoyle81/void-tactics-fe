@@ -91,7 +91,8 @@ import { applyPendingMoveToGame, boardMoveFromPending, lastMoveKey, predictAoeEf
 import { requireShipValue } from "../utils/requireShipValue";
 import { FleeSafetySwitch } from "./FleeSafetySwitch";
 import { FleeConfirmButtonWeb3 } from "./FleeConfirmButtonWeb3";
-import { GameScoreBox } from "./GameScoreBox";
+import { GameScoreBox, GameScoreTiles } from "./GameScoreBox";
+import { projectRoundPoints } from "../utils/roundScoreProjection";
 import { GameFleetStatusCard } from "./GameFleetStatusCard";
 import { GameFleetStatusPanel } from "./GameFleetStatusPanel";
 import { toGameScoreData, toGameWinnerResult } from "../utils/toGameDisplayData";
@@ -2096,6 +2097,25 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       address,
     ],
   );
+  // What each side scores at the end of this round as the board stands: 32(+10)/80.
+  const roundPoints = React.useMemo(
+    () =>
+      projectRoundPoints({
+        shipPositions: game.shipPositions,
+        scoringGrid,
+        hullPointsOf: (id) => getShipAttributes(BigInt(id))?.hullPoints,
+      }),
+    [game.shipPositions, scoringGrid, getShipAttributes],
+  );
+  const isCreatorForScore = game.metadata.creator === address;
+  const scoreView = React.useMemo(
+    () => ({
+      ...gameScoreData,
+      myRoundPoints: isCreatorForScore ? roundPoints.creator : roundPoints.joiner,
+      opponentRoundPoints: isCreatorForScore ? roundPoints.joiner : roundPoints.creator,
+    }),
+    [gameScoreData, roundPoints, isCreatorForScore],
+  );
   const { myScore, opponentScore, maxScore } = gameScoreData;
 
   if (requiresLandscapeMode) {
@@ -2825,6 +2845,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               myScore={Number(myScore)}
               opponentScore={Number(opponentScore)}
               maxScore={Number(maxScore)}
+              myRoundPoints={scoreView.myRoundPoints}
+              opponentRoundPoints={scoreView.opponentRoundPoints}
               menuItems={[
                 { label: "Sync", onClick: () => refetchGame() },
                 { label: "Audio", onClick: openAudioSettings },
@@ -2850,16 +2872,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               ) : null}
               {mobileLeftPanelTab === "status" ? (
                 <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="border border-solid px-1.5 py-1 text-xs" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-near-black)" }}>
-                      <span className="text-text-muted">Me </span>
-                      <span className="font-mono text-white">{myScore}/{maxScore}</span>
-                    </div>
-                    <div className="border border-solid px-1.5 py-1 text-xs" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-near-black)" }}>
-                      <span className="text-text-muted">Opp </span>
-                      <span className="font-mono text-white">{opponentScore}/{maxScore}</span>
-                    </div>
-                  </div>
+                  <GameScoreTiles score={scoreView} />
                   {game.metadata.winner !== "0x0000000000000000000000000000000000000000" ? (
                     <div className="text-sm text-text-primary">
                       Result: {game.metadata.winner === address ? "Victory" : "Defeat"}
@@ -3287,14 +3300,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               </button>
             </div>
             <div className="mt-1.5 flex items-center gap-1.5">
-              <div className="border border-solid px-1.5 py-0.5 text-[11px]" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-slate)" }}>
-                <span className="text-text-muted">Me </span>
-                <span className="font-mono text-white">{myScore}/{maxScore}</span>
-              </div>
-              <div className="border border-solid px-1.5 py-0.5 text-[11px]" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-slate)" }}>
-                <span className="text-text-muted">Opp </span>
-                <span className="font-mono text-white">{opponentScore}/{maxScore}</span>
-              </div>
+              <GameScoreTiles score={scoreView} compact />
               {!isVsAIGame && (
                 <div className="ml-auto text-[11px] font-mono" style={{ color: isMyTurnEffective ? "var(--color-cyan)" : "var(--color-warning-red)" }}>
                   <TurnCountdownText />
@@ -3428,7 +3434,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           </div>
           {/* Scores box aligned left, to the right of title */}
           {useSideLayout ? (
-            <GameScoreBox score={gameScoreData} />
+            <GameScoreBox score={scoreView} />
           ) : (
             <div
               className="ml-6 w-48 border border-solid overflow-hidden"

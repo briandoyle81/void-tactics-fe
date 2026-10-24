@@ -118,6 +118,9 @@ import { useLandscapeMode } from "../hooks/useLandscapeMode";
 import { useResetSelectionOnTurnChange } from "../hooks/useResetSelectionOnTurnChange";
 import { useRetreatModeCancellation } from "../hooks/useRetreatModeCancellation";
 import { RoundStartModal } from "./RoundStartModal";
+import { GameScoreBox, GameScoreTiles } from "./GameScoreBox";
+import { projectRoundPoints } from "../utils/roundScoreProjection";
+import type { GameScoreData } from "../types/gameDisplayData";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import {
   useAccount,
@@ -2508,6 +2511,27 @@ export function SimulatedGameDisplay({
     ? gameState.creatorScore.toString()
     : gameState.joinerScore.toString();
   const maxScore = gameState.maxScore.toString();
+  // The score boxes' data, with what each side scores at the end of this
+  // round as the board stands (32(+10)/80), the same as a live battle.
+  const roundPoints = useMemo(
+    () =>
+      projectRoundPoints({
+        shipPositions: gameState.shipPositions,
+        scoringGrid,
+        hullPointsOf: (id) => getShipAttributes(BigInt(id))?.hullPoints,
+      }),
+    [gameState.shipPositions, scoringGrid, getShipAttributes],
+  );
+  const scoreView = useMemo<GameScoreData>(
+    () => ({
+      myScore: Number(myScore),
+      opponentScore: Number(opponentScore),
+      maxScore: Number(maxScore),
+      myRoundPoints: isMobileJoiner ? roundPoints.joiner : roundPoints.creator,
+      opponentRoundPoints: isMobileJoiner ? roundPoints.creator : roundPoints.joiner,
+    }),
+    [myScore, opponentScore, maxScore, isMobileJoiner, roundPoints],
+  );
   const mobileSelectedShipAttributes =
     selectedShip ? getShipAttributes(selectedShip.id) : null;
   const mobileSelectedShipPosition =
@@ -3189,6 +3213,8 @@ export function SimulatedGameDisplay({
                 myScore={Number(myScore)}
                 opponentScore={Number(opponentScore)}
                 maxScore={Number(maxScore)}
+                myRoundPoints={scoreView.myRoundPoints}
+                opponentRoundPoints={scoreView.opponentRoundPoints}
                 menuItems={[
                   { label: "Audio", onClick: openAudioSettings },
                   { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
@@ -3458,16 +3484,7 @@ export function SimulatedGameDisplay({
                 ) : null}
                 {mobileLeftPanelTab === "status" ? (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <div className="border border-solid px-1.5 py-1 text-xs" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-near-black)" }}>
-                        <span className="text-text-muted">Me </span>
-                        <span className="font-mono text-white">{myScore}/{maxScore}</span>
-                      </div>
-                      <div className="border border-solid px-1.5 py-1 text-xs" style={{ borderColor: "var(--color-gunmetal)", backgroundColor: "var(--color-near-black)" }}>
-                        <span className="text-text-muted">Opp </span>
-                        <span className="font-mono text-white">{opponentScore}/{maxScore}</span>
-                      </div>
-                    </div>
+                    <GameScoreTiles score={scoreView} />
                   </div>
                 ) : null}
                 {mobileLeftPanelTab === "events" ? (
@@ -3917,28 +3934,7 @@ export function SimulatedGameDisplay({
                 variant="highlight"
                 className={chromeOnSide ? "w-full shrink-0" : "w-48 shrink-0"}
               >
-              <div
-                className="w-full border border-solid overflow-hidden"
-                style={{
-                  backgroundColor: "var(--color-slate)",
-                  borderColor: "var(--color-gunmetal)",
-                  borderTopColor: "var(--color-steel)",
-                  borderLeftColor: "var(--color-steel)",
-                  borderRadius: 0,
-                }}
-              >
-                <div className="flex items-stretch" style={{ ...STYLE_MONO, fontSize: "22px" }}>
-                  <div className="flex flex-1 items-center justify-center gap-2 px-3 py-2">
-                    <span style={{ ...STYLE_LABEL, fontSize: 11, color: "var(--color-cyan)" }}>[YOU]</span>
-                    <span title="Scores update at end of round." style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{gameState.creatorScore.toString()}/{gameState.maxScore.toString()}</span>
-                  </div>
-                  <div style={{ width: 1, backgroundColor: "var(--color-gunmetal)", flexShrink: 0 }} />
-                  <div className="flex flex-1 items-center justify-center gap-2 px-3 py-2">
-                    <span style={{ ...STYLE_LABEL, fontSize: 11, color: "var(--color-warning-red)" }}>[OPP]</span>
-                    <span title="Scores update at end of round." style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{gameState.joinerScore.toString()}/{gameState.maxScore.toString()}</span>
-                  </div>
-                </div>
-              </div>
+              <GameScoreBox score={scoreView} />
               </TutorialTarget>
             </div>
             {dockTutorialPanel && renderTutorialTaskPanel(true)}

@@ -22,6 +22,12 @@ const ROGUELIKE_MISSION_MUSIC: Record<number, string> = {
   3: "/music/tom091178-neon-dystopia-vaporwave-1-562018.mp3",
   // Shocking Revelation.
   5: "/music/nickpanek-dark-synthwave-instrumental-with-dubstep-elements-323643.mp3",
+  // Counterattack.
+  6: "/music/psychronic-flight-of-the-cosmos-433848.mp3",
+  // Sneak Attack.
+  16: "/music/alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3",
+  // Repair Station DS7.
+  31: "/music/alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3",
 };
 
 /**
