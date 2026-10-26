@@ -1,4 +1,5 @@
 import { ActionType, type Attributes } from "../types/types";
+import { hullAfterRepair } from "./healCap";
 
 // A move the player has submitted but the chain (web3) or server (web2)
 // hasn't reflected yet. While one exists, both game views patch the game
@@ -182,7 +183,7 @@ export function buildPendingMove(params: {
     const attrs = getShipAttributes(targetShipId);
     if (attrs) {
       attributeOverrides[targetShipId] = {
-        hullPoints: Math.min(attrs.maxHullPoints, attrs.hullPoints + effect.amount),
+        hullPoints: hullAfterRepair(attrs, effect.amount),
         reactorCriticalTimer: attrs.reactorCriticalTimer,
       };
     }

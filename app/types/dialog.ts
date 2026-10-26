@@ -121,10 +121,30 @@ export type DialogTrigger =
    * resource (scoring) tiles this game. count: 1 = the first landing.
    */
   | { type: "resourceTileTaken"; side: DialogSide; count: number }
+  /** Fires once when `count` of `side`'s ships have taken hull damage (distinct ships). */
+  | { type: "shipsDamaged"; side: DialogSide; count: number }
+  /** Fires once when `count` of `side`'s ships have been disabled while on a resource tile. */
+  | { type: "shipsDisabledOnResource"; side: DialogSide; count: number }
+  /**
+   * Fires once when `count` ships have been repaired (hull back up, by
+   * Repair or Repair Drones). `side`: whose ships; omit for either side.
+   * `faction`: only fleets of that faction (variant) count, e.g. 2.
+   */
+  | { type: "shipsRepaired"; side?: DialogSide; faction?: number; count: number }
   /** Fires once when the player wins the mission. Plays in the result screen. */
   | { type: "missionVictory" }
   /** Fires once when the player loses (incl. retreat). Plays in the result screen. */
   | { type: "missionDefeat" };
+
+/**
+ * Extra conditions a line needs, checked when its trigger fires:
+ *   { playerFaction: 1 }       the player's fleet is faction 1
+ *   { playerCanRepair: true }  a player ship can repair (Repair Drones, or faction 2's Repair)
+ */
+export interface DialogCondition {
+  playerFaction?: number;
+  playerCanRepair?: boolean;
+}
 
 /**
  * A reply that plays right after the line it's attached to, by the same
@@ -168,9 +188,14 @@ export interface MissionDialogLine<C extends string = string> {
   mission: DialogMission;
   /** When it plays. See DialogTrigger. */
   trigger: DialogTrigger;
+  /** Only plays when these also hold. See DialogCondition. */
+  when?: DialogCondition;
   /** Optional replies that play right after this line, in order. See DialogResponse. */
   responses?: DialogResponse<C>[];
 }
+
+/** A mission line as written in missionDialog.ts, under its mission's node id (the mission comes from where it's listed). */
+export type MissionDialogEntry<C extends string = string> = Omit<MissionDialogLine<C>, "mission">;
 
 /**
  * A line that can fire in any mission. One variant is picked each time it
@@ -184,6 +209,8 @@ export interface GenericDialogLine<C extends string = string> {
   characterId: C;
   /** When it plays. See DialogTrigger. */
   trigger: DialogTrigger;
+  /** Only plays when these also hold. See DialogCondition. */
+  when?: DialogCondition;
   /**
    * Alternative wordings; one is picked per game (the pick is stable, so a
    * reload doesn't change it). Add as many as you like. A variant can carry
@@ -205,7 +232,9 @@ export interface GenericDialogLine<C extends string = string> {
 }
 
 /** A mission node's title and description (the briefing). */
-export interface NodeContentText {
+export interface NodeContentText<C extends string = string> {
   title: string;
   description: string;
+  /** Who delivers the description as the briefing (a key of DIALOG_CHARACTERS). */
+  speaker: C;
 }

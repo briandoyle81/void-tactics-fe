@@ -12,6 +12,8 @@ import { TerrainArt } from "./TerrainArt";
 import { buildTerrainArtGrid, terrainFullArt } from "../utils/terrainEdges";
 import { MapBackground } from "./MapBackground";
 import { mapBackgroundFor } from "../utils/mapBackground";
+import { computeMovementRange, computeShootingRange } from "../utils/gameGridRangesWeb2";
+import type { Web2ShipPosition } from "../types/web2Game";
 
 // Shared between MapDisplay.tsx (web3) and MapDisplayWeb2.tsx (web2) — the
 // grid rendering, ship placement interactions (click/drag/tap-to-place),
@@ -167,9 +169,22 @@ export function MapDisplayView({
     return zone.some((t) => t.row === row && t.col === col);
   };
 
+  // An enemy (or any ship the player can't pick) clicked to see its threat
+  // range; local to the board. Clicking it again, or anything else, clears it.
+  const [inspectedShipId, setInspectedShipId] = useState<string | null>(null);
+  // A ship picked from the list (or placed) takes over the range shown.
+  useEffect(() => setInspectedShipId(null), [selectedShipId]);
+  const isSelectableShip = (shipId: string) => !selectableShipIds || selectableShipIds.some((id) => id === shipId);
+
   // Handle cell click
   const handleCellClick = (row: number, col: number) => {
     if (!allowSelection) return;
+    const clickedShipId = getShipIdAtPosition(row, col);
+    if (clickedShipId && !isSelectableShip(clickedShipId)) {
+      setInspectedShipId((prev) => (prev === clickedShipId ? null : clickedShipId));
+      return;
+    }
+    setInspectedShipId(null);
     if (!onShipSelect || !onShipMove) return;
 
     // Tap-to-place: pending ship from list awaiting placement on touch devices
@@ -182,7 +197,7 @@ export function MapDisplayView({
 
     if (shipId) {
       // Only allow selecting if the ship is in selectable set (if provided)
-      if (!selectableShipIds || selectableShipIds.some((id) => id === shipId)) {
+      if (isSelectableShip(shipId)) {
         onShipSelect(shipId);
       }
     } else if (selectedShipId && isValidShipPosition(row, col)) {
@@ -283,6 +298,47 @@ export function MapDisplayView({
     setHoveredCell(null);
   };
 
+  // The threat range of the inspected enemy, else the selected ship, as the
+  // battle board draws it with a ship selected and no move staged: the
+  // tiles it can move to (green) and every tile it could fire its main
+  // weapon on from one of them (amber). Needs the ship's attributes
+  // (movement, range); without them, none.
+  const inspectedOnBoard =
+    inspectedShipId != null && shipPositions.some((p) => p.shipId === inspectedShipId) ? inspectedShipId : null;
+  const rangeShipId = inspectedOnBoard ?? selectedShipId;
+  const threatTiles = React.useMemo(() => {
+    const empty = { move: new Set<string>(), shoot: new Set<string>() };
+    if (rangeShipId == null || !attributesMap?.has(rangeShipId)) return empty;
+    const mine = new Set(selectableShipIds ?? flippedShipIds);
+    const positions: Web2ShipPosition[] = shipPositions.map((p) => ({
+      shipId: Number(p.shipId),
+      position: { row: p.row, col: p.col },
+      isCreator: mine.has(p.shipId) === isCreatorViewer,
+    }));
+    const selected = Number(rangeShipId);
+    if (!positions.some((p) => p.shipId === selected)) return empty;
+    const shipMap = new Map<number, unknown>(positions.map((p) => [p.shipId, p]));
+    const getShipAttributes = (id: number) => attributesMap.get(String(id)) ?? null;
+    const shared = {
+      gridWidth: GRID_DIMENSIONS.WIDTH,
+      gridHeight: GRID_DIMENSIONS.HEIGHT,
+      selectedShipId: selected,
+      hasShips: true,
+      shipMap,
+      getShipAttributes,
+      shipPositions: positions,
+      previewPosition: null,
+      impassableGrid,
+    };
+    const key = (t: { row: number; col: number }) => `${t.row},${t.col}`;
+    return {
+      move: new Set(computeMovementRange(shared).map(key)),
+      shoot: new Set(
+        computeShootingRange({ ...shared, selectedWeaponType: "weapon", specialRange: undefined, specialType: 0, blockedGrid }).map(key),
+      ),
+    };
+  }, [rangeShipId, attributesMap, selectableShipIds, flippedShipIds, shipPositions, isCreatorViewer, impassableGrid, blockedGrid]);
+
   // Get tile class based on state
   const getTileClass = (row: number, col: number) => {
     if (
@@ -303,12 +359,15 @@ export function MapDisplayView({
     const scoreValue = scoringGrid[row][col];
     const isOnlyOnce = onlyOnceGrid[row][col];
     const shipId = getShipIdAtPosition(row, col);
-    const isSelected = shipId && selectedShipId && shipId === selectedShipId;
+    const isSelected = shipId && selectedShipId && shipId === selectedShipId && !inspectedOnBoard;
+    const isInspected = !!shipId && shipId === inspectedOnBoard;
 
     let baseClass = `w-full h-full relative ${allowSelection ? "cursor-pointer" : "cursor-default"}`;
 
     if (isSelected) {
       baseClass += " bg-amber/10 shadow-[inset_0_0_0_3px_var(--color-amber)]";
+    } else if (isInspected) {
+      baseClass += " bg-warning-red/10 shadow-[inset_0_0_0_3px_var(--color-warning-red)]";
     } else {
       if (isBlocked) {
         baseClass += " border-0 outline outline-1 outline-gunmetal overflow-hidden";
@@ -409,6 +468,13 @@ export function MapDisplayView({
                         so a dual-tagged cell still reads as impassable. */}
                     <TerrainArt pieces={nebulaGrid[row]?.[col] ?? []} layer={1} sizes="(max-width: 768px) 5vw, 3vw" />
                     <TerrainArt pieces={asteroidGrid[row]?.[col] ?? []} layer={2} sizes="(max-width: 768px) 5vw, 3vw" />
+                    {/* Threat range, styled as on the battle board (GameGridCell). */}
+                    {threatTiles.move.has(`${row},${col}`) && (
+                      <div className="absolute inset-0 z-[3] border-1 pointer-events-none border-phosphor-green/50 bg-phosphor-green/10" />
+                    )}
+                    {threatTiles.shoot.has(`${row},${col}`) && (
+                      <div className="absolute inset-0 z-[3] border-1 pointer-events-none border-amber/50 bg-amber/10" />
+                    )}
 
                     {/* Ship display */}
                     {(() => {

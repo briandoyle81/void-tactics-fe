@@ -73,7 +73,7 @@ import {
 import { GameBoardLayout } from "./GameBoardLayout";
 import { MissionDialogPanel } from "./MissionDialogPanel";
 import { useMissionDialog } from "../hooks/useMissionDialog";
-import { buildDialogSnapshot } from "../utils/missionDialog";
+import { buildDialogSnapshot, dialogShipKit } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
 import {
   GameEvents,
@@ -2569,6 +2569,8 @@ export function SimulatedGameDisplay({
   // difference: the panel moves to the side away from the task panel, and
   // state isn't persisted (the tutorial starts over on every visit).
   const dialogSnapshot = useMemo(() => {
+    const dialogKitFor = (ship: Ship | undefined) =>
+      ship ? dialogShipKit(Number(ship.traits.variant), Number(ship.equipment.special)) : {};
     const isCreatorNow =
       gameState.metadata.creator.toLowerCase() === TUTORIAL_PLAYER_ADDRESS.toLowerCase();
     return buildDialogSnapshot({
@@ -2580,8 +2582,10 @@ export function SimulatedGameDisplay({
         isMine: p.isCreator === isCreatorNow,
         status: p.status,
         hullPoints: getShipAttributes(p.shipId)?.hullPoints ?? null,
+        maxHullPoints: getShipAttributes(p.shipId)?.maxHullPoints ?? null,
         reactorLevel: getShipAttributes(p.shipId)?.reactorCriticalTimer ?? null,
         position: p.position,
+        ...dialogKitFor(shipMap.get(BigInt(p.shipId))),
       })),
       scoringGrid,
     });
@@ -2593,6 +2597,7 @@ export function SimulatedGameDisplay({
     gameState.shipPositions,
     getShipAttributes,
     scoringGrid,
+    shipMap,
   ]);
   const missionDialog = useMissionDialog({
     gameId: "tutorial",

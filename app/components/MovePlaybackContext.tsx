@@ -13,6 +13,8 @@ export interface MovePlaybackValue {
   hiddenShipIds: Set<number>;
   /** The map's background image (mapBackgroundFor), for the combat cinematic's panels. */
   background: string;
+  /** The map's nebula tiles: a ship fighting from one gets a nebula backdrop in the cinematic. */
+  blockedGrid?: boolean[][];
 }
 
 const NOOP = () => {};

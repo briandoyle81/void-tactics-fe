@@ -113,14 +113,24 @@ describe("applyPendingMoveToGame", () => {
     expect(out.lastMove).toMatchObject({ newRow: -1, newCol: -1 });
   });
 
-  it("heals cap at max hull", () => {
+  it("heals stop at the heal cap (80% of max hull)", () => {
+    const game = makeGame(60);
+    const out = applyPendingMoveToGame(
+      game,
+      pending(game, { targetShipId: 2, effect: { kind: "heal", amount: 50 } }),
+      (n) => n,
+    );
+    expect(out.shipAttributes[1].hullPoints).toBe(80);
+  });
+
+  it("a heal never lowers a ship already past the cap", () => {
     const game = makeGame(90);
     const out = applyPendingMoveToGame(
       game,
       pending(game, { targetShipId: 2, effect: { kind: "heal", amount: 50 } }),
       (n) => n,
     );
-    expect(out.shipAttributes[1].hullPoints).toBe(100);
+    expect(out.shipAttributes[1].hullPoints).toBe(90);
   });
 
   it("uses bigint ids and second timestamps for web3 games", () => {

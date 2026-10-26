@@ -13,6 +13,16 @@ const base: RunMapActionInput = {
 };
 
 describe("getRunMapAction", () => {
+  it("holds a fork's options until every brief has been opened", () => {
+    expect(getRunMapAction({ ...base, unreviewedOptions: 1 })).toEqual({
+      type: "none",
+      label: "Review Options",
+      disabled: true,
+    });
+    expect(getRunMapAction({ ...base, unreviewedOptions: 0 }).type).toBe("warp");
+    expect(getRunMapAction({ ...base, selectedKind: "resupply", unreviewedOptions: 0 }).type).toBe("resupply");
+  });
+
   it("starts a run from the run-less map preview", () => {
     expect(getRunMapAction({ ...base, isBrowseMode: true, canStartRun: true })).toEqual({
       type: "start",

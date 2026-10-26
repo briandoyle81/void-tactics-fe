@@ -35,6 +35,11 @@ export interface RunMapActionInput {
    */
   currentCleared: boolean;
   isEnteringResupply: boolean;
+  /**
+   * At a fork, the next missions whose briefs the player hasn't opened yet:
+   * entering one waits until they've looked at every option.
+   */
+  unreviewedOptions?: number;
 }
 
 const none = (label: string): RunMapAction => ({ type: "none", label, disabled: true });
@@ -76,6 +81,7 @@ export function getRunMapAction(input: RunMapActionInput): RunMapAction {
 
   if (!input.isReachableChild) return none("Not reachable");
   if (!input.currentCleared) return none("Finish your current mission");
+  if ((input.unreviewedOptions ?? 0) > 0) return none("Review Options");
 
   if (input.selectedKind === "resupply") {
     return input.isEnteringResupply

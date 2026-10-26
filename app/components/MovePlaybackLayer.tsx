@@ -77,6 +77,7 @@ export function MovePlaybackLayer({
   impassableGrid,
   getShipAttributes,
   background,
+  blockedGrid,
   isShipOwnedByCurrentPlayer,
 }: {
   active: ActivePlayback | null;
@@ -93,6 +94,8 @@ export function MovePlaybackLayer({
   } | null;
   /** The map's background image, behind the cinematic's panels. */
   background: string;
+  /** The map's nebula tiles, for the cinematic's backdrop. */
+  blockedGrid?: boolean[][];
   /** Whose ship it is, for the cinematic's captions (blue yours, red theirs). */
   isShipOwnedByCurrentPlayer?: (shipId: number) => boolean;
 }) {
@@ -197,6 +200,8 @@ export function MovePlaybackLayer({
         defenderStatusAfter={move.targetAfter ?? null}
         soundOnceKey={soundOnceKey}
         background={background}
+        attackerInNebula={!!blockedGrid?.[move.to.row]?.[move.to.col]}
+        defenderInNebula={!!targetPos && !!blockedGrid?.[targetPos.row]?.[targetPos.col]}
       />,
       viewport,
     );

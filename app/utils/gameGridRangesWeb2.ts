@@ -7,6 +7,7 @@ import {
 } from "./gameGridRanges";
 import { requireShipValue, resolveActionRange } from "./requireShipValue";
 import { isRepairDronesSpecial } from "./specialConfigWeb2";
+import { canBeRepaired } from "./healCap";
 
 const EMPTY_RANGE_CELLS: { row: number; col: number }[] = [];
 const EMPTY_TARGET_REFS: { shipId: number; position: { row: number; col: number } }[] = [];
@@ -45,6 +46,12 @@ function isValidFactionAbilityTarget(
 ): boolean {
   if (isHeal) return targetOwner === playerAddress;
   return targetOwner !== playerAddress && targetHullPoints === 0;
+}
+
+/** A repair target must be below the heal cap (healCap.ts); unknown attributes pass. */
+function isRepairable(shipId: number, getShipAttributes: (shipId: number) => Attributes | null): boolean {
+  const attrs = getShipAttributes(shipId);
+  return !attrs || canBeRepaired(attrs);
 }
 
 /** After a staged move the acting ship is still listed at FROM; heal/self-repair aims from To. */
@@ -543,6 +550,7 @@ export function computeValidTargets({
         if (ship.owner === playerAddress) return;
       } else if (isRepairDronesSpecial(shipVariant, specialType)) {
         if (ship.owner !== playerAddress) return;
+        if (!isRepairable(shipPosition.shipId, getShipAttributes)) return;
       } else {
         if (ship.owner === playerAddress) return;
       }
@@ -550,6 +558,7 @@ export function computeValidTargets({
       if (!isFactionAbilitySupported) return;
       const targetHp = getShipAttributes(shipPosition.shipId)?.hullPoints;
       if (!isValidFactionAbilityTarget(ship.owner, playerAddress, factionAbilityIsHeal, targetHp)) return;
+      if (factionAbilityIsHeal && !isRepairable(shipPosition.shipId, getShipAttributes)) return;
     } else {
       if (ship.owner === playerAddress) return;
     }
@@ -712,12 +721,14 @@ export function computeLabelTargets({
           if (ship.owner === playerAddress) return;
         } else if (isRepairDronesSpecial(shipVariant, specialType)) {
           if (ship.owner !== playerAddress) return;
+          if (!isRepairable(shipPosition.shipId, getShipAttributes)) return;
         } else {
           if (ship.owner === playerAddress) return;
         }
       } else if (selectedWeaponType === "ram") {
         const targetHp = getShipAttributes(shipPosition.shipId)?.hullPoints;
         if (!isValidFactionAbilityTarget(ship.owner, playerAddress, factionAbilityIsHeal, targetHp)) return;
+        if (factionAbilityIsHeal && !isRepairable(shipPosition.shipId, getShipAttributes)) return;
       } else {
         if (ship.owner === playerAddress) return;
       }
@@ -833,12 +844,14 @@ export function computeHoverValidTargets({
         if (ship.owner === playerAddress) return;
       } else if (isRepairDronesSpecial(shipVariant, spec)) {
         if (ship.owner !== playerAddress) return;
+        if (!isRepairable(shipPosition.shipId, getShipAttributes)) return;
       } else {
         if (ship.owner === playerAddress) return;
       }
     } else if (selectedWeaponType === "ram") {
       const targetHp = getShipAttributes(shipPosition.shipId)?.hullPoints;
       if (!isValidFactionAbilityTarget(ship.owner, playerAddress, factionAbilityIsHeal, targetHp)) return;
+      if (factionAbilityIsHeal && !isRepairable(shipPosition.shipId, getShipAttributes)) return;
     } else {
       if (ship.owner === playerAddress) return;
     }

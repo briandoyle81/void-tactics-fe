@@ -1,13 +1,16 @@
 import type { NodeContentText } from "../../types/dialog";
+import type { DialogCharacterId } from "./characters";
 
 // Web3 mission titles and descriptions, by node id. (Web2 keeps its own in
 // Postgres.)
 //
 // Each entry:
 //   title        — the mission name on the map, node panel and result screen.
+//   speaker      — who delivers the briefing (a key of DIALOG_CHARACTERS in
+//                  characters.ts): their portrait, name and color frame it.
 //   description  — the briefing shown in the node preview before the
-//                  mission starts. Its speaker is set in briefings.ts; the
-//                  in-battle lines are in missionDialog.ts.
+//                  mission starts, delivered by `speaker`. The in-battle
+//                  lines are in missionDialog.ts.
 //
 // Campaign and roguelike node ids are separate numbering, matching
 // { kind: "campaign" | "roguelike", nodeId } in the dialog files. A node
@@ -16,9 +19,10 @@ import type { NodeContentText } from "../../types/dialog";
 // The node editors show this text but don't edit it: change it here and
 // deploy.
 
-export const ROGUELIKE_NODE_CONTENT: Record<number, NodeContentText> = {
+export const ROGUELIKE_NODE_CONTENT: Record<number, NodeContentText<DialogCharacterId>> = {
   1: {
     title: "A Strange Encounter",
+    speaker: "adjutant",
     description: `Admiral, Central has detected a small fleet in the eastern quadrant operating without corporate IFF. That means they have no legal claim to any resource sites.
 
 All nearby Consortium ships have been asked to investigate. You're closest, but our rivals aren't far behind. Reinforcements won't arrive in time, so you'll rendezvous with them later at a sector supply station.
@@ -27,6 +31,7 @@ You have one shot at this. Retreat, and someone else gets there first. Take your
   },
   2: {
     title: "Digging Deeper",
+    speaker: "adjutant",
     description: `Admiral, we found some leads at a mining site near where we encountered those strange ships.  It’s really weird.  At a glance, it looks like someone was setting up a normal mining facility, but nothing was right.  The equipment layout didn’t make sense, we couldn’t find any sign of a union overseer, and the excavators appeared to be digging at random.
 
 We also found survey data indicating more operations at a nearby location.  This site is quite a bit denser than the first one, so it’s worth securing either way.  I recommend we go in carefully.
@@ -34,6 +39,7 @@ We also found survey data indicating more operations at a nearby location.  This
   },
   3: {
     title: "Collision Course",
+    speaker: "adjutant",
     description: `Things have come to a head, Admiral.  Our fleet is banged up and this time we’re facing a fair contest over a pretty significant resource deposit. The enemy fleet is going to be a tough fight, but I don’t see any tricks we can use.
 
 We could retreat, but something tells me a mystery this strange has to lead to an advantage for our Corporation.  Let’s see if we can grab this zone.  If we pull it off, we’ll have a chance to repair and add ships to our fleet at a nearby staging point.  You might decide it’s worth sacrificing a ship or two to secure victory.
@@ -43,10 +49,12 @@ Our future is in your hands.
   },
   4: {
     title: "Resupply Station",
+    speaker: "adjutant",
     description: `Finally, we've reached a resupply station!  The company brass has sent us more ships.  We can add more ships to our fleet and swap out any that are damaged.  We'll be able to chase down this mystery with greater forces.`,
   },
   5: {
     title: "Shocking Revelation",
+    speaker: "adjutant",
     description: `WHAT ARE THOSE THINGS!?!?.  As far as I know, only standard pattern ships have been built in at least 200 years.  Who, or what, are they!?
 
     Admiral, I think my hunch was right.  Securing this site will give us a better foothold in this sector.  We need to push ahead and find out who's building these new ships.
@@ -54,6 +62,7 @@ Our future is in your hands.
   },
   16: {
     title: "Sneak Attack",
+    speaker: "adjutant",
     description: `Admiral, our scouts report that the enemy has a base hidden in a gas cloud.  If we're careful, we can sneak through and take them by surprise.  Reports indicate that there's a small defensive contingent guarding the station, and an inactive ship that looks particularly powerful.
 
     The good news is that the enemy does seem to be following more of the rules. The station itself appears unarmed and unarmored.  We can't legally fire on the space station itself, but we don't have to worry about it shooting at us either.
@@ -63,6 +72,7 @@ Our future is in your hands.
   },
   31: {
     title: "Repair Station DS7",
+    speaker: "adjutant",
     description: `Admiral, we've found a repair station!  It's a small one, but it's enough to get our ships back to full strength.  We can use it to repair our ships and then continue our mission.
 
     The bad news is that there's an enemy fleet guarding the station.  We'll need to knock them out before we can use it.
@@ -72,6 +82,7 @@ Our future is in your hands.
   },
   6: {
     title: "Counterattack",
+    speaker: "adjutant",
     description: `Admiral, the enemy must be really upset about losing that station.  They've sent a huge fleet to attack us.
 
     I don't think we can win a direct confrontation here, but if we retreat, someone else will learn about what's happening and figure out how to profit from it. They might even figure out how to build the new ships!
@@ -81,8 +92,9 @@ Our future is in your hands.
   },
   7: {
     title: "Resupply Station",
+    speaker: "adjutant",
     description: `We've reached the resupply station!  We can swap out damaged ships and add new ones to our fleet.  With the last escalation, we've been authorized to bring in a greater force.  I recommend we do so now.`,
   },
 };
 
-export const CAMPAIGN_NODE_CONTENT: Record<number, NodeContentText> = {};
+export const CAMPAIGN_NODE_CONTENT: Record<number, NodeContentText<DialogCharacterId>> = {};

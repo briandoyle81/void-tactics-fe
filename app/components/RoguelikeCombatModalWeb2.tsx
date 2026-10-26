@@ -22,6 +22,8 @@ import type { Web2Ship } from "../types/web2Ship";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { GRID_DIMENSIONS } from "../types/types";
 import { currentHullFromWeb2RosterHp, overlayHullPoints } from "../utils/rosterHull";
+import { calculateAttributesFromContractsWeb2 } from "../utils/shipAttributesCalculatorWeb2";
+import type { Attributes } from "../types/types";
 
 interface AIMapPlacementWeb2 {
   id: number;
@@ -102,6 +104,14 @@ export function RoguelikeCombatModalWeb2({
       currentHullFromWeb2RosterHp(damageById.get(id) ?? 0, attributesByShipId.get(id)?.maxHullPoints ?? 0),
     );
   }, [attributesByShipId, run.roster]);
+
+  // The board also needs the enemy previews' numbers (their threat range
+  // when clicked): computed from their loadouts, as their tooltips are.
+  const mapAttributes = React.useMemo(() => {
+    const map = new Map<number, Attributes>(attributesWithRosterHull);
+    enemyShips.forEach((e) => map.set(e.ship.id, calculateAttributesFromContractsWeb2(e.ship)));
+    return map;
+  }, [attributesWithRosterHull, enemyShips]);
 
   const handleLaunch = async () => {
     if (fleet.selectedShips.length === 0 || !fleet.hasMovedShip || fleet.hasShipsOutsideZone) return;
@@ -207,7 +217,7 @@ export function RoguelikeCombatModalWeb2({
       }}
       dragOverPosition={fleet.dragOverPosition}
       showDeployZoneLabel={true}
-      attributesMap={attributesWithRosterHull}
+      attributesMap={mapAttributes}
     />
   );
 

@@ -9,6 +9,9 @@ import { usePlayerStats } from "../hooks/usePlayerStats";
 import { PlayerStatsPanel } from "./PlayerStatsPanel";
 import { GameHistoryList, type GameHistoryRowData } from "./GameHistoryList";
 import { CopyAddressButton } from "./CopyAddressButton";
+import { CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contractAddresses";
+import { countWinLoss, splitPlayerRecord } from "../utils/playerRecord";
+import type { GameDataView } from "../types/types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -16,23 +19,25 @@ const Profile: React.FC = () => {
   const { address, isConnected } = useAccount();
   const { games, isLoading } = usePlayerGames();
 
-  // The record is GameResults' (PvP games plus the tutorial's win or loss,
-  // TutorialClaim.completeTutorialWinPath/LossPath), not a count of the
-  // games list: the tutorial has no game, and PvE games don't count.
+  // GameResults' record holds PvP games plus the tutorial's win or loss
+  // (TutorialClaim.completeTutorialWinPath/LossPath); PvE games aren't in it.
+  // So PvP and PvE are counted from the games list (by the contract that
+  // started each one), with the tutorial under PvE (playerRecord.ts).
   const record = usePlayerStats(address, baseSepolia.id);
   const stats = useMemo(() => {
     const inProgress = games.filter((game) => game.metadata.winner === ZERO_ADDRESS).length;
-    const wins = Number(record?.wins ?? 0n);
-    const losses = Number(record?.losses ?? 0n);
-    const decided = wins + losses;
-    return {
-      wins,
-      losses,
-      inProgress,
-      winRate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
-      total: Number(record?.totalGames ?? 0n),
-    };
-  }, [games, record]);
+    const me = address?.toLowerCase();
+    const pvpMatch = CONTRACT_ADDRESSES_BY_CHAIN_ID[baseSepolia.id].PVP_MATCH.toLowerCase();
+    const outcome = (game: GameDataView) =>
+      game.metadata.winner === ZERO_ADDRESS ? null : game.metadata.winner.toLowerCase() === me ? "win" : "loss";
+    const isPvp = (game: GameDataView) => game.metadata.orchestrator?.toLowerCase() === pvpMatch;
+    const split = splitPlayerRecord({
+      stored: { wins: Number(record?.wins ?? 0n), losses: Number(record?.losses ?? 0n) },
+      pvpGames: countWinLoss(games.filter(isPvp), outcome),
+      pveGames: countWinLoss(games.filter((game) => !isPvp(game)), outcome),
+    });
+    return { pvp: split.pvp, pve: split.pve, inProgress };
+  }, [games, record, address]);
 
   // Sort games: finished first (by startedAt desc), then in progress
   const sortedGames = useMemo(() => {

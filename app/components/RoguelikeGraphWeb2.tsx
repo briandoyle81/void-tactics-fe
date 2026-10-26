@@ -228,6 +228,7 @@ function Web2MissionDrawer({
           text={node.description}
           status={node.descriptionStatus}
           compact
+          debrief={isCleared}
         />
       }
       enemyFleet={

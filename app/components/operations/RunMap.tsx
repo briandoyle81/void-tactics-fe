@@ -70,6 +70,12 @@ interface RunMapCanvasNode extends RoguelikeNodeCardNode {
 }
 
 const ADD_NODE_SENTINEL_ID = Number.MAX_SAFE_INTEGER;
+const NO_IDS: ReadonlySet<number> = new Set();
+
+// At a fork, the next missions whose briefs the player has opened, for the
+// run's current node. Kept outside the component so leaving the map (a
+// battle, another tab) and coming back doesn't make them look again.
+let reviewedOptions: { from: number; ids: ReadonlySet<number> } | null = null;
 const OPS_TOOLBAR_BUTTON =
   "border border-solid px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -145,9 +151,6 @@ export function RunMap({
   const [isRetreating, setIsRetreating] = React.useState(false);
   const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: number } | null>(null);
   const [showSettings, setShowSettings] = React.useState(false);
-  // The mission drawer opens on selection; closing it gives the chart the
-  // full width until another node is picked.
-  const [drawerOpen, setDrawerOpen] = React.useState(true);
   // Edit Mode opens the selected node in a full-screen editor instead.
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [showRetreatConfirm, setShowRetreatConfirm] = React.useState(false);
@@ -197,6 +200,16 @@ export function RunMap({
   }, [nodes, isBrowseMode, run, currentNode, currentCleared, isDefeated, prerequisitesById]);
 
   const isCreatingNode = selectedNodeId === ADD_NODE_SENTINEL_ID;
+
+  // Where the run can go next once the current mission is won, top first
+  // (the chart orders a step by id).
+  const nextStopIds = React.useMemo(
+    () =>
+      !isBrowseMode && currentCleared && currentNode
+        ? currentNode.childIds.filter((id) => byId.has(id) && !isLocked(id)).sort((a, b) => a - b)
+        : [],
+    [isBrowseMode, currentCleared, currentNode, byId, isLocked],
+  );
 
   const canvasNodes: RunMapCanvasNode[] = React.useMemo(
     () =>
@@ -299,6 +312,42 @@ export function RunMap({
     }
     if (!editMode && rootNodeId != null) setSelectedNodeId(takeInitialUrlNode() ?? rootNodeId);
   }, [currentRunNodeId, editMode, rootNodeId, takeInitialUrlNode, showTutorialPrelude]);
+  // Back on the map with the current mission won: select the next one (the
+  // first, at a fork). Once per current node per visit, so the player can
+  // still pick the mission they just won to read its debrief.
+  const advancedFromRef = React.useRef<number | null>(null);
+  React.useEffect(() => {
+    if (editMode || currentRunNodeId == null || nextStopIds.length === 0) return;
+    if (advancedFromRef.current === currentRunNodeId || selectedNodeId !== currentRunNodeId) return;
+    advancedFromRef.current = currentRunNodeId;
+    setSelectedNodeId(nextStopIds[0]!);
+  }, [editMode, currentRunNodeId, nextStopIds, selectedNodeId]);
+
+  // At a fork, remember each option the player opens; entering one waits
+  // until they've seen them all.
+  const [reviewedIds, setReviewedIds] = React.useState<ReadonlySet<number>>(() =>
+    reviewedOptions && reviewedOptions.from === currentRunNodeId ? reviewedOptions.ids : NO_IDS,
+  );
+  const reviewedFrom = reviewedOptions?.from ?? null;
+  React.useEffect(() => {
+    if (currentRunNodeId == null) return;
+    if (reviewedFrom !== currentRunNodeId) {
+      reviewedOptions = { from: currentRunNodeId, ids: NO_IDS };
+      setReviewedIds(NO_IDS);
+    }
+  }, [currentRunNodeId, reviewedFrom]);
+  React.useEffect(() => {
+    if (currentRunNodeId == null || selectedNodeId == null || !nextStopIds.includes(selectedNodeId)) return;
+    setReviewedIds((prev) => {
+      if (prev.has(selectedNodeId)) return prev;
+      const ids = new Set(prev).add(selectedNodeId);
+      reviewedOptions = { from: currentRunNodeId, ids };
+      return ids;
+    });
+  }, [currentRunNodeId, selectedNodeId, nextStopIds]);
+  const unreviewedOptions =
+    nextStopIds.length > 1 ? nextStopIds.filter((id) => !reviewedIds.has(id)).length : 0;
+
   // A URL node that isn't on this map (stale link, another campaign): fall
   // back to the snap target.
   React.useEffect(() => {
@@ -386,7 +435,6 @@ export function RunMap({
       return;
     }
     setSelectedNodeId(id);
-    setDrawerOpen(true);
     setEditorOpen(true);
     if (isBrowseMode && editMode) localStorage.setItem(selectedNodeStorageKey, String(id));
   };
@@ -422,6 +470,7 @@ export function RunMap({
     hasActiveGame: !isBrowseMode && run.hasActiveGame && !!onResume,
     currentCleared,
     isEnteringResupply: !!selectedNode && enteringResupply === selectedNode.id,
+    unreviewedOptions,
   });
 
   const handleMapAction = () => {
@@ -532,8 +581,6 @@ export function RunMap({
           />
         }
         drawer={drawer}
-        drawerOpen={drawerOpen}
-        onDrawerOpenChange={setDrawerOpen}
         peek={missionPeek}
         actionBar={
           editMode ? undefined : (

@@ -16,6 +16,7 @@ import { Web2Ship } from "../types/web2Ship";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useGetGame } from "../hooks/useGamesWeb2";
 import { useGameShipsWeb2 } from "../hooks/useGameShipsWeb2";
+import { isAnyBoardCovered } from "../hooks/useBoardCovered";
 import { useGameStreamWeb2 } from "../hooks/useGameStreamWeb2";
 import { useGamePolling } from "../hooks/useGamePolling";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
@@ -97,7 +98,7 @@ import {
   useRoguelikeRunWeb2,
 } from "../hooks/useRoguelikeWeb2";
 import { DialogLineCard, MissionDialogPanel } from "./MissionDialogPanel";
-import { buildDialogSnapshot } from "../utils/missionDialog";
+import { buildDialogSnapshot, dialogShipKit } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
@@ -644,13 +645,16 @@ function GameDisplayWeb2({
       enemyScore: isCreatorNow ? chainGame.joinerScore : chainGame.creatorScore,
       ships: chainGame.shipPositions.map((p) => {
         const index = chainGame.shipIds?.findIndex((id) => id === p.shipId) ?? -1;
+        const ship = shipMap.get(p.shipId);
         return {
           id: String(p.shipId),
           isMine: p.isCreator === isCreatorNow,
           status: p.status,
           hullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.hullPoints ?? null) : null,
+          maxHullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.maxHullPoints ?? null) : null,
           reactorLevel: index >= 0 ? (chainGame.shipAttributes?.[index]?.reactorCriticalTimer ?? null) : null,
           position: p.position,
+          ...(ship ? dialogShipKit(Number(ship.traits.variant), Number(ship.equipment.special)) : {}),
         };
       }),
       scoringGrid,
@@ -669,6 +673,7 @@ function GameDisplayWeb2({
     chainGame.shipAttributes,
     gameWinnerResult,
     scoringGrid,
+    shipMap,
   ]);
   const missionDialog = useMissionDialog({
     gameId: String(gameId),
@@ -874,7 +879,8 @@ function GameDisplayWeb2({
   // is shared, but the keyboard path itself needs its own listener per file).
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      // An overlay over the board owns Escape (useBoardCovered).
+      if (e.key === "Escape" && !isAnyBoardCovered()) {
         handleCancelMove();
         setDraggedShipId(null);
         setDragOverCell(null);

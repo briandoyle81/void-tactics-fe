@@ -1,4 +1,5 @@
 import type {
+  DialogCondition,
   DialogMission,
   DialogResponse,
   DialogSide,
@@ -9,6 +10,7 @@ import type {
 import { MISSION_DIALOG_LINES } from "../data/dialog/missionDialog";
 import { GENERIC_DIALOG_LINES } from "../data/dialog/genericDialog";
 import type { VictoryReasonEnemyShip } from "./victoryReason";
+import { isRepairDronesSpecial } from "./specialConfigWeb2";
 
 // Pure trigger engine for in-mission dialog. Shared by GameDisplay.tsx,
 // GameDisplayWeb2.tsx and SimulatedGameDisplay.tsx (via useMissionDialog).
@@ -57,6 +59,24 @@ export interface DialogSnapshot {
    */
   myResourceTilesTaken: number;
   enemyResourceTilesTaken: number;
+  /** Distinct ships that have taken hull damage so far this game. Built by mergeDisabledShips. */
+  myShipsDamaged?: number;
+  enemyShipsDamaged?: number;
+  /** Distinct ships disabled while on a resource tile so far this game. Built by mergeDisabledShips. */
+  myShipsDisabledOnResource?: number;
+  enemyShipsDisabledOnResource?: number;
+  /**
+   * Distinct ships repaired so far this game: hull back above the lowest
+   * it's been. Built by mergeDisabledShips from each ship's hull low.
+   */
+  myShipsRepaired?: number;
+  enemyShipsRepaired?: number;
+  /** Each fleet's faction (variant); null when unknown or mixed. For line conditions and shipsRepaired. */
+  myFleetFaction?: number | null;
+  enemyFleetFaction?: number | null;
+  /** A working ship on that side can repair (Repair Drones, or faction 2's Repair). */
+  myCanRepair?: boolean;
+  enemyCanRepair?: boolean;
   /** How the game ended for the local player; null while it's still running (or a draw). */
   outcome: DialogOutcome;
 }
@@ -78,6 +98,12 @@ export type DialogObservation = Omit<
   | "enemyShipsAtReactorLevel"
   | "myResourceTilesTaken"
   | "enemyResourceTilesTaken"
+  | "myShipsDamaged"
+  | "enemyShipsDamaged"
+  | "myShipsDisabledOnResource"
+  | "enemyShipsDisabledOnResource"
+  | "myShipsRepaired"
+  | "enemyShipsRepaired"
 > & {
   myDisabledShipIds: string[];
   enemyDisabledShipIds: string[];
@@ -87,6 +113,15 @@ export type DialogObservation = Omit<
   /** Resource tiles ("row,col") a working ship of each side stands on right now. */
   myResourceTiles: string[];
   enemyResourceTiles: string[];
+  /** Ships below max hull right now (active, hull known). */
+  myDamagedShipIds?: string[];
+  enemyDamagedShipIds?: string[];
+  /** Disabled ships sitting on a resource tile right now. */
+  myDisabledOnResourceShipIds?: string[];
+  enemyDisabledOnResourceShipIds?: string[];
+  /** Each active ship's hull right now, by ship id (for repairs). */
+  myHulls?: Record<string, number>;
+  enemyHulls?: Record<string, number>;
 };
 
 /** Resource tiles ("row,col") each side has stood on so far this game. */
@@ -107,6 +142,15 @@ export interface EverDisabledShips {
   enemy: string[];
 }
 
+/** The rest of the per-game ship history the hull triggers need (see mergeDisabledShips). */
+export interface ShipHistory {
+  damaged: EverDisabledShips;
+  disabledOnResource: EverDisabledShips;
+  repaired: EverDisabledShips;
+  /** Each ship's lowest hull so far. */
+  hullLows: ReactorHighs;
+}
+
 export interface DialogShip extends VictoryReasonEnemyShip {
   /** Ship id, as a string (bigint/number ids converted by the view). */
   id: string;
@@ -115,6 +159,28 @@ export interface DialogShip extends VictoryReasonEnemyShip {
   reactorLevel?: number | null;
   /** Board position, for resource tiles (row/col < 0 or missing: off the board). */
   position?: { row: number; col: number };
+  /** Full hull; null/missing when unknown (no damage is reported). */
+  maxHullPoints?: number | null;
+  /** The ship's faction (traits.variant). */
+  variant?: number;
+  /** It can repair: Repair Drones equipped, or faction 2's Repair. */
+  canRepair?: boolean;
+}
+
+/** A ship's faction and whether it can repair (Repair Drones, or faction 2's innate Repair), for DialogShip. */
+export function dialogShipKit(variant: number, special: number): Pick<DialogShip, "variant" | "canRepair"> {
+  return { variant, canRepair: variant === 2 || isRepairDronesSpecial(variant, special) };
+}
+
+/** The side's faction when every ship shares one; null when unknown or mixed. */
+function fleetFaction(ships: readonly DialogShip[]): number | null {
+  let faction: number | null = null;
+  for (const ship of ships) {
+    if (ship.variant == null) continue;
+    if (faction != null && faction !== ship.variant) return null;
+    faction = ship.variant;
+  }
+  return faction;
 }
 
 /** Ship status values (ShipPosition.status). */
@@ -148,13 +214,36 @@ export function buildDialogSnapshot({
   const enemyReactorLevels: Record<string, number> = {};
   const myResourceTiles: string[] = [];
   const enemyResourceTiles: string[] = [];
+  const myDamagedShipIds: string[] = [];
+  const enemyDamagedShipIds: string[] = [];
+  const myDisabledOnResourceShipIds: string[] = [];
+  const enemyDisabledOnResourceShipIds: string[] = [];
+  const myHulls: Record<string, number> = {};
+  const enemyHulls: Record<string, number> = {};
+  let myCanRepair = false;
+  let enemyCanRepair = false;
   for (const ship of ships) {
     // A working ship (active, not at 0 hull) on a resource tile has taken it.
     const pos = ship.position;
     const isWorking =
       (ship.status ?? STATUS_ACTIVE) === STATUS_ACTIVE && (ship.hullPoints == null || ship.hullPoints > 0);
-    if (isWorking && pos && pos.row >= 0 && pos.col >= 0 && (scoringGrid?.[pos.row]?.[pos.col] ?? 0) > 0) {
-      (ship.isMine ? myResourceTiles : enemyResourceTiles).push(`${pos.row},${pos.col}`);
+    const onResourceTile =
+      !!pos && pos.row >= 0 && pos.col >= 0 && (scoringGrid?.[pos.row]?.[pos.col] ?? 0) > 0;
+    if (isWorking && onResourceTile) {
+      (ship.isMine ? myResourceTiles : enemyResourceTiles).push(`${pos!.row},${pos!.col}`);
+    }
+    if (isWorking && ship.canRepair) {
+      if (ship.isMine) myCanRepair = true;
+      else enemyCanRepair = true;
+    }
+    if ((ship.status ?? STATUS_ACTIVE) === STATUS_ACTIVE && ship.hullPoints != null) {
+      (ship.isMine ? myHulls : enemyHulls)[ship.id] = ship.hullPoints;
+      if (ship.maxHullPoints != null && ship.hullPoints < ship.maxHullPoints) {
+        (ship.isMine ? myDamagedShipIds : enemyDamagedShipIds).push(ship.id);
+      }
+      if (ship.hullPoints <= 0 && onResourceTile) {
+        (ship.isMine ? myDisabledOnResourceShipIds : enemyDisabledOnResourceShipIds).push(ship.id);
+      }
     }
     if (ship.reactorLevel != null && ship.reactorLevel > 0) {
       (ship.isMine ? myReactorLevels : enemyReactorLevels)[ship.id] = ship.reactorLevel;
@@ -186,7 +275,49 @@ export function buildDialogSnapshot({
     enemyReactorLevels,
     myResourceTiles,
     enemyResourceTiles,
+    myDamagedShipIds,
+    enemyDamagedShipIds,
+    myDisabledOnResourceShipIds,
+    enemyDisabledOnResourceShipIds,
+    myHulls,
+    enemyHulls,
+    myFleetFaction: fleetFaction(ships.filter((ship) => ship.isMine)),
+    enemyFleetFaction: fleetFaction(ships.filter((ship) => !ship.isMine)),
+    myCanRepair,
+    enemyCanRepair,
     outcome,
+  };
+}
+
+const union = (a: readonly string[] | undefined, b: readonly string[] | undefined) => [
+  ...new Set([...(a ?? []), ...(b ?? [])]),
+];
+
+/** Folds this observation's hulls into the history: a ship above its lowest hull was repaired. */
+function mergeShipHistory(observation: DialogObservation, history: ShipHistory | null | undefined): ShipHistory {
+  const side = (hulls: Record<string, number> | undefined, lows: Record<string, number> | undefined, repaired: string[] | undefined) => {
+    const nextLows = { ...(lows ?? {}) };
+    const nextRepaired = new Set(repaired ?? []);
+    for (const [id, hull] of Object.entries(hulls ?? {})) {
+      const low = nextLows[id];
+      if (low != null && hull > low) nextRepaired.add(id);
+      if (low == null || hull < low) nextLows[id] = hull;
+    }
+    return { lows: nextLows, repaired: [...nextRepaired] };
+  };
+  const player = side(observation.myHulls, history?.hullLows.player, history?.repaired.player);
+  const enemy = side(observation.enemyHulls, history?.hullLows.enemy, history?.repaired.enemy);
+  return {
+    damaged: {
+      player: union(history?.damaged.player, observation.myDamagedShipIds),
+      enemy: union(history?.damaged.enemy, observation.enemyDamagedShipIds),
+    },
+    disabledOnResource: {
+      player: union(history?.disabledOnResource.player, observation.myDisabledOnResourceShipIds),
+      enemy: union(history?.disabledOnResource.enemy, observation.enemyDisabledOnResourceShipIds),
+    },
+    repaired: { player: player.repaired, enemy: enemy.repaired },
+    hullLows: { player: player.lows, enemy: enemy.lows },
   };
 }
 
@@ -234,12 +365,15 @@ export function mergeDisabledShips(
   everDisabled: EverDisabledShips | null | undefined,
   reactorHighs?: ReactorHighs | null,
   everHeldTiles?: EverHeldTiles | null,
+  shipHistory?: ShipHistory | null,
 ): {
   snapshot: DialogSnapshot;
   everDisabled: EverDisabledShips;
   reactorHighs: ReactorHighs;
   everHeldTiles: EverHeldTiles;
+  shipHistory: ShipHistory;
 } {
+  const history = mergeShipHistory(observation, shipHistory);
   const player = [...new Set([...(everDisabled?.player ?? []), ...observation.myDisabledShipIds])];
   const enemy = [...new Set([...(everDisabled?.enemy ?? []), ...observation.enemyDisabledShipIds])];
   const highs: ReactorHighs = {
@@ -267,11 +401,22 @@ export function mergeDisabledShips(
       enemyShipsAtReactorLevel: shipsAtReactorLevels(highs.enemy),
       myResourceTilesTaken: tiles.player.length,
       enemyResourceTilesTaken: tiles.enemy.length,
+      myShipsDamaged: history.damaged.player.length,
+      enemyShipsDamaged: history.damaged.enemy.length,
+      myShipsDisabledOnResource: history.disabledOnResource.player.length,
+      enemyShipsDisabledOnResource: history.disabledOnResource.enemy.length,
+      myShipsRepaired: history.repaired.player.length,
+      enemyShipsRepaired: history.repaired.enemy.length,
+      myFleetFaction: observation.myFleetFaction ?? null,
+      enemyFleetFaction: observation.enemyFleetFaction ?? null,
+      myCanRepair: observation.myCanRepair ?? false,
+      enemyCanRepair: observation.enemyCanRepair ?? false,
       outcome: observation.outcome,
     },
     everDisabled: { player, enemy },
     reactorHighs: highs,
     everHeldTiles: tiles,
+    shipHistory: history,
   };
 }
 
@@ -293,6 +438,10 @@ export function isOpeningSnapshot(s: DialogSnapshot): boolean {
     (s.enemyShipsAtReactorLevel?.[1] ?? 0) === 0 &&
     (s.myResourceTilesTaken ?? 0) === 0 &&
     (s.enemyResourceTilesTaken ?? 0) === 0 &&
+    (s.myShipsDamaged ?? 0) === 0 &&
+    (s.enemyShipsDamaged ?? 0) === 0 &&
+    (s.myShipsRepaired ?? 0) === 0 &&
+    (s.enemyShipsRepaired ?? 0) === 0 &&
     s.outcome === null
   );
 }
@@ -314,6 +463,12 @@ export function snapshotsEqual(a: DialogSnapshot, b: DialogSnapshot): boolean {
     a.enemyShipsRetreated === b.enemyShipsRetreated &&
     a.myResourceTilesTaken === b.myResourceTilesTaken &&
     a.enemyResourceTilesTaken === b.enemyResourceTilesTaken &&
+    (a.myShipsDamaged ?? 0) === (b.myShipsDamaged ?? 0) &&
+    (a.enemyShipsDamaged ?? 0) === (b.enemyShipsDamaged ?? 0) &&
+    (a.myShipsDisabledOnResource ?? 0) === (b.myShipsDisabledOnResource ?? 0) &&
+    (a.enemyShipsDisabledOnResource ?? 0) === (b.enemyShipsDisabledOnResource ?? 0) &&
+    (a.myShipsRepaired ?? 0) === (b.myShipsRepaired ?? 0) &&
+    (a.enemyShipsRepaired ?? 0) === (b.enemyShipsRepaired ?? 0) &&
     a.outcome === b.outcome
   );
 }
@@ -333,6 +488,10 @@ export type DialogOccurrence =
   /** `total`: how many of `side`'s ships have reached `level`. */
   | { type: "reactorOverloadWarning"; side: DialogSide; level: number; total: number }
   | { type: "resourceTileTaken"; side: DialogSide; count: number }
+  | { type: "shipsDamaged"; side: DialogSide; count: number }
+  | { type: "shipsDisabledOnResource"; side: DialogSide; count: number }
+  /** `side` "any": either side's repairs counted. */
+  | { type: "shipsRepaired"; side: DialogSide | "any"; faction: number | null; count: number }
   | { type: "missionVictory" }
   | { type: "missionDefeat" };
 
@@ -356,7 +515,11 @@ export function occurrenceKey(o: DialogOccurrence): string {
     case "reactorOverloadWarning":
       return `reactorOverloadWarning:${o.side}:${o.level}:${o.total}`;
     case "resourceTileTaken":
-      return `resourceTileTaken:${o.side}:${o.count}`;
+    case "shipsDamaged":
+    case "shipsDisabledOnResource":
+      return `${o.type}:${o.side}:${o.count}`;
+    case "shipsRepaired":
+      return `shipsRepaired:${o.side}:${o.faction ?? "any"}:${o.count}`;
   }
 }
 
@@ -364,7 +527,10 @@ const OCCURRENCE_ORDER: Record<DialogOccurrence["type"], number> = {
   missionStart: 0,
   roundEnd: 1,
   roundStart: 2,
+  shipsDamaged: 3,
   shipsDisabled: 3,
+  shipsDisabledOnResource: 3,
+  shipsRepaired: 4,
   reactorDamaged: 4,
   reactorOverloadWarning: 5,
   shipsDestroyed: 6,
@@ -396,6 +562,9 @@ function occurrenceSortValue(o: DialogOccurrence): number {
     case "reactorOverloadWarning":
       return o.level * 100 + o.total;
     case "resourceTileTaken":
+    case "shipsDamaged":
+    case "shipsDisabledOnResource":
+    case "shipsRepaired":
       return o.count;
   }
 }
@@ -448,6 +617,37 @@ function resourceTilesTakenFor(s: DialogSnapshot, side: DialogSide): number {
   return (side === "player" ? s.myResourceTilesTaken : s.enemyResourceTilesTaken) ?? 0;
 }
 
+function shipsDamagedFor(s: DialogSnapshot, side: DialogSide): number {
+  return (side === "player" ? s.myShipsDamaged : s.enemyShipsDamaged) ?? 0;
+}
+
+function shipsDisabledOnResourceFor(s: DialogSnapshot, side: DialogSide): number {
+  return (side === "player" ? s.myShipsDisabledOnResource : s.enemyShipsDisabledOnResource) ?? 0;
+}
+
+/** Repaired ships on `side` (or both), counting only fleets of `faction` when set (by `factions`' faction). */
+function shipsRepairedFor(
+  s: DialogSnapshot,
+  side: DialogSide | undefined,
+  faction: number | undefined,
+  factions: DialogSnapshot,
+): number {
+  const count = (which: DialogSide) => {
+    const fleet = which === "player" ? factions.myFleetFaction : factions.enemyFleetFaction;
+    if (faction != null && fleet !== faction) return 0;
+    return (which === "player" ? s.myShipsRepaired : s.enemyShipsRepaired) ?? 0;
+  };
+  return side ? count(side) : count("player") + count("enemy");
+}
+
+/** Whether a line's extra conditions hold (DialogCondition). */
+export function conditionHolds(when: DialogCondition | undefined, s: DialogSnapshot): boolean {
+  if (!when) return true;
+  if (when.playerFaction != null && s.myFleetFaction !== when.playerFaction) return false;
+  if (when.playerCanRepair != null && (s.myCanRepair ?? false) !== when.playerCanRepair) return false;
+  return true;
+}
+
 function scoreFor(s: DialogSnapshot, side: DialogSide): number {
   return side === "player" ? s.myScore : s.enemyScore;
 }
@@ -484,6 +684,30 @@ export function triggerOccurrences(
       const after = countFor(next, trigger.side);
       return before < trigger.count && trigger.count <= after
         ? [{ type: trigger.type, side: trigger.side, count: trigger.count }]
+        : [];
+    }
+    case "shipsDamaged":
+    case "shipsDisabledOnResource": {
+      const countFor = trigger.type === "shipsDamaged" ? shipsDamagedFor : shipsDisabledOnResourceFor;
+      const before = prev ? countFor(prev, trigger.side) : 0;
+      const after = countFor(next, trigger.side);
+      return before < trigger.count && trigger.count <= after
+        ? [{ type: trigger.type, side: trigger.side, count: trigger.count }]
+        : [];
+    }
+    case "shipsRepaired": {
+      // The fleets' factions don't change mid-game; judge both by `next`.
+      const before = prev ? shipsRepairedFor(prev, trigger.side, trigger.faction, next) : 0;
+      const after = shipsRepairedFor(next, trigger.side, trigger.faction, next);
+      return before < trigger.count && trigger.count <= after
+        ? [
+            {
+              type: "shipsRepaired",
+              side: trigger.side ?? "any",
+              faction: trigger.faction ?? null,
+              count: trigger.count,
+            },
+          ]
         : [];
     }
     case "resourceTileTaken": {
@@ -621,6 +845,21 @@ function withResponses(
 }
 
 /**
+ * A won mission's written debrief (its missionVictory lines and their
+ * replies), as the result screen played it. The run map's drawer shows it
+ * for a cleared mission in place of the briefing. Empty when none is
+ * written (generic victory lines vary, so there's nothing to replay).
+ */
+export function missionDebriefItems(
+  mission: DialogMission,
+  missionLines: readonly MissionDialogLine[] = MISSION_DIALOG_LINES,
+): DialogQueueItem[] {
+  return missionLines
+    .filter((line) => line.trigger.type === "missionVictory" && isSameMission(line.mission, mission))
+    .flatMap((line) => withResponses(line.id, "missionVictory", line.characterId, line.text, line.responses));
+}
+
+/**
  * Lines to show for what happened between `prev` and `next`, in event order.
  * For each occurrence, every matching mission line plays; if there are none,
  * one matching generic line plays with one of its variants (except a
@@ -665,6 +904,7 @@ export function selectDialogLines({
 
   for (const line of missionLines) {
     if (!isSameMission(line.mission, mission)) continue;
+    if (!conditionHolds(line.when, next)) continue;
     for (const o of triggerOccurrences(line.trigger, prev, next)) {
       bucketFor(o).missionLines.push(line);
     }
@@ -672,6 +912,7 @@ export function selectDialogLines({
   for (const line of genericLines) {
     if (!genericAppliesTo(line, mission) || line.variants.length === 0) continue;
     if (line.canHide && hiddenGenericLineIds.has(line.id)) continue;
+    if (!conditionHolds(line.when, next)) continue;
     for (const o of triggerOccurrences(line.trigger, prev, next)) {
       bucketFor(o).genericLines.push(line);
     }

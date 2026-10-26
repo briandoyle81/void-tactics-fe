@@ -20,6 +20,7 @@ import { shipHasActivatableSpecial } from "../utils/specialConfigWeb2";
 import { wouldDestroy, wouldEnterSos } from "../utils/calculateDamage";
 import { useShipsByIds } from "../hooks/useShipsByIds";
 import { useDebugMode } from "../hooks/useDebugMode";
+import { isAnyBoardCovered } from "../hooks/useBoardCovered";
 import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
@@ -69,7 +70,7 @@ import {
   useGetRoguelikeRun,
 } from "../hooks/useRoguelikeRun";
 import { DialogLineCard, MissionDialogPanel } from "./MissionDialogPanel";
-import { buildDialogSnapshot } from "../utils/missionDialog";
+import { buildDialogSnapshot, dialogShipKit } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
 import { useAITurnLoop } from "../hooks/useAITurnLoop";
 import { useRoguelikeAITurnLoop } from "../hooks/useRoguelikeAITurnLoop";
@@ -1457,13 +1458,16 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       enemyScore: Number(isCreatorNow ? chainGame.joinerScore : chainGame.creatorScore),
       ships: chainGame.shipPositions.map((p) => {
         const index = chainGame.shipIds?.findIndex((id) => id === p.shipId) ?? -1;
+        const ship = shipMap.get(p.shipId);
         return {
           id: p.shipId.toString(),
           isMine: p.isCreator === isCreatorNow,
           status: p.status,
           hullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.hullPoints ?? null) : null,
+          maxHullPoints: index >= 0 ? (chainGame.shipAttributes?.[index]?.maxHullPoints ?? null) : null,
           reactorLevel: index >= 0 ? (chainGame.shipAttributes?.[index]?.reactorCriticalTimer ?? null) : null,
           position: p.position,
+          ...(ship ? dialogShipKit(Number(ship.traits.variant), Number(ship.equipment.special)) : {}),
         };
       }),
       scoringGrid,
@@ -1482,6 +1486,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     chainGame.shipAttributes,
     gameWinnerResult,
     scoringGrid,
+    shipMap,
   ]);
   const missionDialog = useMissionDialog({
     gameId: game.metadata.gameId.toString(),
@@ -2095,7 +2100,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // Handle Escape key to deselect ship and reset preview position
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      // An overlay over the board owns Escape (useBoardCovered).
+      if (e.key === "Escape" && !isAnyBoardCovered()) {
         // Keep selectedWeaponType so it only changes when player uses the dropdown
         handleCancelMove();
         interaction.setDraggedShipId(null);

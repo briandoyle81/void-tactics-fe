@@ -17,6 +17,7 @@ import { RepairDroneAnimation } from "./RepairDroneAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs } from "./ShipExplosionSound";
 import { WeaponSoundsMuted } from "./weaponSounds";
 import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
+import { terrainFullArt } from "../../utils/terrainEdges";
 
 // Cinematic combat (Settings › Combat › Cinematic, useCombatView): an attack
 // on an enemy ship plays as two overlapping comic panels over the board
@@ -35,6 +36,7 @@ import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
 // MovePlaybackLayer mounts this for the firing phase and keeps the board's
 // own effect unmounted meanwhile.
 
+const NEBULA_FULL_ART = terrainFullArt("nebula");
 const CELL = 50; // layout px per staged cell: the game's unzoomed cell, which the effects are tuned for
 const BOARD_W = GRID_DIMENSIONS.WIDTH * CELL;
 const BOARD_H = GRID_DIMENSIONS.HEIGHT * CELL;
@@ -62,7 +64,7 @@ const CELL_OF_STAGE_H = 0.22;
 const B_IN_MS = 330;
 const PANEL_IN_MS = 540;
 const FIRE_AT_MS = 1125;
-const HOLD_AFTER_MS = 500;
+const HOLD_AFTER_MS = 750;
 const PANEL_OUT_MS = 420;
 const BACKDROP_FADE_MS = 300;
 /** The hull bar drains from the hit to the end of the firing, and over at least this long. */
@@ -190,6 +192,7 @@ function CinematicPanel({
   shipStatusAfter = null,
   hullDrainMs = MIN_HULL_DRAIN_MS,
   background,
+  nebula = false,
   enterFrom,
   state,
   shake,
@@ -217,6 +220,8 @@ function CinematicPanel({
   shipStatusAfter?: TargetStatusAfter | null;
   hullDrainMs?: number;
   background: string;
+  /** The ship fights from a nebula tile: the panel's backdrop is nebula, tiled at the board's cell size over the map background. */
+  nebula?: boolean;
   enterFrom: Pt;
   state: PanelState;
   shake: number;
@@ -307,9 +312,10 @@ function CinematicPanel({
               height: BOARD_H,
               transformOrigin: "0 0",
               transform: `translate(${tx}px, ${ty}px) scale(${scale})`,
-              backgroundImage: `url(${background})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+              backgroundImage: nebula ? `url(${NEBULA_FULL_ART}), url(${background})` : `url(${background})`,
+              backgroundSize: nebula ? `${CELL}px ${CELL}px, cover` : "cover",
+              backgroundPosition: nebula ? "0 0, center" : "center",
+              backgroundRepeat: nebula ? "repeat, no-repeat" : undefined,
             }}
           >
             <div
@@ -479,6 +485,9 @@ export interface CombatCinematicProps {
   soundOnceKey: string;
   /** The map's background image (mapBackgroundFor), behind both panels. */
   background: string;
+  /** The attacker fires from / the target sits on a nebula tile: that panel's backdrop is nebula. */
+  attackerInNebula?: boolean;
+  defenderInNebula?: boolean;
 }
 
 /**
@@ -498,6 +507,8 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   defenderStatusAfter = null,
   soundOnceKey,
   background,
+  attackerInNebula = false,
+  defenderInNebula = false,
 }: CombatCinematicProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const boardA = useRef<HTMLDivElement | null>(null);
@@ -508,6 +519,11 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   const [firing, setFiring] = useState(false);
   const [hit, setHit] = useState(0);
   const [wrecked, setWrecked] = useState(false);
+  // A hit that takes the target to 0 hull without destroying it disables it:
+  // once the bar has drained, it tilts and burns as the board draws it.
+  const disablesTarget =
+    !killsTarget && !defenderDisabled && effect.kind !== "repair" && defenderStatusAfter?.hullPoints === 0;
+  const [disabledByHit, setDisabledByHit] = useState(false);
 
   // The largest 16:9 stage that fits the board's viewport.
   useLayoutEffect(() => {
@@ -541,6 +557,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
       }, outMs),
     ];
     if (killsTarget) timers.push(window.setTimeout(() => setWrecked(true), hitMs + KILL_HULL_DRAIN_MS + 50));
+    if (disablesTarget) timers.push(window.setTimeout(() => setDisabledByHit(true), hitMs + hullDrainMs(effect, false)));
     return () => timers.forEach((t) => window.clearTimeout(t));
     // One run per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -586,6 +603,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             ship={attacker}
             shipFacesRight={attackerIsCreator}
             background={background}
+            nebula={attackerInNebula}
             enterFrom={{ x: -18 * dir, y: -14 }}
             state={a}
             shake={0}
@@ -610,11 +628,12 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             stage={stage}
             ship={wreck}
             shipFacesRight={isRepair ? attackerIsCreator : !attackerIsCreator}
-            shipDisabled={defenderDisabled && !wrecked}
+            shipDisabled={(defenderDisabled || disabledByHit) && !wrecked}
             shipStatus={wrecked ? null : defenderStatus}
             shipStatusAfter={hit > 0 ? defenderStatusAfter : null}
             hullDrainMs={hullDrainMs(effect, killsTarget)}
             background={background}
+            nebula={defenderInNebula}
             enterFrom={{ x: 18 * dir, y: 14 }}
             state={b}
             shake={isRepair ? 0 : hit}
@@ -622,7 +641,15 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             flashKind={isRepair ? "heal" : "hit"}
             caption={shipCaption(
               defender,
-              isRepair ? (hit > 0 ? "Repaired" : "Receiving repairs") : wrecked ? "Destroyed" : "Defending",
+              isRepair
+                ? hit > 0
+                  ? "Repaired"
+                  : "Receiving repairs"
+                : wrecked
+                  ? "Destroyed"
+                  : disabledByHit
+                    ? "Disabled"
+                    : "Defending",
             )}
             captionColor={isRepair === attackerIsMine ? MY_COLOR : THEIR_COLOR}
             captionAt="bottom"

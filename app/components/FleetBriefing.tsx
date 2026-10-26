@@ -6,7 +6,7 @@ import { DialogPortrait } from "./DialogPortrait";
 import { useCrewReporter } from "./CrewReport";
 import { getFactionName } from "../config/factions";
 import { navigateToClientTab } from "../utils/clientNavigation";
-import type { RoguelikeRunRequirements } from "../utils/roguelikeRunRequirements";
+import { MIN_CONSTRUCTED_SHIPS_FOR_RUN, type RoguelikeRunRequirements } from "../utils/roguelikeRunRequirements";
 
 // The roguelike "Select your fleet" screen's briefing (RoguelikeRunStart /
 // RoguelikeRunStartWeb2): the adjutant says what to do next and why, by
@@ -21,23 +21,38 @@ export function fleetBriefingStep(params: {
   unconstructedCount: number;
   requirements: RoguelikeRunRequirements;
   rosterValid: boolean;
+  /** The free ship claim can be made now (or its status is still loading). */
+  canClaim: boolean;
 }): FleetBriefingStep {
   if (params.shipCount === 0) return "claim";
+  // Too few ships to ever start a run (e.g. only the tutorial's): claim the
+  // free ships first. If the claim isn't available yet, building what's
+  // there comes first; with nothing to build, the claim's countdown shows.
+  if (
+    params.shipCount < MIN_CONSTRUCTED_SHIPS_FOR_RUN &&
+    (params.canClaim || params.unconstructedCount === 0)
+  ) {
+    return "claim";
+  }
   if (!params.requirements.hasEnoughConstructed && params.unconstructedCount > 0) return "construct";
   return params.rosterValid ? "ready" : "pick";
 }
 
 function briefingText(params: {
   step: FleetBriefingStep;
+  shipCount: number;
   minConstructed: number;
   minRosterCost: number;
   costLimit: number;
   rosterCost: number;
   requiredVariant: number;
 }): string {
-  const { step, minConstructed, minRosterCost, costLimit, rosterCost, requiredVariant } = params;
+  const { step, shipCount, minConstructed, minRosterCost, costLimit, rosterCost, requiredVariant } = params;
   switch (step) {
     case "claim":
+      if (shipCount > 0) {
+        return `Admiral, we've only got ${shipCount} ${shipCount === 1 ? "ship" : "ships"} in the hangar, and Headquarters won't clear us to launch with fewer than ${minConstructed}. Our membership in the Consortium allows us to claim more from the drone shipyards. Once the claim is complete, the drones will construct them. They build amazingly quickly, but generally ignore specific instructions on what to fit them with.`;
+      }
       return "Admiral, our hangar is empty. Our membership in the Consortium allows us to claim ships from the drone shipyards. Once the claim is complete, the drones will construct them. In case you forgot, the drones are a bit weird. They construct the ships amazingly quickly, but generally ignore specific instructions on what to fit them with.";
     case "construct":
       return `The claim went through, and our hulls are waiting at the drone yards. Give the order and they'll be built and ready to fly. Headquarters won't clear us to launch with fewer than ${minConstructed} ships built, so let's get them all done.`;
@@ -63,6 +78,7 @@ function StatusTag({ ok, children }: { ok: boolean; children: React.ReactNode })
 
 export function FleetBriefing({
   step,
+  shipCount,
   requirements,
   minConstructed,
   rosterCost,
@@ -72,6 +88,8 @@ export function FleetBriefing({
   selectedCount,
 }: {
   step: FleetBriefingStep;
+  /** Every ship the player owns, built or not. */
+  shipCount: number;
   requirements: RoguelikeRunRequirements;
   minConstructed: number;
   rosterCost: number;
@@ -85,6 +103,7 @@ export function FleetBriefing({
   const adjutant = useCrewReporter("adjutant");
   const text = briefingText({
     step,
+    shipCount,
     minConstructed,
     minRosterCost: requirements.minRosterCost,
     costLimit,

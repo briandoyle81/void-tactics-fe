@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeMovementRange } from "../gameGridRangesWeb2";
+import { computeMovementRange, computeValidTargets } from "../gameGridRangesWeb2";
 import { Attributes } from "../../types/types";
 import type { Web2ShipPosition } from "../../types/web2Game";
 
@@ -126,5 +126,37 @@ describe("computeMovementRange — enemy ships block movement-through", () => {
     });
     expect(result).toContainEqual({ row: 5, col: 9 });
     expect(result).not.toContainEqual({ row: 5, col: 7 });
+  });
+});
+
+describe("computeValidTargets: repair stops at the heal cap", () => {
+  const ME = "0xme";
+  const positions: Web2ShipPosition[] = [
+    { shipId: 1, position: { row: 5, col: 5 }, isCreator: true },
+    { shipId: 2, position: { row: 5, col: 6 }, isCreator: true },
+    { shipId: 3, position: { row: 4, col: 5 }, isCreator: true },
+  ] as Web2ShipPosition[];
+  const hull: Record<number, number> = { 1: 50, 2: 80, 3: 79 };
+  const params = {
+    selectedShipId: 1,
+    previewPosition: null,
+    isRammingMovePreview: false,
+    shipPositions: positions,
+    shipMap: new Map([1, 2, 3].map((id) => [id, { owner: ME }])),
+    playerAddress: ME,
+    getShipAttributes: (id: number) => makeAttrs({ hullPoints: hull[id] }),
+    selectedWeaponType: "ram" as const,
+    specialRange: undefined,
+    specialType: 0,
+    shipVariant: 2,
+    isFactionAbilitySupported: true,
+    factionAbilityRange: 1,
+    factionAbilityIsHeal: true,
+    blockedGrid: emptyGrid(),
+  };
+
+  it("leaves out friendly ships at or above 80% hull", () => {
+    const ids = computeValidTargets(params).map((t) => t.shipId).sort();
+    expect(ids).toEqual([1, 3]);
   });
 });

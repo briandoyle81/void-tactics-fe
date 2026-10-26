@@ -2,9 +2,9 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
-// The Operations run map: the star chart fills the frame, the selected
-// mission opens as a drawer from the right covering a third of the width
-// (the chart re-centers in the rest), and the action bar runs along the
+// The Operations run map: the star chart on the left, the selected
+// mission's drawer as a permanent column on the right (a third of the
+// width; the chart is never drawn behind it), and the action bar along the
 // bottom with the primary action at the right. On phones the mission is a
 // one-tap bar under the chart (title, kind, the briefing's opening line) that
 // expands into a sheet over the chart, so the route stays visible until the
@@ -24,8 +24,6 @@ export function OperationsMap({
   banner,
   canvas,
   drawer,
-  drawerOpen,
-  onDrawerOpenChange,
   peek,
   actionBar,
 }: {
@@ -34,15 +32,12 @@ export function OperationsMap({
   /** A notice under the toolbar, e.g. connect-mode instructions. */
   banner?: ReactNode;
   canvas: ReactNode;
-  /** Drawer content; null when nothing is selected. */
+  /** Drawer content; null when nothing is selected (or in Edit Mode): the chart takes the full width. */
   drawer: ReactNode | null;
-  drawerOpen: boolean;
-  onDrawerOpenChange: (open: boolean) => void;
   /** The phone bar for the selected mission; without it phones get the desktop toggle. */
   peek?: MissionPeek | null;
   actionBar?: ReactNode;
 }) {
-  const isOpen = drawerOpen && drawer != null;
   // Phones only (below md): whether the peek bar is expanded into the sheet.
   // Starts collapsed for every newly selected mission.
   const [phoneExpanded, setPhoneExpanded] = useState(false);
@@ -55,24 +50,19 @@ export function OperationsMap({
   const hasPeek = peek != null && drawer != null;
   const showPhoneSheet = hasPeek && phoneExpanded;
 
+  // Escape closes the phone sheet (the desktop column stays).
   useEffect(() => {
-    if (!isOpen && !showPhoneSheet) return;
+    if (!showPhoneSheet) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      onDrawerOpenChange(false);
       setPhoneExpanded(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, showPhoneSheet, onDrawerOpenChange]);
+  }, [showPhoneSheet]);
 
-  // Which breakpoints the drawer shows at: desktop follows drawerOpen;
-  // phones with a peek bar follow phoneExpanded instead.
-  const asideVisibility = hasPeek
-    ? `${showPhoneSheet ? "" : "max-md:hidden"} ${isOpen ? "" : "md:hidden"}`
-    : "";
-
-  const canvasPadClass = isOpen ? "md:pr-[33.4%]" : "";
+  // Phones with a peek bar show the drawer only while it's expanded.
+  const phoneVisibility = hasPeek && !showPhoneSheet ? "max-md:hidden" : "";
 
   return (
     <div className="flex flex-col border-2 border-solid" style={{ borderColor: "var(--color-steel)" }}>
@@ -86,46 +76,31 @@ export function OperationsMap({
       )}
       {banner}
 
-      <div className="relative overflow-hidden">
-        <div className={`transition-[padding] duration-200 ${canvasPadClass}`}>{canvas}</div>
+      <div className="relative flex overflow-hidden">
+        <div className="min-w-0 flex-1">{canvas}</div>
 
-        {drawer != null && (isOpen || showPhoneSheet) && (
+        {drawer != null && (
+          // Desktop: a column beside the chart, its height the chart's,
+          // scrolling on its own. Phones: a sheet over the chart.
           <aside
             aria-label="Mission"
-            className={`absolute inset-x-0 bottom-0 z-20 overflow-y-auto border-t-2 bg-near-black md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:overflow-visible md:w-[33.4%] md:border-l md:border-t-0 ${
-              hasPeek ? "max-md:top-0" : "max-h-[75%]"
-            } ${asideVisibility}`}
-            style={{ borderColor: "var(--color-cyan)", boxShadow: "-1.2rem 0 2.4rem rgba(0,0,0,0.6)" }}
+            className={`absolute inset-x-0 bottom-0 z-20 overflow-y-auto border-t-2 bg-near-black md:relative md:inset-auto md:z-auto md:w-[33.4%] md:shrink-0 md:overflow-visible md:border-l md:border-t-0 ${
+              hasPeek ? "max-md:top-0" : "max-h-[75%] md:max-h-none"
+            } ${phoneVisibility}`}
+            style={{ borderColor: "var(--color-cyan)" }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                onDrawerOpenChange(false);
-                setPhoneExpanded(false);
-              }}
-              aria-label="Close mission panel"
-              title="Close (Esc)"
-              className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center text-xl leading-none text-text-muted hover:text-text-primary md:left-[-1.6rem] md:right-auto md:top-1/2 md:flex md:h-16 md:w-[1.6rem] md:-translate-y-1/2 md:items-center md:justify-center md:border md:border-r-0 md:bg-near-black md:text-cyan"
-              style={{ borderColor: "var(--color-cyan)" }}
-            >
-              <span className="md:hidden">×</span>
-              <span className="hidden md:inline">›</span>
-            </button>
-            <div className="h-full md:overflow-y-auto">{drawer}</div>
+            {hasPeek && (
+              <button
+                type="button"
+                onClick={() => setPhoneExpanded(false)}
+                aria-label="Close mission panel"
+                className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center text-xl leading-none text-text-muted hover:text-text-primary md:hidden"
+              >
+                ×
+              </button>
+            )}
+            <div className="h-full md:absolute md:inset-0 md:overflow-y-auto">{drawer}</div>
           </aside>
-        )}
-
-        {drawer != null && !isOpen && (
-          <button
-            type="button"
-            onClick={() => onDrawerOpenChange(true)}
-            className={`absolute bottom-3 right-3 z-20 border border-solid px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-steel md:bottom-auto md:right-0 md:top-1/2 md:-translate-y-1/2 md:border-r-0 ${
-              hasPeek ? "max-md:hidden" : ""
-            }`}
-            style={{ ...DISPLAY_FONT, borderColor: "var(--color-cyan)", backgroundColor: "var(--color-near-black)" }}
-          >
-            ‹ Mission
-          </button>
         )}
       </div>
 

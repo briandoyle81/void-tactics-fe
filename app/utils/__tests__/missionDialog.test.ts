@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  missionDebriefItems,
   buildDialogSnapshot,
   isOpeningSnapshot,
   mergeDisabledShips,
@@ -433,5 +434,89 @@ describe("shipsRetreated", () => {
     expect(select(START, snap({ myShipsRetreated: 1 }), [], [once])).toHaveLength(0);
     expect(select(snap({ myShipsRetreated: 1 }), snap({ myShipsRetreated: 3 }), [], [once])).toHaveLength(1);
     expect(select(snap({ myShipsRetreated: 2 }), snap({ myShipsRetreated: 3 }), [], [once])).toHaveLength(0);
+  });
+});
+
+describe("missionDebriefItems", () => {
+  const lines: MissionDialogLine[] = [
+    { id: "r5-start", characterId: "adjutant", text: "Go.", mission: { kind: "roguelike", nodeId: 5 }, trigger: { type: "missionStart" } },
+    {
+      id: "r5-win",
+      characterId: "adjutant",
+      text: "Well done.",
+      mission: { kind: "roguelike", nodeId: 5 },
+      trigger: { type: "missionVictory" },
+      responses: [{ characterId: "commander", text: "Onward." }],
+    },
+    { id: "r6-win", characterId: "adjutant", text: "Other.", mission: { kind: "roguelike", nodeId: 6 }, trigger: { type: "missionVictory" } },
+  ];
+
+  it("is the mission's victory lines and their replies, in order", () => {
+    expect(missionDebriefItems({ kind: "roguelike", nodeId: 5 }, lines).map((i) => [i.characterId, i.text])).toEqual([
+      ["adjutant", "Well done."],
+      ["commander", "Onward."],
+    ]);
+  });
+
+  it("is empty for a mission with no written debrief", () => {
+    expect(missionDebriefItems({ kind: "roguelike", nodeId: 9 }, lines)).toEqual([]);
+  });
+});
+
+describe("hull triggers: damaged, disabled on a resource tile, repaired", () => {
+  const scoring = [[0, 5, 0]];
+  const observe = (ships: Parameters<typeof buildDialogSnapshot>[0]["ships"]) =>
+    buildDialogSnapshot({ round: 2, myScore: 0, enemyScore: 0, ships, scoringGrid: scoring });
+  const mine = (hull: number, extra = {}) => ({ id: "1", isMine: true, hullPoints: hull, maxHullPoints: 100, variant: 2, canRepair: true, position: { row: 0, col: 0 }, ...extra });
+  const theirs = (hull: number, col = 2) => ({ id: "9", isMine: false, hullPoints: hull, maxHullPoints: 100, variant: 1, position: { row: 0, col } });
+
+  it("counts damaged ships, disabled-on-resource ships and repairs across observations", () => {
+    const a = mergeDisabledShips(observe([mine(100), theirs(100)]), null);
+    expect(a.snapshot.myShipsDamaged).toBe(0);
+    const b = mergeDisabledShips(observe([mine(60), theirs(0, 1)]), a.everDisabled, a.reactorHighs, a.everHeldTiles, a.shipHistory);
+    expect(b.snapshot.myShipsDamaged).toBe(1);
+    expect(b.snapshot.enemyShipsDisabledOnResource).toBe(1);
+    expect(b.snapshot.myShipsRepaired).toBe(0);
+    const c = mergeDisabledShips(observe([mine(80), theirs(0, 1)]), b.everDisabled, b.reactorHighs, b.everHeldTiles, b.shipHistory);
+    expect(c.snapshot.myShipsRepaired).toBe(1);
+    expect(c.snapshot.myFleetFaction).toBe(2);
+    expect(c.snapshot.myCanRepair).toBe(true);
+
+    const repairedByFaction2 = triggerOccurrences({ type: "shipsRepaired", faction: 2, count: 1 }, b.snapshot, c.snapshot);
+    expect(repairedByFaction2).toHaveLength(1);
+    expect(triggerOccurrences({ type: "shipsRepaired", faction: 1, count: 1 }, b.snapshot, c.snapshot)).toEqual([]);
+    expect(triggerOccurrences({ type: "shipsDamaged", side: "player", count: 1 }, a.snapshot, b.snapshot)).toHaveLength(1);
+    expect(triggerOccurrences({ type: "shipsDisabledOnResource", side: "enemy", count: 1 }, a.snapshot, b.snapshot)).toHaveLength(1);
+  });
+
+  it("a disabled ship off the resource tiles doesn't count", () => {
+    const a = mergeDisabledShips(observe([mine(100), theirs(0, 2)]), null);
+    expect(a.snapshot.enemyShipsDisabledOnResource).toBe(0);
+  });
+
+  it("skips a line whose `when` doesn't hold", () => {
+    const lines: GenericDialogLine[] = [
+      {
+        id: "tip",
+        characterId: "adjutant",
+        trigger: { type: "shipsDamaged", side: "player", count: 1 },
+        when: { playerFaction: 1 },
+        variants: ["Ram it."],
+      },
+    ];
+    const a = mergeDisabledShips(observe([mine(100), theirs(100)]), null);
+    const b = mergeDisabledShips(observe([mine(50), theirs(100)]), a.everDisabled, a.reactorHighs, a.everHeldTiles, a.shipHistory);
+    const pickFor = (faction: number) =>
+      selectDialogLines({
+        mission: { kind: "roguelike", nodeId: 1 },
+        gameId: "g",
+        prev: a.snapshot,
+        next: { ...b.snapshot, myFleetFaction: faction },
+        firedKeys: new Set(),
+        missionLines: [],
+        genericLines: lines,
+      });
+    expect(pickFor(2)).toEqual([]);
+    expect(pickFor(1).map((i) => i.text)).toEqual(["Ram it."]);
   });
 });

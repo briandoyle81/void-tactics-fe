@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_MUSIC_TRACK, NO_MUSIC } from "../config/music";
 
-// Background music for the game client (credited on /audio-credits). Off
-// by default, at 50% volume when on; both are remembered in this browser
+// Background music for the game client (credited on /audio-credits). On
+// by default, at 50% volume; both are remembered in this browser
 // and set in the header's audio control (AudioControl) or Settings › Audio.
 // `track` is the screen's track (useMusicTrack in AudioControl.tsx; the
 // choices are in app/config/music.ts), or NO_MUSIC for silence. When it
@@ -120,9 +120,11 @@ export function useGameMusic(track: string = DEFAULT_MUSIC_TRACK) {
 
   useEffect(() => {
     try {
-      setEnabled(localStorage.getItem(STORAGE_KEY) === "1");
+      // On unless the player turned it off.
+      setEnabled(localStorage.getItem(STORAGE_KEY) !== "0");
     } catch {
-      // storage unavailable: stay off
+      // storage unavailable: the default, on
+      setEnabled(true);
     }
     setVolumeState(readVolume());
   }, []);

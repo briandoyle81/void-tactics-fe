@@ -5,6 +5,7 @@ import { Attributes } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { useGridCellSets } from "../hooks/useGridCellSets";
 import { useGridPanZoom } from "../hooks/useGridPanZoom";
+import { useBoardCovered } from "../hooks/useBoardCovered";
 import { useGridEffectPreviews } from "../hooks/useGridEffectPreviews";
 import { computeConfirmWidgetAnchor, selectedShipHasEffectLabel } from "../utils/gameGridRanges";
 import { GameGridCell } from "./GameGridCell";
@@ -813,10 +814,10 @@ function GameGridOverlaysWithDestHover({
 }
 
 /** The move playing back (MovePlaybackContext), drawn over the board. */
-function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer>, "active" | "onPhaseDone" | "allShipPositions" | "background"> & {
+function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer>, "active" | "onPhaseDone" | "allShipPositions" | "background" | "blockedGrid"> & {
   allShipPositions?: readonly GridShipPosition[];
 }) {
-  const { active, onPhaseDone, background } = useMovePlaybackContext();
+  const { active, onPhaseDone, background, blockedGrid } = useMovePlaybackContext();
   if (!active) return null;
   return (
     <MovePlaybackLayer
@@ -825,6 +826,7 @@ function BoardPlayback(props: Omit<React.ComponentProps<typeof MovePlaybackLayer
       active={active}
       onPhaseDone={onPhaseDone}
       background={background}
+      blockedGrid={blockedGrid}
     />
   );
 }
@@ -908,6 +910,9 @@ const GameGridBoard = React.memo(function GameGridBoard({
   const setDestHoveredTile = useSetGridDestHoveredTile();
   const setHoveredMoveTile = moveHoverDisabled ? NOOP_SET_MOVE_TILE : setDestHoveredTile;
   const { outerWrapperRef, gridContainerRef, zoom, resetZoom } = useGridPanZoom();
+  // Other UI drawn over the board (a modal, the round report, Loading...)
+  // makes it inert until that's gone: no clicks, hovers, drags or zoom.
+  const covered = useBoardCovered(outerWrapperRef);
   /** The bordered CSS grid (cells); tracks are inset by border — use for cell math vs overlay. */
   const gridLayoutRef = useRef<HTMLDivElement>(null);
   // Track last drag over cell to prevent excessive state updates
@@ -954,6 +959,16 @@ const GameGridBoard = React.memo(function GameGridBoard({
   }, []);
 
   const isMyTurn = currentTurn === address;
+  // Covered mid-hover or mid-drag, the pointer never leaves the board, so
+  // drop what it was doing.
+  React.useEffect(() => {
+    if (!covered) return;
+    setHoveredCell(null);
+    setHoveredMoveTile(null);
+    setDraggedShipId(null);
+    setDragOverCell(null);
+    lastDragOverCellRef.current = null;
+  }, [covered, setHoveredCell, setHoveredMoveTile, setDraggedShipId, setDragOverCell]);
   React.useEffect(() => {
     setHoveredCell(null);
     setHoveredMoveTile(null);
@@ -1143,6 +1158,7 @@ const GameGridBoard = React.memo(function GameGridBoard({
       {/* Map Grid */}
       <div
         ref={outerWrapperRef}
+        inert={covered}
         className="relative w-full h-full min-h-0 px-0 lg:px-2 overflow-hidden"
         // Zoomed in, touches on the board are the board's (one-finger pan,
         // pinch; useGridPanZoom), so the browser doesn't scroll instead.
@@ -1351,8 +1367,9 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
       onPhaseDone: playbackOnPhaseDone ?? NOOP_PHASE_DONE,
       hiddenShipIds: playbackHiddenShipIds(playbackActive, props.shipMap),
       background: playbackBackground,
+      blockedGrid: props.blockedGrid,
     }),
-    [playbackActive, playbackOnPhaseDone, props.shipMap, playbackBackground],
+    [playbackActive, playbackOnPhaseDone, props.shipMap, playbackBackground, props.blockedGrid],
   );
   return (
     <MovePlaybackContext.Provider value={playbackValue}>

@@ -158,6 +158,7 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
         unconstructedCount: ships.filter((s) => !s.shipData.constructed).length,
         requirements,
         rosterValid,
+        canClaim: claim.status.isEligible || claim.status.isLoading,
       });
 
   return (
@@ -202,6 +203,7 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
         step != null ? (
           <FleetBriefing
             step={step}
+            shipCount={ships.length}
             requirements={requirements}
             minConstructed={MIN_CONSTRUCTED_SHIPS_FOR_RUN}
             rosterCost={fleet.totalCost}

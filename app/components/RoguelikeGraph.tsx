@@ -317,6 +317,7 @@ function Web3MissionDrawer({
           text={node.description}
           status={node.descriptionStatus}
           compact
+          debrief={isCleared}
         />
       }
       enemyFleet={

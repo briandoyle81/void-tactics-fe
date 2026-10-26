@@ -13,6 +13,7 @@ import {
   type EverDisabledShips,
   type ReactorHighs,
   type EverHeldTiles,
+  type ShipHistory,
 } from "../utils/missionDialog";
 import { getHiddenDialogLineIds } from "../utils/hiddenDialogLines";
 
@@ -37,6 +38,8 @@ interface StoredDialogState {
   reactorHighs?: ReactorHighs;
   /** Resource tiles each side has stood on so far this game (see mergeDisabledShips). */
   everHeldTiles?: EverHeldTiles;
+  /** Damaged / disabled-on-resource / repaired ships and hull lows (see mergeDisabledShips). */
+  shipHistory?: ShipHistory;
 }
 
 /** Reactor levels as a stable string ("id:level,..."), so the effect depends on a primitive. */
@@ -231,6 +234,16 @@ export function useMissionDialog({
   const enemyReactorKey = encodeLevels(snapshot?.enemyReactorLevels);
   const myTilesKey = snapshot?.myResourceTiles.join(";") ?? "";
   const enemyTilesKey = snapshot?.enemyResourceTiles.join(";") ?? "";
+  const myDamagedKey = snapshot?.myDamagedShipIds?.join(",") ?? "";
+  const enemyDamagedKey = snapshot?.enemyDamagedShipIds?.join(",") ?? "";
+  const myDisabledOnResourceKey = snapshot?.myDisabledOnResourceShipIds?.join(",") ?? "";
+  const enemyDisabledOnResourceKey = snapshot?.enemyDisabledOnResourceShipIds?.join(",") ?? "";
+  const myHullsKey = encodeLevels(snapshot?.myHulls);
+  const enemyHullsKey = encodeLevels(snapshot?.enemyHulls);
+  const myFleetFaction = snapshot?.myFleetFaction ?? null;
+  const enemyFleetFaction = snapshot?.enemyFleetFaction ?? null;
+  const myCanRepair = snapshot?.myCanRepair ?? false;
+  const enemyCanRepair = snapshot?.enemyCanRepair ?? false;
   const hasSnapshot = snapshot != null;
 
   useEffect(() => {
@@ -250,6 +263,16 @@ export function useMissionDialog({
       enemyReactorLevels: decodeLevels(enemyReactorKey),
       myResourceTiles: myTilesKey ? myTilesKey.split(";") : [],
       enemyResourceTiles: enemyTilesKey ? enemyTilesKey.split(";") : [],
+      myDamagedShipIds: myDamagedKey ? myDamagedKey.split(",") : [],
+      enemyDamagedShipIds: enemyDamagedKey ? enemyDamagedKey.split(",") : [],
+      myDisabledOnResourceShipIds: myDisabledOnResourceKey ? myDisabledOnResourceKey.split(",") : [],
+      enemyDisabledOnResourceShipIds: enemyDisabledOnResourceKey ? enemyDisabledOnResourceKey.split(",") : [],
+      myHulls: decodeLevels(myHullsKey),
+      enemyHulls: decodeLevels(enemyHullsKey),
+      myFleetFaction,
+      enemyFleetFaction,
+      myCanRepair,
+      enemyCanRepair,
       outcome,
     };
 
@@ -273,11 +296,13 @@ export function useMissionDialog({
       stored?.everDisabled,
       stored?.reactorHighs,
       stored?.everHeldTiles,
+      stored?.shipHistory,
     );
     const next: DialogSnapshot = merged.snapshot;
     const everDisabled = merged.everDisabled;
     const reactorHighs = merged.reactorHighs;
     const everHeldTiles = merged.everHeldTiles;
+    const shipHistory = merged.shipHistory;
     // Records saved before some triggers existed lack their fields; treat
     // them as already at the current values so opening an old game doesn't
     // suddenly play a debrief or disabled-ship lines for past events.
@@ -296,12 +321,20 @@ export function useMissionDialog({
       if (last.enemyShipsRetreated === undefined) last.enemyShipsRetreated = next.enemyShipsRetreated;
       if (last.myResourceTilesTaken === undefined) last.myResourceTilesTaken = next.myResourceTilesTaken;
       if (last.enemyResourceTilesTaken === undefined) last.enemyResourceTilesTaken = next.enemyResourceTilesTaken;
+      if (!stored.shipHistory) {
+        last.myShipsDamaged = next.myShipsDamaged;
+        last.enemyShipsDamaged = next.enemyShipsDamaged;
+        last.myShipsDisabledOnResource = next.myShipsDisabledOnResource;
+        last.enemyShipsDisabledOnResource = next.enemyShipsDisabledOnResource;
+        last.myShipsRepaired = next.myShipsRepaired;
+        last.enemyShipsRepaired = next.enemyShipsRepaired;
+      }
       stored = { ...stored, last };
     }
     if (!stored && next.outcome !== null) {
       // First seen after it already ended (e.g. opening a finished game from
       // the list): nothing to play.
-      save({ last: next, fired: [], pending: [], everDisabled, reactorHighs, everHeldTiles });
+      save({ last: next, fired: [], pending: [], everDisabled, reactorHighs, everHeldTiles, shipHistory });
       return;
     }
     if (!stored && !isOpeningSnapshot(next)) {
@@ -319,14 +352,18 @@ export function useMissionDialog({
       })
         .filter((item) => item.event === "missionStart")
         .map((item) => ({ ...item, round: next.round }));
-      save({ last: next, fired: entryItems.map((item) => item.key), pending: entryItems, everDisabled, reactorHighs, everHeldTiles });
+      save({ last: next, fired: entryItems.map((item) => item.key), pending: entryItems, everDisabled, reactorHighs, everHeldTiles, shipHistory });
       if (entryItems.length > 0) {
         enqueue(entryItems);
       }
       return;
     }
-    // Equal counts mean the disabled set didn't grow either, so nothing to save.
-    if (stored && snapshotsEqual(stored.last, next)) return;
+    // Equal counts mean the disabled set didn't grow either; still save when
+    // a hull low moved (a later repair is measured from it).
+    if (stored && snapshotsEqual(stored.last, next)) {
+      if (JSON.stringify(stored.shipHistory) !== JSON.stringify(shipHistory)) save({ ...stored, shipHistory });
+      return;
+    }
 
     const fired = new Set(stored?.fired ?? []);
     const items: DialogLogEntry[] = selectDialogLines({
@@ -345,6 +382,7 @@ export function useMissionDialog({
       everDisabled,
       reactorHighs,
       everHeldTiles,
+      shipHistory,
     });
     if (items.length > 0) enqueue(items);
   }, [
@@ -367,6 +405,16 @@ export function useMissionDialog({
     enemyReactorKey,
     myTilesKey,
     enemyTilesKey,
+    myDamagedKey,
+    enemyDamagedKey,
+    myDisabledOnResourceKey,
+    enemyDisabledOnResourceKey,
+    myHullsKey,
+    enemyHullsKey,
+    myFleetFaction,
+    enemyFleetFaction,
+    myCanRepair,
+    enemyCanRepair,
     outcome,
   ]);
 

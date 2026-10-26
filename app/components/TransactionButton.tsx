@@ -24,6 +24,8 @@ interface TransactionButtonProps {
   functionName: string;
   args?: unknown[];
   value?: bigint;
+  /** Gas limit; omitted, the wallet estimates it. */
+  gas?: bigint;
 
   // Button appearance
   children: React.ReactNode;
@@ -57,6 +59,7 @@ export function TransactionButton({
   functionName,
   args = [],
   value,
+  gas,
   children,
   className = "",
   disabled = false,
@@ -182,6 +185,7 @@ export function TransactionButton({
         functionName,
         args,
         value,
+        ...(gas != null ? { gas } : {}),
         chainId: selectedChainId,
       } as const;
 

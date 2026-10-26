@@ -8,6 +8,7 @@ import { WEB2_TIE_SENTINEL } from "../types/web2Game";
 import { PlayerStatsPanel } from "./PlayerStatsPanel";
 import { GameHistoryList, type GameHistoryRowData } from "./GameHistoryList";
 import { navigateToGameWeb2 } from "../utils/navigateToGame";
+import { splitPlayerRecord } from "../utils/playerRecord";
 
 // Web2-mode counterpart to `Profile.tsx` — same layout/copy, backed by
 // `usePlayerGamesWeb2`/session user id instead of `usePlayerGames`/wallet
@@ -18,23 +19,19 @@ const ProfileWeb2: React.FC = () => {
   const { userId, isLoggedIn } = useCurrentUser();
   const { games, isLoading } = usePlayerGamesWeb2();
 
-  // The record is PlayerStats (finished games plus the tutorial's win or
-  // loss), like web3's GameResults; the tutorial has no game to count.
+  // PlayerStats holds PvP games plus the tutorial's win or loss, like web3's
+  // GameResults; the stats route also counts finished PvP and PvE games, and
+  // the tutorial goes under PvE (playerRecord.ts).
   const record = usePlayerStatsWeb2(userId);
   const stats = useMemo(() => {
     const inProgress = games.filter((game) => game.metadata.winner === "").length;
-    const wins = record?.wins ?? 0;
-    const losses = record?.losses ?? 0;
-    const draws = record?.draws ?? 0;
-    const decided = wins + losses + draws;
-    return {
-      wins,
-      losses,
-      draws,
-      inProgress,
-      winRate: decided > 0 ? Math.round((wins / decided) * 100) : 0,
-      total: record?.totalGames ?? 0,
-    };
+    const split = splitPlayerRecord({
+      stored: { wins: record?.wins ?? 0, losses: record?.losses ?? 0 },
+      pvpGames: record?.pvpGames ?? { wins: record?.wins ?? 0, losses: record?.losses ?? 0 },
+      pveGames: record?.pveGames ?? { wins: 0, losses: 0 },
+    });
+    // PlayerStats only records PvP draws (playerStatsWeb2.ts).
+    return { pvp: { ...split.pvp, draws: record?.draws ?? 0 }, pve: split.pve, inProgress };
   }, [games, record]);
 
   const sortedGames = useMemo(() => {

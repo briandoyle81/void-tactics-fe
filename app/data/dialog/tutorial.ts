@@ -33,6 +33,8 @@ export interface TutorialPanelText {
 /** Before the battle: the "First Contact" node on the Operations map. */
 export const TUTORIAL_PRELUDE = {
   title: "First Contact",
+  /** Who delivers the briefing (a key of DIALOG_CHARACTERS). */
+  speaker: "adjutant" as const,
   briefing:
     "Admiral, welcome aboard. I'm Adjutant Bosch, your second in command. I'm glad Headquarters sent you to help us out. There's an engagement already underway in the outer dust belts. I'll be on comms the whole way and walk you through it.",
 };

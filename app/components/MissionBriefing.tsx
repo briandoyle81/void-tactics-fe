@@ -3,25 +3,38 @@
 import React from "react";
 import { STYLE_LABEL } from "../styles/fontStyles";
 import { getDialogCharacter } from "../data/dialog/characters";
-import { MISSION_BRIEFING_SPEAKERS } from "../data/dialog/briefings";
+import { STATIC_NODE_CONTENT } from "../config/content";
+import { TUTORIAL_PRELUDE } from "../data/dialog/tutorial";
 import { nodeContentTextClass, type NodeContentStatus } from "../hooks/useNodeContent";
-import { isSameMission } from "../utils/missionDialog";
+import { missionDebriefItems } from "../utils/missionDialog";
 import type { DialogMission } from "../types/dialog";
 import { DialogPortrait } from "./DialogPortrait";
 import { HighlightedText } from "./HighlightedText";
 
 // A mission's description, presented as a transmission from the character
-// assigned in MISSION_BRIEFING_SPEAKERS: portrait with a name plate floated
+// set as the node's `speaker` in nodeContent.ts (the tutorial's in
+// TUTORIAL_PRELUDE): portrait with a name plate floated
 // into the text, in a panel edged in the character's color. The body uses the
 // primary text color — a long briefing in an accent color is hard to read;
 // the character's color carries the name, frame and edge instead. Shared by
 // CampaignNodePreview(Web2) and RoguelikeGraph(Web2). Loading/missing text
 // and missions with no assigned speaker render as plain description text.
+/**
+ * Who delivers a mission's briefing: the node's `speaker` in nodeContent.ts
+ * (web2 uses the same node's, as its node ids match), the tutorial's in
+ * TUTORIAL_PRELUDE.
+ */
+function briefingSpeaker(mission: DialogMission): string | undefined {
+  if (mission.kind === "tutorial") return TUTORIAL_PRELUDE.speaker;
+  return STATIC_NODE_CONTENT[mission.kind === "campaign" ? "CAMPAIGN" : "ROGUELIKE"][mission.nodeId]?.speaker;
+}
+
 export function MissionBriefing({
   mission,
   text,
   status,
   compact = false,
+  debrief = false,
 }: {
   mission: DialogMission;
   text: string;
@@ -32,9 +45,16 @@ export function MissionBriefing({
    * the text gets the full width.
    */
   compact?: boolean;
+  /**
+   * The mission is won: show its debrief (the result screen's victory
+   * dialog) instead, when one is written.
+   */
+  debrief?: boolean;
 }) {
-  const speakerId = MISSION_BRIEFING_SPEAKERS.find((s) => isSameMission(s.mission, mission))
-    ?.characterId;
+  const debriefItems = debrief ? missionDebriefItems(mission) : [];
+  if (debriefItems.length > 0) return <MissionDebrief items={debriefItems} />;
+
+  const speakerId = briefingSpeaker(mission);
   const character = speakerId ? getDialogCharacter(speakerId) : undefined;
 
   if (!character || status !== "ok") {
@@ -92,6 +112,36 @@ export function MissionBriefing({
         <HighlightedText text={text} />
       </p>
       <div className="clear-both" />
+    </div>
+  );
+}
+
+/** A won mission's debrief as a transcript: each line with its speaker's portrait and name. */
+function MissionDebrief({ items }: { items: ReturnType<typeof missionDebriefItems> }) {
+  const edge = getDialogCharacter(items[0]!.characterId)?.textColor ?? "var(--color-phosphor-green)";
+  return (
+    <div className="border-l-2 bg-near-black/60 p-4" style={{ borderColor: edge }}>
+      <div className="mb-3 text-[10px] uppercase tracking-[0.2em] text-phosphor-green">{"// Mission debrief"}</div>
+      <ol className="flex flex-col gap-3">
+        {items.map((item) => {
+          const character = getDialogCharacter(item.characterId);
+          const color = character?.textColor ?? "var(--color-text-primary)";
+          const name = character?.name ?? item.characterId;
+          return (
+            <li key={item.key} className="flex items-start gap-3">
+              <DialogPortrait character={character} name={name} color={color} sizeClass="h-12 w-12 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-bold uppercase tracking-widest" style={{ ...STYLE_LABEL, color }}>
+                  {name}
+                </div>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-text-primary">
+                  <HighlightedText text={item.text} />
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

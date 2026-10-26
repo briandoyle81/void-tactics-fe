@@ -25,6 +25,16 @@ import type { DialogCharacterId } from "./characters";
 //                       every time a ship first reaches 2 overload pips;
 //                       add count: 1 to fire once, when the first ship does
 //                     { type: "pointsScored", side: "player", points: 10 }
+//                     { type: "shipsDamaged", side: "player", count: 1 }
+//                       when that many of that side's ships have taken hull
+//                       damage (1 = the first hit)
+//                     { type: "shipsDisabledOnResource", side: "enemy", count: 1 }
+//                       when that many of that side's ships have been
+//                       disabled while sitting on a resource tile
+//                     { type: "shipsRepaired", faction: 2, count: 1 }
+//                       when that many ships have been repaired (hull back
+//                       up). Optional side: "player" / "enemy" (omit for
+//                       either); optional faction: only that faction's fleet
 //                     { type: "missionVictory" }   when the player wins
 //                     { type: "missionDefeat" }    when the player loses (incl. retreat)
 //   variants      — alternative wordings; one is picked each time the line
@@ -37,6 +47,10 @@ import type { DialogCharacterId } from "./characters";
 //                       text: "Splash one.",
 //                       responses: [{ characterId: "commander", text: "Good. Next target." }],
 //                     },
+//   when          — optional extra conditions, checked when the trigger fires:
+//                     { playerFaction: 1 }       the player's fleet is faction 1
+//                     { playerCanRepair: true }  one of the player's ships can
+//                       repair (Repair Drones, or faction 2's Repair)
 //   missionKinds  — optional: ["campaign"] or ["roguelike"] to limit where
 //                   the line can fire. Omit for both.
 //   canHide       — optional: true adds a "Don't show again" checkbox to the
@@ -170,6 +184,36 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
       "Enemy ship's left the field. Not a kill, but it can't hurt us or hold ground for the rest of this one.",
       "That's one of theirs off the board. They'll patch it up for another day, but this fight just got easier.",
     ],
+  },
+  {
+    // The first hull damage, when the player has a ship that can fix it.
+    id: "generic-hull-damage-repair-tip",
+    characterId: "adjutant",
+    trigger: { type: "shipsDamaged", side: "player", count: 1 },
+    when: { playerCanRepair: true },
+    canHide: true,
+    variants: [
+      "We've taken hull damage, Admiral. Any of our ships with repair drones can do battlefield repairs, but only up to 80% hull. The rest will have to wait for a proper dock.",
+    ],
+  },
+  {
+    // Faction 1 can Ram a disabled ship off the board.
+    id: "generic-ram-disabled-on-resource",
+    characterId: "adjutant",
+    trigger: { type: "shipsDisabledOnResource", side: "enemy", count: 1 },
+    when: { playerFaction: 1 },
+    canHide: true,
+    variants: [
+      "That enemy ship is dead in space, but it's still sitting on the resource site. Remember, Admiral, we can ram it right off the board and take the site for ourselves.",
+    ],
+  },
+  {
+    // The first repair by a faction 2 fleet, either side.
+    id: "generic-faction2-repairs",
+    characterId: "adjutant",
+    trigger: { type: "shipsRepaired", faction: 2, count: 1 },
+    canHide: true,
+    variants: ["Did you see that? It looks like all of these ships are equipped with repair drones."],
   },
   {
     id: "generic-hive-taunt",

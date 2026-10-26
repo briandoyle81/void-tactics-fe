@@ -15,7 +15,11 @@ import { useSelectedChainId } from "./useSelectedChainId";
 const LOTTERY_HOOK_ADDRESS = lotteryHookDeploy.address as `0x${string}`;
 const LOTTERY_HOOK_ABI = lotteryHookDeploy.abi as Abi;
 const LOTTERY_HOOK_ADDRESSES = [LOTTERY_HOOK_ADDRESS] as const;
-const LOTTERY_EVENTS = ["SellRecorded", "DrawResolved", "DrawResolvedNoWinner", "DrawStarted"].map((name) =>
+// A draw closes at a block (DrawClosed; DrawRetargeted moves that block),
+// then resolves. These names must match the deployed hook: eventAbi throws
+// at import for a missing one, which takes the whole Store down.
+const LOTTERY_DRAW_STATE_EVENTS = ["DrawClosed", "DrawRetargeted"];
+const LOTTERY_EVENTS = ["SellRecorded", "DrawResolved", "DrawResolvedNoWinner", ...LOTTERY_DRAW_STATE_EVENTS].map((name) =>
   eventAbi(LOTTERY_HOOK_ABI, name),
 );
 const LOTTERY_POLL_MS = 15_000;
@@ -123,11 +127,69 @@ export function useUtcLotteryHook() {
     query: { enabled: isDeployed && currentDrawId != null && !!userAddress },
   });
 
-  const { data: isDrawResolved, refetch: refetchIsDrawResolved } = useReadContract({
+  // The open draw closes once it has minParticipants entrants (and the
+  // interval and weight floor are met). There's no count getter, so ask for
+  // entrant number minParticipants: it exists only once there are that many.
+  const minParticipantsCount = minParticipants as bigint | undefined;
+  const { data: lastNeededEntrant, isError: lacksEntrants, refetch: refetchEntrants } = useReadContract({
+    ...baseConfig,
+    functionName: "drawParticipants",
+    args:
+      currentDrawId != null && minParticipantsCount != null && minParticipantsCount > 0n
+        ? [currentDrawId, minParticipantsCount - 1n]
+        : undefined,
+    query: {
+      enabled: isDeployed && currentDrawId != null && minParticipantsCount != null && minParticipantsCount > 0n,
+      retry: false,
+    },
+  });
+  const hasEnoughEntrants =
+    minParticipantsCount == null
+      ? undefined
+      : minParticipantsCount === 0n
+        ? true
+        : lastNeededEntrant != null
+          ? true
+          : lacksEntrants
+            ? false
+            : undefined;
+
+  // A closed draw waits to be resolved: the next swap in a later block does
+  // it, or anyone can call resolveDraw. nextDrawToResolve is the oldest one
+  // that may still be waiting.
+  const { data: nextDrawToResolveData, refetch: refetchNextDrawToResolve } = useReadContract({
+    ...baseConfig,
+    functionName: "nextDrawToResolve",
+    query: { enabled: isDeployed },
+  });
+  const nextDrawToResolve = nextDrawToResolveData as bigint | undefined;
+  const closedDrawId =
+    nextDrawToResolve != null && currentDrawId != null && nextDrawToResolve < currentDrawId
+      ? nextDrawToResolve
+      : null;
+
+  const { data: closedDrawResolved, refetch: refetchClosedDrawResolved } = useReadContract({
     ...baseConfig,
     functionName: "drawResolved",
-    args: currentDrawId != null ? [currentDrawId] : undefined,
-    query: { enabled: isDeployed && currentDrawId != null },
+    args: closedDrawId != null ? [closedDrawId] : undefined,
+    query: { enabled: isDeployed && closedDrawId != null },
+  });
+  // resolveDraw can resolve a later draw first; nextDrawToResolve only
+  // steps past it on the next swap. Resolved means nothing is waiting.
+  const pendingDrawId = closedDrawId != null && closedDrawResolved === false ? closedDrawId : null;
+
+  const { data: yourWeightInPendingDraw, refetch: refetchYourPendingWeight } = useReadContract({
+    ...baseConfig,
+    functionName: "weightInDraw",
+    args: pendingDrawId != null && userAddress ? [pendingDrawId, userAddress] : undefined,
+    query: { enabled: isDeployed && pendingDrawId != null && !!userAddress },
+  });
+
+  // A swap only resolves a waiting draw with at least this much gas left.
+  const { data: autoResolveMinGas } = useReadContract({
+    ...baseConfig,
+    functionName: "autoResolveMinGas",
+    query: { enabled: isDeployed },
   });
 
   const refetchDrawState = useCallback(() => {
@@ -135,15 +197,21 @@ export function useUtcLotteryHook() {
     void refetchTotalWeight();
     void refetchYourWeight();
     void refetchHasParticipated();
-    void refetchIsDrawResolved();
     void refetchLastDrawTime();
+    void refetchEntrants();
+    void refetchNextDrawToResolve();
+    void refetchClosedDrawResolved();
+    void refetchYourPendingWeight();
   }, [
     refetchCurrentDrawId,
     refetchTotalWeight,
     refetchYourWeight,
     refetchHasParticipated,
-    refetchIsDrawResolved,
     refetchLastDrawTime,
+    refetchEntrants,
+    refetchNextDrawToResolve,
+    refetchClosedDrawResolved,
+    refetchYourPendingWeight,
   ]);
 
   // Recent event feed — live only (from the moment this hook mounts), not a
@@ -152,7 +220,7 @@ export function useUtcLotteryHook() {
   const [recentSells, setRecentSells] = useState<LotterySellEntry[]>([]);
   const [recentDrawResults, setRecentDrawResults] = useState<LotteryDrawResultEntry[]>([]);
 
-  // One combined log poll for the four lottery events (it was four
+  // One combined log poll for the lottery events (it was four
   // watchers with inline handlers, which re-subscribed on every render),
   // paused while the tab is hidden.
   const isPageVisible = usePageVisible();
@@ -194,7 +262,7 @@ export function useUtcLotteryHook() {
           return [...additions, ...prev].slice(0, RECENT_EVENTS_LIMIT);
         });
       }
-      if (sells.length > 0 || draws.length > 0 || logs.some((log) => log.eventName === "DrawStarted")) {
+      if (sells.length > 0 || draws.length > 0 || logs.some((log) => LOTTERY_DRAW_STATE_EVENTS.includes(log.eventName ?? ""))) {
         refetchDrawState();
       }
     },
@@ -223,7 +291,10 @@ export function useUtcLotteryHook() {
     totalWeightInDraw: totalWeightInDraw as bigint | undefined,
     yourWeightInDraw: yourWeightInDraw as bigint | undefined,
     hasParticipated: hasParticipated as boolean | undefined,
-    isDrawResolved: isDrawResolved as boolean | undefined,
+    hasEnoughEntrants,
+    pendingDrawId,
+    yourWeightInPendingDraw: yourWeightInPendingDraw as bigint | undefined,
+    autoResolveMinGas: autoResolveMinGas as bigint | undefined,
     recentSells,
     recentDrawResults,
     refetchDrawState,

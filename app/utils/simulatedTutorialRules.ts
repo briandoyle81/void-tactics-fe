@@ -1,5 +1,6 @@
 import { SimulatedGameState, TutorialAction } from "../types/onboarding";
 import { ActionType } from "../types/types";
+import { hullAfterRepair } from "./healCap";
 
 /**
  * When a move (Pass) was applied immediately before shoot/special/assist, keep
@@ -225,11 +226,7 @@ export function applyTutorialAction(
             1,
           ];
         } else if (action.specialType === 2) {
-          const healAmount = 30;
-          targetAttrs.hullPoints = Math.min(
-            targetAttrs.maxHullPoints,
-            targetAttrs.hullPoints + healAmount,
-          );
+          targetAttrs.hullPoints = hullAfterRepair(targetAttrs, 30);
         }
 
         newAttributes[targetIndex] = targetAttrs;
@@ -267,11 +264,7 @@ export function applyTutorialAction(
         const newAttributes = [...newState.shipAttributes];
         const targetAttrs = { ...newAttributes[targetIndex] };
 
-        const healAmount = 20;
-        targetAttrs.hullPoints = Math.min(
-          targetAttrs.maxHullPoints,
-          targetAttrs.hullPoints + healAmount,
-        );
+        targetAttrs.hullPoints = hullAfterRepair(targetAttrs, 20);
         targetAttrs.reactorCriticalTimer = 0;
 
         newAttributes[targetIndex] = targetAttrs;

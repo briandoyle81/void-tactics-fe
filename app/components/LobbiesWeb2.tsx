@@ -1086,6 +1086,7 @@ const LobbiesWeb2: React.FC = () => {
               }}
               onDrop={handleDrop}
               dragOverPosition={dragOverPosition}
+              attributesMap={attributesByShipId}
             />
           );
 

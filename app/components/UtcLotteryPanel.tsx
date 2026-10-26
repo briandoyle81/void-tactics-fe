@@ -1,14 +1,20 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount } from "wagmi";
-import { formatEther, parseEther } from "viem";
-import type { Abi } from "viem";
+import { formatEther, parseEther, parseEventLogs } from "viem";
+import type { Abi, TransactionReceipt } from "viem";
 import { UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
 import { toast } from "react-hot-toast";
 import { TransactionButton } from "./TransactionButton";
 import lotteryHookDeploy from "../contracts/base-sepolia/uniswap-lottery-hook.json";
 import { useUtcLotteryHook } from "../hooks/useUtcLotteryHook";
+import { useLotteryPrizes } from "../hooks/useLotteryPrizes";
+import { useOwnedShips } from "../hooks/useOwnedShips";
+import { useExpiredShipSerials } from "../hooks/useRandomManager";
+import { ShipActionButton } from "./ShipActionButton";
+import { ShipImage } from "./ShipImage";
+import type { Ship } from "../types/types";
 import { useUtcSellSwap, useUtcSellQuote } from "../hooks/useUtcSellSwap";
 import {
   PERMIT2_ABI,
@@ -27,8 +33,118 @@ const MAX_UINT256 = (1n << 256n) - 1n;
 const PERMIT2_APPROVAL_WINDOW_SECONDS = 30 * 24 * 60 * 60; // 30 days
 const SLIPPAGE_BPS = 200n; // 2%
 
+// While a closed draw waits, a sell gets this much gas over the hook's
+// autoResolveMinGas so it resolves that draw too (the wallet's own estimate
+// comes in under the floor, and the hook then skips resolving).
+const RESOLVE_WITH_SELL_EXTRA_GAS = 300_000n;
+
 function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+/** "5h 12m" / "12m" / "under a minute" until a time, in seconds. */
+function formatTimeLeft(seconds: number): string {
+  if (seconds < 60) return "under a minute";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** resolveDraw's revert reasons, for players. */
+function resolveErrorMessage(error: Error, drawId: bigint): string {
+  const msg = error.message;
+  if (msg.includes("DrawNotReady")) return `Draw #${drawId} just closed. Try again in a few seconds.`;
+  if (msg.includes("DrawAlreadyResolved")) return `Draw #${drawId}'s winner has already been picked.`;
+  if (msg.includes("DrawNotClosed")) return `Draw #${drawId} hasn't closed yet.`;
+  if (msg.includes("MintPaused")) return "Prize ships can't be minted right now. Try again later.";
+  if (msg.includes("NoParticipants")) return `Draw #${drawId} has no entries.`;
+  return msg || "Failed to pick the winner";
+}
+
+/** Seconds since the epoch, updated every 30 s. */
+function useNowSeconds(): number {
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Math.floor(Date.now() / 1000)), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return now;
+}
+
+/**
+ * A won prize ship that arrived unconstructed (the random 4-star fallback):
+ * it has to be built within a few hours of the draw, so it's offered here.
+ * One past the window needs support to re-arm it (useExpiredShipSerials).
+ */
+function PrizeShipsCard({
+  ships,
+  drawIdByShipId,
+  onConstructed,
+}: {
+  ships: Ship[];
+  drawIdByShipId: Map<string, bigint>;
+  onConstructed: () => Promise<void>;
+}) {
+  const { expiredSerials } = useExpiredShipSerials(ships);
+  const buildable = ships.filter((s) => !expiredSerials.has(s.traits.serialNumber.toString()));
+  const expiredCount = ships.length - buildable.length;
+  const draws = [...new Set(ships.map((s) => drawIdByShipId.get(s.id.toString())).filter((d) => d != null))]
+    .map((d) => `#${d!.toString()}`)
+    .join(", ");
+  const plural = ships.length !== 1;
+  return (
+    <div className="mb-5 p-4 border-2 border-phosphor-green">
+      <div className="text-xs font-mono uppercase tracking-wide text-text-secondary mb-1">
+        You won draw {draws}
+      </div>
+      <div className="text-lg font-mono font-bold text-phosphor-green mb-2">
+        {plural ? "Prize ships" : "Prize ship"} to construct
+      </div>
+      <div className="mb-3 flex gap-2">
+        {ships.map((ship) => (
+          <ShipImage key={ship.id.toString()} ship={ship} className="h-20 w-20" showLoadingState={false} />
+        ))}
+      </div>
+      <p className="mb-3 text-xs font-mono leading-relaxed text-text-secondary">
+        Construct {plural ? "them" : "it"} within a few hours of the draw. After that,{" "}
+        {plural ? "they" : "it"} can&apos;t be built without help from support.
+      </p>
+      {expiredCount > 0 && (
+        <p className="mb-3 text-xs font-mono leading-snug text-amber">
+          {expiredCount === 1 ? "1 prize ship" : `${expiredCount} prize ships`} missed the construction window.
+          Contact support to have {expiredCount === 1 ? "it" : "them"} made buildable again.
+        </p>
+      )}
+      {buildable.length > 0 && (
+        <ShipActionButton
+          action="constructShips"
+          shipIds={buildable.map((s) => s.id)}
+          ships={buildable}
+          className="w-full px-4 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          onSuccess={async () => {
+            toast.success(buildable.length === 1 ? "Prize ship constructed" : "Prize ships constructed");
+            await onConstructed();
+          }}
+        >
+          {buildable.length === 1 ? "[CONSTRUCT PRIZE SHIP]" : `[CONSTRUCT ${buildable.length} PRIZE SHIPS]`}
+        </ShipActionButton>
+      )}
+    </div>
+  );
+}
+
+function ConditionRow({ met, children }: { met: boolean | undefined; children: React.ReactNode }) {
+  return (
+    <li className="flex items-baseline gap-2">
+      <span
+        aria-hidden
+        className={met ? "text-phosphor-green" : "text-text-muted"}
+      >
+        {met == null ? "·" : met ? "✓" : "○"}
+      </span>
+      <span className={met ? "text-text-secondary" : "text-text-primary"}>{children}</span>
+    </li>
+  );
 }
 
 /**
@@ -49,11 +165,17 @@ export function UtcLotteryPanel() {
     maxWeightPerEntryWei,
     maxWinProbabilityDenominator,
     minTotalWeightWei,
+    minParticipants,
+    drawInterval,
+    lastDrawTime,
     currentDrawId,
     totalWeightInDraw,
     yourWeightInDraw,
     hasParticipated,
-    isDrawResolved,
+    hasEnoughEntrants,
+    pendingDrawId,
+    yourWeightInPendingDraw,
+    autoResolveMinGas,
     recentSells,
     recentDrawResults,
     refetchDrawState,
@@ -102,10 +224,64 @@ export function UtcLotteryPanel() {
 
   const swapDeadline = BigInt(Math.floor(Date.now() / 1000) + 20 * 60);
 
-  const meetsWeightFloor =
-    minTotalWeightWei != null && totalWeightInDraw != null
-      ? totalWeightInDraw >= minTotalWeightWei
+  // The open draw closes with the first qualifying sell once all of these
+  // hold (UTCLotteryHook._maybeCloseDraw).
+  const now = useNowSeconds();
+  const closesAfter =
+    lastDrawTime != null && drawInterval != null ? Number(lastDrawTime + drawInterval) : undefined;
+  const intervalMet = closesAfter != null ? now >= closesAfter : undefined;
+  const weightMet =
+    totalWeightInDraw != null && minTotalWeightWei != null
+      ? totalWeightInDraw > 0n && totalWeightInDraw >= minTotalWeightWei
       : undefined;
+  const readyToClose = intervalMet === true && hasEnoughEntrants === true && weightMet === true;
+
+  // Wins from the last few hours whose prize arrived unconstructed. A live
+  // win refetches them.
+  const liveWinKey = useMemo(
+    () =>
+      recentDrawResults
+        .filter((r) => !!address && r.winner?.toLowerCase() === address.toLowerCase())
+        .map((r) => r.drawId.toString())
+        .join(","),
+    [recentDrawResults, address],
+  );
+  const { data: prizes } = useLotteryPrizes(address, isDeployed, liveWinKey);
+  const { shipIds: ownedShipIds, ships: ownedShips, refetch: refetchOwnedShips } = useOwnedShips();
+  const drawIdByShipId = useMemo(() => {
+    const map = new Map<string, bigint>();
+    prizes?.forEach((prize) => prize.shipIds.forEach((id) => map.set(id.toString(), prize.drawId)));
+    return map;
+  }, [prizes]);
+  const prizeShipsToBuild = useMemo(
+    () => ownedShips.filter((s) => drawIdByShipId.has(s.id.toString()) && !s.shipData.constructed),
+    [ownedShips, drawIdByShipId],
+  );
+  // A prize minted since the fleet last loaded isn't in it yet: reload once.
+  const refetchedForPrizesRef = useRef("");
+  useEffect(() => {
+    const owned = new Set(ownedShipIds.map((id) => id.toString()));
+    const missing = [...drawIdByShipId.keys()].filter((id) => !owned.has(id));
+    const key = missing.join(",");
+    if (missing.length === 0 || refetchedForPrizesRef.current === key) return;
+    refetchedForPrizesRef.current = key;
+    void refetchOwnedShips();
+  }, [drawIdByShipId, ownedShipIds, refetchOwnedShips]);
+
+  const sellGas =
+    pendingDrawId != null && autoResolveMinGas != null
+      ? autoResolveMinGas + RESOLVE_WITH_SELL_EXTRA_GAS
+      : undefined;
+
+  // resolveDraw past the result window moves the draw to a new block
+  // instead of resolving it; that needs a second call.
+  const handleResolveReceipt = (receipt: TransactionReceipt, drawId: bigint) => {
+    const logs = parseEventLogs({ abi: LOTTERY_HOOK_ABI, logs: receipt.logs });
+    const names = new Set(logs.map((log) => (log as { eventName?: string }).eventName));
+    if (names.has("DrawResolved")) toast.success(`Draw #${drawId}'s winner is picked.`);
+    else if (names.has("DrawResolvedNoWinner")) toast.success(`Draw #${drawId} had no winner.`);
+    else if (names.has("DrawRetargeted")) toast(`Draw #${drawId} was moved to a new block. Pick again in a few seconds.`);
+  };
 
   return (
     <div className="w-full max-w-xl">
@@ -113,8 +289,9 @@ export function UtcLotteryPanel() {
         <div className="mb-5 p-4 bg-amber/10 border border-amber/40 rounded-none">
           <p className="text-amber/85 text-xs font-mono leading-relaxed">
             Selling UTC on the hooked pool earns entry-weight into the current
-            draw, capped per address. A draw can resolve with no winner if
-            real participation is thin — that&apos;s expected, not a bug.
+            draw, capped per address. A draw can end with no winner if real
+            participation is thin. That&apos;s expected, not a bug. Prize ships
+            go straight to the winner&apos;s fleet.
           </p>
         </div>
 
@@ -128,6 +305,16 @@ export function UtcLotteryPanel() {
           </p>
         ) : (
           <>
+            {prizeShipsToBuild.length > 0 && (
+              <PrizeShipsCard
+                ships={prizeShipsToBuild}
+                drawIdByShipId={drawIdByShipId}
+                onConstructed={async () => {
+                  await refetchOwnedShips();
+                }}
+              />
+            )}
+
             <div className="mb-5 p-4 border border-amber/25">
               <div className="flex justify-between text-xs font-mono uppercase tracking-wide text-text-secondary mb-1">
                 <span>Current draw</span>
@@ -135,15 +322,74 @@ export function UtcLotteryPanel() {
               </div>
               <div className="flex justify-between text-lg font-mono font-bold text-amber">
                 <span>{currentDrawId != null ? `#${currentDrawId.toString()}` : "…"}</span>
-                <span>
-                  {isDrawResolved == null
-                    ? "…"
-                    : isDrawResolved
-                      ? "Resolved"
-                      : "Open"}
-                </span>
+                <span>{readyToClose ? "Closing" : "Open"}</span>
               </div>
+              <p className="mt-3 text-xs font-mono text-text-secondary">
+                {readyToClose
+                  ? "Closes with the next qualifying sell."
+                  : "Closes with the first qualifying sell once:"}
+              </p>
+              {!readyToClose && (
+                <ul className="mt-1 space-y-0.5 text-xs font-mono">
+                  <ConditionRow met={intervalMet}>
+                    {intervalMet || closesAfter == null
+                      ? "The draw has run its full time"
+                      : `The draw has run its full time (${formatTimeLeft(closesAfter - now)} left)`}
+                  </ConditionRow>
+                  <ConditionRow met={hasEnoughEntrants}>
+                    {minParticipants != null
+                      ? `At least ${minParticipants.toString()} players have entered`
+                      : "Enough players have entered"}
+                  </ConditionRow>
+                  <ConditionRow met={weightMet}>
+                    {minTotalWeightWei != null && minTotalWeightWei > 0n
+                      ? `Total weight reaches ${formatEther(minTotalWeightWei)} (now ${totalWeightInDraw != null ? formatEther(totalWeightInDraw) : "0"})`
+                      : "Someone has entered"}
+                  </ConditionRow>
+                </ul>
+              )}
             </div>
+
+            {pendingDrawId != null && (
+              <div className="mb-5 p-4 border border-phosphor-green/40">
+                <div className="flex justify-between text-xs font-mono uppercase tracking-wide text-text-secondary mb-1">
+                  <span>Closed draw</span>
+                  <span>Status</span>
+                </div>
+                <div className="flex justify-between text-lg font-mono font-bold text-phosphor-green">
+                  <span>#{pendingDrawId.toString()}</span>
+                  <span>Picking winner</span>
+                </div>
+                <p className="mt-3 mb-3 text-xs font-mono leading-relaxed text-text-secondary">
+                  Entries are locked. The winner is picked with the next trade on the pool, or you
+                  can pick it now.
+                  {yourWeightInPendingDraw != null && yourWeightInPendingDraw > 0n && (
+                    <> You&apos;re in with {formatEther(yourWeightInPendingDraw)} weight.</>
+                  )}
+                </p>
+                <TransactionButton
+                  transactionId={`resolve-utc-lottery-draw-${pendingDrawId}-${address}`}
+                  contractAddress={lotteryHookAddress}
+                  abi={LOTTERY_HOOK_ABI}
+                  functionName="resolveDraw"
+                  args={[pendingDrawId]}
+                  className="w-full px-4 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  loadingText="[PICKING...]"
+                  errorText="[ERROR PICKING]"
+                  onReceipt={(receipt) => handleResolveReceipt(receipt, pendingDrawId)}
+                  onSuccess={async () => {
+                    await refetchDrawState();
+                  }}
+                  onError={(error) => {
+                    console.error("Failed to resolve draw:", error);
+                    if (error.message.includes("DrawAlreadyResolved")) refetchDrawState();
+                    toast.error(resolveErrorMessage(error, pendingDrawId));
+                  }}
+                >
+                  [PICK WINNER #{pendingDrawId.toString()}]
+                </TransactionButton>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2 text-[12px] mb-5">
               <div className="border border-solid border-amber/30 bg-black/20 px-2 py-1.5">
@@ -181,13 +427,6 @@ export function UtcLotteryPanel() {
                 </div>
               </div>
             </div>
-
-            {meetsWeightFloor === false && minTotalWeightWei != null && (
-              <p className="text-xs text-text-muted mb-4">
-                Needs {formatEther(minTotalWeightWei)} total weight before this draw can resolve
-                (currently {totalWeightInDraw != null ? formatEther(totalWeightInDraw) : "0"}).
-              </p>
-            )}
 
             <div className="mb-5 p-4 border border-amber/25">
               <h3 className="text-xs uppercase tracking-widest text-amber/70 mb-2">Sell UTC</h3>
@@ -281,6 +520,7 @@ export function UtcLotteryPanel() {
                       contractAddress={UNIVERSAL_ROUTER_ADDRESS}
                       abi={UNIVERSAL_ROUTER_ABI}
                       functionName="execute"
+                      gas={sellGas}
                       args={
                         swapEncoding
                           ? [swapEncoding.commands, swapEncoding.inputs, swapDeadline]
@@ -309,34 +549,14 @@ export function UtcLotteryPanel() {
                       [SELL UTC]
                     </TransactionButton>
                   )}
+                  {pendingDrawId != null && (
+                    <p className="mt-2 text-[11px] text-text-muted font-mono">
+                      Your sell also picks draw #{pendingDrawId.toString()}&apos;s winner.
+                    </p>
+                  )}
                 </>
               )}
             </div>
-
-            {isDrawResolved === false && currentDrawId != null && (
-              <TransactionButton
-                transactionId={`resolve-utc-lottery-draw-${currentDrawId}-${address}`}
-                contractAddress={lotteryHookAddress}
-                abi={LOTTERY_HOOK_ABI}
-                functionName="resolveDraw"
-                args={[currentDrawId]}
-                className="w-full px-4 py-3 rounded-none border-2 border-amber text-amber hover:bg-amber/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                loadingText="[RESOLVING...]"
-                errorText="[ERROR RESOLVING]"
-                onSuccess={async () => {
-                  await refetchDrawState();
-                  toast.success("Draw resolved!");
-                }}
-                onError={(error) => {
-                  console.error("Failed to resolve draw:", error);
-                  toast.error(
-                    error instanceof Error ? error.message : "Failed to resolve draw",
-                  );
-                }}
-              >
-                [RESOLVE DRAW #{currentDrawId.toString()}]
-              </TransactionButton>
-            )}
 
             {recentSells.length > 0 && (
               <div className="mt-5">
@@ -374,7 +594,9 @@ export function UtcLotteryPanel() {
                         {result.noWinner
                           ? "No winner"
                           : result.winner
-                            ? `Winner: ${shortAddr(result.winner)}`
+                            ? result.winner.toLowerCase() === address.toLowerCase()
+                              ? "You won!"
+                              : `Winner: ${shortAddr(result.winner)}`
                             : "Resolved"}
                       </span>
                     </div>

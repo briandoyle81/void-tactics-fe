@@ -4,6 +4,7 @@ import { collectDamageLabelTargets } from "../utils/gameGridRanges";
 import { isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { readShipValue } from "../utils/requireShipValue";
 import { wouldDestroy, wouldEnterSos } from "../utils/calculateDamage";
+import { repairAmount } from "../utils/healCap";
 
 type Target = { shipId: number; position: { row: number; col: number } };
 
@@ -54,6 +55,7 @@ export function useGridEffectPreviews(params: {
   };
   getShipAttributes: (shipId: number) => {
     hullPoints: number;
+    maxHullPoints: number;
     reactorCriticalTimer: number;
   } | null;
 }) {
@@ -222,9 +224,12 @@ export function useGridEffectPreviews(params: {
     }
 
     ids.forEach((id) => {
-      const heal = isFactionHeal
+      const strength = isFactionHeal
         ? (factionAbilityStrength ?? 50)
         : calculateDamage(id, "special").reducedDamage;
+      // A repair stops at the heal cap, not max hull (healCap.ts).
+      const attrs = getShipAttributes(id);
+      const heal = attrs ? repairAmount(attrs, strength) : strength;
       if (heal > 0) map.set(id, heal);
     });
 
@@ -245,6 +250,7 @@ export function useGridEffectPreviews(params: {
     previewPosition,
     labelTargets,
     calculateDamage,
+    getShipAttributes,
   ]);
 
   const destroyPreviewShipIds = React.useMemo(() => {

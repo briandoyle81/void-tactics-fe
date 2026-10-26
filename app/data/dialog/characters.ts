@@ -1,7 +1,7 @@
 import type { DialogCharacter } from "../../types/dialog";
 
 // The cast: everyone who can speak in comms messages (missionDialog.ts,
-// genericDialog.ts) and mission briefings (briefings.ts).
+// genericDialog.ts) and mission briefings (each node's speaker in nodeContent.ts).
 //
 // Each entry:
 //   key        — how lines refer to this character (`characterId`). Must
