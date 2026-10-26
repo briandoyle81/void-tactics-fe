@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ArtSlot } from "../ArtSlot";
 import { FreeShipsCard } from "../FreeShipsCard";
 import type { RunPipState } from "../../utils/runProgress";
@@ -134,6 +134,55 @@ function operationsCta(operations: OperationsSummary): string {
   if (operations.state === "active") return "Continue run";
   if (operations.state === "noRun") return "Play Single Player";
   return "Operations";
+}
+
+/** Set once the player has pressed Play Single Player (this browser). */
+const SINGLE_PLAYER_CLICKED_KEY = "vt-single-player-clicked";
+
+/**
+ * The Operations action. As "Play Single Player" it glows gently until the
+ * player first presses it (remembered in this browser), to point a new
+ * player at where to start.
+ */
+function OperationsButton({
+  operations,
+  onOpen,
+  className,
+}: {
+  operations: OperationsSummary;
+  onOpen: () => void;
+  className: string;
+}) {
+  const label = operationsCta(operations);
+  const isSinglePlayer = operations.state === "noRun";
+  // Read after mount (storage isn't there on the server); off until then.
+  const [clicked, setClicked] = useState(true);
+  useEffect(() => {
+    try {
+      setClicked(localStorage.getItem(SINGLE_PLAYER_CLICKED_KEY) === "1");
+    } catch {
+      setClicked(false);
+    }
+  }, []);
+  return (
+    <DeckButton
+      solid
+      onClick={() => {
+        if (isSinglePlayer && !clicked) {
+          setClicked(true);
+          try {
+            localStorage.setItem(SINGLE_PLAYER_CLICKED_KEY, "1");
+          } catch {
+            // Storage blocked: it glows again next visit.
+          }
+        }
+        onOpen();
+      }}
+      className={`${className} ${isSinglePlayer && !clicked ? "vt-cta-glow" : ""}`}
+    >
+      {label}
+    </DeckButton>
+  );
 }
 
 function Tile({
@@ -301,9 +350,7 @@ function PhoneDeck({ operations, yourTurnCount, openTournamentCount, featuredPac
         <ArtSlot slot="operations" className="h-28" />
         <div className="grid gap-2.5 p-3.5">
           <RunPips pips={operations.pips} />
-          <DeckButton solid onClick={() => onOpen("operations")} className="h-[3.25rem] w-full text-lg">
-            {operationsCta(operations)}
-          </DeckButton>
+          <OperationsButton operations={operations} onOpen={() => onOpen("operations")} className="h-[3.25rem] w-full text-lg" />
         </div>
       </Tile>
 
@@ -352,9 +399,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
         <ArtSlot slot="operations" className="min-h-28 flex-1 md:min-h-40" />
         <div className="grid gap-3 p-4">
           <RunPips pips={operations.pips} />
-          <DeckButton solid onClick={() => onOpen("operations")} className="w-full py-3 text-base">
-            {operationsCta(operations)}
-          </DeckButton>
+          <OperationsButton operations={operations} onOpen={() => onOpen("operations")} className="w-full py-3 text-base" />
         </div>
       </Tile>
 
@@ -481,9 +526,7 @@ function LayoutB({ operations, yourTurnCount, openTournamentCount, onOpen }: Omi
           <RunPips pips={operations.pips} />
           <RosterHull roster={operations.roster} />
           <div>
-            <DeckButton solid onClick={() => onOpen("operations")} className="px-6 py-3 text-base">
-              {operationsCta(operations)}
-            </DeckButton>
+            <OperationsButton operations={operations} onOpen={() => onOpen("operations")} className="px-6 py-3 text-base" />
           </div>
         </div>
       </ArtSlot>

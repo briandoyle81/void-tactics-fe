@@ -817,6 +817,22 @@ body::before {
     0 0 10px 0 color-mix(in srgb, var(--color-phosphor-green) 30%, transparent);
   animation: vt-target-glow 1.3s ease-in-out infinite;
 }
+/* A first-time call to action (Command Deck's Play Single Player): a soft
+   cyan glow breathing in and out, until the player presses it. */
+@keyframes vt-cta-glow {
+  0%, 100% { box-shadow: 0 0 0.25rem 0 color-mix(in srgb, var(--color-cyan) 35%, transparent); }
+  50% { box-shadow: 0 0 1.1rem 0.2rem color-mix(in srgb, var(--color-cyan) 65%, transparent); }
+}
+.vt-cta-glow {
+  animation: vt-cta-glow 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt-cta-glow {
+    animation: none;
+    box-shadow: 0 0 0.75rem 0.1rem color-mix(in srgb, var(--color-cyan) 50%, transparent);
+  }
+}
+
 @keyframes vt-target-glow {
   50% { opacity: 0.3; }
 }
