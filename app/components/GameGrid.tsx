@@ -10,6 +10,8 @@ import { useGridEffectPreviews } from "../hooks/useGridEffectPreviews";
 import { computeConfirmWidgetAnchor, selectedShipHasEffectLabel } from "../utils/gameGridRanges";
 import { GameGridCell } from "./GameGridCell";
 import { MapBackground } from "./MapBackground";
+import type { TutorialTargetTone } from "./TutorialTarget";
+import type { TutorialHighlightLook } from "@/app/hooks/useGridCellSets";
 import { mapBackgroundFor } from "../utils/mapBackground";
 import { buildTerrainArtGrid } from "../utils/terrainEdges";
 import { buildTileArtGrid, type MapTileArt, type TileArtGrid } from "../utils/mapTileArt";
@@ -169,12 +171,17 @@ interface GameGridProps {
    * A click target also gets a ripple and a chevron; an optional `label` (a
    * choice's name, e.g. "Save Ship") is shown with the chevron.
    * Set `hideLabel` for a highlight only (brackets, no ripple or chevron).
+   * `tone: "red"` draws the brackets red (an enemy ship to watch).
    */
   tutorialHighlightCells?: readonly {
     row: number;
     col: number;
     label?: string;
     hideLabel?: boolean;
+    /** Bracket color: green (default), or red for an enemy ship to watch. */
+    tone?: TutorialTargetTone;
+    /** A highlight-only cell (hideLabel) with the ripple, still no chevron. */
+    ripple?: boolean;
   }[];
   /**
    * **Tutorial target** on a weapon choice in the confirm widget: that
@@ -340,7 +347,7 @@ const GameGridCells = React.memo(function GameGridCells({
   isMyTurn: boolean;
   movementTileSet: Set<string>;
   shootingTileSet: Set<string>;
-  tutorialHighlightKeySet?: Set<string> | null;
+  tutorialHighlightKeySet?: ReadonlyMap<string, TutorialHighlightLook> | null;
   effectiveDragCell: { row: number; col: number } | null;
   effectiveShootingTileSet: Set<string>;
   effectiveValidTargetIdSet: Set<number>;
@@ -571,7 +578,7 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   isMyTurn: boolean;
   movementTileSet: Set<string>;
   shootingTileSet: Set<string>;
-  tutorialHighlightKeySet?: Set<string> | null;
+  tutorialHighlightKeySet?: ReadonlyMap<string, TutorialHighlightLook> | null;
   tutorialHighlightCells?: GameGridProps["tutorialHighlightCells"];
   effectiveDragCell: { row: number; col: number } | null;
   effectiveDragShipId: number | null;

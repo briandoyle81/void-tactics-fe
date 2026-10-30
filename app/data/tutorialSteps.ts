@@ -87,7 +87,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: "wait-for-opponent",
     title: "Waiting for Your Opponent",
-    description: "See your last move and wait for the enemy response",
+    description: "Turns alternate one ship at a time; wait for the enemy response",
     allowedActions: {},
     highlightElements: {},
   },

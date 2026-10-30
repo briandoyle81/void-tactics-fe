@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import posthog from "posthog-js";
 import {
   TutorialAction,
@@ -150,8 +150,10 @@ export function useOnboardingTutorial() {
 
   // Whenever the current step index changes, mark the step as not yet
   // hydrated so the UI can avoid briefly showing the previous step's board
-  // before canonical scripted state is applied.
-  useEffect(() => {
+  // before canonical scripted state is applied. A layout effect, like the
+  // hydration below: both run before paint, so the "Preparing" cover never
+  // flashes over the board between steps.
+  useLayoutEffect(() => {
     setIsStepHydrated(false);
   }, [currentStepIndex]);
 
@@ -670,8 +672,9 @@ export function useOnboardingTutorial() {
 
   // Always hydrate the active step from canonical scripted state when the step
   // changes (Next, Prev, or initial index). Re-entering a step must show its
-  // opening board, not an ending snapshot from a prior visit.
-  useEffect(() => {
+  // opening board, not an ending snapshot from a prior visit. Before paint
+  // (see the effect above), so the step and its board show in one frame.
+  useLayoutEffect(() => {
     if (!currentStep) return;
 
     setLastAction(null);
@@ -679,10 +682,7 @@ export function useOnboardingTutorial() {
       getScriptedStateForTutorialStepId(currentStep.id) ??
       getScriptedStateForStepIndex(currentStepIndex);
     updateGameState(() => scriptedState);
-
-    queueMicrotask(() => {
-      setIsStepHydrated(true);
-    });
+    setIsStepHydrated(true);
   }, [currentStep, currentStepIndex, updateGameState]);
 
   // Invalidate persisted snapshots if canonical tutorial state changed.

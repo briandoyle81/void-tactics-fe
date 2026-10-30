@@ -10,7 +10,7 @@
 //   cyan    ours, names of our ships, UI labels   cyan!   bold cyan
 //   amber   stakes, key terms                     amber!  bold amber
 //   red     the enemy, their ships                green   movement, Submit
-//   purple  nebulae, reactor damage, Last Move    dust    places (dim amber)
+//   purple  nebulae, reactor damage               dust    places (dim amber)
 //   plasma  weapon names (dim cyan)
 // Icons: {icon|reactor} draws the board's reactor-damage marker (a red
 // circle with a white X).
@@ -79,10 +79,11 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
     ],
   },
   "wait-for-opponent": {
-    title: "Previous Position",
+    title: "Taking Turns",
     brief: [
-      "After a ship moves, both you and your opponent can see the {purple|Last Move} of the ship on the map.",
-      "This helps you track how ships moved during the turn so you can see what changed.",
+      "After you move a single ship, it's the other admiral's turn to move one of their ships.",
+      "You'll take turns moving one ship at a time and each ship can move exactly once per round.",
+      "Watch the {red|Tongs} to see it move. You can also click the {cyan|Last Move} button to see a reminder of the last move.",
     ],
   },
   "score-points": {
@@ -174,6 +175,17 @@ export const TUTORIAL_NOT_ALLOWED = {
   assist: "Assist Not Allowed Now",
   claim: "Claim Not Allowed Now",
   other: "Action Not Allowed Now",
+};
+
+/**
+ * The info toast for a board click that does nothing: anywhere on a
+ * reading-only step (How we win), off a ship on Select a ship / Inspect enemy
+ * ships.
+ */
+export const TUTORIAL_BOARD_HINTS = {
+  next: "Click Next to continue",
+  selectShip: "Click one of your ships",
+  selectEnemy: "Click an enemy ship",
 };
 
 /**

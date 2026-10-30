@@ -1,4 +1,11 @@
 import { useMemo } from "react";
+import type { TutorialTargetTone } from "@/app/components/TutorialTarget";
+
+/** How a tutorial highlight cell draws its brackets. */
+export interface TutorialHighlightLook {
+  tone: TutorialTargetTone;
+  ripple: boolean;
+}
 
 const EMPTY_TILE_SET: Set<string> = new Set();
 const EMPTY_ID_SET: Set<number> = new Set();
@@ -11,7 +18,12 @@ interface UseGridCellSetsParams {
   effectiveValidTargets: readonly { shipId: number }[];
   assistableTargets: readonly { shipId: number }[];
   assistableTargetsFromStart: readonly { shipId: number }[];
-  tutorialHighlightCells?: readonly { row: number; col: number }[];
+  tutorialHighlightCells?: readonly {
+    row: number;
+    col: number;
+    tone?: TutorialTargetTone;
+    ripple?: boolean;
+  }[];
 }
 
 export function useGridCellSets({
@@ -75,7 +87,13 @@ export function useGridCellSets({
   );
   const tutorialHighlightKeySet = useMemo(() => {
     if (!tutorialHighlightCells?.length) return null;
-    return new Set(tutorialHighlightCells.map((p) => `${p.row},${p.col}`));
+    // Cell key -> bracket color and ripple.
+    return new Map<string, TutorialHighlightLook>(
+      tutorialHighlightCells.map((p) => [
+        `${p.row},${p.col}`,
+        { tone: p.tone ?? "green", ripple: !!p.ripple },
+      ]),
+    );
   }, [tutorialHighlightCells]);
 
   return {

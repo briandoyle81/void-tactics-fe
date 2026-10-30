@@ -12,6 +12,7 @@ import { setMirroredDragImage } from "../utils/dragShipImage";
 import { RetreatPrepAnimation } from "./weapon-animations/RetreatPrepAnimation";
 import { SosHullFires } from "./SosHullFires";
 import { TutorialTargetFrame } from "./TutorialTarget";
+import type { TutorialHighlightLook } from "@/app/hooks/useGridCellSets";
 import { HOLD_HOLOGRAM_CYCLE_MS } from "../constants/animationTiming";
 import { isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { describeTile, tileTooltipLabel } from "../utils/tileTooltip";
@@ -116,7 +117,7 @@ interface GameGridCellProps {
   isMyTurn: boolean;
   movementTileSet: Set<string>;
   shootingTileSet: Set<string>;
-  tutorialHighlightKeySet?: Set<string> | null;
+  tutorialHighlightKeySet?: ReadonlyMap<string, TutorialHighlightLook> | null;
   effectiveDragCell: Position | null;
   effectiveShootingTileSet: Set<string>;
   effectiveValidTargetIdSet: Set<number>;
@@ -230,10 +231,10 @@ export const GameGridCell = React.memo(function GameGridCell({
                 // selected (ram has no weapon range overlay — movement range shows instead).
                 const isShootingTile = !effectiveDragCell && selectedWeaponType !== "ram" &&
                   shootingTileSet.has(`${rowIndex},${colIndex}`);
-                const isTutorialHighlightCell =
-                  tutorialHighlightKeySet?.has(
-                    `${rowIndex},${colIndex}`,
-                  ) ?? false;
+                const tutorialHighlight = tutorialHighlightKeySet?.get(
+                  `${rowIndex},${colIndex}`,
+                );
+                const isTutorialHighlightCell = tutorialHighlight != null;
 
                 // Check if this ship has already moved this round
                 const hasShipMoved = cell && movedShipIdsSet.has(cell.shipId);
@@ -1078,7 +1079,13 @@ export const GameGridCell = React.memo(function GameGridCell({
                     {/* Tutorial target: brackets and glow over the ship. A click
                         target's ripple and chevron are grid-level
                         (GameGridOverlays) so neighboring cells don't cover them. */}
-                    {isTutorialHighlightCell && <TutorialTargetFrame variant="highlight" inside />}
+                    {isTutorialHighlightCell && (
+                      <TutorialTargetFrame
+                        variant={tutorialHighlight.ripple ? "click" : "highlight"}
+                        inside
+                        tone={tutorialHighlight.tone}
+                      />
+                    )}
                     {shouldRenderShipContent && ship && !isHidingDestinationPreview ? (
                       <>
                       <div

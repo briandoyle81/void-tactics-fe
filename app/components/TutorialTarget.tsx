@@ -9,6 +9,8 @@ import type { CSSProperties, ReactNode } from "react";
 // through the grid, and by the tutorial's own buttons.
 
 export type TutorialTargetVariant = "click" | "highlight";
+/** Green by default; red points at an enemy ship. */
+export type TutorialTargetTone = "green" | "red";
 
 /**
  * Brackets, glow and (for "click") ripple over the nearest positioned
@@ -18,15 +20,17 @@ export type TutorialTargetVariant = "click" | "highlight";
 export function TutorialTargetFrame({
   variant = "click",
   inside = false,
+  tone = "green",
 }: {
   variant?: TutorialTargetVariant;
   inside?: boolean;
+  tone?: TutorialTargetTone;
 }) {
   const style = inside
     ? ({ "--vt-target-gap": "-4px", "--vt-target-travel": "2px" } as CSSProperties)
     : undefined;
   return (
-    <span className="vt-target z-[30]" style={style} aria-hidden>
+    <span className={`vt-target z-[30]${tone === "red" ? " vt-target-red" : ""}`} style={style} aria-hidden>
       <span className="vt-target-glow" />
       <span className="vt-target-corners">
         <i />

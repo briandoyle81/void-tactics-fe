@@ -23,7 +23,7 @@ import {
   buildMapGridsFromDefaultMap,
   type DefaultMapShape,
 } from "../utils/mapGridUtils";
-import { toast } from "react-hot-toast";
+import { toast } from "@/app/utils/toast";
 import {
   ActionType,
   Attributes,
@@ -136,6 +136,7 @@ import { useAppMode } from "../hooks/useAppMode";
 import {
   TUTORIAL_COMPLETION_CARD,
   TUTORIAL_NOT_ALLOWED,
+  TUTORIAL_BOARD_HINTS,
   TUTORIAL_PANELS,
   isReportOnlyStep,
 } from "../data/dialog/tutorial";
@@ -156,6 +157,11 @@ import { useHeldBoard, useMovePlayback, type BoardMove } from "../hooks/useMoveP
 import { boardMoveFromRaw, landShipPositions, shipStatusIn } from "../utils/movePlaybackBoard";
 
 /** The tutorial's held board with landed moves applied (useHeldBoard). */
+/** A tutorial last move's identity: which ship did what, from where to where. */
+function tutorialMoveKey(m: NonNullable<SimulatedGameState["lastMove"]>): string {
+  return `${m.shipId}:${m.actionType}:${m.targetShipId ?? ""}:${m.oldRow},${m.oldCol}:${m.newRow},${m.newCol}`;
+}
+
 function landTutorialPositions(state: SimulatedGameState, landed: BoardMove[], activeKey: string | null): SimulatedGameState {
   return { ...state, shipPositions: landShipPositions(state.shipPositions, landed, activeKey) };
 }
@@ -235,6 +241,9 @@ const TUTORIAL_SELECT_SHIP_HIGHLIGHT_SHIP_IDS: readonly bigint[] = [
   1002n,
   1003n,
 ];
+
+/** Taking Turns: the enemy ship highlighted red; it moves when the next step begins. */
+const TUTORIAL_TAKING_TURNS_WATCH_SHIP_ID: TutorialShipId = "2003";
 
 /** Enemy ships for tutorial highlight on step 4 (view-enemy) until one is selected. */
 const TUTORIAL_VIEW_ENEMY_HIGHLIGHT_SHIP_IDS: readonly bigint[] = [
@@ -352,9 +361,7 @@ export function SimulatedGameDisplay({
   // the result. `gameState` is the board from just before it while it plays.
   const playback = useMovePlayback();
   const tutorialLastMove = liveTutorialState.lastMove;
-  const tutorialLastMoveKey = tutorialLastMove
-    ? `${tutorialLastMove.shipId}:${tutorialLastMove.actionType}:${tutorialLastMove.targetShipId ?? ""}:${tutorialLastMove.oldRow},${tutorialLastMove.oldCol}:${tutorialLastMove.newRow},${tutorialLastMove.newCol}`
-    : "";
+  const tutorialLastMoveKey = tutorialLastMove ? tutorialMoveKey(tutorialLastMove) : "";
   const [settledTutorialMoveKey, setSettledTutorialMoveKey] = useState(tutorialLastMoveKey);
   const tutorialMoveArrived = tutorialLastMoveKey !== settledTutorialMoveKey && !!tutorialLastMove;
   const tutorialMoveCountRef = useRef(0);
@@ -391,8 +398,17 @@ export function SimulatedGameDisplay({
     const target = targetId
       ? heldTutorialPositionsRef.current.find((p) => Number(p.shipId) === targetId)
       : undefined;
+    // The move's outcome: a move that opens the step (e.g. the EMP that
+    // starts Aftermath) arrives a render before the step's board, which is
+    // where the script applies the result (the Anvil destroyed), so take the
+    // target's fate from that board when its last move is this one.
+    const stepBoard = currentStep ? getScriptedStateForTutorialStepId(currentStep.id) : null;
+    const outcomeState =
+      stepBoard?.lastMove && tutorialMoveKey(stepBoard.lastMove) === tutorialLastMoveKey
+        ? stepBoard
+        : liveTutorialState;
     const liveTarget = targetId
-      ? liveTutorialState.shipPositions.find((p) => Number(p.shipId) === targetId)
+      ? outcomeState.shipPositions.find((p) => Number(p.shipId) === targetId)
       : undefined;
     playback.enqueue([
       boardMoveFromRaw(
@@ -410,7 +426,7 @@ export function SimulatedGameDisplay({
           moverVariant: tutorialShipVariantsRef.current.get(Number(tutorialLastMove.shipId)),
           targetPosition: target?.position ?? null,
           killsTarget: liveTarget?.status === 1,
-          targetAfter: shipStatusIn(liveTutorialState, targetId),
+          targetAfter: shipStatusIn(outcomeState, targetId),
         },
       ),
     ]);
@@ -420,6 +436,19 @@ export function SimulatedGameDisplay({
     () => ({ active: playback.active, onPhaseDone: playback.advance }),
     [playback.active, playback.advance],
   );
+  // A step that opens with combat (its scripted board's last move is an
+  // attack: the Hammer's plasma shot on Move and Return Fire, your EMP on
+  // Aftermath) holds its card back until that move has played, cinematic
+  // included, and the shot has landed: until the step's board is in and
+  // playback is idle.
+  const stepOpeningCombatKey = useMemo(() => {
+    if (!currentStep) return null;
+    const opening = getScriptedStateForTutorialStepId(currentStep.id)?.lastMove;
+    return opening?.targetShipId ? tutorialMoveKey(opening) : null;
+  }, [currentStep]);
+  const isTutorialCardHeldForCombat =
+    stepOpeningCombatKey != null &&
+    (isMovePlaybackBusy || tutorialLastMoveKey !== stepOpeningCombatKey);
 
   const [claimCompleteCached, setClaimCompleteCached] = useState(false);
 
@@ -712,6 +741,33 @@ export function SimulatedGameDisplay({
    * or drag) and no targets (no damage labels).
    */
   const isInspectStep = currentStep?.id === "select-ship" || currentStep?.id === "view-enemy";
+  // A board click that does nothing gets a hint: anywhere during a
+  // reading-only step, off a ship during an inspect step (what to click, or
+  // Next once the step is done).
+  const handleBoardClickHint = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      let hint: string | null = null;
+      if (controlsLocked) {
+        hint = TUTORIAL_BOARD_HINTS.next;
+      } else if (isInspectStep) {
+        const cell = (event.target as HTMLElement).closest<HTMLElement>("[data-grid-row]");
+        if (!cell) return;
+        const row = Number(cell.dataset.gridRow);
+        const col = Number(cell.dataset.gridCol);
+        const onShip = gameState.shipPositions.some(
+          (p) => p.position.row === row && p.position.col === col,
+        );
+        if (onShip) return;
+        hint = isStepComplete
+          ? TUTORIAL_BOARD_HINTS.next
+          : currentStep?.id === "select-ship"
+            ? TUTORIAL_BOARD_HINTS.selectShip
+            : TUTORIAL_BOARD_HINTS.selectEnemy;
+      }
+      if (hint) toast.info(hint, { id: "tutorial-board-hint" });
+    },
+    [controlsLocked, isInspectStep, isStepComplete, currentStep?.id, gameState.shipPositions],
+  );
 
   React.useEffect(() => {
     if (!isLandscapeMobile) return;
@@ -1391,6 +1447,14 @@ export function SimulatedGameDisplay({
       return resourceCells.length > 0 ? resourceCells : undefined;
     }
 
+    // Taking Turns: the Tongs, red, to watch for the enemy's move.
+    if (stepId === "wait-for-opponent") {
+      const tongs = positions.find((p) => p.shipId === TUTORIAL_TAKING_TURNS_WATCH_SHIP_ID);
+      return tongs
+        ? [{ row: tongs.position.row, col: tongs.position.col, hideLabel: true, ripple: true, tone: "red" as const }]
+        : undefined;
+    }
+
     if (stepId === "select-ship") {
       if (selectedShipId !== null || highlightDoneStepId === stepId) return undefined;
       return cellsForIds(TUTORIAL_SELECT_SHIP_HIGHLIGHT_SHIP_IDS);
@@ -1945,11 +2009,9 @@ export function SimulatedGameDisplay({
         return;
       }
 
-      // Select a ship is for inspecting: the range shows, but no move yet.
-      if (currentStep?.id === "select-ship") {
-        toast.error(TUTORIAL_NOT_ALLOWED.move);
-        return;
-      }
+      // Select a ship is for inspecting: the range shows, but no move yet
+      // (the board click hint says what to do).
+      if (currentStep?.id === "select-ship") return;
 
       // Hard choice (rescue): Vigilant is shoot-only and cannot stage moves to a new square.
       // Clicking a target still sets preview to the Vigilant's current cell first (stay-in-place + fire);
@@ -2614,7 +2676,7 @@ export function SimulatedGameDisplay({
   // doesn't cover the top of the map.
   const dockTutorialPanel = isPortraitTablet && useSideLayout;
   const renderTutorialTaskPanel = (docked: boolean) =>
-    tutorialGridPanelConfig ? (
+    tutorialGridPanelConfig && !isTutorialCardHeldForCombat ? (
       <TutorialGridTaskPanel
         docked={docked}
         title={tutorialGridPanelConfig.title}
@@ -3603,7 +3665,7 @@ export function SimulatedGameDisplay({
                   className="relative h-full [contain:layout]"
                   style={{ aspectRatio: `${GRID_WIDTH} / ${GRID_HEIGHT}` }}
                 >
-                  <div className="absolute inset-0 min-h-0 overflow-hidden">
+                  <div className="absolute inset-0 min-h-0 overflow-hidden" onClickCapture={handleBoardClickHint}>
                     <GameGrid
                       playback={gridPlayback}
                       grid={gridForDisplay}
@@ -4031,7 +4093,7 @@ export function SimulatedGameDisplay({
                   </span>
                 </div>
               )}
-              <div className="absolute inset-0 min-h-0 overflow-hidden">
+              <div className="absolute inset-0 min-h-0 overflow-hidden" onClickCapture={handleBoardClickHint}>
                 <GameGrid
                   playback={gridPlayback}
                   grid={gridForDisplay}
