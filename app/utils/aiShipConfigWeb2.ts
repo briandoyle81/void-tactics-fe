@@ -16,6 +16,9 @@ export interface AIShipConfigWeb2 {
     speed: number;
   };
   archetype: Archetype;
+  /** Copied onto each AI ship made from it: shiny, and the kill count (rank). */
+  shiny: boolean;
+  shipsDestroyed: number;
 }
 
 // Web2 counterpart to aiShipConfig.ts's aiConfigToPreviewShip — same
@@ -31,7 +34,7 @@ export function aiConfigToPreviewShipWeb2(config: AIShipConfigWeb2, idOverride?:
     equipment: config.equipment,
     traits: config.traits,
     shipData: {
-      shipsDestroyed: 0,
+      shipsDestroyed: config.shipsDestroyed ?? 0,
       costsVersion: 0,
       // Same threat/cost formula as real player ships and web3's AI preview
       // ships (calculateTutorialThreatPoints is chain-agnostic — plain
@@ -45,7 +48,7 @@ export function aiConfigToPreviewShipWeb2(config: AIShipConfigWeb2, idOverride?:
         },
         config.traits.variant,
       ),
-      shiny: false,
+      shiny: config.shiny ?? false,
       constructed: true,
       inFleet: false,
       timestampDestroyed: 0,

@@ -115,7 +115,6 @@ function applyReactorTimerDelta(
   if (targetIdx === -1) return state;
   const newAttrs = [...state.shipAttributes];
   const targetAttrs = { ...newAttrs[targetIdx]! };
-  targetAttrs.statusEffects = [...(targetAttrs.statusEffects ?? []), 1];
   targetAttrs.reactorCriticalTimer = Math.max(0, (targetAttrs.reactorCriticalTimer || 0) + delta);
   newAttrs[targetIdx] = targetAttrs;
   if (targetAttrs.reactorCriticalTimer >= 3) {

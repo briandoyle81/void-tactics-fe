@@ -54,7 +54,7 @@ const SHIP_PURCHASE_UTC_ABI = [
       { internalType: "address", name: "_referral", type: "address" },
       { internalType: "uint16", name: "_variant", type: "uint16" },
     ],
-    name: "purchaseWithUC",
+    name: "purchaseWithUTC",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -157,7 +157,7 @@ export function ShipPurchaseButton({
               address: contractAddresses.SHIP_PURCHASER as `0x${string}`,
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               abi: SHIP_PURCHASE_UTC_ABI as any,
-              functionName: "purchaseWithUC",
+              functionName: "purchaseWithUTC",
               args: [address, tier, referralAddress, purchaseVariant],
               account: address,
             });
@@ -285,7 +285,7 @@ export function ShipPurchaseButton({
         contractAddress={contractAddresses.SHIP_PURCHASER as `0x${string}`}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         abi={SHIP_PURCHASE_UTC_ABI as any}
-        functionName="purchaseWithUC"
+        functionName="purchaseWithUTC"
         args={[
           address,
           tier as number, // Tier is already 0-based (0-4) for contract (uint8)

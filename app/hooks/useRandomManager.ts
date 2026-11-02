@@ -13,26 +13,27 @@ const RANDOM_MANAGER_ABI = CONTRACT_ABIS.RANDOM_MANAGER as Abi;
 // keccak256(blockhash(mint block), requestId), fixed once the mint's block is
 // sealed (docs/frontend-handoff-2026-10-17.md §2). Constructing reads that
 // hash and reveals the stats in the same transaction, so there's no separate
-// reveal step. The hash is only readable for a limited window after the
-// mint (8191 blocks, ~4.5h on Base); after that the request expires and the
-// ship can't be constructed until an admin re-targets it. The contract's
-// `isExpired` / `canFulfillBatch` are the source of truth for both, so no
+// reveal step. Since the 2026-11-01 redeploy any game activity stores the
+// hash, so a roll is kept however late the ship is built; only if nothing
+// at all happens for the whole window (8191 blocks, ~4.5h on Base) does the
+// request expire for good, and constructing it then builds a basic ship
+// (docs/frontend-handoff-2026-10-30.md §11). There's no re-roll. The
+// contract's `isExpired` / `canFulfillBatch` are the source of truth, so no
 // window size is hard-coded here.
 
 /** Construct needs one block past the mint; Base makes one every ~2s. */
 const READY_POLL_INTERVAL_MS = 1000;
 const READY_TIMEOUT_MS = 20000;
 
-/** Thrown when a ship's construction window has passed (admin re-target needed). */
-export const REQUEST_EXPIRED_ERROR = "RequestExpired";
 /** Thrown when the mint block isn't sealed yet within the wait. */
 export const NOT_READY_ERROR = "TooSoonToReveal";
 
 /**
  * Checks a set of unconstructed ships can be constructed now, before
- * spending a signature: throws REQUEST_EXPIRED_ERROR if any has expired, and
- * waits (polling the free `canFulfillBatch` view) until the mint block is
- * sealed, throwing NOT_READY_ERROR if that takes too long. Reads only.
+ * spending a signature: waits (polling the free `canFulfillBatch` view)
+ * until each mint block is sealed, throwing NOT_READY_ERROR if that takes
+ * too long. Expired ships are ready as they are (they build a basic ship),
+ * and canFulfillBatch reports them false, so they're left out. Reads only.
  */
 export function useEnsureConstructable() {
   const activeChainId = useSelectedChainId();
@@ -54,7 +55,8 @@ export function useEnsureConstructable() {
         })),
         allowFailure: false,
       });
-      if (expired.some(Boolean)) throw new Error(REQUEST_EXPIRED_ERROR);
+      const pending = serialNumbers.filter((_, i) => !expired[i]);
+      if (pending.length === 0) return;
 
       const deadline = Date.now() + READY_TIMEOUT_MS;
       for (;;) {
@@ -62,7 +64,7 @@ export function useEnsureConstructable() {
           address,
           abi: RANDOM_MANAGER_ABI,
           functionName: "canFulfillBatch",
-          args: [serialNumbers],
+          args: [pending],
         });
         if (ready) return;
         if (Date.now() > deadline) throw new Error(NOT_READY_ERROR);
@@ -74,8 +76,8 @@ export function useEnsureConstructable() {
 }
 
 /**
- * Which of `ships` (unconstructed ones) missed their construction window
- * and need an admin re-target: serial number → true. One batched read.
+ * Which of `ships` (unconstructed ones) missed their construction window,
+ * so constructing them builds a basic ship: serial numbers. One batched read.
  */
 export function useExpiredShipSerials(ships: readonly Ship[]) {
   const activeChainId = useSelectedChainId();

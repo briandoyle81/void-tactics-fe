@@ -94,6 +94,9 @@ export function AIEncountersAdminPanelWeb2({ mapIds }: Props) {
         // Keep the config's serial number and colors; only the form's fields change.
         traits: { ...existing.traits, variant: v.variant, accuracy: v.accuracy, hull: v.hull, speed: v.speed },
         archetype: v.archetype,
+        // This form doesn't edit them (the AI Fleet tab does): keep the config's.
+        shiny: existing.shiny,
+        shipsDestroyed: existing.shipsDestroyed,
       });
       await queryClient.invalidateQueries({ queryKey: ["ai-ship-configs"] });
       toast.success("Ship config saved.");

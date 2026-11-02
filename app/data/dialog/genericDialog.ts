@@ -213,14 +213,16 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     characterId: "adjutant",
     trigger: { type: "shipsRepaired", faction: 2, count: 1 },
     canHide: true,
-    variants: ["Did you see that? It looks like all of these ships are equipped with repair drones."],
+    variants: [
+      "Did you see that? It looks like all of these ships are equipped with repair drones.",
+    ],
   },
-  {
-    id: "generic-hive-taunt",
-    characterId: "hive",
-    trigger: { type: "shipsDestroyed", side: "player", count: 3 },
-    variants: ["Your hulls break so easily.", "We are many. You are fewer."],
-  },
+  // {
+  //   id: "generic-hive-taunt",
+  //   characterId: "hive",
+  //   trigger: { type: "shipsDestroyed", side: "player", count: 3, faction: 2 },
+  //   variants: ["Your hulls break so easily.", "We are many. You are fewer."],
+  // },
   {
     id: "generic-reactor-overload-warning-player",
     characterId: "adjutant",

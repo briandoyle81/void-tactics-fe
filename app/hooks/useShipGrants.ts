@@ -46,7 +46,6 @@ function fromTuple(t: ShipGrantTuple): ShipGrantSpec {
     colors: {
       h1: Number(t.colors.h1), s1: Number(t.colors.s1), l1: Number(t.colors.l1),
       h2: Number(t.colors.h2), s2: Number(t.colors.s2), l2: Number(t.colors.l2),
-      h3: Number(t.colors.h3), s3: Number(t.colors.s3), l3: Number(t.colors.l3),
     },
     variant: Number(t.variant),
     accuracy: Number(t.accuracy),

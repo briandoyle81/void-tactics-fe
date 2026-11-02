@@ -41,7 +41,7 @@ export function aiConfigToPreviewShip(config: AIShipConfig, idOverride?: bigint)
       speed: config.traits.speed,
     },
     shipData: {
-      shipsDestroyed: 0,
+      shipsDestroyed: Number(config.shipsDestroyed),
       costsVersion: 0,
       // Same threat/cost formula as real player ships (ShipAttributes.calculateShipCost) —
       // AI ships never construct on-chain, so there's no stored cost to read.
@@ -54,7 +54,7 @@ export function aiConfigToPreviewShip(config: AIShipConfig, idOverride?: bigint)
         },
         config.traits.variant,
       ),
-      shiny: false,
+      shiny: config.shiny,
       constructed: true,
       inFleet: false,
       timestampDestroyed: 0n,

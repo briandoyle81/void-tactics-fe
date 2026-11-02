@@ -60,6 +60,8 @@ export interface AIShipConfigRow {
     speed: number;
   };
   archetype: number;
+  shiny: boolean;
+  shipsDestroyed: number;
 }
 export interface PlacementRow {
   mapId: number;
@@ -202,6 +204,8 @@ export function buildMissionImportRows(
     // Same traits the deploy builds for createAIShipConfig.
     traits: { serialNumber: 0, colors: sp.aiShipColors, ...c.traits },
     archetype: c.archetype,
+    shiny: c.shiny ?? false,
+    shipsDestroyed: c.shipsDestroyed ?? 0,
   }));
 
   const placements: PlacementRow[] = [];

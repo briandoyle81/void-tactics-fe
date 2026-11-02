@@ -10,7 +10,14 @@ import { useShipPurchasePricesAccess } from "./useShipPurchasePricesAccess";
 import { useWeb2Admin } from "./useWeb2Admin";
 import { useIsShipGrantOwner } from "./useShipGrants";
 
-export type OpsConsoleTab = "Maps" | "Admin" | "Reward Ships" | "Ship Attributes" | "Purchase Prices";
+export type OpsConsoleTab =
+  | "Maps"
+  | "Admin"
+  | "Reward Ships"
+  | "Ship Attributes"
+  | "Purchase Prices"
+  | "AI Fleet"
+  | "Ship Constructor";
 
 export const OPS_CONSOLE_TABS: readonly OpsConsoleTab[] = [
   "Maps",
@@ -18,6 +25,8 @@ export const OPS_CONSOLE_TABS: readonly OpsConsoleTab[] = [
   "Reward Ships",
   "Ship Attributes",
   "Purchase Prices",
+  "AI Fleet",
+  "Ship Constructor",
 ];
 
 /**
@@ -38,26 +47,32 @@ export function useOpsConsoleAccess() {
   const isWeb2Admin = useWeb2Admin();
   const isMapAdmin = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
 
-  const tabs = useMemo(
-    () =>
-      OPS_CONSOLE_TABS.filter((tab) => {
-        if (isWeb2Admin) return true;
-        switch (tab) {
-          case "Maps":
-            return isMapAdmin;
-          case "Admin":
-            return isMapAdmin || isOwner || isEncounterEditor || isNodeMapEditor;
-          case "Reward Ships":
-            // Anyone who edits nodes can view; only the owner can write.
-            return isMapAdmin || isShipGrantOwner || isNodeMapEditor;
-          case "Ship Attributes":
-            return isOwner;
-          case "Purchase Prices":
-            return canAdminShipPurchasePrices;
-        }
-      }),
-    [isWeb2Admin, isMapAdmin, isOwner, isEncounterEditor, isNodeMapEditor, isShipGrantOwner, canAdminShipPurchasePrices],
-  );
+  const tabs = useMemo(() => {
+    const allowed = OPS_CONSOLE_TABS.filter((tab) => {
+      if (isWeb2Admin) return true;
+      switch (tab) {
+        case "Maps":
+          return isMapAdmin;
+        case "Admin":
+          return isMapAdmin || isOwner || isEncounterEditor || isNodeMapEditor;
+        case "Reward Ships":
+          // Anyone who edits nodes can view; only the owner can write.
+          return isMapAdmin || isShipGrantOwner || isNodeMapEditor;
+        case "Ship Attributes":
+          return isOwner;
+        case "Purchase Prices":
+          return canAdminShipPurchasePrices;
+        case "AI Fleet":
+          // Writes need isEncounterEditor; the others can build and save JSON.
+          return isEncounterEditor || isMapAdmin || isOwner;
+        case "Ship Constructor":
+          // A preview sandbox with no writes of its own: shown to anyone
+          // who has another tab, never the only reason to get in.
+          return true;
+      }
+    });
+    return allowed.some((tab) => tab !== "Ship Constructor") ? allowed : [];
+  }, [isWeb2Admin, isMapAdmin, isOwner, isEncounterEditor, isNodeMapEditor, isShipGrantOwner, canAdminShipPurchasePrices]);
 
   return {
     tabs,

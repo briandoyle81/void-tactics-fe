@@ -43,7 +43,7 @@ export const MAP_NAMES: Record<number, string> = {
   33: "Debris Ring",
   34: "Long View",
   35: "Mineral Core",
-  36: "Asteroid Field — Roguelike Sector 6",
+  36: "Lonely Outpost",
   37: "Debris Ring — Roguelike Sector 7",
   38: "Trench Run — Roguelike Sector 8",
   39: "Reactor Core — Roguelike Sector 9",

@@ -11,7 +11,6 @@ const attrs = (hull: number, timer = 0): Attributes => ({
   movement: 3,
   damageReduction: 0,
   reactorCriticalTimer: timer,
-  statusEffects: [],
 });
 
 // Ship 1 (creator) at (5,5); ship 2 (joiner) at (5,8).

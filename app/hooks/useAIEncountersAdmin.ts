@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useWriteContract, usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
-import type { Abi, Address } from "viem";
+import { parseEventLogs, type Abi, type Address } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 import {
   Archetype,
@@ -22,17 +22,28 @@ export function useAIEncountersAdmin() {
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const createAIShipConfig = useCallback(
-    async (name: string, equipment: ShipEquipment, traits: AIEncountersTraits, archetype: Archetype) => {
+    async (
+      name: string,
+      equipment: ShipEquipment,
+      traits: AIEncountersTraits,
+      archetype: Archetype,
+      shiny = false,
+      shipsDestroyed = 0,
+    ) => {
       const hash = await writeContractAsync({
         address: AI_ENCOUNTERS_ADDRESS,
         abi: AI_ENCOUNTERS_ABI,
         functionName: "createAIShipConfig",
-        args: [name, equipment, traits, archetype],
+        args: [name, equipment, traits, archetype, shiny, shipsDestroyed],
         chainId: CHAIN_ID,
       });
       console.log("[AIEncounters] createAIShipConfig tx:", hash);
-      await publicClient!.waitForTransactionReceipt({ hash });
-      return hash;
+      const receipt = await publicClient!.waitForTransactionReceipt({ hash });
+      // The new config's id, from its AIShipConfigCreated event.
+      const created = parseEventLogs({ abi: AI_ENCOUNTERS_ABI, eventName: "AIShipConfigCreated", logs: receipt.logs })[0] as
+        | { args: { configId: bigint } }
+        | undefined;
+      return { hash, configId: created?.args.configId };
     },
     [writeContractAsync, publicClient],
   );
@@ -44,12 +55,14 @@ export function useAIEncountersAdmin() {
       equipment: ShipEquipment,
       traits: AIEncountersTraits,
       archetype: Archetype,
+      shiny = false,
+      shipsDestroyed = 0,
     ) => {
       const hash = await writeContractAsync({
         address: AI_ENCOUNTERS_ADDRESS,
         abi: AI_ENCOUNTERS_ABI,
         functionName: "updateAIShipConfig",
-        args: [configId, name, equipment, traits, archetype],
+        args: [configId, name, equipment, traits, archetype, shiny, shipsDestroyed],
         chainId: CHAIN_ID,
       });
       console.log("[AIEncounters] updateAIShipConfig tx:", hash);

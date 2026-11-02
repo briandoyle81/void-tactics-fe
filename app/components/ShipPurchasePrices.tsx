@@ -101,7 +101,7 @@ const ShipPurchasePrices: React.FC = () => {
 
   const shipsInfo = useShipsPurchaseInfo();
   const utcInfo = useShipPurchaserPurchaseInfo();
-  // ShipPurchaser has one shared tier table: purchaseWithUC pays tierPrices[]
+  // ShipPurchaser has one shared tier table: purchaseWithUTC pays tierPrices[]
   // in UTC for tierShips[] ships, while purchaseUTCWithFlow pays tierPrices[]
   // in native token and mints tierShips[] * Ships.recycleReward() UTC. Read
   // recycleReward live so the admin can see the actual UTC payout while
@@ -429,7 +429,7 @@ const ShipPurchasePrices: React.FC = () => {
               tokens
             </span>{" "}
             (<span className="text-text-secondary">ShipPurchaser</span>
-            &apos;s <span className="text-text-secondary">purchaseWithUC</span>{" "}
+            &apos;s <span className="text-text-secondary">purchaseWithUTC</span>{" "}
             and{" "}
             <span className="text-text-secondary">purchaseUTCWithFlow</span>{" "}
             share one on-chain price table — see the section below). Each
@@ -502,7 +502,7 @@ const ShipPurchasePrices: React.FC = () => {
         renderSection({
           title: "Tools 2 & 3 — Ship packs (UTC) + UTC packs (tokens) — shared pricing",
           subtitle:
-            "One table on ShipPurchaser drives both flows: purchaseWithUC charges the UTC price below for that many ships (Tool 2); purchaseUTCWithFlow charges the same number in native token and mints ships × recycleReward UTC (Tool 3). Editing a row changes both at once.",
+            "One table on ShipPurchaser drives both flows: purchaseWithUTC charges the UTC price below for that many ships (Tool 2); purchaseUTCWithFlow charges the same number in native token and mints ships × recycleReward UTC (Tool 3). Editing a row changes both at once.",
           canEdit: isPurchaserOwner,
           tierIndices: utcInfo.tiers,
           ships: utcShips,

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import type { Abi } from "viem";
-import { formatEther } from "viem";
 import { formatDec } from "../utils/formatDec";
 import { toast } from "react-hot-toast";
 import { TransactionButton } from "./TransactionButton";
@@ -48,10 +47,11 @@ const DroneStorefront: React.FC = () => {
     decBalance !== undefined &&
     decBalance < nextTierCost;
 
+  // DEC has 0 decimals: amounts are plain counts of cores.
   const nextTierCostFormatted =
-    nextTierCost !== undefined ? formatDec(Number(formatEther(nextTierCost)), "up") : null;
+    nextTierCost !== undefined ? formatDec(Number(nextTierCost), "up") : null;
   const decBalanceFormatted =
-    decBalance !== undefined ? formatDec(Number(formatEther(decBalance))) : "0";
+    decBalance !== undefined ? formatDec(Number(decBalance)) : "0";
 
   return (
     <div className="w-full max-w-xl">

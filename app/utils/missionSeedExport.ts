@@ -66,6 +66,9 @@ export interface SeedAIConfig {
   equipment: SeedEquipment;
   traits: SeedTraits;
   archetype: number;
+  /** Left out when false / 0, so plain configs' seed entries don't change. */
+  shiny?: boolean;
+  shipsDestroyed?: number;
 }
 export interface SeedPlacement {
   mapKey: string;
@@ -155,6 +158,8 @@ export interface ChainAIConfig {
   equipment: SeedEquipment;
   traits: SeedTraits;
   archetype: number;
+  shiny?: boolean;
+  shipsDestroyed?: number;
 }
 export interface ChainPlacement {
   mapId: number;
@@ -233,6 +238,8 @@ const aiConfigSignature = (c: {
   equipment: SeedEquipment;
   traits: SeedTraits;
   archetype: number;
+  shiny?: boolean;
+  shipsDestroyed?: number;
 }) =>
   [
     c.name,
@@ -245,6 +252,8 @@ const aiConfigSignature = (c: {
     c.traits.hull,
     c.traits.speed,
     c.archetype,
+    c.shiny ?? false,
+    c.shipsDestroyed ?? 0,
   ].join("|");
 
 function withContent<T extends object>(node: T, content: NodeContent | undefined): T {
@@ -404,6 +413,8 @@ export function buildMissionSeedFiles(
       equipment: c.equipment,
       traits: c.traits,
       archetype: c.archetype,
+      ...(c.shiny ? { shiny: true } : {}),
+      ...(c.shipsDestroyed ? { shipsDestroyed: c.shipsDestroyed } : {}),
     }))
     .sort(
       (a, b) =>

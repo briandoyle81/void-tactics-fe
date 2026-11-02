@@ -995,7 +995,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
   const decValue = showWeb2Panel
     ? decBalance
     : droneCoresBalance
-      ? Number(formatEther(droneCoresBalance as bigint))
+      ? Number(droneCoresBalance as bigint) // DEC has 0 decimals: a count of cores
       : 0;
   const nativeValue = balance?.value ? Number(balance.formatted) : 0;
 

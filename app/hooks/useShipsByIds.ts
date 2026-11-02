@@ -11,12 +11,13 @@ import {
 } from "../config/contracts";
 import { useSelectedChainId } from "./useSelectedChainId";
 import { Ship } from "../types/types";
-import { cacheShipsData } from "./useShipDataCache";
+import { AI_SHIP_ID_OFFSET, cacheShipsData } from "./useShipDataCache";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const SHIPS_ABI = CONTRACT_ABIS.SHIPS as Abi;
 const SHIPS_ROUTER_ABI = CONTRACT_ABIS.SHIPS_ROUTER as Abi;
+const SHIP_ATTRIBUTES_ABI = CONTRACT_ABIS.SHIP_ATTRIBUTES as Abi;
 const SHIPS_ROUTER_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[baseSepolia.id]
   .SHIPS_ROUTER as `0x${string}`;
 
@@ -73,13 +74,56 @@ export function useShipsByIds(shipIds: bigint[]) {
     },
   });
 
-  const ships = useMemo(
+  const fetchedShips = useMemo(
     () =>
       (data ?? [])
         .map((r) => r.result)
         .filter((s): s is Ship => s != null) as Ship[],
     [data],
   );
+
+  // AI ships (id >= AI_SHIP_ID_OFFSET) carry cost 0 on chain, so their cost
+  // is ShipAttributes.calculateShipCost of the ship itself (the live cost
+  // tables, one multicall for all of them).
+  const aiShips = useMemo(
+    () => fetchedShips.filter((s) => s.id >= AI_SHIP_ID_OFFSET),
+    [fetchedShips],
+  );
+  const shipAttributesAddress = getContractAddresses(activeChainId)
+    .SHIP_ATTRIBUTES as `0x${string}` | undefined;
+  const costContracts = useMemo(
+    () =>
+      aiShips.map((ship) => ({
+        address: shipAttributesAddress ?? ZERO_ADDRESS,
+        abi: SHIP_ATTRIBUTES_ABI,
+        chainId: activeChainId,
+        functionName: "calculateShipCost" as const,
+        args: [ship] as const,
+      })),
+    [aiShips, shipAttributesAddress, activeChainId],
+  );
+  const { data: costData } = useReadContracts({
+    contracts: costContracts,
+    query: {
+      enabled: aiShips.length > 0 && !!shipAttributesAddress,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: Infinity,
+    },
+  });
+
+  const ships = useMemo(() => {
+    if (aiShips.length === 0) return fetchedShips;
+    const costById = new Map<bigint, number>();
+    aiShips.forEach((ship, i) => {
+      const cost = costData?.[i]?.result;
+      if (cost != null) costById.set(ship.id, Number(cost));
+    });
+    return fetchedShips.map((ship) => {
+      const cost = costById.get(ship.id);
+      return cost == null ? ship : { ...ship, shipData: { ...ship.shipData, cost } };
+    });
+  }, [fetchedShips, aiShips, costData]);
 
   // cacheShipsData itself skips AI ship ids (pooled/reused across matches —
   // see useShipDataCache.ts for why caching those long-term is wrong, not

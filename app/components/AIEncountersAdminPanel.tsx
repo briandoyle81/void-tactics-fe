@@ -72,7 +72,7 @@ export function AIEncountersAdminPanel({ mapIds }: Props) {
         { mainWeapon: v.mainWeapon, armor: v.armor, shields: v.shields, special: v.special },
         {
           serialNumber: 0n,
-          colors: { h1: 0, s1: 0, l1: 0, h2: 0, s2: 0, l2: 0, h3: 0, s3: 0, l3: 0 },
+          colors: { h1: 0, s1: 0, l1: 0, h2: 0, s2: 0, l2: 0 },
           variant: v.variant,
           accuracy: v.accuracy,
           hull: v.hull,
@@ -98,6 +98,9 @@ export function AIEncountersAdminPanel({ mapIds }: Props) {
         // Keep the config's serial number and colors; only the form's fields change.
         { ...existing.traits, variant: v.variant, accuracy: v.accuracy, hull: v.hull, speed: v.speed },
         v.archetype,
+        // This form doesn't edit them (the AI Fleet tab does): keep the config's.
+        existing.shiny ?? false,
+        existing.shipsDestroyed ?? 0,
       );
       await refetchConfigs();
       toast.success("Ship config saved.");

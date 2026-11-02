@@ -10,6 +10,7 @@ import { encodeFunctionData, type Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 import { RoguelikePosition } from "../types/roguelike";
 import { paddedGasLimit } from "../utils/gasLimit";
+import { aiTurnGas } from "../utils/aiTurnReceipt";
 import {
   trackMissionStarted,
   trackResupplyEntered,
@@ -127,15 +128,16 @@ export function useRoguelikeMatch() {
   // AI moves send without waiting or touching the ships cache: the AI loop
   // waits for the receipt itself (writeAndWait here made it wait twice) and
   // an AI move never changes which ships the player owns.
+  // attempt > 0 resends with more gas (aiTurnReceipt.ts).
   const takeAITurn = useCallback(
-    (gameId: bigint) =>
+    (gameId: bigint, attempt = 0) =>
       writeContractAsync({
         address: ROGUELIKE_MATCH_ADDRESS,
         abi: ROGUELIKE_MATCH_ABI,
         functionName: "takeAITurn",
         args: [gameId],
         chainId: CHAIN_ID,
-        gas: TAKE_AI_TURN_GAS_LIMIT,
+        gas: aiTurnGas(TAKE_AI_TURN_GAS_LIMIT, attempt),
       }),
     [writeContractAsync],
   );
@@ -143,14 +145,14 @@ export function useRoguelikeMatch() {
   // Several AI moves in one tx — only when the human has no unmoved ships
   // left this round (see app/utils/aiTurnBatch.ts). Gas scales per move.
   const takeAITurns = useCallback(
-    (gameId: bigint, maxMoves: number) =>
+    (gameId: bigint, maxMoves: number, attempt = 0) =>
       writeContractAsync({
         address: ROGUELIKE_MATCH_ADDRESS,
         abi: ROGUELIKE_MATCH_ABI,
         functionName: "takeAITurns",
         args: [gameId, BigInt(maxMoves)],
         chainId: CHAIN_ID,
-        gas: TAKE_AI_TURN_GAS_LIMIT * BigInt(maxMoves),
+        gas: aiTurnGas(TAKE_AI_TURN_GAS_LIMIT * BigInt(maxMoves), attempt),
       }),
     [writeContractAsync],
   );

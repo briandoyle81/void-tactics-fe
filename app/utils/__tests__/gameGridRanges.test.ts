@@ -25,7 +25,6 @@ function makeAttrs(overrides: Partial<Attributes> = {}): Attributes {
     movement: 2,
     damageReduction: 0,
     reactorCriticalTimer: 0,
-    statusEffects: [],
     ...overrides,
   };
 }

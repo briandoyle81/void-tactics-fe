@@ -17,17 +17,22 @@ import { invalidateShipAttributesByIdsCache } from "../utils/shipAttributesLocal
 
 interface ShipConstructorProps {
   initialShipId?: bigint | null;
+  /** "create" opens in EXPLORE (the Ops Console tab); a ship to customize wins. */
+  initialMode?: "create" | "customize";
   onClose?: () => void;
 }
 
 const ShipConstructor: React.FC<ShipConstructorProps> = ({
   initialShipId = null,
+  initialMode = "customize",
   onClose,
 }) => {
   const { address } = useAccount();
   const selectedChainId = useSelectedChainId();
   const { ships, isLoading: isLoadingShips, refetch: refetchShips } = useOwnedShips();
-  const [mode, setMode] = useState<"create" | "customize">("customize");
+  const [mode, setMode] = useState<"create" | "customize">(
+    initialShipId != null ? "customize" : initialMode,
+  );
   const [selectedShipId, setSelectedShipId] = useState<bigint | null>(
     initialShipId,
   );
@@ -210,14 +215,8 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
   const buildDroneYardShipStruct = useMemo(() => {
     if (!selectedShipId || !originalShip) return null;
 
-    // Colors and extra fields may not be present in the TypeScript type,
-    // but they exist onchain and in the ABI, so we read them defensively.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const colorsAny = originalShip.traits.colors as any;
-    const h3 = typeof colorsAny?.h3 === "number" ? colorsAny.h3 : 0;
-    const s3 = typeof colorsAny?.s3 === "number" ? colorsAny.s3 : 0;
-    const l3 = typeof colorsAny?.l3 === "number" ? colorsAny.l3 : 0;
-
+    // Extra fields may not be present in the TypeScript type, but they
+    // exist onchain and in the ABI, so we read them defensively.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const shipDataAny = originalShip.shipData as any;
     const isFreeShip =
@@ -243,9 +242,6 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
           h2, // colors.h2
           s2, // colors.s2
           l2, // colors.l2
-          h3, // colors.h3 (preserve or default)
-          s3, // colors.s3
-          l3, // colors.l3
         ],
         variant, // traits.variant
         accuracy, // traits.accuracy
@@ -715,7 +711,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                 hull,
                 speed,
                 variant,
-                colors: { h1, s1, l1 },
+                colors: { h1, s1, l1, h2, s2, l2 },
                 shiny,
               }}
               onChange={(patch) => {
@@ -731,12 +727,18 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                 if (patch.colors?.h1 !== undefined) setH1(patch.colors.h1);
                 if (patch.colors?.s1 !== undefined) setS1(patch.colors.s1);
                 if (patch.colors?.l1 !== undefined) setL1(patch.colors.l1);
+                if (patch.colors?.h2 !== undefined) setH2(patch.colors.h2);
+                if (patch.colors?.s2 !== undefined) setS2(patch.colors.s2);
+                if (patch.colors?.l2 !== undefined) setL2(patch.colors.l2);
                 if (patch.shiny !== undefined) setShiny(patch.shiny);
               }}
               specials={validSpecials}
+              colorsTitle="COLORS"
+              colorSets={[1, 2]}
               variantLocked={isEditingExisting}
               colorsLocked={isEditingExisting}
-              showName={mode === "customize"}
+              // EXPLORE takes any name for the preview; a ship being
+              // customized keeps its own.
               nameLocked={isEditingExisting}
             />
 

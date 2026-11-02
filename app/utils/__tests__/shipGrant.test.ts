@@ -27,7 +27,7 @@ describe("shipGrantError", () => {
 
   it("rejects an empty name and out-of-range colors", () => {
     expect(shipGrantError(grant({ name: "  " }), 2)).toMatch(/name/);
-    expect(shipGrantError(grant({ colors: { ...DEFAULT_SHIP_GRANT.colors, h3: 361 } }), 2)).toMatch(/Color 3/);
+    expect(shipGrantError(grant({ colors: { ...DEFAULT_SHIP_GRANT.colors, h2: 361 } }), 2)).toMatch(/Color 2/);
   });
 });
 

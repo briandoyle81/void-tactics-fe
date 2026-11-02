@@ -19,7 +19,10 @@ import type { DialogCharacterId } from "./characters";
 // The node editors show this text but don't edit it: change it here and
 // deploy.
 
-export const ROGUELIKE_NODE_CONTENT: Record<number, NodeContentText<DialogCharacterId>> = {
+export const ROGUELIKE_NODE_CONTENT: Record<
+  number,
+  NodeContentText<DialogCharacterId>
+> = {
   1: {
     title: "A Strange Encounter",
     speaker: "adjutant",
@@ -95,6 +98,17 @@ Our future is in your hands.
     speaker: "adjutant",
     description: `We've reached the resupply station!  We can swap out damaged ships and add new ones to our fleet.  With the last escalation, we've been authorized to bring in a greater force.  I recommend we do so now.`,
   },
+  8: {
+    title: "Interference",
+    speaker: "adjutant",
+    description: `While we were refitting, our scouts have been investigating nearby sectors.  They've found an unregistered bulk freighter hauling a cargo of ship components.  It's not clear who it belongs to, but it's definitely not part of the Consortium.
+
+    I recommend we intercept the freighter.  We can seize the cargo and examine the ship's nav logs to learn its destination.
+    `,
+  },
 };
 
-export const CAMPAIGN_NODE_CONTENT: Record<number, NodeContentText<DialogCharacterId>> = {};
+export const CAMPAIGN_NODE_CONTENT: Record<
+  number,
+  NodeContentText<DialogCharacterId>
+> = {};

@@ -14,6 +14,9 @@ import ShipAttributes from "../../components/ShipAttributes";
 import EligibilityControls from "../../components/EligibilityControls";
 import ShipAttributesWeb2 from "../../components/ShipAttributesWeb2";
 import ShipPurchasePrices from "../../components/ShipPurchasePrices";
+import ShipConstructor from "../../components/ShipConstructor";
+import { AIFleetConstructor } from "../../components/aiFleet/AIFleetConstructor";
+import { AIFleetConstructorWeb2 } from "../../components/aiFleet/AIFleetConstructorWeb2";
 import ShipPurchasePricesWeb2 from "../../components/ShipPurchasePricesWeb2";
 import { RewardShipsAdmin } from "../../components/rewardShips/RewardShipsAdmin";
 import { RewardShipsAdminWeb2 } from "../../components/rewardShips/RewardShipsAdminWeb2";
@@ -43,6 +46,8 @@ const OPS_TAB_SLUGS: Record<OpsConsoleTab, string> = {
   "Reward Ships": "reward-ships",
   "Ship Attributes": "ship-attributes",
   "Purchase Prices": "purchase-prices",
+  "AI Fleet": "ai-fleet",
+  "Ship Constructor": "ship-constructor",
 };
 /** Params a tab's screen adds (Maps: the map being edited; Reward Ships: the node). */
 const OPS_CHILD_PARAMS = ["map", "node"] as const;
@@ -188,6 +193,12 @@ export default function OpsConsolePage() {
                   ))}
                 {activeTab === "Purchase Prices" &&
                   (appMode === "web2" ? <ShipPurchasePricesWeb2 /> : <ShipPurchasePrices />)}
+                {/* Opens in EXPLORE (any equipment, traits and colors, rendered
+                    locally, no writes), so it's the same in both modes; web2's
+                    own constructor (ShipConstructorWeb2) is customize-only. */}
+                {activeTab === "AI Fleet" &&
+                  (appMode === "web2" ? <AIFleetConstructorWeb2 /> : <AIFleetConstructor />)}
+                {activeTab === "Ship Constructor" && <ShipConstructor initialMode="create" />}
               </div>
             )}
           </div>

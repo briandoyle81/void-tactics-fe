@@ -9,7 +9,6 @@ const GAME_RESULTS_ABI = GameResultsContract.abi as Abi;
 export interface PlayerStats {
   wins: bigint;
   losses: bigint;
-  totalGames: bigint;
 }
 
 export function usePlayerStats(

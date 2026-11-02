@@ -1325,7 +1325,8 @@ const ManageNavy: React.FC = () => {
                         transactionId={`sync-ship-costs-${ship.id.toString()}`}
                         contractAddress={shipsContractAddress}
                         abi={CONTRACT_ABIS.SHIPS as Abi}
-                        // Ships.syncShipCosts(uint256[]): permissionless; applies
+                        // Ships.syncShipCosts(uint256[]): only for ships the caller owns
+                        // or is approved for (else reverts NotYourShip); applies
                         // getCurrentCostsVersion + calculateShipCost. Not setCostOfShip
                         // (owner / game only). Reverts onchain if ship is in fleet.
                         functionName="syncShipCosts"

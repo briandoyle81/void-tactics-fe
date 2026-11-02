@@ -281,7 +281,6 @@ export function calculateAttributesFromContracts(ship: Ship): Attributes {
     // which underflows past 100).
     damageReduction: Math.min(100, drWithRank),
     reactorCriticalTimer: 0,
-    statusEffects: [],
   };
 }
 

@@ -50,6 +50,7 @@ const CREATE_SHIPS_ABI = [
       { internalType: "uint256", name: "_amount", type: "uint256" },
       { internalType: "uint16", name: "_variant", type: "uint16" },
       { internalType: "uint8", name: "_tier", type: "uint8" },
+      { internalType: "bool", name: "_isFreeShip", type: "bool" },
     ],
     name: "createShips",
     outputs: [],
@@ -221,7 +222,7 @@ export async function POST(req: NextRequest) {
       address: shipsAddress,
       abi: CREATE_SHIPS_ABI,
       functionName: "createShips",
-      args: [purchase.buyerAddress, BigInt(shipsCount), purchase.variant, purchase.tier],
+      args: [purchase.buyerAddress, BigInt(shipsCount), purchase.variant, purchase.tier, false],
     });
     // Broadcast: from here a retry resolves this hash, never mints again.
     await prisma.flowFulfillment.update({

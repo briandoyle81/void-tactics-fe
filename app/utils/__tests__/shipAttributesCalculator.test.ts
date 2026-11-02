@@ -229,11 +229,6 @@ describe("calculateAttributesFromContracts — output shape", () => {
     expect(attrs.version).toBe(1);
   });
 
-  it("statusEffects is an empty array", () => {
-    const attrs = calculateAttributesFromContracts(makeShip({}));
-    expect(attrs.statusEffects).toEqual([]);
-  });
-
   it("reactorCriticalTimer is 0", () => {
     const attrs = calculateAttributesFromContracts(makeShip({}));
     expect(attrs.reactorCriticalTimer).toBe(0);

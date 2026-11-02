@@ -12,8 +12,8 @@ import { useSelectedChainId } from "./useSelectedChainId";
 import { useSwitchToSelectedChainIfNeeded } from "./useSwitchToSelectedChainIfNeeded";
 
 // constructShips reverts the whole batch if any id is already constructed
-// (selector 0xa6639c3e); RequestExpired bubbles up from RandomManager. Both
-// are listed so viem can decode them.
+// (selector 0xa6639c3e); RequestExpired can still bubble up from
+// RandomManager. Both are listed so viem can decode them.
 const CONSTRUCT_ERRORS = [
   { type: "error", name: "ShipConstructed", inputs: [{ internalType: "uint256", name: "", type: "uint256" }] },
   { type: "error", name: "RequestExpired", inputs: [{ internalType: "uint256", name: "requestId", type: "uint256" }] },
@@ -53,8 +53,8 @@ type LiveShip = {
  * roll, so there's no separate reveal step (see useRandomManager.ts).
  *
  * Before signing it re-reads the ships (the navy list can lag a construct)
- * and drops any already built, then checks none has expired and waits for
- * the mint block to be sealed (useEnsureConstructable). Returns false when
+ * and drops any already built, then waits for the mint block to be sealed
+ * (useEnsureConstructable). An expired ship builds as a basic ship. Returns false when
  * there was nothing left to construct. Shared by ShipActionButton and the
  * construct-right-after-mint flows (useConstructAfterMint).
  */
@@ -128,7 +128,7 @@ export function constructErrorMessage(message: string): string | null {
     return null;
   }
   if (message.includes("RequestExpired")) {
-    return "Construction window missed. Contact support to have these ships re-armed.";
+    return "Construction window missed. Refresh and try again.";
   }
   if (message.includes("TooSoonToReveal")) {
     return "These ships aren't ready to construct yet. Try again in a few seconds.";

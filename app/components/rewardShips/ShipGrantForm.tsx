@@ -74,7 +74,7 @@ export function ShipGrantForm({
           traitMax={SHIP_GRANT_TRAIT_MAX}
           variantMax={maxVariant}
           colorsTitle="COLORS"
-          colorSets={[1, 2, 3]}
+          colorSets={[1, 2]}
           shipDataExtra={
             <>
               <div>

@@ -5,6 +5,7 @@ import type { Abi } from "viem";
 import { Ship } from "../types/types";
 import { renderShip } from "../utils/shipRenderer";
 import { toShipVisual } from "../utils/toShipVisual";
+import { AI_SHIP_ID_OFFSET } from "./useShipDataCache";
 
 const SHIPS_ABI = CONTRACT_ABIS.SHIPS as Abi;
 
@@ -49,6 +50,18 @@ function currentShipsContractAddress(): string {
 
 function imageCachePrefix(): string {
   return `${CACHE_KEY_PREFIX}${currentShipsContractAddress()}:`;
+}
+
+// AI ship ids are reused across matches (see AI_SHIP_ID_OFFSET), each time
+// with another config's look (and now its shiny flag and kills), so their
+// images are keyed by that look as well as the id.
+function imageCacheId(ship: Ship): string {
+  const id = ship.id.toString();
+  if (ship.id < AI_SHIP_ID_OFFSET) return id;
+  const look = JSON.stringify(toShipVisual(ship), (_, v) => (typeof v === "bigint" ? v.toString() : v));
+  let hash = 0;
+  for (let i = 0; i < look.length; i++) hash = (Math.imul(hash, 31) + look.charCodeAt(i)) | 0;
+  return `${id}-${(hash >>> 0).toString(36)}`;
 }
 
 // Get rendering mode from localStorage
@@ -208,7 +221,7 @@ export function useShipImageCache(ship: Ship) {
   const [renderKey, setRenderKey] = useState(0);
 
   const publicClient = usePublicClient();
-  const cacheKey = `${imageCachePrefix()}${ship.id.toString()}`;
+  const cacheKey = `${imageCachePrefix()}${imageCacheId(ship)}`;
   const abortControllerRef = useRef<AbortController | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const shipId = ship.id.toString();

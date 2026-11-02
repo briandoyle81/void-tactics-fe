@@ -6,6 +6,7 @@ import { baseSepolia } from "viem/chains";
 import { useSinglePlayerMatch } from "./useSinglePlayerMatch";
 import { refetchUntilChanged } from "../utils/refetchUntilChanged";
 import { dispatchGameMoves, moveLogsFromReceipt } from "../utils/gameMoveLogs";
+import { AI_TURN_GAS_RETRIES, aiTurnTakenIn } from "../utils/aiTurnReceipt";
 import { trackAITurnFailed } from "../utils/analytics/gameEvents";
 
 // Defensive cap on consecutive takeAITurn calls for a single AI turn.
@@ -98,14 +99,24 @@ export function useAITurnLoop({
       didFire = true;
       iterationRef.current += 1;
       const signalAtSend = lastMoveSignalRef.current;
-      (batchMoves > 1 ? takeAITurns(gameId, batchMoves) : takeAITurn(gameId))
-        .then(async (hash) => {
-          if (publicClient) {
-            const receipt = await publicClient.waitForTransactionReceipt({ hash });
-            // Each AI move in this transaction plays back on the board, in
-            // order, without waiting for the event poll (gameMoveLogs.ts).
-            dispatchGameMoves(moveLogsFromReceipt(receipt.logs));
-          }
+      const send = async (attempt: number): Promise<void> => {
+        const hash = await (batchMoves > 1
+          ? takeAITurns(gameId, batchMoves, attempt)
+          : takeAITurn(gameId, attempt));
+        if (!publicClient) return;
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        // No AITurnTaken: the AI ran out of gas without acting, and it's
+        // still its turn, so resend with more gas (aiTurnReceipt.ts).
+        if (!aiTurnTakenIn(receipt.logs)) {
+          if (attempt < AI_TURN_GAS_RETRIES) return send(attempt + 1);
+          throw new Error("AI turn sent without the AI acting (no AITurnTaken)");
+        }
+        // Each AI move in this transaction plays back on the board, in
+        // order, without waiting for the event poll (gameMoveLogs.ts).
+        dispatchGameMoves(moveLogsFromReceipt(receipt.logs));
+      };
+      send(0)
+        .then(() => {
           setMoveCount((c) => c + 1);
           // Not awaited: the loop moves on as soon as fresh state lands
           // (lastMoveSignal changes and re-runs this effect).

@@ -285,7 +285,7 @@ const ShipConstructorWeb2: React.FC<ShipConstructorWeb2Props> = ({
                 hull,
                 speed,
                 variant: originalShip?.traits.variant ?? 0,
-                colors: originalShip?.traits.colors ?? { h1: 0, s1: 0, l1: 0 },
+                colors: originalShip?.traits.colors ?? { h1: 0, s1: 0, l1: 0, h2: 0, s2: 0, l2: 0 },
                 shiny,
               }}
               onChange={(patch) => {
@@ -303,6 +303,7 @@ const ShipConstructorWeb2: React.FC<ShipConstructorWeb2Props> = ({
               variantNote="Variant is preserved from the original ship."
               colorsLocked
               colorsTitle="COLORS (Preserved)"
+              colorSets={[1, 2]}
               nameLocked
             />
 

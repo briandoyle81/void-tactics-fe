@@ -21,8 +21,8 @@ const SECONDS_PER_DAY = 86400;
 // Ownable's owner() directly (unlike MAP_ADMIN_ADDRESS/isNodeEditor-style
 // gates elsewhere, since Lobbies already exposes a real owner). Has the
 // stale-lobby-pruning threshold (setStaleLobbyThreshold), added alongside
-// pruneStaleLobby (docs/update/Frontend_Updates_2026-08-27.md §4), and a UC
-// withdrawal control (withdrawUC), added since UC collected from lobby
+// pruneStaleLobby (docs/update/Frontend_Updates_2026-08-27.md §4), and a UTC
+// withdrawal control (withdrawUTC), added since UTC collected from lobby
 // reservation fees had no withdrawal path at all
 // (docs/update/Frontend_Updates_2026-09-17.md §8).
 export function LobbyAdminPanel() {
@@ -103,7 +103,7 @@ export function LobbyAdminPanel() {
       </div>
 
       <p className="text-xs text-text-muted pt-2">
-        Withdraw UC collected from lobby reservation fees.
+        Withdraw UTC collected from lobby reservation fees.
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[16rem]">
@@ -121,12 +121,12 @@ export function LobbyAdminPanel() {
           transactionId="lobbies-withdraw-uc"
           contractAddress={lobbiesAddress}
           abi={abi}
-          functionName="withdrawUC"
+          functionName="withdrawUTC"
           args={withdrawToValid ? [withdrawTo as `0x${string}`] : []}
           disabled={!withdrawToValid}
           validateBeforeTransaction={() => withdrawToValid || "Enter a valid address"}
           onSuccess={() => {
-            toast.success(`UC withdrawn to ${withdrawTo}`);
+            toast.success(`UTC withdrawn to ${withdrawTo}`);
           }}
           className="px-4 py-2 border-2 border-cyan text-cyan hover:bg-cyan/10 font-mono font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
         >

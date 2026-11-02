@@ -13,9 +13,8 @@ import type { Ship } from "../types/types";
 // roguelike roster picker.
 //
 // A ship whose construction window has passed (RandomManager.isExpired; see
-// useRandomManager.ts) can't be built until an admin re-targets it, and one
-// in a batch reverts the whole batch. Those are left out, and a note says
-// how many are waiting.
+// useRandomManager.ts) still constructs, but as a basic ship; a note says
+// how many.
 export function ConstructShipsButton({
   unconstructedShips,
   className,
@@ -27,26 +26,21 @@ export function ConstructShipsButton({
   onConstructed: () => void | Promise<void>;
 }) {
   const { expiredSerials } = useExpiredShipSerials(unconstructedShips);
-  const buildable = React.useMemo(
-    () => unconstructedShips.filter((ship) => !expiredSerials.has(ship.traits.serialNumber.toString())),
-    [unconstructedShips, expiredSerials],
-  );
-  const expiredCount = unconstructedShips.length - buildable.length;
+  const buildable = unconstructedShips;
+  const expiredCount = unconstructedShips.filter((ship) =>
+    expiredSerials.has(ship.traits.serialNumber.toString()),
+  ).length;
 
   const expiredNote =
     expiredCount > 0 ? (
       <p className="max-w-xs font-mono text-xs leading-snug text-amber">
-        {expiredCount === 1 ? "1 ship" : `${expiredCount} ships`} missed the construction window. Contact
-        support to have {expiredCount === 1 ? "it" : "them"} made buildable again.
+        {expiredCount === 1 ? "1 ship" : `${expiredCount} ships`} missed the construction window and will be
+        built as {expiredCount === 1 ? "a basic ship" : "basic ships"}.
       </p>
     ) : null;
 
-  // constructAllMyShips would include the expired ships, so with any expired
-  // the buildable ones go by id instead.
-  const constructAll = expiredCount === 0 && buildable.length <= STALE_COST_SYNC_BATCH_CAP;
+  const constructAll = buildable.length <= STALE_COST_SYNC_BATCH_CAP;
   const batch = buildable.slice(0, STALE_COST_SYNC_BATCH_CAP);
-
-  if (expiredCount > 0 && buildable.length === 0) return expiredNote;
 
   const button = constructAll ? (
     <ShipActionButton

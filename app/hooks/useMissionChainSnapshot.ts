@@ -174,6 +174,8 @@ export function useMissionChainSnapshot(): {
           speed: Number(c.traits.speed),
         },
         archetype: Number(c.archetype),
+        shiny: c.shiny,
+        shipsDestroyed: Number(c.shipsDestroyed),
       })),
       placements: placements.map((p) => ({
         mapId: p.mapId,

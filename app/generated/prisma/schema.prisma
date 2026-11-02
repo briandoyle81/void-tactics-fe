@@ -239,15 +239,20 @@ model Map {
 // (requireWeb2Admin, not per-address on-chain permissions).
 
 model AIShipConfig {
-  id        Int      @id @default(autoincrement())
-  name      String
+  id             Int      @id @default(autoincrement())
+  name           String
   // ShipEquipment: { mainWeapon, armor, shields, special }
-  equipment Json
+  equipment      Json
   // ShipTraits: { serialNumber, colors: {h1,s1,l1,h2,s2,l2}, variant, accuracy, hull, speed }
-  traits    Json
+  traits         Json
   // Archetype enum value: Grunt=0, Aggressor=1, Sniper=2, Support=3, Turtle=4, Rammer=5
-  archetype Int
-  createdAt DateTime @default(now())
+  archetype      Int
+  // Copied onto each AI ship made from this config (web3: AIEncounters
+  // AIShipConfig.shiny / shipsDestroyed): shiny is cosmetic, the kill count
+  // sets the ship's rank.
+  shiny          Boolean  @default(false)
+  shipsDestroyed Int      @default(0)
+  createdAt      DateTime @default(now())
 
   placements AIMapPlacement[]
 }

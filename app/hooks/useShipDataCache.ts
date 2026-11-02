@@ -27,7 +27,7 @@ const DEBUG_CACHE = false;
 // component could; hardcoded here deliberately, same value the contract
 // exposes as a public constant. Re-check against the contract if AI ship
 // rendering ever looks wrong after this value moves again.
-const AI_SHIP_ID_OFFSET = 2n ** 40n;
+export const AI_SHIP_ID_OFFSET = 2n ** 40n;
 
 interface CachedShipData {
   ship: Ship;

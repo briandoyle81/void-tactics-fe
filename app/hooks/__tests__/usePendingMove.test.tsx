@@ -12,7 +12,6 @@ const attrs: Attributes = {
   movement: 3,
   damageReduction: 0,
   reactorCriticalTimer: 0,
-  statusEffects: [],
 };
 
 const captureParams = (baselineLastMoveKey: string) => ({

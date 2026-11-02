@@ -174,6 +174,5 @@ export function calculateAttributesFromContractsWeb2(
     // which underflows past 100).
     damageReduction: Math.min(100, drWithRank),
     reactorCriticalTimer: 0,
-    statusEffects: [],
   };
 }

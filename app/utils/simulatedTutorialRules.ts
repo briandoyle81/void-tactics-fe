@@ -220,12 +220,7 @@ export function applyTutorialAction(
 
         const targetAttrs = { ...newAttributes[targetIndex] };
 
-        if (action.specialType === 1) {
-          targetAttrs.statusEffects = [
-            ...(targetAttrs.statusEffects || []),
-            1,
-          ];
-        } else if (action.specialType === 2) {
+        if (action.specialType === 2) {
           targetAttrs.hullPoints = hullAfterRepair(targetAttrs, 30);
         }
 

@@ -224,7 +224,6 @@ export interface Fleet {
 export interface PlayerStats {
   wins: bigint;
   losses: bigint;
-  totalGames: bigint;
 }
 
 export interface GameResult {
@@ -253,7 +252,6 @@ export interface Attributes {
   movement: number;
   damageReduction: number;
   reactorCriticalTimer: number;
-  statusEffects: number[];
 }
 
 export interface GameMetadata {
@@ -412,9 +410,6 @@ export interface AIEncountersColors {
   h2: number;
   s2: number;
   l2: number;
-  h3: number;
-  s3: number;
-  l3: number;
 }
 
 export interface AIEncountersTraits {
@@ -433,6 +428,9 @@ export interface AIShipConfig {
   equipment: ShipEquipment;
   traits: AIEncountersTraits;
   archetype: Archetype;
+  /** Copied onto every ship minted from the config: shiny, and the kill count that sets its rank. */
+  shiny: boolean;
+  shipsDestroyed: number;
 }
 
 // Maps contract types

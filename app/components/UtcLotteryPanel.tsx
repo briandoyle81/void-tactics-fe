@@ -73,8 +73,8 @@ function useNowSeconds(): number {
 
 /**
  * A won prize ship that arrived unconstructed (the random 4-star fallback):
- * it has to be built within a few hours of the draw, so it's offered here.
- * One past the window needs support to re-arm it (useExpiredShipSerials).
+ * it's offered here to build. One past its construction window builds as a
+ * basic ship (useExpiredShipSerials).
  */
 function PrizeShipsCard({
   ships,
@@ -86,8 +86,8 @@ function PrizeShipsCard({
   onConstructed: () => Promise<void>;
 }) {
   const { expiredSerials } = useExpiredShipSerials(ships);
-  const buildable = ships.filter((s) => !expiredSerials.has(s.traits.serialNumber.toString()));
-  const expiredCount = ships.length - buildable.length;
+  const buildable = ships;
+  const expiredCount = ships.filter((s) => expiredSerials.has(s.traits.serialNumber.toString())).length;
   const draws = [...new Set(ships.map((s) => drawIdByShipId.get(s.id.toString())).filter((d) => d != null))]
     .map((d) => `#${d!.toString()}`)
     .join(", ");
@@ -106,13 +106,12 @@ function PrizeShipsCard({
         ))}
       </div>
       <p className="mb-3 text-xs font-mono leading-relaxed text-text-secondary">
-        Construct {plural ? "them" : "it"} within a few hours of the draw. After that,{" "}
-        {plural ? "they" : "it"} can&apos;t be built without help from support.
+        Construct {plural ? "them" : "it"} soon after the draw.
       </p>
       {expiredCount > 0 && (
         <p className="mb-3 text-xs font-mono leading-snug text-amber">
-          {expiredCount === 1 ? "1 prize ship" : `${expiredCount} prize ships`} missed the construction window.
-          Contact support to have {expiredCount === 1 ? "it" : "them"} made buildable again.
+          {expiredCount === 1 ? "1 prize ship" : `${expiredCount} prize ships`} missed the construction window
+          and will be built as {expiredCount === 1 ? "a basic ship" : "basic ships"}.
         </p>
       )}
       {buildable.length > 0 && (

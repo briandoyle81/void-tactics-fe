@@ -15,7 +15,6 @@ const attrs = (hull: number, max = 100): Attributes => ({
   movement: 1,
   damageReduction: 0,
   reactorCriticalTimer: 0,
-  statusEffects: [],
 });
 
 describe("roster hull", () => {

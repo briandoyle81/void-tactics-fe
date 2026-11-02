@@ -443,6 +443,96 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       trigger: { type: "missionDefeat" },
     },
   ],
+  8: [
+    {
+      id: "roguelike-8-start",
+      characterId: "adjutant",
+      text: "Exiting warp.  Large debris field on can.  Admiral, it's the freighter, or what's left of it. Looks like someone got here first.",
+      trigger: { type: "missionStart" },
+      responses: [
+        {
+          characterId: "adjutant",
+          text: "Large fleet on scan.  Battle stations!",
+        },
+        {
+          characterId: "harcourt",
+          text: "Attention interloping fleet: Remove yourselves from this area, you have no business here.  Run along.",
+        },
+        {
+          characterId: "adjutant",
+          text: "Oh, this is just my luck. Gideon, I don't know what you and your cronies are doing here, but we're in the middle of something and I don't have time to deal with you.  Go away.",
+        },
+        {
+          characterId: "harcourt",
+          text: "Commander Bosch, I see you remain completely ignorant to the practices of common decency.  Admiral, allow me to introduce myself. I am Supreme Admiral Gideon Harcourt, senior commander of Sovereign Dynamics' forces.",
+        },
+        {
+          characterId: "adjutant",
+          text: "Great.  Now that we've finished with that, leave us alone. Space is free, you can't order us around.",
+        },
+        {
+          characterId: "harcourt",
+          text: "Oh space is free, just not quite this part of it.  We claim this resource site for Sovereign Dynamics under Article 10. Unless you intend to enter into a mutually agreed contest for these resources, you are obligated to leave.",
+        },
+        {
+          characterId: "adjutant",
+          text: "Resources!?  You mean that tiny rock?  You're insane, Gideon. It would take forever to mine enough resources for Central to accept a claim.",
+        },
+        {
+          characterId: "harcourt",
+          text: "It will take awhile, but as with most things, I have time in abundance.",
+        },
+      ],
+    },
+    {
+      id: "roguelike-8-enemy-resources-1",
+      characterId: "harcourt",
+      text: "We've already started mining.  It's only a matter of time before this valuable site is claimed by Sovereign Dynamics.",
+      trigger: { type: "resourceTileTaken", side: "enemy", count: 1 },
+      responses: [
+        {
+          characterId: "adjutant",
+          text: "Blowhard.",
+        },
+      ],
+    },
+    {
+      id: "roguelike-8-player-resources-1",
+      characterId: "adjutant",
+      text: "Fine, if you want to play games, we'll play games.",
+      trigger: { type: "resourceTileTaken", side: "player", count: 1 },
+      responses: [
+        {
+          characterId: "adjutant",
+          text: "Commander Bosch, you really must learn to behave with more decorum.",
+        },
+      ],
+    },
+    {
+      id: "roguelike-8-victory",
+      characterId: "adjutant",
+      text: "Hah!  I knew we could take that clown.",
+      trigger: { type: "missionVictory" },
+      responses: [
+        {
+          characterId: "harcourt",
+          text: "I'll be back, Bosch.  You'll see.",
+        },
+      ],
+    },
+    {
+      id: "roguelike-8-defeat",
+      characterId: "adjutant",
+      text: "Damn it.  I hate losing, but it's even worse when we lose to an insufferable little twit like Gideon.",
+      responses: [
+        {
+          characterId: "harcourt",
+          text: "Good bye, Admiral. It looks like we'll be the ones capitalizing on this opportunity.",
+        },
+      ],
+      trigger: { type: "missionDefeat" },
+    },
+  ],
 };
 
 /** Campaign mission lines, by campaign node id (separate numbering). */

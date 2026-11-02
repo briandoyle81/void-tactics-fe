@@ -13270,17 +13270,21 @@ export namespace Prisma {
   export type AIShipConfigAvgAggregateOutputType = {
     id: number | null
     archetype: number | null
+    shipsDestroyed: number | null
   }
 
   export type AIShipConfigSumAggregateOutputType = {
     id: number | null
     archetype: number | null
+    shipsDestroyed: number | null
   }
 
   export type AIShipConfigMinAggregateOutputType = {
     id: number | null
     name: string | null
     archetype: number | null
+    shiny: boolean | null
+    shipsDestroyed: number | null
     createdAt: Date | null
   }
 
@@ -13288,6 +13292,8 @@ export namespace Prisma {
     id: number | null
     name: string | null
     archetype: number | null
+    shiny: boolean | null
+    shipsDestroyed: number | null
     createdAt: Date | null
   }
 
@@ -13297,6 +13303,8 @@ export namespace Prisma {
     equipment: number
     traits: number
     archetype: number
+    shiny: number
+    shipsDestroyed: number
     createdAt: number
     _all: number
   }
@@ -13305,17 +13313,21 @@ export namespace Prisma {
   export type AIShipConfigAvgAggregateInputType = {
     id?: true
     archetype?: true
+    shipsDestroyed?: true
   }
 
   export type AIShipConfigSumAggregateInputType = {
     id?: true
     archetype?: true
+    shipsDestroyed?: true
   }
 
   export type AIShipConfigMinAggregateInputType = {
     id?: true
     name?: true
     archetype?: true
+    shiny?: true
+    shipsDestroyed?: true
     createdAt?: true
   }
 
@@ -13323,6 +13335,8 @@ export namespace Prisma {
     id?: true
     name?: true
     archetype?: true
+    shiny?: true
+    shipsDestroyed?: true
     createdAt?: true
   }
 
@@ -13332,6 +13346,8 @@ export namespace Prisma {
     equipment?: true
     traits?: true
     archetype?: true
+    shiny?: true
+    shipsDestroyed?: true
     createdAt?: true
     _all?: true
   }
@@ -13428,6 +13444,8 @@ export namespace Prisma {
     equipment: JsonValue
     traits: JsonValue
     archetype: number
+    shiny: boolean
+    shipsDestroyed: number
     createdAt: Date
     _count: AIShipConfigCountAggregateOutputType | null
     _avg: AIShipConfigAvgAggregateOutputType | null
@@ -13456,6 +13474,8 @@ export namespace Prisma {
     equipment?: boolean
     traits?: boolean
     archetype?: boolean
+    shiny?: boolean
+    shipsDestroyed?: boolean
     createdAt?: boolean
     placements?: boolean | AIShipConfig$placementsArgs<ExtArgs>
     _count?: boolean | AIShipConfigCountOutputTypeDefaultArgs<ExtArgs>
@@ -13467,6 +13487,8 @@ export namespace Prisma {
     equipment?: boolean
     traits?: boolean
     archetype?: boolean
+    shiny?: boolean
+    shipsDestroyed?: boolean
     createdAt?: boolean
   }, ExtArgs["result"]["aIShipConfig"]>
 
@@ -13476,6 +13498,8 @@ export namespace Prisma {
     equipment?: boolean
     traits?: boolean
     archetype?: boolean
+    shiny?: boolean
+    shipsDestroyed?: boolean
     createdAt?: boolean
   }, ExtArgs["result"]["aIShipConfig"]>
 
@@ -13485,10 +13509,12 @@ export namespace Prisma {
     equipment?: boolean
     traits?: boolean
     archetype?: boolean
+    shiny?: boolean
+    shipsDestroyed?: boolean
     createdAt?: boolean
   }
 
-  export type AIShipConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "equipment" | "traits" | "archetype" | "createdAt", ExtArgs["result"]["aIShipConfig"]>
+  export type AIShipConfigOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "equipment" | "traits" | "archetype" | "shiny" | "shipsDestroyed" | "createdAt", ExtArgs["result"]["aIShipConfig"]>
   export type AIShipConfigInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     placements?: boolean | AIShipConfig$placementsArgs<ExtArgs>
     _count?: boolean | AIShipConfigCountOutputTypeDefaultArgs<ExtArgs>
@@ -13507,6 +13533,8 @@ export namespace Prisma {
       equipment: Prisma.JsonValue
       traits: Prisma.JsonValue
       archetype: number
+      shiny: boolean
+      shipsDestroyed: number
       createdAt: Date
     }, ExtArgs["result"]["aIShipConfig"]>
     composites: {}
@@ -13937,6 +13965,8 @@ export namespace Prisma {
     readonly equipment: FieldRef<"AIShipConfig", 'Json'>
     readonly traits: FieldRef<"AIShipConfig", 'Json'>
     readonly archetype: FieldRef<"AIShipConfig", 'Int'>
+    readonly shiny: FieldRef<"AIShipConfig", 'Boolean'>
+    readonly shipsDestroyed: FieldRef<"AIShipConfig", 'Int'>
     readonly createdAt: FieldRef<"AIShipConfig", 'DateTime'>
   }
     
@@ -38447,6 +38477,8 @@ export namespace Prisma {
     equipment: 'equipment',
     traits: 'traits',
     archetype: 'archetype',
+    shiny: 'shiny',
+    shipsDestroyed: 'shipsDestroyed',
     createdAt: 'createdAt'
   };
 
@@ -39695,6 +39727,8 @@ export namespace Prisma {
     equipment?: JsonFilter<"AIShipConfig">
     traits?: JsonFilter<"AIShipConfig">
     archetype?: IntFilter<"AIShipConfig"> | number
+    shiny?: BoolFilter<"AIShipConfig"> | boolean
+    shipsDestroyed?: IntFilter<"AIShipConfig"> | number
     createdAt?: DateTimeFilter<"AIShipConfig"> | Date | string
     placements?: AIMapPlacementListRelationFilter
   }
@@ -39705,6 +39739,8 @@ export namespace Prisma {
     equipment?: SortOrder
     traits?: SortOrder
     archetype?: SortOrder
+    shiny?: SortOrder
+    shipsDestroyed?: SortOrder
     createdAt?: SortOrder
     placements?: AIMapPlacementOrderByRelationAggregateInput
   }
@@ -39718,6 +39754,8 @@ export namespace Prisma {
     equipment?: JsonFilter<"AIShipConfig">
     traits?: JsonFilter<"AIShipConfig">
     archetype?: IntFilter<"AIShipConfig"> | number
+    shiny?: BoolFilter<"AIShipConfig"> | boolean
+    shipsDestroyed?: IntFilter<"AIShipConfig"> | number
     createdAt?: DateTimeFilter<"AIShipConfig"> | Date | string
     placements?: AIMapPlacementListRelationFilter
   }, "id">
@@ -39728,6 +39766,8 @@ export namespace Prisma {
     equipment?: SortOrder
     traits?: SortOrder
     archetype?: SortOrder
+    shiny?: SortOrder
+    shipsDestroyed?: SortOrder
     createdAt?: SortOrder
     _count?: AIShipConfigCountOrderByAggregateInput
     _avg?: AIShipConfigAvgOrderByAggregateInput
@@ -39745,6 +39785,8 @@ export namespace Prisma {
     equipment?: JsonWithAggregatesFilter<"AIShipConfig">
     traits?: JsonWithAggregatesFilter<"AIShipConfig">
     archetype?: IntWithAggregatesFilter<"AIShipConfig"> | number
+    shiny?: BoolWithAggregatesFilter<"AIShipConfig"> | boolean
+    shipsDestroyed?: IntWithAggregatesFilter<"AIShipConfig"> | number
     createdAt?: DateTimeWithAggregatesFilter<"AIShipConfig"> | Date | string
   }
 
@@ -41997,6 +42039,8 @@ export namespace Prisma {
     equipment: JsonNullValueInput | InputJsonValue
     traits: JsonNullValueInput | InputJsonValue
     archetype: number
+    shiny?: boolean
+    shipsDestroyed?: number
     createdAt?: Date | string
     placements?: AIMapPlacementCreateNestedManyWithoutConfigInput
   }
@@ -42007,6 +42051,8 @@ export namespace Prisma {
     equipment: JsonNullValueInput | InputJsonValue
     traits: JsonNullValueInput | InputJsonValue
     archetype: number
+    shiny?: boolean
+    shipsDestroyed?: number
     createdAt?: Date | string
     placements?: AIMapPlacementUncheckedCreateNestedManyWithoutConfigInput
   }
@@ -42016,6 +42062,8 @@ export namespace Prisma {
     equipment?: JsonNullValueInput | InputJsonValue
     traits?: JsonNullValueInput | InputJsonValue
     archetype?: IntFieldUpdateOperationsInput | number
+    shiny?: BoolFieldUpdateOperationsInput | boolean
+    shipsDestroyed?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     placements?: AIMapPlacementUpdateManyWithoutConfigNestedInput
   }
@@ -42026,6 +42074,8 @@ export namespace Prisma {
     equipment?: JsonNullValueInput | InputJsonValue
     traits?: JsonNullValueInput | InputJsonValue
     archetype?: IntFieldUpdateOperationsInput | number
+    shiny?: BoolFieldUpdateOperationsInput | boolean
+    shipsDestroyed?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     placements?: AIMapPlacementUncheckedUpdateManyWithoutConfigNestedInput
   }
@@ -42036,6 +42086,8 @@ export namespace Prisma {
     equipment: JsonNullValueInput | InputJsonValue
     traits: JsonNullValueInput | InputJsonValue
     archetype: number
+    shiny?: boolean
+    shipsDestroyed?: number
     createdAt?: Date | string
   }
 
@@ -42044,6 +42096,8 @@ export namespace Prisma {
     equipment?: JsonNullValueInput | InputJsonValue
     traits?: JsonNullValueInput | InputJsonValue
     archetype?: IntFieldUpdateOperationsInput | number
+    shiny?: BoolFieldUpdateOperationsInput | boolean
+    shipsDestroyed?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -42053,6 +42107,8 @@ export namespace Prisma {
     equipment?: JsonNullValueInput | InputJsonValue
     traits?: JsonNullValueInput | InputJsonValue
     archetype?: IntFieldUpdateOperationsInput | number
+    shiny?: BoolFieldUpdateOperationsInput | boolean
+    shipsDestroyed?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -44414,18 +44470,23 @@ export namespace Prisma {
     equipment?: SortOrder
     traits?: SortOrder
     archetype?: SortOrder
+    shiny?: SortOrder
+    shipsDestroyed?: SortOrder
     createdAt?: SortOrder
   }
 
   export type AIShipConfigAvgOrderByAggregateInput = {
     id?: SortOrder
     archetype?: SortOrder
+    shipsDestroyed?: SortOrder
   }
 
   export type AIShipConfigMaxOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
     archetype?: SortOrder
+    shiny?: SortOrder
+    shipsDestroyed?: SortOrder
     createdAt?: SortOrder
   }
 
@@ -44433,12 +44494,15 @@ export namespace Prisma {
     id?: SortOrder
     name?: SortOrder
     archetype?: SortOrder
+    shiny?: SortOrder
+    shipsDestroyed?: SortOrder
     createdAt?: SortOrder
   }
 
   export type AIShipConfigSumOrderByAggregateInput = {
     id?: SortOrder
     archetype?: SortOrder
+    shipsDestroyed?: SortOrder
   }
 
   export type MapScalarRelationFilter = {
@@ -51234,6 +51298,8 @@ export namespace Prisma {
     equipment: JsonNullValueInput | InputJsonValue
     traits: JsonNullValueInput | InputJsonValue
     archetype: number
+    shiny?: boolean
+    shipsDestroyed?: number
     createdAt?: Date | string
   }
 
@@ -51243,6 +51309,8 @@ export namespace Prisma {
     equipment: JsonNullValueInput | InputJsonValue
     traits: JsonNullValueInput | InputJsonValue
     archetype: number
+    shiny?: boolean
+    shipsDestroyed?: number
     createdAt?: Date | string
   }
 
@@ -51311,6 +51379,8 @@ export namespace Prisma {
     equipment?: JsonNullValueInput | InputJsonValue
     traits?: JsonNullValueInput | InputJsonValue
     archetype?: IntFieldUpdateOperationsInput | number
+    shiny?: BoolFieldUpdateOperationsInput | boolean
+    shipsDestroyed?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -51320,6 +51390,8 @@ export namespace Prisma {
     equipment?: JsonNullValueInput | InputJsonValue
     traits?: JsonNullValueInput | InputJsonValue
     archetype?: IntFieldUpdateOperationsInput | number
+    shiny?: BoolFieldUpdateOperationsInput | boolean
+    shipsDestroyed?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 

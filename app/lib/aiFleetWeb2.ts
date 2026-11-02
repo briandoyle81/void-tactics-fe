@@ -52,6 +52,9 @@ export async function generateAiFleetForMap(
         costsVersion: costs.version,
         constructed: true,
         inFleet: true,
+        // The config sets these, like AIShips.allocateShip on chain.
+        shiny: config.shiny,
+        shipsDestroyed: config.shipsDestroyed,
       },
     });
     shipIds.push(ship.id);

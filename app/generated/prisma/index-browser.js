@@ -231,6 +231,8 @@ exports.Prisma.AIShipConfigScalarFieldEnum = {
   equipment: 'equipment',
   traits: 'traits',
   archetype: 'archetype',
+  shiny: 'shiny',
+  shipsDestroyed: 'shipsDestroyed',
   createdAt: 'createdAt'
 };
 

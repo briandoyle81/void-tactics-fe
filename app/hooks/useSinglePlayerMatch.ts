@@ -6,6 +6,7 @@ import { baseSepolia } from "viem/chains";
 import { encodeFunctionData, type Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 import { paddedGasLimit } from "../utils/gasLimit";
+import { aiTurnGas } from "../utils/aiTurnReceipt";
 
 // SinglePlayerMatch is Base Sepolia only today — pin to that chain directly
 // rather than following the connected wallet/picker chain, same pattern as
@@ -74,15 +75,16 @@ export function useSinglePlayerMatch() {
     [writeContractAsync, config],
   );
 
+  // attempt > 0 resends with more gas (aiTurnReceipt.ts).
   const takeAITurn = useCallback(
-    (gameId: bigint) =>
+    (gameId: bigint, attempt = 0) =>
       writeContractAsync({
         address: SINGLE_PLAYER_MATCH_ADDRESS,
         abi: SINGLE_PLAYER_MATCH_ABI,
         functionName: "takeAITurn",
         args: [gameId],
         chainId: CHAIN_ID,
-        gas: TAKE_AI_TURN_GAS_LIMIT,
+        gas: aiTurnGas(TAKE_AI_TURN_GAS_LIMIT, attempt),
       }),
     [writeContractAsync],
   );
@@ -90,14 +92,14 @@ export function useSinglePlayerMatch() {
   // Several AI moves in one tx — only when the human has no unmoved ships
   // left this round (see app/utils/aiTurnBatch.ts). Gas scales per move.
   const takeAITurns = useCallback(
-    (gameId: bigint, maxMoves: number) =>
+    (gameId: bigint, maxMoves: number, attempt = 0) =>
       writeContractAsync({
         address: SINGLE_PLAYER_MATCH_ADDRESS,
         abi: SINGLE_PLAYER_MATCH_ABI,
         functionName: "takeAITurns",
         args: [gameId, BigInt(maxMoves)],
         chainId: CHAIN_ID,
-        gas: TAKE_AI_TURN_GAS_LIMIT * BigInt(maxMoves),
+        gas: aiTurnGas(TAKE_AI_TURN_GAS_LIMIT * BigInt(maxMoves), attempt),
       }),
     [writeContractAsync],
   );

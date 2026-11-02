@@ -24,7 +24,7 @@ export interface ShipSpecControlsValue {
   shiny: boolean;
 }
 
-type ColorSet = 1 | 2 | 3;
+type ColorSet = 1 | 2;
 
 const SECTION_CLASS = "border border-gunmetal bg-steel p-3 md:p-4";
 const SELECT_CLASS =
@@ -86,6 +86,7 @@ export function ShipSpecControls({
   colorSets = [1],
   showName = true,
   nameLocked = false,
+  showShiny = true,
   shipDataExtra,
 }: {
   value: ShipSpecControlsValue;
@@ -102,6 +103,8 @@ export function ShipSpecControls({
   colorSets?: readonly ColorSet[];
   showName?: boolean;
   nameLocked?: boolean;
+  /** Off for specs with no shiny flag (AI ship configs). */
+  showShiny?: boolean;
   /** More fields at the end of the Ship Data section. */
   shipDataExtra?: React.ReactNode;
 }) {
@@ -236,7 +239,11 @@ export function ShipSpecControls({
         {colorSets.map((n) => (
           <React.Fragment key={n}>
             {colorSets.length > 1 && (
-              <div className="pt-1 text-xs font-bold uppercase tracking-wider text-text-secondary">Color {n}</div>
+              <div className="pt-1 text-xs font-bold uppercase tracking-wider text-text-secondary">
+                Color {n}
+                {/* The ship art (renderer and RenderUtils.sol) only reads color 1. */}
+                {n === 2 && <span className="font-normal normal-case text-text-muted"> (not yet implemented)</span>}
+              </div>
             )}
             <Range
               label={`Hue ${n}`}
@@ -278,16 +285,18 @@ export function ShipSpecControls({
             />
           </div>
         )}
-        <label className="flex items-center gap-2 text-sm text-cyan cursor-pointer">
-          <input
-            type="checkbox"
-            checked={value.shiny}
-            onChange={(e) => onChange({ shiny: e.target.checked })}
-            className={RADIO_CLASS}
-            style={{ borderRadius: 0 }}
-          />
-          <span>Shiny</span>
-        </label>
+        {showShiny && (
+          <label className="flex items-center gap-2 text-sm text-cyan cursor-pointer">
+            <input
+              type="checkbox"
+              checked={value.shiny}
+              onChange={(e) => onChange({ shiny: e.target.checked })}
+              className={RADIO_CLASS}
+              style={{ borderRadius: 0 }}
+            />
+            <span>Shiny</span>
+          </label>
+        )}
         {shipDataExtra}
       </Section>
     </>

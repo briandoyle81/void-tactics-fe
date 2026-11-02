@@ -190,6 +190,18 @@ describe("buildMissionSeedFiles", () => {
     expect(files.roguelike.edges).toEqual([{ from: "m01", to: "r01" }]);
   });
 
+  it("writes an AI config's shiny flag and kill count only when they're set", () => {
+    const seed = fixture();
+    const chain = chainFromSeed(seed);
+    chain.aiConfigs[1] = { ...chain.aiConfigs[1], shiny: true, shipsDestroyed: 120 };
+    chain.aiConfigs[0] = { ...chain.aiConfigs[0], shiny: false, shipsDestroyed: 0 };
+
+    const { files } = buildMissionSeedFiles(chain, seed);
+    expect(files.singlePlayer.aiShipConfigs[1]).toMatchObject({ key: "brute", shiny: true, shipsDestroyed: 120 });
+    expect(files.singlePlayer.aiShipConfigs[0]).not.toHaveProperty("shiny");
+    expect(files.singlePlayer.aiShipConfigs[0]).not.toHaveProperty("shipsDestroyed");
+  });
+
   it("exports reward ships and warns when Grant Ship and the ship don't match", () => {
     const seed = fixture();
     const chain = chainFromSeed(seed);

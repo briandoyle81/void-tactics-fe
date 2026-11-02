@@ -15,9 +15,6 @@ export interface ShipGrantColors {
   h2: number;
   s2: number;
   l2: number;
-  h3: number;
-  s3: number;
-  l3: number;
 }
 
 export interface ShipGrantSpec {
@@ -46,7 +43,7 @@ const NAME_MAX = 64;
 export const DEFAULT_SHIP_GRANT: ShipGrantSpec = {
   name: "Reward Ship",
   equipment: { mainWeapon: 0, armor: 0, shields: 0, special: 0 },
-  colors: { h1: 220, s1: 50, l1: 50, h2: 220, s2: 50, l2: 50, h3: 220, s3: 50, l3: 50 },
+  colors: { h1: 220, s1: 50, l1: 50, h2: 220, s2: 50, l2: 50 },
   variant: 1,
   accuracy: 0,
   hull: 0,
@@ -80,7 +77,7 @@ export function shipGrantError(spec: ShipGrantSpec, maxVariant: number): string 
   if (armor > 0 && shields > 0) return "A ship can't have both armor and shields.";
   if (!isIntIn(special, 0, 255)) return "Unknown special.";
   const c = spec.colors;
-  for (const n of [1, 2, 3] as const) {
+  for (const n of [1, 2] as const) {
     const h = c[`h${n}`];
     const s = c[`s${n}`];
     const l = c[`l${n}`];
@@ -112,7 +109,6 @@ export function parseShipGrant(value: unknown): ShipGrantSpec | null {
     colors: {
       h1: num(col.h1), s1: num(col.s1), l1: num(col.l1),
       h2: num(col.h2), s2: num(col.s2), l2: num(col.l2),
-      h3: num(col.h3), s3: num(col.s3), l3: num(col.l3),
     },
     variant: num(v.variant),
     accuracy: num(v.accuracy),
