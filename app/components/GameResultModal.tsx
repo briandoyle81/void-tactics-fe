@@ -211,19 +211,19 @@ export function GameResultModal({
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              {...pressProps(onPrimaryAction)}
-              className="flex-1 border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
-              style={{ ...STYLE_LABEL, borderColor: accentColor, color: accentColor, borderRadius: 0 }}
-            >
-              {primaryActionLabel}
-            </button>
-            <button
-              type="button"
               {...pressProps(onClose)}
               className="flex-1 border px-4 py-2 text-sm uppercase tracking-wider text-text-secondary transition-colors hover:bg-white/5"
               style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", borderRadius: 0 }}
             >
               Review Board
+            </button>
+            <button
+              type="button"
+              {...pressProps(onPrimaryAction)}
+              className="flex-1 border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
+              style={{ ...STYLE_LABEL, borderColor: accentColor, color: accentColor, borderRadius: 0 }}
+            >
+              {primaryActionLabel}
             </button>
           </div>
         </div>

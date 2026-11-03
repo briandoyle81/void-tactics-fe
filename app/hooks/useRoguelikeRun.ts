@@ -52,9 +52,9 @@ export function resetRoguelikeRunQueries(queryClient: QueryClient): void {
  * pre-mission roster HP (and cleared/locked nodes) — e.g. showing a damaged
  * fleet at full hull after its first fight.
  */
-export function invalidateRoguelikeRunQueries(queryClient: QueryClient): void {
+export function invalidateRoguelikeRunQueries(queryClient: QueryClient): Promise<void> {
   void invalidateShipsReads(queryClient);
-  void queryClient.invalidateQueries({ predicate: (query) => isRoguelikeRunQuery(query.queryKey) });
+  return queryClient.invalidateQueries({ predicate: (query) => isRoguelikeRunQuery(query.queryKey) });
 }
 
 export function useGetRoguelikeRun(playerAddress: Address | undefined, enabled = true) {

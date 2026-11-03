@@ -30,6 +30,7 @@ import { CONTRACT_ABIS } from "../config/contracts";
 import { navigateToGame } from "../utils/navigateToGame";
 import { DUPLICATE_SHIP_ID_TOAST } from "../utils/fleetShipIds";
 import { useRoguelikeRunView } from "../hooks/useGameLens";
+import { invalidateRoguelikeRunQueries } from "../hooks/useRoguelikeRun";
 import { currentHullFromOnchainRosterHp, overlayHullPoints } from "../utils/rosterHull";
 
 const ENEMY_PREVIEW_ID_OFFSET = 100_000_000n;
@@ -166,9 +167,15 @@ export function RoguelikeCombatModal({
           console.error("CombatNodeEntered event not found in receipt", receipt);
         } else {
           setIsWarping(true);
-          const found = address
-            ? await waitForPlayerGame({ config: wagmiConfig, queryClient, playerAddress: address, gameId })
-            : false;
+          // The battle reads its mission (dialog, title, music) from the
+          // run's current node: refetch the run first, or it opens on the
+          // previous node's cached run and plays that mission's dialog.
+          const [found] = await Promise.all([
+            address
+              ? waitForPlayerGame({ config: wagmiConfig, queryClient, playerAddress: address, gameId })
+              : Promise.resolve(false),
+            invalidateRoguelikeRunQueries(queryClient),
+          ]);
           if (!found) toast("Mission started. Still syncing your games list…");
           navigateToGame(address, gameId);
         }
