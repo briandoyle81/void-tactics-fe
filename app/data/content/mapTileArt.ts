@@ -18,7 +18,8 @@ import type { MapTileArtContent } from "../../utils/mapTileArt";
 
 export const MAP_TILE_ART: MapTileArtContent = {
   maps: {
-    67: [
+    // Repair Facility DS7
+    62: [
       {
         src: "/img/repair-station-tile.png",
         alt: "Repair station",
@@ -31,7 +32,7 @@ export const MAP_TILE_ART: MapTileArtContent = {
       },
     ],
     // New Scapa Shipyard
-    68: [
+    61: [
       {
         src: "/img/space-dock-tile.png",
         alt: "Space dock",
@@ -46,9 +47,9 @@ export const MAP_TILE_ART: MapTileArtContent = {
   },
   campaignNodes: {},
   roguelikeNodes: {
-    // d01
-    16: 68,
-    // r01
-    31: 67,
+    // d01 Sneak Attack
+    16: 61,
+    // r01 Repair Station DS7
+    31: 62,
   },
 };

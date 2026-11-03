@@ -241,8 +241,8 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       trigger: { type: "missionDefeat" },
     },
   ],
-  // Resupply Station
-  4: [
+  // Shocking Revelation (seed m05)
+  5: [
     {
       id: "roguelike-4-start",
       characterId: "adjutant",
@@ -300,8 +300,8 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       ],
     },
   ],
-  // Shocking Revelation
-  5: [
+  // Sneak Attack (seed d01)
+  16: [
     {
       id: "roguelike-4-player-resources-1",
       characterId: "drone",

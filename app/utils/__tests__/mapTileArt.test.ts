@@ -49,18 +49,18 @@ describe("map tile art", () => {
     expect(tileArtProblem({ ...DOCK, col: 15 }, () => true, () => true)).toMatch(/runs off the board/);
   });
 
-  it("has the space dock on map 68 (node 16) and the repair station on map 67 (node 31)", () => {
-    expect(mapTileArtFor(68).map((a) => a.src)).toEqual(["/img/space-dock-tile.png"]);
-    expect(mapTileArtFor(67).map((a) => a.src)).toEqual(["/img/repair-station-tile.png"]);
-    expect(nodeTileArtFor("ROGUELIKE", 16)).toBe(mapTileArtFor(68));
-    expect(nodeTileArtFor("ROGUELIKE", 31)).toBe(mapTileArtFor(67));
+  it("has the space dock on map 61 (node 16) and the repair station on map 62 (node 31)", () => {
+    expect(mapTileArtFor(61).map((a) => a.src)).toEqual(["/img/space-dock-tile.png"]);
+    expect(mapTileArtFor(62).map((a) => a.src)).toEqual(["/img/repair-station-tile.png"]);
+    expect(nodeTileArtFor("ROGUELIKE", 16)).toBe(mapTileArtFor(61));
+    expect(nodeTileArtFor("ROGUELIKE", 31)).toBe(mapTileArtFor(62));
     expect(nodeTileArtFor("CAMPAIGN", 31)).toEqual([]);
     expect(mapTileArtFor(undefined)).toEqual([]);
   });
 
-  it("reports map 68's art fitting its live tiles", () => {
+  it("reports map 61's art fitting its live tiles", () => {
     const pos = square.map(([row, col]) => ({ row, col }));
-    expect(mapTileArtProblems(68, pos, pos)).toEqual([]);
-    expect(mapTileArtProblems(68, pos, pos.slice(1))).toHaveLength(1);
+    expect(mapTileArtProblems(61, pos, pos)).toEqual([]);
+    expect(mapTileArtProblems(61, pos, pos.slice(1))).toHaveLength(1);
   });
 });
