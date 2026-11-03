@@ -1,6 +1,7 @@
 import { parseEventLogs, type Abi, type Log } from "viem";
 import { CONTRACT_ABIS } from "../config/contracts";
 import { eventAbi } from "../hooks/useCombinedEventWatch";
+import { fromOnChainActionType } from "./normalizeGameDataView";
 
 // Game's Move event, one per action: the moves an AI batch (takeAITurns)
 // or an opponent made, each in order, which the game read's single lastMove
@@ -51,7 +52,9 @@ export function toGameMoveLogs(logs: readonly (Log & { args?: unknown })[]): Gam
       oldCol: Number(args.oldCol),
       newRow: Number(args.newRow),
       newCol: Number(args.newCol),
-      actionType: Number(args.actionType),
+      // The app's ActionType, as the game read's lastMove is (FactionAbility
+      // is 5 on chain, 7 here), so the same move from both matches.
+      actionType: fromOnChainActionType(Number(args.actionType)),
       targetShipId: Number(args.targetShipId ?? 0n),
       blockNumber: log.blockNumber ?? 0n,
       logIndex: log.logIndex ?? 0,

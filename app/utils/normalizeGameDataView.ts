@@ -26,6 +26,11 @@ export function normalizeGameDataView(data: GameDataView): GameDataView {
   };
 }
 
+/** A raw on-chain `Game.ActionType` (lastMove, a Move event) as the app-wide `ActionType`. */
+export function fromOnChainActionType(actionType: number): number {
+  return actionType === RAW_ONCHAIN_FACTION_ABILITY ? ActionType.FactionAbility : actionType;
+}
+
 /**
  * The write-side inverse of the above: `moveShip`'s `actionType` parameter
  * is a raw uint8 that Solidity casts straight to `Game.ActionType`, which

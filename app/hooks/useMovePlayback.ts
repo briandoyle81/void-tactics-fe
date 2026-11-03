@@ -81,8 +81,6 @@ export function useMovePlayback() {
 
   const enqueue = useCallback((moves: BoardMove[]) => {
     const fresh = moves.filter((m, i) => !seenRef.current.includes(m.key) && moves.findIndex((o) => o.key === m.key) === i);
-    // TEMP DEBUG (double AI move): remove once found.
-    console.debug("[playback] enqueue", moves.map((m) => `${m.key} ${m.from.row},${m.from.col}->${m.to.row},${m.to.col}`), "fresh:", fresh.length, new Error().stack);
     if (fresh.length === 0) return;
     seenRef.current = [...seenRef.current, ...fresh.map((m) => m.key)].slice(-PLAYED_KEYS_KEPT);
     dispatch({ type: "enqueue", moves: fresh });
@@ -103,11 +101,7 @@ export function useMovePlayback() {
   }, []);
 
   /** Drops everything queued (a reverted move, stepping a replay back). */
-  const reset = useCallback(() => {
-    // TEMP DEBUG (double AI move): remove once found.
-    console.debug("[playback] reset", new Error().stack);
-    dispatch({ type: "reset" });
-  }, []);
+  const reset = useCallback(() => dispatch({ type: "reset" }), []);
 
   const { queue, phase, landed } = state;
   const active: ActivePlayback | null = useMemo(
