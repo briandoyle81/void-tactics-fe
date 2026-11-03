@@ -25,8 +25,10 @@ import {
   resupplyCostLimit,
   rosterModifyDiff,
 } from "../utils/resupplyFleet";
+import { minRosterCostFor } from "../utils/roguelikeRunRequirements";
 import { FLEET_HEADER_ACTION_CLASS } from "./FleetBriefing";
 import { ResupplyRepairBox } from "./ResupplyRepairBox";
+import { WeakerFleetToggle } from "./WeakerFleetToggle";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
 import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
 
@@ -140,7 +142,13 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
     });
 
   const isOverCap = fleet.totalCost > costLimit && costLimit > 0;
-  const rosterValid = fleet.selectedShips.length > 0 && !isOverCap;
+  // Every fleet selection in a run needs the same minimum as the first,
+  // unless the player ticks WeakerFleetToggle to commit a weaker fleet.
+  const minRosterCost = minRosterCostFor(costLimit);
+  const isUnderMin = fleet.totalCost < minRosterCost;
+  const [allowWeakerFleet, setAllowWeakerFleet] = React.useState(false);
+  const blockedUnderMin = isUnderMin && !allowWeakerFleet;
+  const rosterValid = fleet.selectedShips.length > 0 && !isOverCap && !blockedUnderMin;
 
   const selectedRosterKeys = React.useMemo(
     () => new Set(fleet.selectedShips.filter((id) => rosterIdSet.has(id.toString())).map((id) => id.toString())),
@@ -209,6 +217,10 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
       toast.error(`Roster cost exceeds this run's ${costLimit} limit.`);
       return;
     }
+    if (blockedUnderMin) {
+      toast.error(`Roster cost must be at least ${minRosterCost}.`);
+      return;
+    }
     const { add, remove } = rosterModifyDiff(run.rosterShipIds, fleet.selectedShips);
     if (add.length === 0 && remove.length === 0) {
       onDone();
@@ -248,17 +260,22 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
       <RoguelikeFleetPicker
         title="[SELECT YOUR FLEET]"
         headerAction={
-          <button
-            type="button"
-            onClick={() => void handleConfirm()}
-            disabled={isSaving || !rosterValid}
-            className={FLEET_HEADER_ACTION_CLASS}
-            style={{ borderRadius: 0 }}
-          >
-            {isSaving
-              ? "[UPDATING...]"
-              : `[CONFIRM FLEET (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
-          </button>
+          <>
+            {isUnderMin && <WeakerFleetToggle checked={allowWeakerFleet} onChange={setAllowWeakerFleet} />}
+            <button
+              type="button"
+              onClick={() => void handleConfirm()}
+              disabled={isSaving || !rosterValid}
+              className={FLEET_HEADER_ACTION_CLASS}
+              style={{ borderRadius: 0 }}
+            >
+              {isSaving
+                ? "[UPDATING...]"
+                : blockedUnderMin
+                  ? `[NEED ${minRosterCost}+ (${fleet.totalCost}/${costLimit})]`
+                  : `[CONFIRM FLEET (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
+            </button>
+          </>
         }
         extra={
           totalMissingHP > 0 ? (
