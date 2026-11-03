@@ -720,15 +720,15 @@ export function computeLabelTargets({
         } else if (specialType === 1) {
           if (ship.owner === playerAddress) return;
         } else if (isRepairDronesSpecial(shipVariant, specialType)) {
+          // Ships at the heal cap keep their label (REPAIR @ MAX), though
+          // they can't be targeted (computeValidTargets).
           if (ship.owner !== playerAddress) return;
-          if (!isRepairable(shipPosition.shipId, getShipAttributes)) return;
         } else {
           if (ship.owner === playerAddress) return;
         }
       } else if (selectedWeaponType === "ram") {
         const targetHp = getShipAttributes(shipPosition.shipId)?.hullPoints;
         if (!isValidFactionAbilityTarget(ship.owner, playerAddress, factionAbilityIsHeal, targetHp)) return;
-        if (factionAbilityIsHeal && !isRepairable(shipPosition.shipId, getShipAttributes)) return;
       } else {
         if (ship.owner === playerAddress) return;
       }

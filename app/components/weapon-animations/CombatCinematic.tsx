@@ -323,7 +323,9 @@ function CinematicPanel({
               className="absolute"
               style={{ left: focus.col * CELL, top: focus.row * CELL, width: CELL, height: CELL }}
             >
-              <div className={`relative h-full w-full origin-center ${shipDisabled ? "sos-art-tilt rotate-[15deg]" : ""}`}>
+              <div
+                className={`relative h-full w-full origin-center transition-transform duration-300 ease-out ${shipDisabled ? "sos-art-tilt rotate-[15deg]" : ""}`}
+              >
                 <div className={`relative h-full w-full ${shipDisabled && shipFacesRight ? "scale-x-[-1]" : ""}`}>
                   <GridShipImage
                     ship={ship}
@@ -518,12 +520,22 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   const [b, setB] = useState<PanelState>("waiting");
   const [firing, setFiring] = useState(false);
   const [hit, setHit] = useState(0);
-  const [wrecked, setWrecked] = useState(false);
-  // A hit that takes the target to 0 hull without destroying it disables it:
-  // once the bar has drained, it tilts and burns as the board draws it.
-  const disablesTarget =
-    !killsTarget && !defenderDisabled && effect.kind !== "repair" && defenderStatusAfter?.hullPoints === 0;
-  const [disabledByHit, setDisabledByHit] = useState(false);
+  // When the hull bar has finished draining (or a killing blow's has
+  // emptied). The outcome is read from the props at that moment, not at
+  // mount: an enemy move starts playing from its Move event, and the target's
+  // hull after it (and whether it was destroyed) can arrive mid-cinematic.
+  const [hullSettled, setHullSettled] = useState(false);
+  const [killLanded, setKillLanded] = useState(false);
+  const wrecked = killsTarget && killLanded;
+  // A hit (a weapon or a special) that takes the target to 0 hull without
+  // destroying it disables it: once the bar has drained, it tilts and burns
+  // as the board draws it.
+  const disabledByHit =
+    hullSettled && !killsTarget && !defenderDisabled && effect.kind !== "repair" && defenderStatusAfter?.hullPoints === 0;
+  // A repair that brings a disabled (SOS) ship's hull back above 0 restores
+  // it: once the bar has filled, it rights itself and the fires go out.
+  const restoredByRepair =
+    hullSettled && effect.kind === "repair" && defenderDisabled && (defenderStatusAfter?.hullPoints ?? 0) > 0;
 
   // The largest 16:9 stage that fits the board's viewport.
   useLayoutEffect(() => {
@@ -556,8 +568,8 @@ export const CombatCinematic = React.memo(function CombatCinematic({
         setB("out");
       }, outMs),
     ];
-    if (killsTarget) timers.push(window.setTimeout(() => setWrecked(true), hitMs + KILL_HULL_DRAIN_MS + 50));
-    if (disablesTarget) timers.push(window.setTimeout(() => setDisabledByHit(true), hitMs + hullDrainMs(effect, false)));
+    timers.push(window.setTimeout(() => setKillLanded(true), hitMs + KILL_HULL_DRAIN_MS + 50));
+    timers.push(window.setTimeout(() => setHullSettled(true), hitMs + hullDrainMs(effect, false)));
     return () => timers.forEach((t) => window.clearTimeout(t));
     // One run per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -628,7 +640,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             stage={stage}
             ship={wreck}
             shipFacesRight={isRepair ? attackerIsCreator : !attackerIsCreator}
-            shipDisabled={(defenderDisabled || disabledByHit) && !wrecked}
+            shipDisabled={((defenderDisabled && !restoredByRepair) || disabledByHit) && !wrecked}
             shipStatus={wrecked ? null : defenderStatus}
             shipStatusAfter={hit > 0 ? defenderStatusAfter : null}
             hullDrainMs={hullDrainMs(effect, killsTarget)}

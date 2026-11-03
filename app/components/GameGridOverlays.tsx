@@ -21,6 +21,7 @@ import { EmpWaveAnimation } from "./weapon-animations/EmpWaveAnimation";
 import { LightningFieldAnimation } from "./weapon-animations/LightningFieldAnimation";
 import { TutorialTargetPointer } from "./TutorialTarget";
 import { collectDamageLabelTargets } from "../utils/gameGridRanges";
+import { canBeRepaired } from "../utils/healCap";
 import { useGridDestHoveredTile, useGridHoveredCell } from "./GridHover";
 import { MovePathArrow, MOVE_ARROW_GREY, MOVE_ARROW_YELLOW } from "./MovePathArrow";
 import { routeForShip } from "../utils/movePath";
@@ -767,8 +768,15 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                         target.shipId === targetShipId &&
                         showAsKill &&
                         !willDestroyByReactor;
+                      // A ship already at the heal cap: a repair would do nothing.
+                      const repairAtMax =
+                        (isFactionHealPreview || isRepairDronesPreview) &&
+                        !!targetAttributes &&
+                        !canBeRepaired(targetAttributes);
                       let labelText: string;
-                      if (isFactionHealPreview) {
+                      if (repairAtMax) {
+                        labelText = useCompactMobileDamageLabels ? "@ MAX" : "REPAIR @ MAX";
+                      } else if (isFactionHealPreview) {
                         labelText = useCompactMobileDamageLabels
                           ? String(factionHealAmount)
                           : `REPAIR ${factionHealAmount} HP`;
