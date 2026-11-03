@@ -21,7 +21,7 @@ Between 2026-09-14 and 2026-10-12 the frontend received about 50 commits. The co
 - **Navigation state lives in the URL.** Every screen, sub-tab, open match, lobby, ship and selected map node is in the query string, so refresh, deep links and Back/Forward all work.
 - **Board polish.** Weapon and special animations for both factions, a ram animation, optimistic "pending move" prediction (the board shows a submitted move's result, locked as `[...]`, until the chain confirms it), in-game styled tooltips for ships and terrain tiles, and round-start / end-of-game reports filed by the crew.
 
-### Roguelike Campaign ("Operations")
+### Roguelike Campaign #1 ("Operations")
 
 - **Run map.** The campaign is drawn as a star chart, with a mission drawer (briefing, enemy fleet, mission dossier) and an action bar showing the run's fleet, hull and cost cap. Players warp to missions, enter resupply nodes, and choose branching routes that close behind them.
 - **Fleet selection with a briefing.** The player's adjutant explains each step of building a run fleet (claim free ships, construct them, pick a roster within the cost range), with live status tags for each requirement.
