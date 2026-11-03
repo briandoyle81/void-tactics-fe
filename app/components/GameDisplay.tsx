@@ -686,10 +686,22 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // "picker"` avoids following a wallet connected to a stray chain (see
   // gameContract/useGetGame above for the same reasoning) — currently
   // equivalent to Base Sepolia since the picker is locked there.
-  const { data: gameMapState, isLoading: mapLoading } = useGetGameMapState(
-    Number(game.metadata.gameId),
-    { chainSource: "picker" },
-  );
+  const {
+    data: gameMapState,
+    isLoading: mapLoading,
+    refetch: refetchGameMapState,
+  } = useGetGameMapState(Number(game.metadata.gameId), { chainSource: "picker" });
+  // One-time scoring tiles (crystals) a ship collects are zeroed on chain at
+  // round end, and getGameMapState leaves them out from then on. The map
+  // state is otherwise read once, so re-read it on each new round (as of the
+  // board on screen, so they go once the round's last move has played).
+  const mapRound = Number(game.turnState.currentRound);
+  const mapRoundRef = React.useRef(mapRound);
+  React.useEffect(() => {
+    if (mapRoundRef.current === mapRound) return;
+    mapRoundRef.current = mapRound;
+    void refetchGameMapState();
+  }, [mapRound, refetchGameMapState]);
   // An Operations mission starts on an exact copy of its node's preset map,
   // which the run map preloads (missionMaps.ts): draw that while the game's
   // own map state loads. Only for the run's live match, whose node is the
@@ -911,6 +923,15 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const chainWinnerResult = toGameWinnerResult(game.metadata.winner, address);
   const gameWinnerResult = chainWinnerResult ?? (didFlee ? "opponent" : null);
   const isGameOver = gameWinnerResult !== null;
+  // A round that ends the game doesn't start a new one, so the map state
+  // isn't re-read above: re-read it once the game ends, for crystals
+  // collected in the final round.
+  const mapEndedRef = React.useRef(isGameOver);
+  React.useEffect(() => {
+    if (!isGameOver || mapEndedRef.current) return;
+    mapEndedRef.current = true;
+    void refetchGameMapState();
+  }, [isGameOver, refetchGameMapState]);
   const moveShipTxId = `move-ship-${selectedShipId}-${game.metadata.gameId}`;
 
   // Single-player games are regular Game sessions where the "opponent" is
@@ -1046,11 +1067,59 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     [humanIsCreator, game.creatorActiveShipIds, game.joinerActiveShipIds, movedShipIdsSet],
   );
 
+  // Round-start announcement — fires on the very first render (game start)
+  // and again every time currentRound changes (new round). Gated on
+  // !isGameOver so the last round's end doesn't pop this alongside (or
+  // instead of) GameResultModal. Also captures how many points each side
+  // gained during the round that just ended, by diffing the cumulative
+  // score against a snapshot taken the last time a round started —
+  // undefined on the very first showing (game start), where there's no
+  // prior round to diff against.
+  const prevRoundScoreRef = React.useRef<{ myScore: number; opponentScore: number } | undefined>(
+    undefined,
+  );
+  const { roundStartInfo, handleCloseRoundStart } = useRoundStartAnnouncement(
+    game.metadata.gameId,
+    game.turnState.currentRound,
+    isGameOver,
+    () => {
+      const isCreatorNow = game.metadata.creator === address;
+      const myScoreNow = Number(isCreatorNow ? game.creatorScore : game.joinerScore);
+      const opponentScoreNow = Number(isCreatorNow ? game.joinerScore : game.creatorScore);
+      const maxScoreNow = Number(game.maxScore);
+      const prevScores = prevRoundScoreRef.current;
+      prevRoundScoreRef.current = { myScore: myScoreNow, opponentScore: opponentScoreNow };
+      return {
+        isMyTurnFirst: game.turnState.currentTurn === address,
+        myRoundScore: prevScores ? myScoreNow - prevScores.myScore : undefined,
+        opponentRoundScore: prevScores ? opponentScoreNow - prevScores.opponentScore : undefined,
+        myScore: myScoreNow,
+        opponentScore: opponentScoreNow,
+        maxScore: maxScoreNow,
+      };
+    },
+  );
+
+
+  // The round report waits for moves still playing back (livePlayback.hold),
+  // but once it's up it stays up: hiding it for a move and bringing it back
+  // read as the report arriving twice.
+  const roundStartShownRef = React.useRef<number | null>(null);
+  const showRoundStart =
+    roundStartInfo != null &&
+    !isGameOver &&
+    (!livePlayback.hold || roundStartShownRef.current === roundStartInfo.round);
+  if (showRoundStart) roundStartShownRef.current = roundStartInfo.round;
+
+  // The AI waits for the round report to be acknowledged, so its moves
+  // play where the player can see them, not under the report.
+  const roundReportUp = roundStartInfo != null && !isGameOver;
+
   // Both loops are always mounted (rules of hooks) — each is a no-op unless
   // its own isAITurn flag is true, so only one is ever actually driving.
   const singlePlayerAiTurnLoop = useAITurnLoop({
     gameId: game.metadata.gameId,
-    isAITurn: isAITurn && !isRoguelikeGame,
+    isAITurn: isAITurn && !isRoguelikeGame && !roundReportUp,
     isGameOver,
     lastMoveSignal,
     refetchGame,
@@ -1058,7 +1127,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   });
   const roguelikeAiTurnLoop = useRoguelikeAITurnLoop({
     gameId: game.metadata.gameId,
-    isAITurn: isAITurn && isRoguelikeGame,
+    isAITurn: isAITurn && isRoguelikeGame && !roundReportUp,
     isGameOver,
     lastMoveSignal,
     refetchGame,
@@ -1405,38 +1474,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     return `[target shipPositions row,col: ${targetPos.position.row},${targetPos.position.col}]`;
   }, [debugMode, displayedLastMove, game.shipPositions]);
 
-  // Round-start announcement — fires on the very first render (game start)
-  // and again every time currentRound changes (new round). Gated on
-  // !isGameOver so the last round's end doesn't pop this alongside (or
-  // instead of) GameResultModal. Also captures how many points each side
-  // gained during the round that just ended, by diffing the cumulative
-  // score against a snapshot taken the last time a round started —
-  // undefined on the very first showing (game start), where there's no
-  // prior round to diff against.
-  const prevRoundScoreRef = React.useRef<{ myScore: number; opponentScore: number } | undefined>(
-    undefined,
-  );
-  const { roundStartInfo, handleCloseRoundStart } = useRoundStartAnnouncement(
-    game.metadata.gameId,
-    game.turnState.currentRound,
-    isGameOver,
-    () => {
-      const isCreatorNow = game.metadata.creator === address;
-      const myScoreNow = Number(isCreatorNow ? game.creatorScore : game.joinerScore);
-      const opponentScoreNow = Number(isCreatorNow ? game.joinerScore : game.creatorScore);
-      const maxScoreNow = Number(game.maxScore);
-      const prevScores = prevRoundScoreRef.current;
-      prevRoundScoreRef.current = { myScore: myScoreNow, opponentScore: opponentScoreNow };
-      return {
-        isMyTurnFirst: game.turnState.currentTurn === address,
-        myRoundScore: prevScores ? myScoreNow - prevScores.myScore : undefined,
-        opponentRoundScore: prevScores ? opponentScoreNow - prevScores.opponentScore : undefined,
-        myScore: myScoreNow,
-        opponentScore: opponentScoreNow,
-        maxScore: maxScoreNow,
-      };
-    },
-  );
 
   // In-mission dialog (useMissionDialog). Campaign missions use the node id
   // looked up above; roguelike combat uses the run's current node.
@@ -3227,7 +3264,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             onPrimaryAction={handleResultPrimaryAction}
           />
         )}
-        {roundStartInfo && !isGameOver && !livePlayback.hold && (
+        {showRoundStart && roundStartInfo && (
           <RoundStartModal
             key={roundStartInfo.round.toString()}
             round={roundStartInfo.round}
@@ -3899,7 +3936,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           onPrimaryAction={handleResultPrimaryAction}
         />
       )}
-      {roundStartInfo && !isGameOver && !livePlayback.hold && (
+      {showRoundStart && roundStartInfo && (
         <RoundStartModal
           key={roundStartInfo.round.toString()}
           round={roundStartInfo.round}

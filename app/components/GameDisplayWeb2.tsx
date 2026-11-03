@@ -534,9 +534,52 @@ function GameDisplayWeb2({
       )
     : undefined;
 
+  // Round-start announcement — mirrors GameDisplay.tsx's roundStartInfo:
+  // fires on the very first render (game start) and again whenever
+  // currentRound changes (new round). Gated on !isGameOver so the last
+  // round's end doesn't pop this alongside the result screen. Also captures
+  // each side's round-only score gain by diffing against a snapshot taken
+  // the last time a round started — undefined on the very first showing.
+  const prevRoundScoreRef = React.useRef<{ myScore: number; opponentScore: number } | undefined>(
+    undefined,
+  );
+  const { roundStartInfo, handleCloseRoundStart } = useRoundStartAnnouncement(
+    gameId,
+    game.turnState.currentRound,
+    isGameOver,
+    () => {
+      const isCreatorNow = game.metadata.creator === userId;
+      const myScoreNow = isCreatorNow ? game.creatorScore : game.joinerScore;
+      const opponentScoreNow = isCreatorNow ? game.joinerScore : game.creatorScore;
+      const prevScores = prevRoundScoreRef.current;
+      prevRoundScoreRef.current = { myScore: myScoreNow, opponentScore: opponentScoreNow };
+      return {
+        isMyTurnFirst: game.turnState.currentTurn === userId,
+        myRoundScore: prevScores ? myScoreNow - prevScores.myScore : undefined,
+        opponentRoundScore: prevScores ? opponentScoreNow - prevScores.opponentScore : undefined,
+        myScore: myScoreNow,
+        opponentScore: opponentScoreNow,
+        maxScore: game.maxScore,
+      };
+    },
+  );
+
+
+  // The round report waits for moves still playing back (livePlayback.hold),
+  // but once it's up it stays up: hiding it for a move and bringing it back
+  // read as the report arriving twice.
+  const roundStartShownRef = React.useRef<number | null>(null);
+  const showRoundStart =
+    roundStartInfo != null &&
+    !isGameOver &&
+    (!livePlayback.hold || roundStartShownRef.current === roundStartInfo.round);
+  if (showRoundStart) roundStartShownRef.current = roundStartInfo.round;
+
+  // Mirrors GameDisplay.tsx: the AI waits for the round report to be acknowledged.
+  const roundReportUp = roundStartInfo != null && !isGameOver;
   const aiTurnLoop = useAITurnLoopWeb2({
     gameId,
-    isAITurn,
+    isAITurn: isAITurn && !roundReportUp,
     isGameOver,
     lastMoveSignal: game.lastMove ? `${game.lastMove.shipId}-${game.lastMove.timestamp}` : "",
     refetchGame: () => refetchGame(),
@@ -589,35 +632,6 @@ function GameDisplayWeb2({
   useTurnChangeAlertSound(isCurrentPlayerTurn, userId, readOnly, prevTurnRef);
   useTurnTitleCue(isCurrentPlayerTurn, !readOnly && !!userId && !isGameOver);
 
-  // Round-start announcement — mirrors GameDisplay.tsx's roundStartInfo:
-  // fires on the very first render (game start) and again whenever
-  // currentRound changes (new round). Gated on !isGameOver so the last
-  // round's end doesn't pop this alongside the result screen. Also captures
-  // each side's round-only score gain by diffing against a snapshot taken
-  // the last time a round started — undefined on the very first showing.
-  const prevRoundScoreRef = React.useRef<{ myScore: number; opponentScore: number } | undefined>(
-    undefined,
-  );
-  const { roundStartInfo, handleCloseRoundStart } = useRoundStartAnnouncement(
-    gameId,
-    game.turnState.currentRound,
-    isGameOver,
-    () => {
-      const isCreatorNow = game.metadata.creator === userId;
-      const myScoreNow = isCreatorNow ? game.creatorScore : game.joinerScore;
-      const opponentScoreNow = isCreatorNow ? game.joinerScore : game.creatorScore;
-      const prevScores = prevRoundScoreRef.current;
-      prevRoundScoreRef.current = { myScore: myScoreNow, opponentScore: opponentScoreNow };
-      return {
-        isMyTurnFirst: game.turnState.currentTurn === userId,
-        myRoundScore: prevScores ? myScoreNow - prevScores.myScore : undefined,
-        opponentRoundScore: prevScores ? opponentScoreNow - prevScores.opponentScore : undefined,
-        myScore: myScoreNow,
-        opponentScore: opponentScoreNow,
-        maxScore: game.maxScore,
-      };
-    },
-  );
 
   const [isGameResultDismissed, setIsGameResultDismissed] = useState(false);
 
@@ -1267,7 +1281,7 @@ function GameDisplayWeb2({
   );
 
   // After every move and attack has played back (livePlayback.hold).
-  const roundStartModalNode = roundStartInfo && !isGameOver && !livePlayback.hold && (
+  const roundStartModalNode = showRoundStart && roundStartInfo && (
     <RoundStartModal
       key={roundStartInfo.round.toString()}
       round={roundStartInfo.round}
