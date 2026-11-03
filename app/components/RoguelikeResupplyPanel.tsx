@@ -26,6 +26,7 @@ import {
   rosterModifyDiff,
 } from "../utils/resupplyFleet";
 import { FLEET_HEADER_ACTION_CLASS } from "./FleetBriefing";
+import { ResupplyRepairBox } from "./ResupplyRepairBox";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
 import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
 
@@ -261,50 +262,51 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
         }
         extra={
           totalMissingHP > 0 ? (
-            <div className="flex flex-wrap items-center gap-3 border border-cyan/40 bg-cyan/10 p-3 text-xs">
-              <span className="text-cyan">
-                Repair cost: {formatUtcWei(repairCost)} UTC ({totalMissingHP} HP)
-              </span>
-              {!utcApproved ? (
-                <TransactionButton
-                  transactionId={`approve-utc-roguelike-repair-${address}`}
-                  contractAddress={contractAddresses.UNIVERSAL_CREDITS as `0x${string}`}
-                  abi={UTC_APPROVE_ABI as Abi}
-                  functionName="approve"
-                  args={[ROGUELIKE_RESUPPLY_ADDRESS, repairCost]}
-                  className="border-2 border-cyan px-4 py-2 text-xs font-bold uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={(utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost}
-                  loadingText="[APPROVING...]"
-                  errorText="[ERROR APPROVING]"
-                  onSuccess={async () => {
-                    await refetchAllowance();
-                    toast.success("UTC approved!");
-                  }}
-                  onError={(error) => {
-                    console.error("Failed to approve UTC:", error);
-                    toast.error("Failed to approve UTC transfer");
-                  }}
-                  validateBeforeTransaction={() => {
-                    if (!address) return "Please connect your wallet";
-                    if ((utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost) {
-                      return "Insufficient UTC balance";
-                    }
-                    return true;
-                  }}
-                >
-                  [APPROVE {formatUtcWei(repairCost)} UTC]
-                </TransactionButton>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsRepairConfirmOpen(true)}
-                  className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{ borderRadius: 0 }}
-                >
-                  [REPAIR {totalMissingHP} HP]
-                </button>
-              )}
-            </div>
+            <ResupplyRepairBox
+              costLabel={formatUtcWei(repairCost)}
+              missingHp={totalMissingHP}
+              action={
+                !utcApproved ? (
+                  <TransactionButton
+                    transactionId={`approve-utc-roguelike-repair-${address}`}
+                    contractAddress={contractAddresses.UNIVERSAL_CREDITS as `0x${string}`}
+                    abi={UTC_APPROVE_ABI as Abi}
+                    functionName="approve"
+                    args={[ROGUELIKE_RESUPPLY_ADDRESS, repairCost]}
+                    className="border-2 border-cyan px-4 py-2 text-xs font-bold uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={(utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost}
+                    loadingText="[APPROVING...]"
+                    errorText="[ERROR APPROVING]"
+                    onSuccess={async () => {
+                      await refetchAllowance();
+                      toast.success("UTC approved!");
+                    }}
+                    onError={(error) => {
+                      console.error("Failed to approve UTC:", error);
+                      toast.error("Failed to approve UTC transfer");
+                    }}
+                    validateBeforeTransaction={() => {
+                      if (!address) return "Please connect your wallet";
+                      if ((utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost) {
+                        return "Insufficient UTC balance";
+                      }
+                      return true;
+                    }}
+                  >
+                    [APPROVE {formatUtcWei(repairCost)} UTC]
+                  </TransactionButton>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsRepairConfirmOpen(true)}
+                    className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    style={{ borderRadius: 0 }}
+                  >
+                    [REPAIR {totalMissingHP} HP]
+                  </button>
+                )
+              }
+            />
           ) : null
         }
         ships={fleet.ships}

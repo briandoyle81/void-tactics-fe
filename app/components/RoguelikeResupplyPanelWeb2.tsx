@@ -26,6 +26,7 @@ import {
   parseDroppedShipDamage,
 } from "../utils/resupplyFleet";
 import { FLEET_HEADER_ACTION_CLASS } from "./FleetBriefing";
+import { ResupplyRepairBox } from "./ResupplyRepairBox";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
 import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
 
@@ -231,20 +232,21 @@ export function RoguelikeResupplyPanelWeb2({
         }
         extra={
           totalMissingHP > 0 ? (
-            <div className="flex flex-wrap items-center gap-3 border border-cyan/40 bg-cyan/10 p-3 text-xs">
-              <span className="text-cyan">
-                Repair cost: {formatUtc(repairCostTotal)} UTC ({totalMissingHP} HP)
-              </span>
-              <button
-                type="button"
-                disabled={isRepairing}
-                onClick={() => setIsRepairConfirmOpen(true)}
-                className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ borderRadius: 0 }}
-              >
-                [REPAIR {totalMissingHP} HP]
-              </button>
-            </div>
+            <ResupplyRepairBox
+              costLabel={formatUtc(repairCostTotal)}
+              missingHp={totalMissingHP}
+              action={
+                <button
+                  type="button"
+                  disabled={isRepairing}
+                  onClick={() => setIsRepairConfirmOpen(true)}
+                  className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ borderRadius: 0 }}
+                >
+                  [REPAIR {totalMissingHP} HP]
+                </button>
+              }
+            />
           ) : null
         }
         ships={fleet.ships}
