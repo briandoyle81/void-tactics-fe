@@ -24,6 +24,8 @@ const ROGUELIKE_MISSION_MUSIC: Record<number, string> = {
   5: "/music/nickpanek-dark-synthwave-instrumental-with-dubstep-elements-323643.mp3",
   // Counterattack.
   6: "/music/psychronic-flight-of-the-cosmos-433848.mp3",
+  // Interference.
+  8: "/music/ianjamesrennie-italo-girls-9672.mp3",
   // Sneak Attack.
   16: "/music/alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3",
   // Repair Station DS7.

@@ -41,7 +41,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: October 24, 2026
+          Last updated: November 3, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -291,6 +291,14 @@ export default function AudioCreditsPage() {
             artist="Dmitry Taras"
             artistHref="https://pixabay.com/users/alivetunesmusic-21339672/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=194353"
             href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=194353"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Interference"
+            file="ianjamesrennie-italo-girls-9672.mp3"
+            title="Italo Girls"
+            artist="Ian Rennie"
+            artistHref="https://pixabay.com/users/ianjamesrennie-22521783/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=9672"
+            href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=9672"
           />
 
           <section className="space-y-3">
