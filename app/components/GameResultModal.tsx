@@ -62,14 +62,18 @@ interface GameResultModalProps {
   /**
    * Mission comms debrief (victory/defeat dialog from useMissionDialog),
    * shown above the actions while lines are queued. Usually a
-   * DialogLineCard.
+   * DialogLineCard. The actions stay disabled until it's been read through.
    */
   comms?: React.ReactNode;
+  /** The debrief may still be on its way (useMissionDialog's outcomeChecked is false): the actions wait too. */
+  awaitingComms?: boolean;
   /** Who files the report (a dialog character). Defaults to the adjutant. */
   reporterId?: DialogCharacterId;
   /** Shown above the actions, e.g. constructing a ship the win granted. */
   rewardAction?: React.ReactNode;
 }
+
+const NO_ACTION = () => {};
 
 // End-of-game overlay for both PvP and single-player — one shared screen,
 // not a separate campaign-only component (see feedback_no_parallel_
@@ -92,6 +96,7 @@ export function GameResultModal({
   victoryReason,
   isTie = false,
   comms,
+  awaitingComms = false,
   reporterId = DEFAULT_REPORTER,
   rewardAction,
 }: GameResultModalProps) {
@@ -106,6 +111,10 @@ export function GameResultModal({
   // a button counts, since this opens right as the last move resolves (see
   // usePressStartedHere).
   const pressProps = usePressStartedHere();
+  // The debrief comes first: Review Board and the primary action wait until
+  // its lines have been read (or skipped), so it isn't clicked past.
+  const actionsLocked = comms != null || awaitingComms;
+  const lockedHint = actionsLocked ? "Read the comms first" : undefined;
 
   const reporter = useCrewReporter(reporterId);
   useReportArrivalSound();
@@ -211,16 +220,20 @@ export function GameResultModal({
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              {...pressProps(onClose)}
-              className="flex-1 border px-4 py-2 text-sm uppercase tracking-wider text-text-secondary transition-colors hover:bg-white/5"
+              {...pressProps(actionsLocked ? NO_ACTION : onClose)}
+              disabled={actionsLocked}
+              title={lockedHint}
+              className="flex-1 border px-4 py-2 text-sm uppercase tracking-wider text-text-secondary transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
               style={{ ...STYLE_LABEL, borderColor: "var(--color-gunmetal)", borderRadius: 0 }}
             >
               Review Board
             </button>
             <button
               type="button"
-              {...pressProps(onPrimaryAction)}
-              className="flex-1 border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5"
+              {...pressProps(actionsLocked ? NO_ACTION : onPrimaryAction)}
+              disabled={actionsLocked}
+              title={lockedHint}
+              className="flex-1 border-2 px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
               style={{ ...STYLE_LABEL, borderColor: accentColor, color: accentColor, borderRadius: 0 }}
             >
               {primaryActionLabel}

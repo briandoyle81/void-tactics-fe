@@ -26,7 +26,13 @@ export function RoguelikeFleetSelectScreen({
 }) {
   return (
     <div className="flex flex-col gap-4 border-2 border-cyan p-3 font-mono md:p-6" style={{ borderRadius: 0 }}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* Stays at the top of the screen while the hangar list scrolls, so
+          the confirm button is always in reach. Edge to edge of the panel
+          (the negative margins undo its padding) on an opaque backdrop. */}
+      <div
+        className="sticky top-0 z-30 -mx-3 -mt-3 flex flex-col gap-3 border-b border-solid bg-near-black px-3 py-3 sm:flex-row sm:items-center sm:justify-between md:-mx-6 md:-mt-6 md:px-6 md:py-4"
+        style={{ borderColor: "var(--color-gunmetal)" }}
+      >
         <h3 className="text-xl font-bold text-cyan">{title}</h3>
         <div className="flex flex-wrap gap-2.5 sm:justify-end">{headerAction}</div>
       </div>

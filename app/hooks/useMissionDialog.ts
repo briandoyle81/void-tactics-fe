@@ -168,6 +168,9 @@ export function useMissionDialog({
   // Lines dismissed unread since the comms log was last opened.
   const [unreadCount, setUnreadCount] = useState(0);
   const [log, setLog] = useState<DialogLogEntry[]>([]);
+  // The game's outcome has been through the triggers below, so any
+  // victory/defeat lines are queued (batched with this, in the same render).
+  const [outcomeProcessed, setOutcomeProcessed] = useState(false);
 
   // Latest mission object without making it an effect dependency (views
   // build it inline); missionKey below is the real dependency.
@@ -275,6 +278,7 @@ export function useMissionDialog({
       enemyCanRepair,
       outcome,
     };
+    if (outcome !== null) setOutcomeProcessed(true);
 
     const save = (state: StoredDialogState) => {
       if (persist) writeStored(gameId, state);
@@ -475,6 +479,11 @@ export function useMissionDialog({
     /** Lines dismissed unread since the comms log was last opened. */
     unreadCount,
     markLogSeen,
+    /**
+     * The game's end has been checked for debrief lines (or there's no
+     * mission dialog here): false while they may still be on their way.
+     */
+    outcomeChecked: !enabled || !mission || outcomeProcessed,
     /** The mission's opening line, waiting to be shown in the round report. */
     openingLine,
     /** Marks openingLine as read (the round report showing it closed). */

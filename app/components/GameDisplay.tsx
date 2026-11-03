@@ -1562,6 +1562,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         onLogOpened={missionDialog.markLogSeen}
       />
     ) : null;
+  // A win or a loss has debrief lines to wait for (a draw has none).
+  const hasDebriefOutcome = gameWinnerResult === "me" || gameWinnerResult === "opponent";
   const missionDebriefNode = missionDialog.current ? (
     <DialogLineCard
       key={missionDialog.current.key}
@@ -3258,6 +3260,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             }
             nodeContent={missionNodeContent}
             comms={missionDebriefNode}
+            awaitingComms={hasDebriefOutcome && !missionDialog.outcomeChecked}
             rewardAction={resultRewardAction}
             onClose={() => setIsGameResultDismissed(true)}
             primaryActionLabel={resultPrimaryActionLabel}
@@ -3930,6 +3933,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           }
           nodeContent={missionNodeContent}
           comms={missionDebriefNode}
+            awaitingComms={hasDebriefOutcome && !missionDialog.outcomeChecked}
           rewardAction={resultRewardAction}
           onClose={() => setIsGameResultDismissed(true)}
           primaryActionLabel={resultPrimaryActionLabel}

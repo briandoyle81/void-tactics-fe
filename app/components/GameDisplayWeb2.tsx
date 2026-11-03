@@ -726,6 +726,8 @@ function GameDisplayWeb2({
         onLogOpened={missionDialog.markLogSeen}
       />
     ) : null;
+  // A win or a loss has debrief lines to wait for (a draw has none).
+  const hasDebriefOutcome = gameWinnerResult === "me" || gameWinnerResult === "opponent";
   const missionDebriefNode = missionDialog.current ? (
     <DialogLineCard
       key={missionDialog.current.key}
@@ -1245,6 +1247,7 @@ function GameDisplayWeb2({
       }
       nodeContent={missionNodeContent}
       comms={missionDebriefNode}
+      awaitingComms={hasDebriefOutcome && !missionDialog.outcomeChecked}
       rewardAction={
         // Mirrors GameDisplay.tsx: a won roguelike mission can mint the
         // node's reward ship, already constructed.
