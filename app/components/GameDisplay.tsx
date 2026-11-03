@@ -2559,7 +2559,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     ) : undefined;
   const resultPrimaryActionLabel = isRoguelikeGame
     ? gameWinnerResult === "me"
-      ? "Return to Run"
+      ? "Continue"
       : "Quit"
     : isSinglePlayerGame
       ? "Return to Campaign"

@@ -1242,7 +1242,7 @@ function GameDisplayWeb2({
       primaryActionLabel={
         isRoguelikeGame
           ? gameWinnerResult === "me"
-            ? "Return to Run"
+            ? "Continue"
             : "Quit"
           : isSinglePlayerGame
             ? "Return to Campaign"

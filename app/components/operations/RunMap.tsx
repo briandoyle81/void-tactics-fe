@@ -539,7 +539,7 @@ export function RunMap({
                   onClick={() => setShowRetreatConfirm(true)}
                   className={`${OPS_TOOLBAR_BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10`}
                 >
-                  {isRetreating ? "Retreating…" : "Retreat run"}
+                  {isRetreating ? "Retreating…" : "Retreat"}
                 </button>
               )}
             </>

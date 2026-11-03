@@ -60,6 +60,8 @@ export const ShipMoveAnimation = React.memo(function ShipMoveAnimation({
     const total = lengths.reduce((a, b) => a + b, 0);
     const duration = shipMoveDurationMs(path);
     const startedAt = performance.now();
+    // TEMP DEBUG (double AI move): remove once found.
+    console.debug("[playback] slide start", ship.id, path.map((t) => `${t.row},${t.col}`).join(" "));
     let done = false;
 
     const place = (u: number) => {

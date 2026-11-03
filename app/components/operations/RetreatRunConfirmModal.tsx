@@ -72,7 +72,7 @@ export function RetreatRunConfirmModal({
             className="border-2 border-solid border-warning-red bg-warning-red/10 px-4 py-2.5 text-sm font-bold uppercase tracking-wider text-warning-red transition-colors hover:bg-warning-red/20 disabled:cursor-not-allowed disabled:opacity-60"
             style={DISPLAY_FONT}
           >
-            {isRetreating ? "Retreating…" : "Retreat run"}
+            {isRetreating ? "Retreating…" : "Retreat"}
           </button>
         </div>
       </div>

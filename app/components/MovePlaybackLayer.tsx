@@ -100,6 +100,14 @@ export function MovePlaybackLayer({
   isShipOwnedByCurrentPlayer?: (shipId: number) => boolean;
 }) {
   const combatView = useCombatView();
+  // TEMP DEBUG (double AI move): remove once found.
+  useEffect(() => {
+    console.debug("[playback] layer mount");
+    return () => console.debug("[playback] layer unmount");
+  }, []);
+  useEffect(() => {
+    if (active) console.debug("[playback] active", active.move.key, active.phase);
+  }, [active?.move.key, active?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
   const cinematicHost = useContext(CinematicHostContext);
   // Each ship's side as last seen: a retreating ship may already be gone.
   const lastSeenIsCreatorRef = useRef(new Map<number, boolean>());
