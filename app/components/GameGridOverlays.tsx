@@ -615,7 +615,10 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                 if (!attackerPos) return null;
                 const { row: attackerRow, col: attackerCol } = attackerPos;
 
-                const targetPosition = findShipPositionById(targetShipId);
+                // Repairing itself: the ship is at its staged (hologram)
+                // tile, not the solid one it's moving from.
+                const targetPosition =
+                  targetShipId === selectedShipId ? attackerPos : findShipPositionById(targetShipId);
 
                 if (
                   attackerRow === -1 ||

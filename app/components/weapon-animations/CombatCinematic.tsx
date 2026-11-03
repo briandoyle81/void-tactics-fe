@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { createContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { GRID_DIMENSIONS, getMainWeaponName, getSpecialName } from "../../types/types";
 import type { GridShip } from "../../types/gridDisplay";
 import { weaponOnceMs, type WeaponEffectKind } from "../../utils/weaponPlayback";
@@ -83,6 +83,31 @@ function hullDrainMs(effect: WeaponEffectKind, killsTarget: boolean): number {
  * renders a bigger board than it shows) names its visible window instead.
  */
 export const CinematicHostContext = createContext<React.RefObject<HTMLElement | null> | null>(null);
+
+// How many cinematics are playing. The board's tooltips stay off meanwhile
+// (useCinematicPlaying): the panels cover the board, but take no pointer
+// events, so the cells under them would still be hovered.
+let cinematicsPlaying = 0;
+const cinematicListeners = new Set<() => void>();
+function setCinematicsPlaying(delta: number) {
+  cinematicsPlaying += delta;
+  cinematicListeners.forEach((fn) => fn());
+}
+function subscribeCinematics(fn: () => void) {
+  cinematicListeners.add(fn);
+  return () => {
+    cinematicListeners.delete(fn);
+  };
+}
+
+/** Whether a combat cinematic is on screen. */
+export function useCinematicPlaying(): boolean {
+  return useSyncExternalStore(
+    subscribeCinematics,
+    () => cinematicsPlaying > 0,
+    () => false,
+  );
+}
 
 /** Whether a move plays as a cinematic: a weapon fired at an enemy ship, or a repair on a friendly one. */
 export function cinematicCovers(effect: WeaponEffectKind): boolean {
@@ -536,6 +561,11 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   // it: once the bar has filled, it rights itself and the fires go out.
   const restoredByRepair =
     hullSettled && effect.kind === "repair" && defenderDisabled && (defenderStatusAfter?.hullPoints ?? 0) > 0;
+
+  useEffect(() => {
+    setCinematicsPlaying(1);
+    return () => setCinematicsPlaying(-1);
+  }, []);
 
   // The largest 16:9 stage that fits the board's viewport.
   useLayoutEffect(() => {

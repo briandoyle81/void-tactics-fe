@@ -32,6 +32,7 @@ import { MovePlaybackContext, useMovePlaybackContext, type MovePlaybackValue } f
 import { MovePlaybackLayer, playbackHiddenShipIds } from "./MovePlaybackLayer";
 import type { ActivePlayback, PlaybackPhase } from "../hooks/useMovePlayback";
 import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
+import { useCinematicPlaying } from "./weapon-animations/CombatCinematic";
 
 const NOOP_SET_MOVE_TILE = () => {};
 
@@ -622,6 +623,9 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
   getHoverPreview?: GameGridProps["getHoverPreview"];
 }) {
   const hoveredCell = useGridHoveredCell();
+  // No tooltips over a combat cinematic, nor started from under it.
+  const cinematicPlaying = useCinematicPlaying();
+  const tooltipsOff = disableTooltips || cinematicPlaying;
   const isHoveringValidTarget =
     hoveredCell !== null &&
     !hoveredCell.fromFleet &&
@@ -767,10 +771,10 @@ const GameGridHoverSurface = React.memo(function GameGridHoverSurface({
         impassableGrid={impassableGrid}
         getShipAttributes={getShipAttributes}
       />
-      <GameGridTileTooltip gridContainerRef={gridContainerRef} disabled={disableTooltips || !!draggedShipId} />
+      <GameGridTileTooltip gridContainerRef={gridContainerRef} disabled={tooltipsOff || !!draggedShipId} />
       <GameGridTooltip
         hoveredCell={hoveredCell}
-        disableTooltips={disableTooltips}
+        disableTooltips={tooltipsOff}
         draggedShipId={draggedShipId}
         gridContainerRef={gridContainerRef}
         gridLayoutRef={gridLayoutRef}

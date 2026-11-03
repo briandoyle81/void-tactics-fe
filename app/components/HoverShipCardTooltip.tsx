@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { TOOLTIP_Z_CLASS } from "./tooltipPanel";
 
@@ -50,13 +50,23 @@ export function HoverShipCardTooltip({
   renderCard,
 }: HoverShipCardTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  // The hover that was on while tooltips were off: it needs a new hover to
+  // show, so one held through (e.g. a combat cinematic) doesn't pop up after.
+  const suppressedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!hoverKey) {
+      suppressedKeyRef.current = null;
       setShowTooltip(false);
       return;
     }
     setShowTooltip(false);
+    if (disableTooltips) {
+      suppressedKeyRef.current = hoverKey;
+      return;
+    }
+    if (suppressedKeyRef.current === hoverKey) return;
+    suppressedKeyRef.current = null;
     const timer = setTimeout(() => setShowTooltip(true), hoverDelayMs);
     // Fixed to the viewport (see below), so a scroll or zoom would leave it
     // behind; hide until the next hover.
@@ -68,7 +78,7 @@ export function HoverShipCardTooltip({
       window.removeEventListener("scroll", hide, true);
       window.removeEventListener("wheel", hide);
     };
-  }, [hoverKey, hoverDelayMs]);
+  }, [hoverKey, hoverDelayMs, disableTooltips]);
 
   if (!anchor || disableTooltips || !showTooltip || typeof document === "undefined") return null;
 

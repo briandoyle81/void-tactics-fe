@@ -212,13 +212,16 @@ function JumpLanes({
     const to = layout.positions.get(node.id);
     if (!to) return;
     if (route && !route.visibleIds.has(node.id)) return;
-    const isSkipped = !!route?.skippedIds.has(node.id);
-    const isSelectedRoute = selectedNodeId != null && node.id === selectedNodeId && !node.completed;
+    const isSelectedTarget = selectedNodeId != null && node.id === selectedNodeId && !node.completed;
     node.prerequisites.forEach((prereqId) => {
       const prereq = layout.columns.flat().find((n) => n.id === prereqId);
       const from = layout.positions.get(prereqId);
       if (!prereq || !from) return;
       if (route && !route.visibleIds.has(prereqId)) return;
+      // A lane into or out of a skipped mission (a branch not taken, also
+      // where it rejoins the route) stays a grey dotted line, never lit.
+      const isSkipped = !!route && (route.skippedIds.has(node.id) || route.skippedIds.has(prereqId));
+      const isSelectedRoute = isSelectedTarget && !isSkipped;
 
       const isCleared = node.completed;
       const isFrontier = !isCleared && prereq.completed;

@@ -58,7 +58,7 @@ export const DIALOG_CHARACTERS = {
   },
   harcourt: {
     id: "harcourt",
-    name: "Harcourt",
+    name: "Admiral Harcourt",
     image: "/img/character-art/harcourt.svg",
     textColor: "var(--color-orange)",
   },
