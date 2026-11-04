@@ -3,7 +3,8 @@ import type { BoardMove, TargetStatusAfter } from "../hooks/useMovePlayback";
 // The held board while moves play back (useHeldBoard): each move that has
 // reached its tile puts its ship there; a finished move also takes its
 // casualties off (a retreat, a rammed ship knocked off, a destroyed target).
-// The active move's target stays on the board while it's being fired at.
+// The active move's target stays on the board while it's being fired at,
+// except a rammed ship, which leaves when the rammer lands on its tile.
 // Hull points and everything else stay as they were until the queue is done
 // and the live board takes over. Mode-neutral: ids compare as numbers.
 
@@ -23,13 +24,20 @@ export function landShipPositions<
       if (move.actionType === ACTION_RETREAT) mover.status = 2;
       else mover.position = { row: move.to.row, col: move.to.col };
     }
-    if (!finished || !move.targetShipId) continue;
+    if (!move.targetShipId) continue;
     const target = find(move.targetShipId);
     if (!target) continue;
-    if (move.killsTarget) target.status = 1;
-    // A Ram (variant 1's faction ability, ending on the victim's tile) knocks the victim off.
-    else if (move.actionType === ACTION_FACTION_ABILITY && move.to.row === target.position.row && move.to.col === target.position.col)
-      target.status = 2;
+    // A Ram (variant 1's faction ability, ending on the victim's tile) knocks
+    // the victim off. It leaves the board as soon as the rammer lands on its
+    // tile (the ram's animation draws it tumbling away): a tile holds one
+    // ship, so a victim left there would cover the rammer.
+    const isRam =
+      move.actionType === ACTION_FACTION_ABILITY &&
+      !move.killsTarget &&
+      move.to.row === target.position.row &&
+      move.to.col === target.position.col;
+    if (isRam) target.status = 2;
+    else if (finished && move.killsTarget) target.status = 1;
   }
   return next;
 }

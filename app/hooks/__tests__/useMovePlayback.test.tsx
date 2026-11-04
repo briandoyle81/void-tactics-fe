@@ -68,6 +68,13 @@ describe("landShipPositions", () => {
     expect(landed[1].status).toBe(1);
   });
 
+  it("a rammed ship leaves the board as soon as the rammer lands on its tile", () => {
+    const ram = move("a", { actionType: 7, to: { row: 0, col: 5 } });
+    const landed = landShipPositions(positions, [ram], "a");
+    expect(landed[0].position).toEqual({ row: 0, col: 5 });
+    expect(landed[1].status).toBe(2);
+  });
+
   it("a retreat leaves the board", () => {
     const landed = landShipPositions(positions, [move("a", { actionType: 2, to: { row: 0, col: 0 } })], "a");
     expect(landed[0].status).toBe(2);

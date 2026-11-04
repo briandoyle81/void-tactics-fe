@@ -22,6 +22,13 @@ const CYCLE_MS = 2400;
 const PLAYED_KEY = "vt-ram-played-v1";
 const SPARK_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
+/** The ram's crash sound, once per ram (shared with the cinematic, so a ram crashes once whichever way it plays). */
+export function playRamCrash(playKey: string, muted: boolean): boolean {
+  if (!takeFirstPlay(PLAYED_KEY, playKey)) return false;
+  if (!muted) playSoundEffect("/sound/crash.mp3");
+  return true;
+}
+
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -87,9 +94,8 @@ export const RamAnimation = React.memo(function RamAnimation({
 
   // Sound and shake once per ram, timed to the first impact (~28% in).
   useEffect(() => {
-    if (!takeFirstPlay(PLAYED_KEY, playKey)) return;
     const timer = window.setTimeout(() => {
-      if (!soundsMuted) playSoundEffect("/sound/crash.mp3");
+      if (!playRamCrash(playKey, soundsMuted)) return;
       const grid = gridContainerRef.current;
       if (grid && !prefersReducedMotion() && typeof grid.animate === "function") {
         // `translate` composes with any transform the grid already has.

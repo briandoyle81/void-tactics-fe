@@ -15,7 +15,8 @@ import { EmpWaveAnimation } from "./EmpWaveAnimation";
 import { AttackDroneAnimation } from "./AttackDroneAnimation";
 import { RepairDroneAnimation } from "./RepairDroneAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs } from "./ShipExplosionSound";
-import { WeaponSoundsMuted } from "./weaponSounds";
+import { WeaponSoundsMuted, useWeaponSoundsMuted } from "./weaponSounds";
+import { playRamCrash } from "./RamAnimation";
 import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
 import { terrainFullArt } from "../../utils/terrainEdges";
 
@@ -35,6 +36,11 @@ import { terrainFullArt } from "../../utils/terrainEdges";
 // between the windows is never drawn. Only the attacker's copy plays sound.
 // MovePlaybackLayer mounts this for the firing phase and keeps the board's
 // own effect unmounted meanwhile.
+//
+// A Ram has no shot: the rammer itself is the projectile. It leaves its
+// panel at the charge (drawn on both panels' staged boards, like a shot),
+// slams into the victim's panel, the victim spins off out of frame, and the
+// rammer stays on the victim's cell until the panels go.
 
 const NEBULA_FULL_ART = terrainFullArt("nebula");
 const CELL = 50; // layout px per staged cell: the game's unzoomed cell, which the effects are tuned for
@@ -71,10 +77,21 @@ const BACKDROP_FADE_MS = 300;
 const MIN_HULL_DRAIN_MS = 500;
 /** A killing blow empties the bar this fast, then the wreck replaces the ship. */
 const KILL_HULL_DRAIN_MS = 400;
+/** Ram: the rammer backs up a little, then charges across to the victim's cell. */
+const RAM_WINDUP_MS = 240;
+const RAM_CHARGE_MS = 360;
+/** Ram: the victim spins off out of its panel. */
+const RAM_KNOCKOFF_MS = 900;
+
+/** How long the firing runs: the weapon's one shot, or a ram's charge and knock-off. */
+function firingMs(effect: WeaponEffectKind): number {
+  if (effect.kind === "ram") return RAM_WINDUP_MS + RAM_CHARGE_MS + RAM_KNOCKOFF_MS;
+  return weaponOnceMs(effect, STAGED_DISTANCE);
+}
 
 function hullDrainMs(effect: WeaponEffectKind, killsTarget: boolean): number {
   if (killsTarget) return KILL_HULL_DRAIN_MS;
-  return Math.max(MIN_HULL_DRAIN_MS, FIRE_AT_MS + weaponOnceMs(effect, STAGED_DISTANCE) - hitAtMs(effect));
+  return Math.max(MIN_HULL_DRAIN_MS, FIRE_AT_MS + firingMs(effect) - hitAtMs(effect));
 }
 
 /**
@@ -109,20 +126,27 @@ export function useCinematicPlaying(): boolean {
   );
 }
 
-/** Whether a move plays as a cinematic: a weapon fired at an enemy ship, or a repair on a friendly one. */
+/** Whether a move plays as a cinematic: a weapon fired at (or a ram into) an enemy ship, or a repair on a friendly one. */
 export function cinematicCovers(effect: WeaponEffectKind): boolean {
-  return effect.kind === "main" || effect.kind === "emp" || effect.kind === "attackDrones" || effect.kind === "repair";
+  return (
+    effect.kind === "main" ||
+    effect.kind === "emp" ||
+    effect.kind === "attackDrones" ||
+    effect.kind === "repair" ||
+    effect.kind === "ram"
+  );
 }
 
 /** The cinematic's whole length: panels in, one firing, a beat, panels out. */
 export function cinematicDurationMs(effect: WeaponEffectKind): number {
-  return FIRE_AT_MS + weaponOnceMs(effect, STAGED_DISTANCE) + HOLD_AFTER_MS + PANEL_OUT_MS;
+  return FIRE_AT_MS + firingMs(effect) + HOLD_AFTER_MS + PANEL_OUT_MS;
 }
 
 /** When the shot lands, ms after mount (the timing the game's explosion sound uses). */
 function hitAtMs(effect: WeaponEffectKind): number {
   // Drones reach the target about 30% into their 3.2 s flight.
   if (effect.kind === "attackDrones" || effect.kind === "repair") return FIRE_AT_MS + 3200 * 0.3;
+  if (effect.kind === "ram") return FIRE_AT_MS + RAM_WINDUP_MS + RAM_CHARGE_MS;
   if (effect.kind !== "main") return FIRE_AT_MS + 300;
   return (
     FIRE_AT_MS +
@@ -143,6 +167,96 @@ function weaponName(effect: WeaponEffectKind, ship: GridShip): string {
   // Both repairs (variant 1's special, variant 2's faction ability) are drones.
   if (effect.kind === "repair") return "Repair Drones";
   return "";
+}
+
+/**
+ * The rammer on a panel's staged board: at its cell until `charging`, then a
+ * short back-up and a charge to the victim's cell, where it stays. Drawn in
+ * both panels from the same moment, so it leaves the rammer's panel through
+ * its frame and arrives in the victim's.
+ */
+function ChargingShip({
+  ship,
+  from,
+  to,
+  facesRight,
+  charging,
+}: {
+  ship: GridShip;
+  from: Cell;
+  to: Cell;
+  facesRight: boolean;
+  charging: boolean;
+}) {
+  const shipRef = useRef<HTMLDivElement | null>(null);
+  const trailRef = useRef<HTMLDivElement | null>(null);
+  const dx = (to.col - from.col) * CELL;
+  const dy = (to.row - from.row) * CELL;
+  const dist = Math.hypot(dx, dy) || 1;
+  const back = { x: (-dx / dist) * CELL * 0.35, y: (-dy / dist) * CELL * 0.35 };
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const total = RAM_WINDUP_MS + RAM_CHARGE_MS;
+
+  useEffect(() => {
+    if (!charging) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const windup = RAM_WINDUP_MS / total;
+    shipRef.current?.animate(
+      reduced
+        ? [{ transform: "translate(0,0)" }, { transform: `translate(${dx}px, ${dy}px)` }]
+        : [
+            { transform: "translate(0,0)", easing: "ease-out" },
+            { transform: `translate(${back.x}px, ${back.y}px)`, offset: windup, easing: "cubic-bezier(.5,0,1,.6)" },
+            { transform: `translate(${dx}px, ${dy}px)` },
+          ],
+      { duration: total, fill: "forwards" },
+    );
+    trailRef.current?.animate(
+      [
+        { opacity: 0, transform: `rotate(${angle}deg) scaleX(0)` },
+        { opacity: 0, transform: `rotate(${angle}deg) scaleX(0)`, offset: RAM_WINDUP_MS / total },
+        { opacity: 1, transform: `rotate(${angle}deg) scaleX(1)`, offset: 0.97 },
+        { opacity: 0, transform: `rotate(${angle}deg) scaleX(1)` },
+      ],
+      { duration: total + 260, fill: "forwards" },
+    );
+    // One run per charge.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [charging]);
+
+  const thickness = CELL * 0.14;
+  return (
+    <>
+      {/* The charge's streak, from where the rammer set out to the impact. */}
+      <div
+        ref={trailRef}
+        className="pointer-events-none absolute"
+        style={{
+          left: (from.col + 0.5) * CELL,
+          top: (from.row + 0.5) * CELL - thickness / 2,
+          width: dist,
+          height: thickness,
+          opacity: 0,
+          transformOrigin: "0 50%",
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(100, 200, 255, 0.35) 35%, rgba(200, 240, 255, 0.9) 85%, #ffffff 100%)",
+          filter: "blur(2px)",
+        }}
+      />
+      <div
+        ref={shipRef}
+        className="pointer-events-none absolute"
+        style={{ left: from.col * CELL, top: from.row * CELL, width: CELL, height: CELL, zIndex: 5 }}
+      >
+        <GridShipImage
+          ship={ship}
+          className={`h-full w-full ${facesRight ? "[&_img]:scale-x-[-1]" : ""}`}
+          hideRankStars
+          showLoadingState={false}
+        />
+      </div>
+    </>
+  );
 }
 
 /**
@@ -212,6 +326,8 @@ function CinematicPanel({
   stage,
   ship,
   shipFacesRight,
+  shipHidden = false,
+  knockOff = null,
   shipDisabled = false,
   shipStatus,
   shipStatusAfter = null,
@@ -237,6 +353,10 @@ function CinematicPanel({
   stage: { w: number; h: number };
   ship: GridShip;
   shipFacesRight: boolean;
+  /** The panel's ship isn't drawn at its cell (a rammer: ChargingShip draws it). */
+  shipHidden?: boolean;
+  /** Set when a ram lands: the ship spins off along this direction (staged px) and out of frame. */
+  knockOff?: Pt | null;
   /** Drawn the way the board draws a disabled (0 hull) ship: tilted, hull on fire. */
   shipDisabled?: boolean;
   /** The ship's hull bar and reactor damage, drawn as on the board. Omitted: neither. */
@@ -298,6 +418,19 @@ function CinematicPanel({
       { duration: 520, easing: "ease-out" },
     );
   }, [flash, flashKind]);
+  const knockRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!knockOff || !knockRef.current) return;
+    const spin = knockOff.x >= 0 ? 720 : -720;
+    knockRef.current.animate(
+      [
+        { transform: "translate(0,0) rotate(0deg)", opacity: 1 },
+        { transform: `translate(${knockOff.x * 0.5}px, ${knockOff.y * 0.5}px) rotate(${spin * 0.45}deg)`, opacity: 1, offset: 0.4 },
+        { transform: `translate(${knockOff.x}px, ${knockOff.y}px) rotate(${spin}deg)`, opacity: 0 },
+      ],
+      { duration: RAM_KNOCKOFF_MS, easing: "cubic-bezier(.15,.7,.4,1)", fill: "forwards" },
+    );
+  }, [knockOff]);
 
   const scale = (stage.h * CELL_OF_STAGE_H) / CELL;
   const cx = (focus.col + 0.5) * CELL;
@@ -344,10 +477,17 @@ function CinematicPanel({
             }}
           >
             <div
-              ref={flashRef}
+              ref={knockRef}
               className="absolute"
-              style={{ left: focus.col * CELL, top: focus.row * CELL, width: CELL, height: CELL }}
+              style={{
+                left: focus.col * CELL,
+                top: focus.row * CELL,
+                width: CELL,
+                height: CELL,
+                visibility: shipHidden ? "hidden" : undefined,
+              }}
             >
+            <div ref={flashRef} className="absolute inset-0">
               <div
                 className={`relative h-full w-full origin-center transition-transform duration-300 ease-out ${shipDisabled ? "sos-art-tilt rotate-[15deg]" : ""}`}
               >
@@ -369,6 +509,7 @@ function CinematicPanel({
                   reactorOnLeft={shipFacesRight}
                 />
               )}
+            </div>
             </div>
             {children}
           </div>
@@ -545,6 +686,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   const [b, setB] = useState<PanelState>("waiting");
   const [firing, setFiring] = useState(false);
   const [hit, setHit] = useState(0);
+  const soundsMuted = useWeaponSoundsMuted();
   // When the hull bar has finished draining (or a killing blow's has
   // emptied). The outcome is read from the props at that moment, not at
   // mount: an enemy move starts playing from its Move event, and the target's
@@ -556,7 +698,9 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   // destroying it disables it: once the bar has drained, it tilts and burns
   // as the board draws it.
   const disabledByHit =
-    hullSettled && !killsTarget && !defenderDisabled && effect.kind !== "repair" && defenderStatusAfter?.hullPoints === 0;
+    hullSettled && !killsTarget && !defenderDisabled && effect.kind !== "repair" &&
+    effect.kind !== "ram" &&
+    defenderStatusAfter?.hullPoints === 0;
   // A repair that brings a disabled (SOS) ship's hull back above 0 restores
   // it: once the bar has filled, it rights itself and the fires go out.
   const restoredByRepair =
@@ -584,14 +728,17 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   }, []);
 
   useEffect(() => {
-    const fireMs = weaponOnceMs(effect, STAGED_DISTANCE);
+    const fireMs = firingMs(effect);
     const hitMs = hitAtMs(effect);
     const outMs = FIRE_AT_MS + fireMs + HOLD_AFTER_MS;
     const timers = [
       window.setTimeout(() => setA("in"), 20),
       window.setTimeout(() => setB("in"), B_IN_MS),
       window.setTimeout(() => setFiring(true), FIRE_AT_MS),
-      window.setTimeout(() => setHit((n) => n + 1), hitMs),
+      window.setTimeout(() => {
+        setHit((n) => n + 1);
+        if (effect.kind === "ram") playRamCrash(soundOnceKey, soundsMuted);
+      }, hitMs),
       window.setTimeout(() => setFiring(false), FIRE_AT_MS + fireMs),
       window.setTimeout(() => {
         setA("out");
@@ -607,6 +754,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
 
   // A repair's patient is on the healer's side.
   const isRepair = effect.kind === "repair";
+  const isRam = effect.kind === "ram";
   const flip = !attackerIsCreator;
   const stagedAttacker = flip ? mirrorCell(STAGE_ATTACKER) : STAGE_ATTACKER;
   const stagedDefender = flip ? mirrorCell(STAGE_DEFENDER) : STAGE_DEFENDER;
@@ -616,6 +764,21 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   const anchorB = flip ? { x: 100 - ANCHOR_B.x, y: ANCHOR_B.y } : ANCHOR_B;
   const dir = attackerIsCreator ? 1 : -1;
   const wreck = wrecked ? { ...defender, shipData: { ...defender.shipData, timestampDestroyed: 1 } } : defender;
+  // A rammed ship is knocked on along the charge, well out of its panel.
+  const ramDx = (stagedDefender.col - stagedAttacker.col) * CELL;
+  const ramDy = (stagedDefender.row - stagedAttacker.row) * CELL;
+  const ramDist = Math.hypot(ramDx, ramDy) || 1;
+  const knockOff: Pt | null =
+    isRam && hit > 0 ? { x: (ramDx / ramDist) * CELL * 4, y: (ramDy / ramDist) * CELL * 4 + CELL * 0.8 } : null;
+  const rammer = isRam ? (
+    <ChargingShip
+      ship={attacker}
+      from={stagedAttacker}
+      to={stagedDefender}
+      facesRight={attackerIsCreator}
+      charging={firing || hit > 0}
+    />
+  ) : null;
   const weaponProps = {
     effect,
     attacker: stagedAttacker,
@@ -644,19 +807,24 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             stage={stage}
             ship={attacker}
             shipFacesRight={attackerIsCreator}
+            shipHidden={isRam}
             background={background}
             nebula={attackerInNebula}
             enterFrom={{ x: -18 * dir, y: -14 }}
             state={a}
             shake={0}
             flash={0}
-            caption={shipCaption(attacker, `${isRepair ? "Repairing" : "Attacking"} · ${weaponName(effect, attacker)}`)}
+            caption={shipCaption(
+              attacker,
+              isRam ? "Ramming" : `${isRepair ? "Repairing" : "Attacking"} · ${weaponName(effect, attacker)}`,
+            )}
             captionColor={attackerIsMine ? MY_COLOR : THEIR_COLOR}
             captionAt="top"
             captionSide={attackerIsCreator ? "left" : "right"}
             boardRef={boardA}
           >
-            {firing && (
+            {rammer}
+            {firing && !isRam && (
               <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
                 <StagedWeapon {...weaponProps} boardRef={boardA} soundOnceKey={soundOnceKey} />
               </div>
@@ -672,7 +840,8 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             shipFacesRight={isRepair ? attackerIsCreator : !attackerIsCreator}
             shipDisabled={((defenderDisabled && !restoredByRepair) || disabledByHit) && !wrecked}
             shipStatus={wrecked ? null : defenderStatus}
-            shipStatusAfter={hit > 0 ? defenderStatusAfter : null}
+            shipStatusAfter={hit > 0 && !isRam ? defenderStatusAfter : null}
+            knockOff={knockOff}
             hullDrainMs={hullDrainMs(effect, killsTarget)}
             background={background}
             nebula={defenderInNebula}
@@ -687,7 +856,11 @@ export const CombatCinematic = React.memo(function CombatCinematic({
                 ? hit > 0
                   ? "Repaired"
                   : "Receiving repairs"
-                : wrecked
+                : isRam
+                  ? hit > 0
+                    ? "Rammed"
+                    : "Defending"
+                  : wrecked
                   ? "Destroyed"
                   : disabledByHit
                     ? "Disabled"
@@ -699,8 +872,9 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             boardRef={boardB}
           >
             {/* The same shot, from the same moment; its sounds are A's. */}
+            {rammer}
             <WeaponSoundsMuted value={true}>
-              {firing && (
+              {firing && !isRam && (
                 <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
                   <StagedWeapon {...weaponProps} boardRef={boardB} soundOnceKey={`${soundOnceKey}:defender`} />
                 </div>

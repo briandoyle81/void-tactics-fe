@@ -38,7 +38,8 @@ import { useCombatView } from "../hooks/useCombatView";
 // is drawn. Lives in GameGrid, so web3, web2, the tutorial and replay share it.
 // With Combat view set to Cinematic (useCombatView), an attack on an enemy
 // ship (or a repair on another friendly one) plays in CombatCinematic's two
-// panels over the board instead: the
+// panels over the board instead (a Ram too: the rammer charges out of its
+// panel into the victim's, with no slide on the board first): the
 // board's weapon (and its sounds) isn't mounted for that move, and the
 // firing phase lasts the cinematic's length.
 
@@ -130,9 +131,12 @@ export function MovePlaybackLayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [move?.key]);
 
-  const slides = !!move && !!ship && effect.kind !== "retreat" && !sameTile(move.from, move.to);
+  // A Ram ends on its victim's tile (boardMoveFromRaw), which leaves the
+  // board as the rammer lands there (landShipPositions).
   const targetPos = move?.targetShipId
-    ? (allShipPositions.find((p) => p.shipId === move.targetShipId)?.position ?? null)
+    ? effect.kind === "ram"
+      ? move.to
+      : (allShipPositions.find((p) => p.shipId === move.targetShipId)?.position ?? null)
     : null;
   const distanceCells = move && targetPos ? Math.hypot(move.to.row - targetPos.row, move.to.col - targetPos.col) : 0;
   const targetShip = move?.targetShipId ? shipMap.get(move.targetShipId) : undefined;
@@ -143,6 +147,14 @@ export function MovePlaybackLayer({
     !!targetShip &&
     !!targetPos &&
     move?.targetShipId !== move?.shipId;
+  // A cinematic ram charges in its panels instead of sliding on the board:
+  // the board puts the rammer on the victim's tile when the cinematic starts.
+  const slides =
+    !!move &&
+    !!ship &&
+    effect.kind !== "retreat" &&
+    !(cinematic && effect.kind === "ram") &&
+    !sameTile(move.from, move.to);
   const fireMs = cinematic ? cinematicDurationMs(effect) : weaponOnceMs(effect, distanceCells);
 
   // Skip a phase with nothing to draw (a hold doesn't slide; Pass fires nothing).
