@@ -52,9 +52,9 @@ interface FleeAnimationProps {
 
 
 /**
- * Retreat last move: the ship, drawn as the hologram the last move's From
- * position always is (see GameGridCell), turns to face its own side, builds
- * engine glow and zooms off the board. Plays once per mount; GameGridOverlays
+ * Retreat playback: the ship, drawn as solid art (no hologram, it's a move
+ * being played, not one being staged), turns to face its own side, builds
+ * engine glow and zooms off the board. Plays once per mount; MovePlaybackLayer
  * keys it by the move. Shared by web3, web2 and the tutorial.
  */
 export const FleeAnimation = React.memo(function FleeAnimation({
@@ -204,7 +204,7 @@ export const FleeAnimation = React.memo(function FleeAnimation({
         />
         {/* Ship art - opposite of in-game: creator = native (no flip), joiner = flip */}
         <div
-          className="absolute inset-0 flex items-center justify-center move-hologram move-hologram-steady"
+          className="absolute inset-0 flex items-center justify-center"
           style={{
             transform: shipFlipForRetreat,
           }}
