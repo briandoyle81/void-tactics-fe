@@ -196,11 +196,11 @@ export function DialogLineCard({
 
   const portraitSize = spotlight
     ? compact
-      ? "h-14 w-14"
-      : "h-20 w-20"
+      ? "h-21 w-21"
+      : "h-30 w-30"
     : compact
-      ? "h-12 w-12"
-      : "h-16 w-16";
+      ? "h-18 w-18"
+      : "h-24 w-24";
   const bodyText = spotlight && !compact ? "text-base" : "text-sm";
 
   return (

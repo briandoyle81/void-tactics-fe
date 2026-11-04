@@ -503,7 +503,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       trigger: { type: "resourceTileTaken", side: "player", count: 1 },
       responses: [
         {
-          characterId: "adjutant",
+          characterId: "harcourt",
           text: "Commander Bosch, you really must learn to behave with more decorum.",
         },
       ],

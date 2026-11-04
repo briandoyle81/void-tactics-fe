@@ -377,7 +377,21 @@ export const GameGridCell = React.memo(function GameGridCell({
                       const noMoveElsewhere =
                         previewPosition === null || previewAtCurrentPos || alreadyRamming;
 
-                      if (inMoveRange && inWeaponRange && noMoveElsewhere) {
+                      // Only an action that can hit an enemy may pick it: a
+                      // repair (Repair Drones, a Repair faction ability) can't.
+                      const canTargetEnemy = isValidActionTargetType({
+                        selectedWeaponType,
+                        specialType,
+                        shipVariant: shipMap.get(selectedShipId!)?.traits.variant,
+                        factionAbilityIsHeal,
+                        cellShipId: cell.shipId,
+                        selectedShipId: selectedShipId!,
+                        isFriendly: false,
+                      });
+
+                      if (!canTargetEnemy) {
+                        // Fall through: the normal targeting below rejects it too.
+                      } else if (inMoveRange && inWeaponRange && noMoveElsewhere) {
                         // Ram is only proposed when the player has explicitly
                         // selected Ram as their action — otherwise (weapon or
                         // special mode) a click always targets the ship in
