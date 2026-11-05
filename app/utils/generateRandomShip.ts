@@ -7,7 +7,7 @@ import { SHOWCASE_SHIP_NAMES } from "../data/content/showcaseShipNames";
 const SHIP_NAMES = SHOWCASE_SHIP_NAMES;
 
 /**
- * Generate a random, fully-formed decorative Ship — no backend/on-chain data
+ * Generate a random, fully-formed decorative Ship — no backend/onchain data
  * required. `name` is a real consortium ship name for variant 1, a drone-style
  * call sign (data/mockDroneNames.ts) for variant 2. Uses Math.random(), so callers that
  * render during SSR must only call this client-side, after mount, to avoid a

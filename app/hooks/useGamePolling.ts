@@ -8,7 +8,7 @@ const TURN_POLL_DIVISOR = 10;
 // Post-move polling normally scales with turnTime (poll faster the shorter
 // the turn clock is) — that's the right heuristic for PvP, including 24h
 // correspondence games where slow polling is intentional. vs-AI games also
-// store a 24h turnTime (to represent "unlimited", since nothing on-chain
+// store a 24h turnTime (to represent "unlimited", since nothing onchain
 // enforces it there), but the AI actually responds in seconds, not hours —
 // deriving its polling cadence from that stored value would leave the
 // "AI is taking its turn" loop waiting hours between refetches. Use a fixed

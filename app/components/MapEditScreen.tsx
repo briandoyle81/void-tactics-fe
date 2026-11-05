@@ -27,7 +27,7 @@ interface MapEditScreenProps {
   onCancel: () => void;
 }
 
-// The web3 map create/edit screen (mode selector + grid editor + on-chain
+// The web3 map create/edit screen (mode selector + grid editor + onchain
 // save), shared by the Maps tab (Maps.tsx) and the campaign/roguelike node
 // editors' map preview. Web2 counterpart: MapEditScreenWeb2.tsx.
 export function MapEditScreen({

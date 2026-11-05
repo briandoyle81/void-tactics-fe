@@ -12,7 +12,7 @@ import { toShipVisual } from "./toShipVisual";
 /**
  * Max ships built per construct transaction. Also the batched construct-all
  * cap (when there are more targets than this, they're constructed in slices of
- * this size). Constructing costs ~151k gas per ship on-chain, and Base
+ * this size). Constructing costs ~151k gas per ship onchain, and Base
  * Sepolia / Flow enforce a 16,777,216 (2^24) block gas cap — so ~110 ships is
  * the hard ceiling and anything near it reverts "out of gas" during estimate.
  * 60 (~9.1M gas, ~54% of the cap) keeps a comfortable margin. Keep in sync

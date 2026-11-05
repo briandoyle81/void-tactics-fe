@@ -15,7 +15,7 @@
 //
 // Values verified against ignition/modules/DeployAndConfig.ts's
 // setVariantAttributes calls (variant1Specials/variant2 specials arrays) —
-// direct on-chain reads return identical numbers across every valid
+// direct onchain reads return identical numbers across every valid
 // variant within its own faction, so this static table is correct, not an
 // oversight.
 
@@ -35,7 +35,7 @@ const VARIANT_1_SPECIALS: Record<number, SpecialConfigEntry> = {
 const VARIANT_2_SPECIALS: Record<number, SpecialConfigEntry> = {
   1: { range: 2, strength: 1, movement: 0 }, // Electric Storm: self-centered AoE, adds `strength` to every active ship's (both sides + self) reactor-critical stack
   2: { range: 5, strength: 40, movement: 0 }, // Drone Swarm: single-target hull damage against an enemy, reduced by the target's damage reduction
-  3: { range: 0, strength: 0, movement: 3 }, // Additional Thruster: pure passive movement bonus — never dispatched as an action (no resolver on-chain either), see isActivatableSpecial below
+  3: { range: 0, strength: 0, movement: 3 }, // Additional Thruster: pure passive movement bonus — never dispatched as an action (no resolver onchain either), see isActivatableSpecial below
 };
 
 /** Variant-1 shape, kept for the (currently only) callers that only have a bare special slot in scope with no ship/variant to hand — those pre-date the faction split and are variant-1-only contexts. */

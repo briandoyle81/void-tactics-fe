@@ -35,7 +35,7 @@ interface ShipImageProps {
   holdPreviousImage?: boolean;
 }
 
-// Web3-mode adapter for the shared `ShipImageView` — resolves the on-chain
+// Web3-mode adapter for the shared `ShipImageView` — resolves the onchain
 // renderer hook and adapts `Ship` (bigint) to plain props. See
 // `ShipImageWeb2.tsx` for the web2 counterpart; both render the identical
 // `ShipImageView`.

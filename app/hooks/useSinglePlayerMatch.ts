@@ -18,13 +18,13 @@ export const SINGLE_PLAYER_MATCH_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[
   CHAIN_ID
 ].SINGLE_PLAYER_MATCH as `0x${string}`;
 
-// The on-chain AI logic (pathfinding + combat resolution) makes takeAITurn
+// The onchain AI logic (pathfinding + combat resolution) makes takeAITurn
 // a genuinely expensive call — measured via eth_estimateGas at ~1.41M gas
 // for a single call on a real game, not the few-hundred-k typical of most
 // writes here. Auto-estimation isn't reliable for this specific call under
 // Dynamic's server-side (secure-enclave) signing path — set an explicit,
 // generously-padded limit so it's never silently underestimated and leaves
-// the AI's turn stuck mid-loop with no on-chain error at all. Confirmed
+// the AI's turn stuck mid-loop with no onchain error at all. Confirmed
 // flat cost regardless of map (per contracts-side update), so one constant
 // covers every node.
 const TAKE_AI_TURN_GAS_LIMIT = 2_500_000n;
@@ -108,7 +108,7 @@ export function useSinglePlayerMatch() {
 }
 
 // Maps a game back to the campaign node it was launched from — recorded
-// on-chain by startNodeMatch. Used for the mission-result screen (which
+// onchain by startNodeMatch. Used for the mission-result screen (which
 // node was this, so it can show the right title / offer "return to
 // campaign"). Node ids start at 1; 0 means "not a node match" (defensively
 // handled even though every single-player game should have one).

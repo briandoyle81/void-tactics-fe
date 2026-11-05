@@ -6,7 +6,7 @@ import { isWinEffectKey } from "@/app/lib/winEffectsWeb2";
 // PUT /api/admin/roguelike/nodes/[id]/win-effects — admin-only, full-replace
 // of one node's win-effect list. Web2 counterpart to
 // RoguelikeNodeMap.setNodeWinEffects — kept separate from the main node PUT
-// route (which is a full-replace of kind/mapId/etc.) since on-chain this is
+// route (which is a full-replace of kind/mapId/etc.) since onchain this is
 // its own contract call, not part of updateNode.
 export async function PUT(
   req: NextRequest,

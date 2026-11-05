@@ -2,11 +2,11 @@
 
 **Written: 2026-07-30.** This is a delta doc — it covers everything that changed *after* `docs/singleplayer-frontend-integration.md` was last written (the AI-ship-pooling/router work and the `2**40` id-offset fix). That doc is still the source of truth for the overall single-player flow; this one only covers what's new since. Check contracts-repo commits if it's been a while.
 
-**Revised 2026-08-25** — added section 7 (fleets can no longer mix ship variants; the Shattered Hive campaign now requires an all-variant-1 human fleet) and section 8 (the complete admin write surface for designing/editing campaign missions — this existed on-chain before today but was never fully written up here: editor-role management and incremental prerequisite editing were previously undocumented).
+**Revised 2026-08-25** — added section 7 (fleets can no longer mix ship variants; the Shattered Hive campaign now requires an all-variant-1 human fleet) and section 8 (the complete admin write surface for designing/editing campaign missions — this existed onchain before today but was never fully written up here: editor-role management and incremental prerequisite editing were previously undocumented).
 
 ## 1. The ghost-ship editor bug — fixed on the contract side
 
-You reported this: remove a ship in the admin fleet editor, hit Save, and the removed ship stays on-chain forever (`AIEncounters` has no clear/delete function, only upsert). Root cause confirmed and fixed.
+You reported this: remove a ship in the admin fleet editor, hit Save, and the removed ship stays onchain forever (`AIEncounters` has no clear/delete function, only upsert). Root cause confirmed and fixed.
 
 **`AIEncounters.setMapPlacements(mapId, positions, configIds)` now has full-replace semantics.** It clears every existing placement on the map first, then applies whatever you send. You can now just send the complete new fleet deployment — any count, any positions, any config selection — and it fully replaces what was there, including cells you don't mention. Send empty arrays to clear a map's fleet entirely.
 
@@ -43,13 +43,13 @@ uint enemyThreat; // purely descriptive, never enforced — your own UI/balance 
 **Action for you:**
 - If your admin editor validated "AI fleet cost ≤ node.costLimit" client-side to mirror the old contract behavior, remove that check — it's not real anymore.
 - `costLimit` is still the real, enforced player fleet cost cap ("max player threat").
-- `enemyThreat` is a number for your own reference/display (e.g. a difficulty readout) — nothing on-chain checks it against the actual AI fleet cost, so don't assume they match.
+- `enemyThreat` is a number for your own reference/display (e.g. a difficulty readout) — nothing onchain checks it against the actual AI fleet cost, so don't assume they match.
 
 ## 5. Multiple campaigns
 
 `NodeMap` now supports grouping nodes into named-by-id campaigns, with a query surface designed for other contracts (or your frontend) to check progress without walking the whole node list.
 
-- `NodeMap.createCampaign() returns (uint campaignId)` — editor-gated, sequential ids, no metadata (same "no on-chain display strings" convention as maps/AI configs — keep your own name/flavor-text mapping).
+- `NodeMap.createCampaign() returns (uint campaignId)` — editor-gated, sequential ids, no metadata (same "no onchain display strings" convention as maps/AI configs — keep your own name/flavor-text mapping).
 - Every node now belongs to one: `createNode`/`updateNode` both take a new **first-positioned** `campaignId` param (see signatures below) and revert `CampaignNotFound` if it doesn't exist. A node can be moved to a different campaign via `updateNode`.
 - `NodeMap.getNodesInCampaign(campaignId) returns (uint[])`
 - `NodeMap.getCampaignCompletion(player, campaignId) returns (uint[] nodeIds, bool[] completed)` — the main one for a progress screen: one call gets you the campaign's node ids and this player's completion state for each, in parallel arrays.
@@ -120,7 +120,7 @@ You asked whether the hooks/controls to build a campaign-mission editor exist �
 function setNodeEditor(address _editor, bool _allowed) external; // onlyOwner
 function isNodeEditor(address) external view returns (bool);      // check who currently has it
 
-// Campaigns — a campaign is just a grouping id, no on-chain metadata
+// Campaigns — a campaign is just a grouping id, no onchain metadata
 // (keep your own name/flavor-text mapping, same convention as maps/AI
 // configs).
 function createCampaign() external returns (uint campaignId); // sequential id

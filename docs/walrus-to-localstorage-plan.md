@@ -25,7 +25,7 @@ dependency — just hardcoded testnet URLs):
   `Map<string,string>`).
 - **Archive** (`EPOCHS_ARCHIVE = 15`): uploaded once when
   `game.metadata.winner` is set, then the resulting blob id is written
-  on-chain via `GameBlobRegistry.record(...)` (and `Tournament.recordResult`
+  onchain via `GameBlobRegistry.record(...)` (and `Tournament.recordResult`
   for tournament matches), so anyone can look it up later and replay it.
 
 ### Files touched
@@ -36,12 +36,12 @@ dependency — just hardcoded testnet URLs):
 | `app/api/walrus/upload/route.ts` | Server proxy for Walrus publisher POST | Delete — localStorage writes happen client-side, no server round-trip needed |
 | `app/api/game-blob/route.ts` | In-memory mid-game pointer (`gameId:player` → `rawBlobId`) | Delete — the multi-device pointer has no localStorage equivalent (see "What we lose" below) |
 | `app/components/GameDisplay.tsx` | `uploadGameRecordToWalrus`, `updateGameBlobPointer`, `fetchAndStartReplay` (~lines 394-540); replay UI (~lines 4098-4185) | Rework upload/fetch calls to read/write localStorage keyed by `gameId`; drop pointer update calls |
-| `app/hooks/useGameRecord.ts` | Reads on-chain `GameBlobRegistry.getBlob`, then fetches from Walrus aggregator | Currently **dead code** (no importers found) — decide: delete, or repurpose for a future local match-detail view |
+| `app/hooks/useGameRecord.ts` | Reads onchain `GameBlobRegistry.getBlob`, then fetches from Walrus aggregator | Currently **dead code** (no importers found) — decide: delete, or repurpose for a future local match-detail view |
 | `app/utils/serializeGameRecord.ts` | `buildInitialRecord`/`appendTurn`/`finalizeRecord` — pure builders, no I/O | No change needed, storage-agnostic |
 | `app/types/types.ts` | `GameRecord`, `TurnRecord`, `TournamentMatch.walrusBlobId` | No change to `GameRecord`/`TurnRecord`; `walrusBlobId` field stays (see contract note below) |
 | `app/components/TournamentBracket.tsx` | "View replay" link shown when `match.walrusBlobId !== ZERO_BLOB` | Decide whether tournament replay is in scope at all right now — see open questions |
 | `app/hooks/useTournamentAdmin.ts` | Passes `walrusBlobId` through to `recordResult`/`resolveDraw` contract calls | No change — contract field name stays `walrusBlobId` regardless of storage backend (Solidity side, separate repo) |
-| `app/config/contracts.ts`, `deployed_addresses.json` | `GAME_BLOB_REGISTRY` address/ABI wiring | No change unless we also stop writing the on-chain pointer (see open question below) |
+| `app/config/contracts.ts`, `deployed_addresses.json` | `GAME_BLOB_REGISTRY` address/ABI wiring | No change unless we also stop writing the onchain pointer (see open question below) |
 | `app/components/SimulatedGameDisplay.tsx` | Replay UI scaffolding, currently inert (`replayTurns` never populated — tutorial never uploads to Walrus) | Leave inert, or wire to localStorage now for free — see open questions |
 | `README.md` | Documents "Game Recording and Match Replay (Walrus)" feature | Update copy once implementation changes |
 
@@ -58,7 +58,7 @@ localStorage version won't need a URL at all.
   capability goes away for now (this is the accepted tradeoff per the ask —
   flagging so it's an explicit, not accidental, regression).
 - **Public/shareable replay links after a game ends**: today anyone can look
-  up the on-chain `blobIdHex` and fetch the archive from Walrus. With
+  up the onchain `blobIdHex` and fetch the archive from Walrus. With
   localStorage, only the browser that played the game can replay it.
   `TournamentBracket.tsx`'s "View replay" link and the not-yet-built
   `/tournaments/[id]/matches/[id]` page assume global fetchability — these
@@ -104,9 +104,9 @@ empty/broken controls. Concretely in `GameDisplay.tsx`:
    alert state instead of populating replay state (see "Decision:
    replay-not-found UX" above). Drop `updateGameBlobPointer` entirely (no
    pointer needed for single-device storage).
-3. **Skip on-chain registration entirely**: no `GameBlobRegistry.record(...)`
+3. **Skip onchain registration entirely**: no `GameBlobRegistry.record(...)`
    call and no `Tournament.recordResult` blobId write — the archive step
-   simply stops writing anything on-chain. If `Tournament.recordResult`
+   simply stops writing anything onchain. If `Tournament.recordResult`
    needs to fire for other bookkeeping (e.g. marking a match resolved)
    independent of the blobId, call it with the existing `ZERO_BLOB`
    sentinel rather than skipping the call altogether — confirm this against
@@ -142,7 +142,7 @@ empty/broken controls. Concretely in `GameDisplay.tsx`:
 - **Replay-not-found UX**: show an alert in place of the replay controls
   when no local record exists, rather than hiding entry points (see decision
   section above) — applies to live/tournament games.
-- **On-chain registration**: skipped entirely; no blobId gets written to
+- **Onchain registration**: skipped entirely; no blobId gets written to
   `GameBlobRegistry` or `Tournament.recordResult` going forward.
 - **`useGameRecord.ts`**: deleted, not kept as a stub (see item 5 above).
 - **Tutorial replay**: hidden entirely in `SimulatedGameDisplay.tsx` rather

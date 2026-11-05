@@ -16,7 +16,7 @@ interface DroneStorefrontResponse {
 }
 
 // Web2-mode counterpart to `useDroneStorefront.ts` — reads come from
-// GET /api/drone-storefront (Prisma-backed) instead of on-chain
+// GET /api/drone-storefront (Prisma-backed) instead of onchain
 // droneCoreTier/tierCoreCost/DEC-balance reads; no allowance concept, since
 // DEC is spent via a server-side atomic decrement, not an ERC20 approve.
 export function useDroneStorefrontWeb2() {

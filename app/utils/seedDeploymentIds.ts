@@ -1,4 +1,4 @@
-// The on-chain id of each seed map and roguelike node on a real deployment,
+// The onchain id of each seed map and roguelike node on a real deployment,
 // read the way the contracts repo's scripts/syncStarterContent.ts reads them
 // (frontend-handoff-2026-10-20.md §2). Ids can't be worked out from the
 // seed's array order any more: the live Base Sepolia deploy created
@@ -19,11 +19,11 @@
 import type { MissionSeedFiles } from "./missionSeedExport";
 
 export interface SeedDeploymentIds {
-  /** Seed map key -> on-chain map id. */
+  /** Seed map key -> onchain map id. */
   mapIds: Map<string, number>;
-  /** Seed roguelike node key -> on-chain node id. */
+  /** Seed roguelike node key -> onchain node id. */
   roguelikeNodeIds: Map<string, number>;
-  /** On-chain map ids no seed entry owns (e.g. a duplicate left by a failed sync). */
+  /** Onchain map ids no seed entry owns (e.g. a duplicate left by a failed sync). */
   ignoredMapIds: number[];
   ignoredRoguelikeNodeIds: number[];
   /** False for positionalSeedIds: there's no content-sync.json to record new ids in. */

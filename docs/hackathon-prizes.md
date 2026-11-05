@@ -26,7 +26,7 @@ https://mystenlabs.github.io/evm-sui/
 ↗
 🌱 Best new build with Walrus & the Sui stack ⸺ $3,000
 
-For teams starting something new this weekend. We'd love to see products that tap into Sui and any part of its stack — Walrus for decentralized storage, DeepBook for on-chain liquidity and order books, and everything else Sui offers. For EVM developers, Walrus is the most natural entry point: it's the chain-agnostic piece that drops straight into an EVM app, so you don't need to build entirely on Sui to take part — but if your idea reaches deeper into the stack, even better. Just like the existing-products track, we're looking for the most market-viable products — real ideas people would actually use — with Walrus or the broader Sui stack doing genuine work: storing blobs behind a smart contract, hosting a frontend, replacing IPNS, anchoring a DAO proposal or a verifiable manifest, powering an NFT drop, building on DeepBook, or wherever it fits your concept.
+For teams starting something new this weekend. We'd love to see products that tap into Sui and any part of its stack — Walrus for decentralized storage, DeepBook for onchain liquidity and order books, and everything else Sui offers. For EVM developers, Walrus is the most natural entry point: it's the chain-agnostic piece that drops straight into an EVM app, so you don't need to build entirely on Sui to take part — but if your idea reaches deeper into the stack, even better. Just like the existing-products track, we're looking for the most market-viable products — real ideas people would actually use — with Walrus or the broader Sui stack doing genuine work: storing blobs behind a smart contract, hosting a frontend, replacing IPNS, anchoring a DAO proposal or a verifiable manifest, powering an NFT drop, building on DeepBook, or wherever it fits your concept.
 Qualification Requirements
 
     The project must be newly developed during the hackathon.
@@ -63,7 +63,7 @@ worldnetwork
 Open page →
 About
 
-World’s developer stack helps builders create products for verified humans and AI-assisted interactions. World ID enables apps to confirm someone is a unique human without revealing their identity. Mini Apps provide developers with a native distribution channel within World App. AgentKit helps identify when agents are backed by real humans rather than bots or scripts. World Chain provides the on-chain infrastructure to build, transact, and scale these experiences. ProveKit is a zk proving library, allowing someone to write their circuits in Noir and prove them.
+World’s developer stack helps builders create products for verified humans and AI-assisted interactions. World ID enables apps to confirm someone is a unique human without revealing their identity. Mini Apps provide developers with a native distribution channel within World App. AgentKit helps identify when agents are backed by real humans rather than bots or scripts. World Chain provides the onchain infrastructure to build, transact, and scale these experiences. ProveKit is a zk proving library, allowing someone to write their circuits in Noir and prove them.
 Prizes
 🌍 Track A (AgentKit) ⸺ $7,500
 🥇
@@ -153,20 +153,20 @@ $1,500
 2nd place
 $1,000
 
-Teams building with ProveKit to compile and prove Noir circuits in real apps (web, mobile, services, and/or on-chain), unlocking new UX by making proofs practical to generate and verify across environments.
+Teams building with ProveKit to compile and prove Noir circuits in real apps (web, mobile, services, and/or onchain), unlocking new UX by making proofs practical to generate and verify across environments.
 
 Example patterns:
 
     On-device proving (mobile or browser) for privacy-preserving flows
     Proof verification embedded in a Mini App/web app backend
-    On-chain verification using a recursive verifier
+    Onchain verification using a recursive verifier
     Developer tooling/pipelines that make Noir → proving → verification reproducible and fast
 
 Qualification Requirements
 
     Compile Noir circuits to R1CS
     Generate WHIR proofs
-    Verify proofs in at least one target environment (CLI, browser, mobile, service, or on-chain via recursive verifier)
+    Verify proofs in at least one target environment (CLI, browser, mobile, service, or onchain via recursive verifier)
 
 Links and Resources
 ProveKit Example + Benchmarks
@@ -386,7 +386,7 @@ Qualification Requirements
 
 Qualification Requirements: Build an AI agent or multi-agent system that executes at least one payment, token transfer, or financial operation on Hedera Testnet. Use one or more of the following: Hedera Agent Kit (JS/TS or Python), OpenClaw ACP, x402, A2A protocol, or Hedera SDKs directly. Provide source code in a public GitHub repo with a README covering setup, architecture, and how the payment flow works. Include a ≤ 5-minute demo video showing the agent performing autonomous payment actions.
 
-Optional enhancements (extra points): Multi-agent payment negotiation and settlement using A2A or OpenClaw ACP Implementation of x402 for pay-per-request API or service access On-chain agent identity using ERC-8004 or HCS-14 (Universal Agent IDs via Hedera Consensus Service) Agent discovery and communication via UCP (Universal Commerce Protocol) Token creation, custom fee schedules, or royalty flows via the Hedera Token Service (HTS) Scheduled or recurring payments using Hedera Scheduled Transactions Verifiable payment audit trails using Hedera Consensus Service (HCS) Use of the Hedera CLI for agent workflow automation
+Optional enhancements (extra points): Multi-agent payment negotiation and settlement using A2A or OpenClaw ACP Implementation of x402 for pay-per-request API or service access Onchain agent identity using ERC-8004 or HCS-14 (Universal Agent IDs via Hedera Consensus Service) Agent discovery and communication via UCP (Universal Commerce Protocol) Token creation, custom fee schedules, or royalty flows via the Hedera Token Service (HTS) Scheduled or recurring payments using Hedera Scheduled Transactions Verifiable payment audit trails using Hedera Consensus Service (HCS) Use of the Hedera CLI for agent workflow automation
 Links and Resources
 Hedera Agent Kit (JS/TS)
 https://github.com/hashgraph/hedera-agent-kit
@@ -429,7 +429,7 @@ Up to 2 teams will receive $1,500
 
 Build a tokenization application using the Hedera Token Service (HTS). Hedera's native token service lets you create, configure, and manage tokens at the protocol level with built-in compliance controls, custom fee schedules, and atomic operations, no smart contract required.
 
-This bounty is focused on real-world asset tokenization: securities, real estate fractions, invoices, carbon credits, commodities, fund shares, or any asset class where on-chain representation unlocks liquidity, transparency, or automation. Projects that demonstrate a clear path from physical asset to on-chain token with meaningful compliance or lifecycle management will be favoured.
+This bounty is focused on real-world asset tokenization: securities, real estate fractions, invoices, carbon credits, commodities, fund shares, or any asset class where onchain representation unlocks liquidity, transparency, or automation. Projects that demonstrate a clear path from physical asset to onchain token with meaningful compliance or lifecycle management will be favoured.
 
 Ideas to get you started: Tokenized Fund Shares — Create a fund token with KYC-gated transfers and automated dividend distributions via custom fees. Invoice Factoring — Tokenize invoices as HTS tokens, allow buyers to purchase them at a discount, and settle on maturity via Scheduled Transactions. Carbon Credit Registry — Mint carbon credits as HTS tokens with provenance tracked on HCS and retirement enforced by burning. Fractionalized Real Estate — Tokenize property ownership with royalty fees that distribute rental income to holders on every transfer. Commodity Receipts — Issue warehouse receipts as HTS tokens backed by oracle-verified commodity prices.
 Qualification Requirements
@@ -500,11 +500,11 @@ https://github.com/hedera-dev/hedera-code-snippets
 Hedera Discord
 https://hedera.com/discord
 ↗
-⏱️ Autonomous On-Chain Automation Platform ⸺ $3,000
+⏱️ Autonomous Onchain Automation Platform ⸺ $3,000
 🆕 This prize is only available to Continuity Track participants →
 Up to 3 teams will receive $1,000
 
-Build a production-ready automation platform that lets users schedule, approve, and execute on-chain actions using the Hedera Schedule Service, with no bots, keepers, or off-chain cron infrastructure. Most chains lean on centralized keepers or off-chain schedulers to fire future transactions. Hedera makes scheduling a native primitive: submit a transaction, collect the signatures it needs, and let the network execute it when the conditions are met.
+Build a production-ready automation platform that lets users schedule, approve, and execute onchain actions using the Hedera Schedule Service, with no bots, keepers, or off-chain cron infrastructure. Most chains lean on centralized keepers or off-chain schedulers to fire future transactions. Hedera makes scheduling a native primitive: submit a transaction, collect the signatures it needs, and let the network execute it when the conditions are met.
 
 This bounty is focused on real-world automation workflows: payroll for contributors, treasury actions gated by governance approval, recurring subscription payments, or time-locked protocol upgrades. Think in terms of users and workflows, not just transactions. The strongest projects will feel like something a DAO, finance team, protocol operator, or business could adopt tomorrow.
 
@@ -513,7 +513,7 @@ Qualification Requirements
 
 Qualification Requirements: Use the Hedera Schedule Service (via SDK, system contracts, or both) to create and execute scheduled transactions on Hedera Testnet. Expose a user-facing workflow to create, approve, and manage scheduled actions. Execute at least one real future or conditional transaction end to end. Provide source code in a public GitHub repo with a README covering setup, architecture, and how the scheduling flow works. Include a ≤ 5-minute demo video showing a user creating a scheduled action and the network executing it.
 
-Optional enhancements (extra points): Approval flows: multi-sig, DAO voting, or role-based signoff before execution Conditional execution logic that combines time, on-chain state, and approvals Composable automation: scheduled calls into EVM smart contracts via system contracts A dashboard or UI to create schedules, inspect pending executions, and track execution history A clear cost, reliability, and trust comparison against off-chain bots or keepers Verifiable execution audit trails using the Hedera Consensus Service (HCS)
+Optional enhancements (extra points): Approval flows: multi-sig, DAO voting, or role-based signoff before execution Conditional execution logic that combines time, onchain state, and approvals Composable automation: scheduled calls into EVM smart contracts via system contracts A dashboard or UI to create schedules, inspect pending executions, and track execution history A clear cost, reliability, and trust comparison against off-chain bots or keepers Verifiable execution audit trails using the Hedera Consensus Service (HCS)
 Links and Resources
 Hedera Schedule Service Documentation
 https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts/hedera-schedule-service
@@ -634,7 +634,7 @@ Up to 3 teams will receive $2,000
 
 Build your first workflow with CRE! Chainlink Runtime Environment (CRE) is an all-in-one orchestration layer that enables developers to build institutional-grade smart contracts — data-connected, compliance-ready, privacy-preserving, and interoperable across blockchains and traditional systems. With CRE, you can connect blockchains to external APIs, enterprise systems, data sources, LLMs, or AI agents.
 
-Using the CRE SDK (available in Go and TypeScript), you’ll build Workflows — modular programs that orchestrate logic across on-chain and off-chain environments. With the CRE CLI, you can compile, simulate, and deploy these workflows to CRE, where they run on a Decentralized Oracle Network (DON) for fault-tolerant execution.
+Using the CRE SDK (available in Go and TypeScript), you’ll build Workflows — modular programs that orchestrate logic across onchain and off-chain environments. With the CRE CLI, you can compile, simulate, and deploy these workflows to CRE, where they run on a Decentralized Oracle Network (DON) for fault-tolerant execution.
 Qualification Requirements
 
 📍Requirements:
@@ -877,7 +877,7 @@ https://youtu.be/uFi9meqpr3c
 ↗
 🚀 TradFi, RWA & Tokenized Assets ⸺ $3,000
 
-Bring real-world financial instruments on-chain with the compliance, privacy, and settlement guarantees that institutions actually require.
+Bring real-world financial instruments onchain with the compliance, privacy, and settlement guarantees that institutions actually require.
 
 Build something like:
 
@@ -1190,9 +1190,9 @@ googlestartups
 Open page →
 About
 
-In the emerging agent economy, ERC-8004 gives autonomous agents verifiable on-chain identity, reputation, and validation so others can discover and trust them at scale. Google BigQuery’s public Ethereum dataset provides raw data in near real time with zero infrastructure or rate limits. This enables hackers to build the search, ranking, and analytics layer for any smart contract using only SQL and a lightweight frontend.
+In the emerging agent economy, ERC-8004 gives autonomous agents verifiable onchain identity, reputation, and validation so others can discover and trust them at scale. Google BigQuery’s public Ethereum dataset provides raw data in near real time with zero infrastructure or rate limits. This enables hackers to build the search, ranking, and analytics layer for any smart contract using only SQL and a lightweight frontend.
 Prizes
-🤖 Best On-Chain Agent Economy Application ⸺ $5,000
+🤖 Best Onchain Agent Economy Application ⸺ $5,000
 
 Create tools that help applications, agents, or other composable integrations rank agents by feedback and reputation. Your goal is to highlight which ones support x402 payments, creating a one-stop place to discover trustworthy, payable agents in the emerging agent economy.
 
@@ -1200,7 +1200,7 @@ Ideas for your submission:
 
     Big Data meets ERC-8004: Build a real-time or historical explorer for ERC-8004 Identity, Reputation, or Validation registries.
     Advanced Analytics: Write SQL to pull ERC-8004 events, compute reputation scores, detect trends, or build activity heatmaps.
-    x402 Integration: Flag agents with x402 payment metadata by joining on-chain data to provide transparency to the x402 ecosystem.
+    x402 Integration: Flag agents with x402 payment metadata by joining onchain data to provide transparency to the x402 ecosystem.
     Search & Filters: Build a natural language or filter UI over agent URIs, metadata, and reputation.
 
 Qualification Requirements

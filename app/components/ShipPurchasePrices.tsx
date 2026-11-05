@@ -432,7 +432,7 @@ const ShipPurchasePrices: React.FC = () => {
             &apos;s <span className="text-text-secondary">purchaseWithUTC</span>{" "}
             and{" "}
             <span className="text-text-secondary">purchaseUTCWithFlow</span>{" "}
-            share one on-chain price table — see the section below). Each
+            share one onchain price table — see the section below). Each
             contract stores tier ship counts and prices with{" "}
             <span className="text-text-secondary">setPurchaseInfo</span>.
           </>

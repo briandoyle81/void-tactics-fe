@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, createConfig, http } from "wagmi";
+import { SignInModal } from "./components/signIn/SignInModal";
 import { DynamicContextProvider, type DynamicContextProps } from "@dynamic-labs/sdk-react-core";
 import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
 import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
@@ -110,6 +111,7 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
       <ClearOAuthRedirectParams />
       <GasGrantClaimer />
       <ShipArtCacheGuard />
+      <SignInModal />
       <TransactionProvider>{children}</TransactionProvider>
     </>
   );

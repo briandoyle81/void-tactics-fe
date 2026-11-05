@@ -26,7 +26,7 @@ function pairSlots(tournamentId: number, round: number, slots: Array<string | nu
 
 /**
  * Single-elimination bracket, seeded from registration order (no seeding
- * UI — matches web3's on-chain generation). Pads the registrant list to
+ * UI — matches web3's onchain generation). Pads the registrant list to
  * the next power of two with byes; a bye match is resolved immediately
  * with no lobby created.
  */

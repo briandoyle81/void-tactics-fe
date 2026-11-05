@@ -1,7 +1,7 @@
 import { Attributes, Ship } from "../types/types";
 import { getRankConfig } from "./rankConfigCache";
 
-// ShipAttributes constants — mirrors the tables published on-chain by
+// ShipAttributes constants — mirrors the tables published onchain by
 // ignition/modules/DeployAndConfig.ts's setVariantAttributes calls
 // (docs/eth-global-remote/frontend-handoff-attributes-costs-and-ai-2026-09-21.md
 // §1/§4). Attributes are versioned per variant now, and both variants'
@@ -229,7 +229,7 @@ function calcBaseDamageReduction(ship: Ship, table: VariantAttributeTable): numb
 
 // Attribute calculation for a ship based directly on the ShipAttributes
 // contract tables (guns/armors/shields), including the same rank and
-// fore-accuracy scaling the on-chain contract applies:
+// fore-accuracy scaling the onchain contract applies:
 // - Base values from the ship's own variant's Gun/Armor/Shield/Special tables
 // - Rank multiplier applied as a percentage to range, damage, hull,
 //   movement, and damageReduction

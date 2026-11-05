@@ -145,7 +145,7 @@ Write actions restricted to the tournament creator / Lobbies owner. Used in the 
 
 ### 3.1 `app/components/TournamentRegister.tsx`
 
-IDKit widget + on-chain register flow. Rendered during `Registration` state only.
+IDKit widget + onchain register flow. Rendered during `Registration` state only.
 
 ```tsx
 import { IDKitWidget, VerificationLevel } from "@worldcoin/idkit";
@@ -203,7 +203,7 @@ Rendered only when `connectedAddress === summary.creator`. Three sections:
 **1. Match queue** — matches where `player1 != 0 && player2 != 0 && !resolved && gameId == 0`:
 - "Create Lobby & Assign Game" button per match → `createMatchLobby`
 
-**2. Resolve draws** — matches where `!resolved && gameId != 0` (admin knows a draw occurred off-chain; no on-chain flag today):
+**2. Resolve draws** — matches where `!resolved && gameId != 0` (admin knows a draw occurred off-chain; no onchain flag today):
 - "Resolve as Draw" button per match → `resolveDraw(tournamentId, matchId, bytes32(0))` (no Walrus blob needed; add blob support in Walrus phase)
 
 **3. Finalize** — shown when all bracket matches are `resolved`:

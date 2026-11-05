@@ -229,7 +229,7 @@ changes the calculus from the note above — this is no longer "rebuild a redund
 "restore lost capability from scratch." The goal, per direction: full step-by-step client replay
 — round number, running score, ship variant, exactly which special/faction ability fired
 (including its faction/slot identity), damage dealt, and destruction — reconstructable purely
-from on-chain events.
+from onchain events.
 
 Researched the exact data model and call graph needed (`Types.sol` enums/structs,
 `Game.sol`'s `_performShoot`/`_performSpecial`/`_performFactionAbility`/`_removeShipFromGame`/
@@ -244,7 +244,7 @@ actually fit via refactoring, not a workaround.
 sites (confirmed by the file's own header comment) instead of inlining the logic, so code living
 inside it — including new events, ABI encoding, and `LOG` opcodes — is charged against *that
 library's own* budget (5.272 KiB deployed, lots of room), not `Game.sol`'s, while the emitted
-event still shows on-chain as coming from `Game.sol`'s address (delegatecall preserves
+event still shows onchain as coming from `Game.sol`'s address (delegatecall preserves
 `ADDRESS()`). Plan: one new library, `contracts/GameReplayLib.sol`, built the same way, plus a
 small extension to `SpecialEffectsLib.sol` itself for ability identity:
 
@@ -309,7 +309,7 @@ Tournament's existing full-Orb World ID gate — matches the track's own framing
 ("risk, eligibility, fairness, continuity, or abuse prevention").
 
 - Reuse the pattern `Tournament.sol` already established for World ID: `ByteHasher` for signal
-  hashing, a nullifier mapping to prevent proof reuse, proof validation on-chain (not in a
+  hashing, a nullifier mapping to prevent proof reuse, proof validation onchain (not in a
   backend) — see `contracts/Tournament.sol` lines 1-80 and `contracts/IWorldID.sol`.
 - `FreeShipClaim.sol` currently only tracks `lastClaimTimestamp[msg.sender]`
   (`contracts/FreeShipClaim.sol:18`) — add a per-nullifier claim record alongside the existing
@@ -383,7 +383,7 @@ needed — the existing revert-and-retry UX already covers the VRF wait.
 service directly within smart contract logic/onchain workflows, not just display data — satisfied,
 `ChainlinkRandomManager` directly replaces the entropy source `Ships.constructShip`/
 `Tournament.buildBracket` consume; (2) the integration must contribute to a real state change on
-a blockchain — satisfied, ship trait generation and bracket construction are genuine on-chain
+a blockchain — satisfied, ship trait generation and bracket construction are genuine onchain
 writes driven by the revealed value; (3) clearly demonstrate how the upgrade improves the existing
 project — satisfied by citing `docs/pre-audit.md`'s own documented residual-risk finding as the
 concrete "why this is better" narrative. Plain VRF (not CRE) remains directly eligible per the
@@ -404,7 +404,7 @@ correction above.
    deploy-safety rule — this is a live testnet deploy, not just `hardhat test`, and needs explicit
    deploy authorization at build time.
 5. Demo: a real request → VRF-callback → reveal cycle on Base Sepolia (e.g. minting + constructing
-   a ship, or closing + building a tournament bracket), showing the on-chain state change, plus the
+   a ship, or closing + building a tournament bracket), showing the onchain state change, plus the
    `docs/pre-audit.md` finding as the required improvement narrative.
 
 No contract-size pressure — this is a new standalone contract; `Ships.sol`/`Tournament.sol` stay
@@ -464,7 +464,7 @@ now every owner-gated admin action — `scripts/allowFirebaseMinter.ts` calling
 `setIsAllowedToCreateShips`, plus any future RandomManager repoint or mint-authorization change —
 signs with a plaintext `METAMASK_WALLET_1` private key pulled straight out of `.env` in
 `hardhat.config.ts`, with no hardware confirmation between "run the script" and "owner-privileged
-state changes on-chain." Swapping that for `wallet-cli ring` as the key backend, or at minimum
+state changes onchain." Swapping that for `wallet-cli ring` as the key backend, or at minimum
 putting a device-confirmation prompt in front of the minter-allowlist call, is close to pure ops
 work — no new Solidity, no size budget spent, just moving where the signature comes from. The
 real payoff outlasts the $1,500 prize: it closes the actual worst-case in this repo, a leaked or
@@ -692,7 +692,7 @@ reinforces the existing passive ceiling rather than competing with it or replaci
    eternal prize — needs explicit confirmation before defining the mint path.
 2. **Weighted random selection is real implementation work, not trivial.** Picking a winner
    fairly from an unknown number of addresses, weighted by their summed sell volume, needs an
-   on-chain data structure that supports a cheap, fair weighted pick (a cumulative-weight array
+   onchain data structure that supports a cheap, fair weighted pick (a cumulative-weight array
    with binary search is the standard approach) — a genuine engineering task, larger than any
    earlier version of this pick, though still far more scoped than the mint-and-sell ceiling hook
    that was rejected for real exploit risk.

@@ -3,7 +3,7 @@
 import { useAccount, useReadContract } from "wagmi";
 import { useNodeMapContract } from "./useNodeMap";
 
-// NodeMap has its own on-chain, multi-address editor permission system
+// NodeMap has its own onchain, multi-address editor permission system
 // (isNodeEditor/setNodeEditor) — separate from MAP_ADMIN_ADDRESS (map
 // geometry) and AIEncounters' isEncounterEditor (enemy fleet configs).
 // Don't conflate the three.

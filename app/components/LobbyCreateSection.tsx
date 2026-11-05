@@ -8,7 +8,7 @@ import { VOID_TACTICS_ALPHA_DISCORD_INVITE, MIN_SHIPS_FOR_LOBBIES } from "../uti
 // states, PLAYER STATUS panel, alpha Discord notice, and create-form
 // toggle, ported verbatim from Lobbies.tsx (the canonical layout). The
 // actual create-lobby form is a render-prop (`createForm`) since its
-// fields/validation genuinely differ (on-chain map/threat picker + reserved-
+// fields/validation genuinely differ (onchain map/threat picker + reserved-
 // joiner-by-address + native-token fee vs web2's simpler REST equivalent
 // with reserved-joiner-by-email + UTC fee).
 export interface LobbyCreateSectionProps {

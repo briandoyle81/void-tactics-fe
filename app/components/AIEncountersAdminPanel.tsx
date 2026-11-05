@@ -165,7 +165,7 @@ export function AIEncountersAdminPanel({ mapIds }: Props) {
       <div className="space-y-3">
         <h5 className="text-sm font-bold text-cyan uppercase tracking-wider">Editor Permissions</h5>
         <p className="text-xs text-text-muted">
-          No on-chain list of current editors is exposed — this can only add/revoke by address.
+          No onchain list of current editors is exposed — this can only add/revoke by address.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input

@@ -1,4 +1,4 @@
-// Turns live on-chain mission content (maps, AI ship configs, enemy
+// Turns live onchain mission content (maps, AI ship configs, enemy
 // placements, campaign + roguelike node graphs, node titles, roguelike win
 // effects) into the three seed files the contracts repo's deploy reads
 // (void-tactics-contracts-eth-online-2026: ignition/data/
@@ -16,7 +16,7 @@
 //   ignored duplicate). Without that record, ids are 1-indexed array
 //   positions, as a fresh deploy gives them.
 // - NodeMap campaigns/nodes: the deploy forces these to be created in array
-//   order and nothing syncs them later, so on-chain id == 1-indexed position.
+//   order and nothing syncs them later, so onchain id == 1-indexed position.
 // - AI ship configs: created without forced order (ids read from events),
 //   so these are matched by content, then by unique name, then by position.
 // Anything on chain past the baseline gets a generated key.
@@ -424,7 +424,7 @@ export function buildMissionSeedFiles(
   const droppedConfigs = baselineConfigs.filter((b) => !claimed.has(b.key));
   if (droppedConfigs.length > 0) {
     warnings.push(
-      `${droppedConfigs.length} AI config(s) in the baseline have no on-chain match and were dropped: ` +
+      `${droppedConfigs.length} AI config(s) in the baseline have no onchain match and were dropped: ` +
         droppedConfigs.map((c) => c.key).join(", "),
     );
   }

@@ -200,7 +200,7 @@ export function useMapModes(mapIds: number[]) {
 /**
  * Map names (web3). The Maps contract no longer stores names, so they come
  * from app/data/content/mapNames.ts — no RPC. Same shape as the old
- * on-chain read so callers didn't change.
+ * onchain read so callers didn't change.
  */
 export function useMapNames(mapIds: number[]) {
   const idsKey = mapIds.join(",");

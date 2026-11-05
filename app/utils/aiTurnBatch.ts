@@ -5,7 +5,7 @@
 // n separate takeAITurn transactions. Anywhere else, one move per call.
 // See docs/redesign-10-7/frontend-handoff-rpc-cost-suggestions-2026-10-08.md §1.
 
-/** Upper bound per batch: each AI move is an expensive on-chain decision. */
+/** Upper bound per batch: each AI move is an expensive onchain decision. */
 export const MAX_AI_MOVES_PER_BATCH = 6;
 
 export function aiTurnBatchSize({

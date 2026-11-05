@@ -3,7 +3,7 @@
  *
  * Web2 counterpart to RoguelikeRun.getRun/hasActiveRun — the current
  * player's active run (or null), with roster + HP. 0 hp = undamaged/full,
- * matching the on-chain getShipHP convention.
+ * matching the onchain getShipHP convention.
  */
 
 import { NextResponse } from "next/server";

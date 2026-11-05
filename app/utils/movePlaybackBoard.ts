@@ -109,3 +109,147 @@ export function shipStatusIn(
   const attrs = i >= 0 ? game.shipAttributes[i] : undefined;
   return attrs ? { hullPoints: attrs.hullPoints, reactorCriticalTimer: attrs.reactorCriticalTimer } : undefined;
 }
+
+/** What a move did to its target, as playback shows it. */
+export interface MoveOutcome {
+  /** The target's hull and reactor damage once this move lands. */
+  targetAfter: TargetStatusAfter;
+  killsTarget: boolean;
+}
+
+/** A shot's effect on its target, for predicting a hit mid-run (see chainMoveOutcomes). */
+export type HitKind = "weapon" | "emp" | "other";
+
+/**
+ * A weapon or EMP hit on a target in the given state, as the contracts
+ * resolve it (deterministic): a weapon does its gun damage less the target's
+ * damage reduction (rounded down), or ticks the reactor of a ship already at
+ * 0 hull; an EMP ticks the reactor. Null for anything else (drones, repairs),
+ * whose strength the board doesn't carry.
+ */
+export function predictHit(
+  kind: HitKind,
+  before: TargetStatusAfter,
+  shooter: { gunDamage: number } | null | undefined,
+  target: { damageReduction: number } | null | undefined,
+): TargetStatusAfter | null {
+  if (kind === "emp") return { ...before, reactorCriticalTimer: before.reactorCriticalTimer + 1 };
+  if (kind !== "weapon" || !shooter || !target) return null;
+  if (before.hullPoints === 0) return { ...before, reactorCriticalTimer: before.reactorCriticalTimer + 1 };
+  const dmg = shooter.gunDamage - Math.floor((shooter.gunDamage * target.damageReduction) / 100);
+  return { ...before, hullPoints: Math.max(0, before.hullPoints - Math.max(0, dmg)) };
+}
+
+/**
+ * Each targeted move's outcome across a run of moves played back to back
+ * (an AI turn of several moves, a PvP opponent's burst). The game data only
+ * shows the board after the whole run, so a ship hit twice would otherwise
+ * show the final hull on both hits, and a kill on its first. Per target, in
+ * run order:
+ * - a move that already carries its outcome (yours, predicted at submit; a
+ *   replay or scripted move) keeps it;
+ * - the last hit lands on the final state (destroyed if the final data says so);
+ * - an earlier hit is predicted from the state before it (`predict`), kept
+ *   between that and the final state; one that can't be predicted takes an
+ *   even share of what's left to the final state.
+ * Each hit starts from the one before it, so the next cinematic opens on the
+ * damage the last one left. Moves with no target, or a Ram (its victim is
+ * knocked off, not hit), aren't included.
+ */
+export function chainMoveOutcomes(params: {
+  run: readonly BoardMove[];
+  /** A ship's state before the run (the held board). */
+  statusBefore: (shipId: number) => TargetStatusAfter | undefined;
+  /** ...and after it (the live data). */
+  statusFinal: (shipId: number) => TargetStatusAfter | undefined;
+  /** The ship is destroyed in the live data. */
+  destroyedFinal: (shipId: number) => boolean;
+  /** What the move fires (weaponEffectFor's kind): a "ram" isn't a hit, a "repair" raises the hull. */
+  kindOf: (move: BoardMove) => string;
+  /** An earlier hit's result, or null when it can't be predicted. */
+  predict: (move: BoardMove, before: TargetStatusAfter) => TargetStatusAfter | null;
+}): Map<string, MoveOutcome> {
+  const { run, statusBefore, statusFinal, destroyedFinal, kindOf, predict } = params;
+  const isRepair = (m: BoardMove) => kindOf(m) === "repair";
+  const out = new Map<string, MoveOutcome>();
+  const hitsByTarget = new Map<number, BoardMove[]>();
+  for (const move of run) {
+    if (!move.targetShipId || kindOf(move) === "ram") continue;
+    const hits = hitsByTarget.get(move.targetShipId) ?? [];
+    hits.push(move);
+    hitsByTarget.set(move.targetShipId, hits);
+  }
+  for (const [targetId, hits] of hitsByTarget) {
+    const final = statusFinal(targetId);
+    let running = statusBefore(targetId) ?? final;
+    hits.forEach((move, i) => {
+      const last = i === hits.length - 1;
+      let after: TargetStatusAfter | undefined;
+      if (move.targetAfter) after = move.targetAfter;
+      else if (last || !running || !final) after = final;
+      else {
+        const later = hits.slice(i);
+        const predicted = predict(move, running);
+        if (predicted) {
+          after = later.some(isRepair) ? predicted : clampBetween(predicted, running, final);
+        } else {
+          // An even share of what's left, so the run still ends on the final state.
+          const share = 1 / later.length;
+          after = {
+            hullPoints: Math.round(running.hullPoints + (final.hullPoints - running.hullPoints) * share),
+            reactorCriticalTimer: Math.round(
+              running.reactorCriticalTimer + (final.reactorCriticalTimer - running.reactorCriticalTimer) * share,
+            ),
+          };
+        }
+      }
+      // Only the last hit on a ship can destroy it: nothing targets a wreck.
+      const killsTarget = move.killsTarget ?? (last && destroyedFinal(targetId));
+      if (after) out.set(move.key, { targetAfter: after, killsTarget });
+      running = after ?? running;
+    });
+  }
+  return out;
+}
+
+/** Each value kept between the state before a hit and the run's final state (damage only goes one way). */
+function clampBetween(v: TargetStatusAfter, from: TargetStatusAfter, to: TargetStatusAfter): TargetStatusAfter {
+  const clamp = (x: number, a: number, b: number) => Math.min(Math.max(x, Math.min(a, b)), Math.max(a, b));
+  return {
+    hullPoints: clamp(v.hullPoints, from.hullPoints, to.hullPoints),
+    reactorCriticalTimer: clamp(v.reactorCriticalTimer, from.reactorCriticalTimer, to.reactorCriticalTimer),
+  };
+}
+
+/**
+ * The held board with landed moves applied (useHeldBoard): ships on their
+ * new tiles (landShipPositions) and each finished hit's target at its state
+ * after that hit (chainMoveOutcomes), so the board and the next cinematic
+ * show the damage as it builds up through a run. Mode-neutral.
+ */
+export function landBoard<
+  G extends {
+    shipIds: readonly (number | bigint | string)[];
+    shipAttributes: readonly { hullPoints: number; reactorCriticalTimer: number }[];
+    shipPositions: readonly { shipId: number | bigint | string; position: { row: number; col: number }; status?: 0 | 1 | 2 }[];
+  },
+>(game: G, landed: readonly BoardMove[], activeKey: string | null, outcomes: Map<string, MoveOutcome>): G {
+  if (landed.length === 0) return game;
+  const withOutcomes = landed.map((m) => {
+    const o = outcomes.get(m.key);
+    return o ? { ...m, killsTarget: o.killsTarget, targetAfter: o.targetAfter } : m;
+  });
+  let shipAttributes = game.shipAttributes;
+  for (const move of withOutcomes) {
+    if (move.key === activeKey || !move.targetAfter || !move.targetShipId) continue;
+    const i = game.shipIds.findIndex((id) => Number(id) === move.targetShipId);
+    if (i < 0) continue;
+    if (shipAttributes === game.shipAttributes) shipAttributes = [...game.shipAttributes];
+    shipAttributes = shipAttributes.map((a, j) => (j === i ? { ...a, ...move.targetAfter } : a));
+  }
+  return {
+    ...game,
+    shipAttributes,
+    shipPositions: landShipPositions(game.shipPositions, withOutcomes, activeKey),
+  } as G;
+}

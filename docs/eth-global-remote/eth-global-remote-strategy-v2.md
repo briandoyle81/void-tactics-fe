@@ -112,16 +112,16 @@ dashboard against live Base Sepolia data.
 
 $3,500 pool, up to 3 teams at $1,166 each. Not Continuity-restricted.
 
-**Architecture corrected from the original plan, and built.** Selfie Check has **no on-chain
+**Architecture corrected from the original plan, and built.** Selfie Check has **no onchain
 verification path** — confirmed directly against World's own docs (`docs.world.org`, checked
 three separate pages): verification is an off-chain REST call to World's verify endpoint, unlike
-Orb-level World ID, which `Tournament.sol` already correctly uses on-chain via `IWorldID`
-(`groupId = 1`, "Orb-verified, on-chain only" per `IWorldID.sol`'s own doc comment). So "reuse
-`Tournament.sol`'s `ByteHasher`/nullifier/on-chain-proof pattern," the original plan for this
+Orb-level World ID, which `Tournament.sol` already correctly uses onchain via `IWorldID`
+(`groupId = 1`, "Orb-verified, onchain only" per `IWorldID.sol`'s own doc comment). So "reuse
+`Tournament.sol`'s `ByteHasher`/nullifier/onchain-proof pattern," the original plan for this
 pick, isn't executable — there's no proof for a contract to verify. Rebuilt around the pattern
 already used elsewhere in this project for exactly this shape of problem (the frontend repo's
 Fireblocks Flow fulfillment: a backend verifies something off-chain, then an authorized backend
-address relays the result on-chain):
+address relays the result onchain):
 
 - **`contracts/IEligibilityProvider.sol`** — a new interface, same swappable-provider shape as
   `Ships.sol`/`Tournament.sol`'s existing `IRandomManager`: the consuming contract doesn't know or
@@ -292,7 +292,7 @@ no budgeted fallback if this pick doesn't ship.
      valid address) — corrected to the address above.
    - **Risk framing, deliberately re-scoped:** the hook's pool-lock mechanic
      (`PoolManager.initialize`'s first successful call against a hook address permanently binds
-     it to one pool — `PoolAlreadyLocked()` on any later call, no on-chain fix) is real, but is
+     it to one pool — `PoolAlreadyLocked()` on any later call, no onchain fix) is real, but is
      **not currently high-stakes**: there's no canonical `UniversalCredits` token or accumulated
      pool history yet, and this repo already expects repeated full test redeploys. If a hook
      gets locked to the wrong pool, the fix is just mining and deploying a fresh hook address —

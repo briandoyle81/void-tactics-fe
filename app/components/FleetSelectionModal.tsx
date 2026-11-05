@@ -13,7 +13,7 @@ import { getFactionName } from "../config/factions";
 // match, not the other way around). Only genuinely different mechanisms are
 // render-props: `mapDisplay` (MapDisplay vs MapDisplayWeb2 are different
 // components), `loadFleetMenu` (identical component, different data
-// bindings), and `leaveButton` (an on-chain tx button vs a plain REST
+// bindings), and `leaveButton` (an onchain tx button vs a plain REST
 // button).
 export interface FleetCreateButtonState {
   isBusy: boolean;
@@ -65,7 +65,7 @@ export interface FleetSelectionModalProps {
   onGoToGames: () => void;
   goToGamesBusy?: boolean;
 
-  /** True when the opponent is the on-chain AI orchestrator rather than a
+  /** True when the opponent is the onchain AI orchestrator rather than a
    * human — lets us offer an active "deploy AI fleet" action instead of a
    * passive "waiting for opposing admiral" placeholder, since the human
    * viewing this modal can trigger the AI's fleet themselves. */

@@ -9,7 +9,7 @@ import {
   type WinEffectKey,
 } from "./winEffectsCatalog";
 
-// Web2 counterpart to the on-chain pluggable win effects (contracts/
+// Web2 counterpart to the onchain pluggable win effects (contracts/
 // IWinEffect.sol — DECBonusWinEffect/HealAboveFloorWinEffect/
 // ShipGrantWinEffect), assignable to roguelike combat nodes
 // (RoguelikeNode.winEffects). Like the contracts since the 2026-10-17
@@ -20,7 +20,7 @@ import {
 // prisma and can't be pulled into a client bundle.
 //
 // HEAL_ABOVE_FLOOR_WIN_EFFECT isn't handled by applyWinEffects(): like the
-// on-chain HealAboveFloorWinEffect it raises every surviving roguelike
+// onchain HealAboveFloorWinEffect it raises every surviving roguelike
 // roster ship to healAboveFloorPercent of max hull, so it's applied inside
 // resolveRoguelikeRunIfApplicable alongside the campaign auto-heal floor.
 export { WIN_EFFECT_KEYS, WIN_EFFECT_LABELS, IMPLEMENTED_WIN_EFFECT_KEYS, isWinEffectKey };

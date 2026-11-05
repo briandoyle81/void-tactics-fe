@@ -22,7 +22,7 @@ import type { Web2GameDataView } from "../types/web2Game";
 // the node is entered; web2 reads the live campaign value. A ship whose hullPoints
 // reached 0 this mission is treated as maximally damaged rather than
 // permanently removed from the roster — a deliberate simplification versus
-// full on-chain permadeath semantics (see the "deliberately simpler first
+// full onchain permadeath semantics (see the "deliberately simpler first
 // slice" precedent in GameDisplayWeb2.tsx), repairable at the next
 // Resupply node like any other damage.
 //

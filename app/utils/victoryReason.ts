@@ -24,7 +24,7 @@ export function isShipKnockedOut(ship: VictoryReasonEnemyShip): boolean {
  * Why the player won, inferred from final game state:
  * - reached the score target -> site control
  * - enemy still had flyable ships -> the match ended early (enemy fled the
- *   match; a turn-timeout claim is indistinguishable on-chain and is shown
+ *   match; a turn-timeout claim is indistinguishable onchain and is shown
  *   as fled too)
  * - every enemy ship left by retreating -> fled
  * - otherwise the enemy was knocked out (destroyed or disabled) -> destroyed

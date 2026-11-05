@@ -47,7 +47,7 @@ export interface ShipData {
 // Equipment enum mappings based on actual contract enums. Verified
 // 2026-08-28 via `cast call` against the live RenderMetadata contract on
 // Base Sepolia (mainWeaponNames(1, slot)) — "Missile"/"Plasma" were
-// abbreviated relative to the on-chain names.
+// abbreviated relative to the onchain names.
 export const MAIN_WEAPON_NAMES = {
   0: "Laser",
   1: "Railgun",
@@ -81,7 +81,7 @@ export const SHIELD_NAMES = {
 // Variant 1's Special enum: None/EMP/RepairDrones/FlakArray. Verified
 // 2026-08-28 via `cast call` against the live RenderMetadata contract on
 // Base Sepolia (specialNames(1, slot)) — the previous "Repair"/"Flak"
-// strings here were abbreviated relative to the on-chain names.
+// strings here were abbreviated relative to the onchain names.
 export const SPECIAL_NAMES = {
   0: "None",
   1: "EMP",
@@ -149,7 +149,7 @@ export function getSpecialName(value: number, variant: number = 1): string {
 // their meaning/name is (see SPECIAL_NAMES_V2 above). Shared by
 // customize-ship forms (option lists) and validation (app/lib/customizeCost.ts)
 // so both stay in sync with SPECIAL_NAMES/SPECIAL_NAMES_V2 above.
-// Cap comes from Game.maxSpecialSlot(variant) on-chain (currently 3 for both
+// Cap comes from Game.maxSpecialSlot(variant) onchain (currently 3 for both
 // factions); see
 // docs/eth-global-remote/frontend-handoff-combat-blocking-and-ship-specials-2026-09-26.md §2.
 export const DEFAULT_MAX_SPECIAL_SLOT = 3;
@@ -345,10 +345,10 @@ export interface GameDataView {
   lastMove?: LastMove; // Last move made in the game
 }
 
-// NOTE: values 0-4 (Pass..Special) match the on-chain Game.ActionType 1:1.
+// NOTE: values 0-4 (Pass..Special) match the onchain Game.ActionType 1:1.
 // ClaimPoints (5) is web2-only — the real contract has no equivalent
 // (scoring is automatic per round). Ramming is ActionType.FactionAbility,
-// same as Repair. Raw on-chain value 5 must be normalized to
+// same as Repair. Raw onchain value 5 must be normalized to
 // FactionAbility (7) at the web3 read boundary — see useGetGame in
 // useGameContract.ts — before it reaches any shared component, since
 // literal 5 would otherwise collide with ClaimPoints. FactionAbility is
@@ -376,7 +376,7 @@ export enum Archetype {
 }
 
 // NodeMap.getAllNodes()/.getNode(nodeId) — the campaign graph. No display
-// names/flavor text on-chain, see app/data/content/ (app/config/content.ts) for that.
+// names/flavor text onchain, see app/data/content/ (app/config/content.ts) for that.
 export interface CampaignNode {
   id: bigint;
   campaignId: bigint;
@@ -390,7 +390,7 @@ export interface CampaignNode {
 }
 
 // Maps.mapMode(mapId) / createPresetMap(..., mode) — which flow a map is
-// valid for. Enforced on-chain: Lobbies reverts InvalidMapId for PvE-only
+// valid for. Enforced onchain: Lobbies reverts InvalidMapId for PvE-only
 // maps, NodeMap reverts InvalidMapMode for maps that aren't PvE or Both.
 export enum MapMode {
   PvP = 0,
@@ -398,7 +398,7 @@ export enum MapMode {
   Both = 2,
 }
 
-// AIEncounters' on-chain `Colors`/`Traits` structs have a third color slot
+// AIEncounters' onchain `Colors`/`Traits` structs have a third color slot
 // (h3/s3/l3) that the shared ShipColors/ShipTraits types (used for regular
 // ship purchasing/rendering) don't carry — see ShipConstructor.tsx, which
 // already tracks h3/s3/l3 separately from ShipColors for the same reason.

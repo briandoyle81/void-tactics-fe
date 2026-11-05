@@ -4,7 +4,7 @@ import { requireWeb2Admin } from "@/app/lib/auth";
 
 // POST/DELETE /api/admin/roguelike/edges — web2 counterpart to
 // RoguelikeNodeMap.addChild/removeChild. Incremental edge-by-edge editor,
-// no bulk replace, same as the on-chain contract.
+// no bulk replace, same as the onchain contract.
 
 export async function POST(req: NextRequest) {
   const { error } = await requireWeb2Admin();

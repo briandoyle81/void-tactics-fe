@@ -78,7 +78,7 @@ function truncateId(id: string): string {
 }
 
 /** Web2-mode counterpart to `Lobbies.tsx`'s inline `CreatorStats` — same
- * W/L badge, backed by usePlayerStatsWeb2 instead of an on-chain read. */
+ * W/L badge, backed by usePlayerStatsWeb2 instead of an onchain read. */
 function CreatorStatsWeb2({ userId }: { userId: string }) {
   const stats = usePlayerStatsWeb2(userId);
   if (!stats) return null;

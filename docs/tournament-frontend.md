@@ -84,7 +84,7 @@ import { IDKitWidget, VerificationLevel } from "@worldcoin/idkit";
   app_id="app_b2739b54eb71ceb8c76380c60c20ce22"
   action="join-tournament"
   signal={userAddress}                       // MUST be the wallet that will send register()
-  verification_level={VerificationLevel.Orb} // on-chain requires Orb
+  verification_level={VerificationLevel.Orb} // onchain requires Orb
   onSuccess={(result) => registerOnChain(tournamentId, result, userAddress)}
 >
   {({ open }) => <button onClick={open}>Verify & Register</button>}

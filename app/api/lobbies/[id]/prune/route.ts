@@ -4,9 +4,9 @@ import { requireAuth } from "@/app/lib/auth";
 import { getLobbySettings } from "@/app/lib/lobbySettings";
 
 // POST /api/lobbies/[id]/prune — web2 counterpart to Lobbies.sol's
-// pruneStaleLobby. Permissionless on-chain (any wallet can call it once the
+// pruneStaleLobby. Permissionless onchain (any wallet can call it once the
 // staleness window has passed) — mirrored here as "any signed-in user",
-// matching this app's usual auth floor for mutations. On-chain, pruning
+// matching this app's usual auth floor for mutations. Onchain, pruning
 // removes the lobby from the enumerable open-lobbies array while the lobby
 // struct itself survives (still joinable by id) — a gas-bounding concern
 // that doesn't apply to a SQL-backed list, so the meaningful web2 analog is

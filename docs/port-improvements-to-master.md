@@ -2,7 +2,7 @@
 
 **Date written:** 2026-06-04
 **Source branch:** `explore-traditional` (web2 / REST backend)
-**Target branch:** `master` (web3 / wagmi + on-chain)
+**Target branch:** `master` (web3 / wagmi + onchain)
 **Divergence point:** commit `a989c53` ("Add weapon impact effects")
 
 ## Context
@@ -671,7 +671,7 @@ Do the work in this order to avoid cascading type errors:
 
 - `app/hooks/useAccount.ts` — web2 stub replacing wagmi's `useAccount`; master uses real wagmi
 - `app/hooks/useCurrentUser.ts` — web2 NextAuth user hook; master uses wagmi address directly
-- `app/hooks/useGameStream.ts` — web2 SSE stream; master uses on-chain event polling
+- `app/hooks/useGameStream.ts` — web2 SSE stream; master uses onchain event polling
 - `app/hooks/useShipAttributesContract.ts` — web2 stub; master has real contract reads
 - `app/hooks/use*Contract.ts` / `app/hooks/use*Contract*.ts` — all stubs on explore-traditional; master has real implementations
 - `app/providers.tsx` — web2 removes RainbowKit/wagmi; master must keep them

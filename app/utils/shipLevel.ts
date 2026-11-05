@@ -4,7 +4,7 @@ import { getRankConfig } from "./rankConfigCache";
 /**
  * Calculate ship rank based on ships destroyed, using the ship's own
  * variant's live rank thresholds (see rankConfigCache.ts) — falls back to
- * today's on-chain/DB defaults before that cache is warm:
+ * today's onchain/DB defaults before that cache is warm:
  * 0-9 kills → Rank 1 (0% bonus)
  * 10-29 kills → Rank 2 (10% bonus)
  * 30-99 kills → Rank 3 (20% bonus)

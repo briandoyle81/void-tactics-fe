@@ -153,18 +153,14 @@ import {
   TUTORIAL_COMPLETION_CONTINUE_PRIMARY_CTA_SUPPORTING,
 } from "./TutorialGridPanelConfigs";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
-import { useHeldBoard, useMovePlayback, type BoardMove } from "../hooks/useMovePlayback";
-import { boardMoveFromRaw, landShipPositions, shipStatusIn } from "../utils/movePlaybackBoard";
+import { useMovePlayback, useRunBoard, type ShipLoadout } from "../hooks/useMovePlayback";
+import { boardMoveFromRaw, shipStatusIn } from "../utils/movePlaybackBoard";
 
-/** The tutorial's held board with landed moves applied (useHeldBoard). */
 /** A tutorial last move's identity: which ship did what, from where to where. */
 function tutorialMoveKey(m: NonNullable<SimulatedGameState["lastMove"]>): string {
   return `${m.shipId}:${m.actionType}:${m.targetShipId ?? ""}:${m.oldRow},${m.oldCol}:${m.newRow},${m.newCol}`;
 }
 
-function landTutorialPositions(state: SimulatedGameState, landed: BoardMove[], activeKey: string | null): SimulatedGameState {
-  return { ...state, shipPositions: landShipPositions(state.shipPositions, landed, activeKey) };
-}
 
 const NO_LABEL_TARGETS: Array<{ shipId: number; position: { row: number; col: number } }> = [];
 
@@ -314,6 +310,12 @@ export function SimulatedGameDisplay({
   const [pendingTutorialClaimPath, setPendingTutorialClaimPath] = useState<
     "win" | "loss" | null
   >(null);
+  // A claim clicked while signed out: it opens the sign-in, then goes ahead
+  // once the player is signed in (see the effect after runTutorialClaimTx).
+  const [claimAfterSignIn, setClaimAfterSignIn] = useState<{
+    path: "win" | "loss";
+    functionName: "completeTutorialWinPath" | "completeTutorialLossPath";
+  } | null>(null);
   const {
     writeContract: writeTutorialClaim,
     isPending: isTutorialClaimPending,
@@ -367,14 +369,18 @@ export function SimulatedGameDisplay({
   const tutorialMoveCountRef = useRef(0);
   /** Ship variants, for a Ram's end tile (filled in once shipMap exists below). */
   const tutorialShipVariantsRef = useRef(new Map<number, number>());
+  /** Ship loadouts, for what each move in a run fires (useRunBoard; filled in with the variants). */
+  const tutorialShipLoadoutsRef = useRef(new Map<number, ShipLoadout>());
+  const loadoutOf = useCallback((shipId: number) => tutorialShipLoadoutsRef.current.get(shipId), []);
   /** A move is playing back (or just arrived to play): the round report waits for it. */
   const isMovePlaybackBusy = playback.isPlaying || tutorialMoveArrived;
-  const gameState = useHeldBoard(
-    liveTutorialState,
-    isMovePlaybackBusy,
+  // As in the live game (useRunBoard): each hit in a run starts from the one before.
+  const { board: gameState, active: playbackActive } = useRunBoard({
+    live: liveTutorialState,
+    hold: isMovePlaybackBusy,
     playback,
-    landTutorialPositions,
-  );
+    loadoutOf,
+  });
   const heldTutorialPositionsRef = useRef(gameState.shipPositions);
   heldTutorialPositionsRef.current = gameState.shipPositions;
   useEffect(() => {
@@ -433,8 +439,8 @@ export function SimulatedGameDisplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutorialMoveArrived, tutorialLastMoveKey]);
   const gridPlayback = useMemo(
-    () => ({ active: playback.active, onPhaseDone: playback.advance }),
-    [playback.active, playback.advance],
+    () => ({ active: playbackActive, onPhaseDone: playback.advance }),
+    [playbackActive, playback.advance],
   );
   // A step that opens with combat (its scripted board's last move is an
   // attack: the Hammer's plasma shot on Move and Return Fire, your EMP on
@@ -514,7 +520,7 @@ export function SimulatedGameDisplay({
     ],
   );
 
-  const { data: tutorialCompletedOnChain } = useReadContract(
+  const { data: tutorialCompletedOnChain, isFetched: isTutorialCompletedFetched } = useReadContract(
     tutorialCompletedReadConfig,
   );
 
@@ -582,6 +588,7 @@ export function SimulatedGameDisplay({
       functionName: "completeTutorialWinPath" | "completeTutorialLossPath",
     ) => {
       if (!address) {
+        setClaimAfterSignIn({ path, functionName });
         void openWalletSignIn();
         return;
       }
@@ -647,11 +654,33 @@ export function SimulatedGameDisplay({
       isTutorialRewardAlreadyClaimed,
       isTutorialSelfieCheckBlocking,
       onBack,
+      openWalletSignIn,
       publicClient,
       switchToSelectedChainIfNeeded,
       writeTutorialClaim,
     ],
   );
+
+  // Signed in after clicking a claim: go ahead with it once what the claim
+  // checks has loaded for the new address (already claimed, Selfie Check).
+  // A Selfie Check that blocks it leaves the button on Verify instead.
+  useEffect(() => {
+    if (!claimAfterSignIn || !address) return;
+    if (shouldReadTutorialCompletedFromChain && !isTutorialCompletedFetched) return;
+    if (tutorialSelfieCheckEligibility.isLoading) return;
+    setClaimAfterSignIn(null);
+    if (isTutorialSelfieCheckBlocking) return;
+    posthog.capture("tutorial_reward_claim_after_sign_in", { claim_path: claimAfterSignIn.path });
+    void runTutorialClaimTx(claimAfterSignIn.path, claimAfterSignIn.functionName);
+  }, [
+    claimAfterSignIn,
+    address,
+    shouldReadTutorialCompletedFromChain,
+    isTutorialCompletedFetched,
+    tutorialSelfieCheckEligibility.isLoading,
+    isTutorialSelfieCheckBlocking,
+    runTutorialClaimTx,
+  ]);
 
   // For display we follow the main game and keep the selected ship ID as bigint
   // (so GameGrid behavior and animations are identical). When we need to talk
@@ -916,7 +945,14 @@ export function SimulatedGameDisplay({
     );
   }, [tutorialShipsFingerprint]);
   /* eslint-enable react-hooks/exhaustive-deps */
-  shipMap.forEach((ship, id) => tutorialShipVariantsRef.current.set(Number(id), Number(ship.traits.variant)));
+  shipMap.forEach((ship, id) => {
+    tutorialShipVariantsRef.current.set(Number(id), Number(ship.traits.variant));
+    tutorialShipLoadoutsRef.current.set(Number(id), {
+      variant: Number(ship.traits.variant),
+      mainWeapon: Number(ship.equipment.mainWeapon),
+      special: Number(ship.equipment.special),
+    });
+  });
 
   // GameEvents.tsx is number/string-native (shared with web2) — build a
   // string-keyed view of shipMap for it here rather than changing the

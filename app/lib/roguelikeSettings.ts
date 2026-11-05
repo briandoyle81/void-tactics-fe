@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 import { createTtlCache } from "./ttlCache";
 
 // Web2-mode counterpart to RoguelikeResupply.repairCostPerHP — a DB-backed
-// admin setting instead of an on-chain owner-only value.
+// admin setting instead of an onchain owner-only value.
 export type RoguelikeSettings = { repairCostPerHp: number };
 
 export const DEFAULT_ROGUELIKE_SETTINGS: RoguelikeSettings = { repairCostPerHp: 1 };

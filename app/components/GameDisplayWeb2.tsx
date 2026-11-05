@@ -103,7 +103,7 @@ import type { DialogMission } from "../types/dialog";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
-import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } from "../hooks/useMovePlayback";
+import { useRunBoard, type ShipLoadout, useLiveMovePlayback, useReplayPlayback, type BoardMove } from "../hooks/useMovePlayback";
 
 /** Replay autoplay: the pause after a turn's move has played, before the next. */
 const REPLAY_AUTOPLAY_PAUSE_MS = 600;
@@ -256,6 +256,9 @@ function GameDisplayWeb2({
     [isPlayerInGame, playerIsCreator],
   );
   const shipVariantsRef = React.useRef(new Map<number, number>());
+  /** Ship loadouts, for what each move in a run fires (useRunBoard; filled in with the variants). */
+  const shipLoadoutsRef = React.useRef(new Map<number, ShipLoadout>());
+  const loadoutOf = useCallback((shipId: number) => shipLoadoutsRef.current.get(shipId), []);
   const drawnShipPositionsRef = React.useRef(chainGame.shipPositions);
   const toBoardMove = useCallback(
     (key: string, raw: RawMove) =>
@@ -279,7 +282,14 @@ function GameDisplayWeb2({
     disabled: replayStep !== null,
   });
   const { playback, enqueueEnemy, enqueueOwn } = livePlayback;
-  const game = useHeldBoard(liveGame, livePlayback.hold, playback, landWeb2Positions);
+  // Each hit in a run (an AI turn, an opponent's burst) starts from the one
+  // before (see GameDisplay); a burst's turns carry their own outcome.
+  const { board: game, active: playbackActive } = useRunBoard({
+    live: liveGame,
+    hold: livePlayback.hold,
+    playback,
+    loadoutOf,
+  });
   drawnShipPositionsRef.current = game.shipPositions;
   // A burst: the enemy moved more than one ship since the last data seen
   // (same round), so fetch the turn history for the ones in between.
@@ -297,28 +307,29 @@ function GameDisplayWeb2({
       (res) => {
         if (cancelled || !res) return;
         const recent = res.turns.slice(-gap).filter((t) => t.snapshot?.lastMove && t.snapshot.lastMove.shipId !== 0);
-        enqueueEnemy(recent.map((t) => ({ key: `turn:${t.id}`, raw: toRawMove(t.snapshot!.lastMove!) })));
+        enqueueEnemy(
+          recent.map((t) => {
+            const snapshot = t.snapshot!;
+            const raw = toRawMove(snapshot.lastMove!);
+            // Each turn's snapshot is the board right after it: its target's exact state.
+            return {
+              key: `turn:${t.id}`,
+              raw,
+              outcome: raw.targetShipId
+                ? {
+                    targetAfter: shipStatusIn(snapshot, raw.targetShipId),
+                    killsTarget: snapshot.shipPositions.find((p) => p.shipId === raw.targetShipId)?.status === 1,
+                  }
+                : undefined,
+            };
+          }),
+        );
       },
     );
     return () => {
       cancelled = true;
     };
   }, [chainGame, isPlayerInGame, playerIsCreator, replayStep, gameId, enqueueEnemy]);
-  const playbackActive = useMemo(() => {
-    const active = playback.active;
-    if (!active || !active.move.targetShipId) return active;
-    if (active.move.killsTarget != null && active.move.targetAfter) return active;
-    const target = chainGame.shipPositions.find((p) => p.shipId === active.move.targetShipId);
-    return {
-      ...active,
-      move: {
-        ...active.move,
-        killsTarget: active.move.killsTarget ?? target?.status === 1,
-        // The target's hull after the move: yours predicted, an enemy's from the server.
-        targetAfter: active.move.targetAfter ?? shipStatusIn(liveGame, active.move.targetShipId),
-      },
-    };
-  }, [playback.active, chainGame.shipPositions, liveGame]);
   const gridPlayback = useMemo(
     () => ({ active: playbackActive, onPhaseDone: playback.advance }),
     [playbackActive, playback.advance],
@@ -400,7 +411,14 @@ function GameDisplayWeb2({
     gameShips.forEach((s) => map.set(s.id, s));
     return map;
   }, [gameShips]);
-  shipMap.forEach((ship, id) => shipVariantsRef.current.set(id, Number(ship.traits.variant)));
+  shipMap.forEach((ship, id) => {
+    shipVariantsRef.current.set(id, Number(ship.traits.variant));
+    shipLoadoutsRef.current.set(id, {
+      variant: Number(ship.traits.variant),
+      mainWeapon: Number(ship.equipment.mainWeapon),
+      special: Number(ship.equipment.special),
+    });
+  });
 
   // GameEvents.tsx is number/string-native — build a string-keyed view of
   // shipMap for it here rather than changing shipMap's own number keys.

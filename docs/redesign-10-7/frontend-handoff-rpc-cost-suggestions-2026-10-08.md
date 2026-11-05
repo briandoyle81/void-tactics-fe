@@ -42,7 +42,7 @@ The recommendation is one new read-only `GameLens` contract holding all of these
 - **`getRunView(player)`:** returns the `Run`, plus `getShipHP` for each roster ship, plus `isNodeLocked`/`isNodeDefeated` flags. The flags are for node IDs the caller passes in, or for the campaign graph below.
 - **`getCampaignGraph(campaignId)`:** `RoguelikeNodeMap` node IDs are global (`nodeCount` spans every campaign), and nothing indexes nodes by campaign. The view should walk the graph outward from `campaignRootNode[campaignId]` through `children`, which also returns the edges, rather than scanning `1..nodeCount`.
 
-## 4. ~~On-chain map names and node titles/descriptions~~ — REMOVED (2026-10-08)
+## 4. ~~Onchain map names and node titles/descriptions~~ — REMOVED (2026-10-08)
 
 **Status: done in the contracts repo. Takes effect at the next redeploy.** The live Base Sepolia deploy still has the old functions until then.
 
@@ -55,12 +55,12 @@ Neither was read by any contract logic. They existed only for display. Removing 
 - The seed JSON files (`ignition/data/*StarterContent.json`) **keep** each map's `name` field. The deploy ignores it, so the frontend can use these files as its source for names.
 
 ### Frontend action items
-1. **Map names:** source them from frontend data keyed by map key or by on-chain map ID. On a fresh deploy, IDs are assigned in this fixed order (the deploy chains every map creation to the previous one, so the order is guaranteed):
+1. **Map names:** source them from frontend data keyed by map key or by onchain map ID. On a fresh deploy, IDs are assigned in this fixed order (the deploy chains every map creation to the previous one, so the order is guaranteed):
    - 1–30: `singlePlayerStarterContent.maps`, in array order
    - 31–60: `roguelikeStarterContent.maps`
    - 61–66: `pvpStarterContent.maps`
 
-   Maps created later by admins have no on-chain name either. The frontend's own map data needs an entry for them.
+   Maps created later by admins have no onchain name either. The frontend's own map data needs an entry for them.
 2. **Node titles/descriptions:** remove the registry layer from the content fallback chain (it was registry → Postgres draft → static config → default). Postgres, or static config, is now the source of truth.
 3. **Admin publish flow:** retire the "publish to chain" step that called `setNodeContentBatch`. The `NODE_CONTENT_PUBLISHER_PRIVATE_KEY` signer is no longer needed.
 4. **ABIs and addresses:** drop the `NodeContentRegistry` address and ABI. Regenerate the `Maps` ABI and remove any `mapName` reads and `MapNameSet` log handling.

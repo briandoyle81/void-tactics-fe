@@ -11,7 +11,7 @@
 ### The event-log problem
 
 Every `moveShip` call emits an EVM event. In principle the full move history lives
-on-chain. In practice, querying historical events from a browser is unreliable: RPC
+onchain. In practice, querying historical events from a browser is unreliable: RPC
 providers cap `eth_getLogs` to 2,000–10,000 blocks per request, requiring many
 paginated calls for a game that started hours ago, and rate limits compound the problem.
 
@@ -39,7 +39,7 @@ A server-side pointer (`/api/game-blob?gameId=X&player=Y`) maps each player's la
 blobId. Any device fetches one pointer then pulls the snapshot in one aggregator request.
 
 **Archive** — when the game ends, each player uploads a final blob with a 1-month TTL
-and records the blobId on-chain via `GameBlobRegistry.record(gameId, blobId)` (regular
+and records the blobId onchain via `GameBlobRegistry.record(gameId, blobId)` (regular
 games) or `Tournament.recordResult` (tournament games).
 
 ### Coverage between the two blobs
@@ -63,7 +63,7 @@ Second device wanting current state:
 
 ### blobId tracking for completed games
 
-Both tournament and regular games store their archive blobId on-chain — no server pointer
+Both tournament and regular games store their archive blobId onchain — no server pointer
 needed for completed games.
 
 - **Tournament**: `Tournament.recordResult(tournamentId, matchId, blobId)` — already
@@ -84,10 +84,10 @@ A player submitting a falsified replay blob cannot affect game outcomes — winn
 already immutably recorded in `GameResults`. The replay is cosmetic only.
 
 **Mid-game live snapshots** still use the server pointer (`/api/game-blob`) since the
-game isn't complete yet and on-chain storage per move is not practical. The pointer is
+game isn't complete yet and onchain storage per move is not practical. The pointer is
 ephemeral and best-effort — its only job is to serve the current snapshot blobId to a
 second device during an active game. Once the game ends and the archive is recorded
-on-chain, the server pointer becomes irrelevant.
+onchain, the server pointer becomes irrelevant.
 
 ### Cost
 
@@ -112,7 +112,7 @@ GET  https://aggregator.walrus-testnet.walrus.space/v1/blobs/{rawBlobId} → fet
 ```
 
 `rawBlobId` is the base64url string from the publisher response. `blobId` (bytes32 hex)
-is for on-chain storage only.
+is for onchain storage only.
 
 Epoch durations: testnet = 2 days → 1 epoch ≈ 2 days; 15 epochs ≈ 1 month.
 Set short TTL live snapshots to `epochs=1` (minimum). Set archive to `epochs=15`.
@@ -246,7 +246,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // base64url → 0x-prefixed bytes32 (for on-chain storage)
+  // base64url → 0x-prefixed bytes32 (for onchain storage)
   const bytes = Uint8Array.from(
     atob(rawBlobId.replace(/-/g, "+").replace(/_/g, "/")),
     (c) => c.charCodeAt(0),
@@ -292,7 +292,7 @@ If both are present they should be equivalent — either can serve the replay.
 ## 4. API Route: `/api/game-blob/route.ts`
 
 **Scope: mid-game live snapshots only.** Not used for completed-game storage — that goes
-on-chain via `GameBlobRegistry` or `Tournament.recordResult`.
+onchain via `GameBlobRegistry` or `Tournament.recordResult`.
 
 Mutable in-memory pointer: `gameId → { blobId, rawBlobId }`. Ephemeral by design — its
 only job is to let a second device fetch the current in-progress snapshot during an active
@@ -399,7 +399,7 @@ const pushLiveSnapshot = useCallback(async () => {
 
 1. Serialize full game record (all turns + final state).
 2. Upload to Walrus with `epochs=15` (~1 month).
-3. Record blobId on-chain:
+3. Record blobId onchain:
    - Tournament game → `Tournament.recordResult(tournamentId, matchId, blobId)`
    - Regular game → `GameBlobRegistry.record(gameId, blobId)` signed by the player
 4. Evict the server pointer entry for this gameId (no longer needed).
@@ -464,7 +464,7 @@ be identical:
 
 The `rawBlobId` for a completed game is sourced from:
 
-1. `GameBlobRegistry.getBlob(gameId, playerAddress)` — on-chain read via `useReadContract`;
+1. `GameBlobRegistry.getBlob(gameId, playerAddress)` — onchain read via `useReadContract`;
    bytes32 → base64url conversion needed
 2. Tournament bracket: `match.walrusBlobId` → same bytes32 → base64url conversion
 
@@ -523,7 +523,7 @@ matching turn time → always shows latest snapshot.
 6. `app/utils/serializeGameRecord.ts` — confirm field names against live game state
 7. `useTournamentMatchForGame` hook
 8. Per-move snapshot in `GameDisplay.tsx` + pointer update
-9. Game-end archive upload + on-chain recording (`GameBlobRegistry` or `recordResult`)
+9. Game-end archive upload + onchain recording (`GameBlobRegistry` or `recordResult`)
 10. Parity changes in `SimulatedGameDisplay.tsx`
 11. `useGameRecord` hook
 12. `SimulatedGameDisplay` replay mode prop
@@ -548,7 +548,7 @@ matching turn time → always shows latest snapshot.
 | J   | Mainnet WAL payment                                 | Out of scope until mainnet. Testnet publisher is free.                                                                                                                                                                                                                                                                                                                 |
 | K   | Blob deletion on snapshot update + `send-object-to` | Both are part of the same future mainnet optimization. `send-object-to` transfers blob ownership to an app Sui wallet, enabling server-side deletion of old snapshots for storage refunds. Not needed until mainnet with long epochs. `epochs=1` already minimizes waste in the meantime.                                                                              |
 | B   | `bigint` serialization for `GameDataView` snapshots | `GameDataView` is the correct snapshot type. Serialize with a `replacer` that converts `bigint` → string; deserialize with a matching `reviver` that converts back before handing to the replay display.                                                                                                                                                               |
-| C   | Publisher response shape                            | Confirmed via curl against testnet. `newlyCreated` response: `data.newlyCreated.blobObject.blobId` (base64url, 43 chars = 32 bytes). `alreadyCertified` response: `data.alreadyCertified.blobId`. `blobId` is always 32 bytes of base64url — decode → 64 hex chars → prefix `0x` for on-chain storage. Blobs are `deletable: true` by default. Cost field is in FROST. |
+| C   | Publisher response shape                            | Confirmed via curl against testnet. `newlyCreated` response: `data.newlyCreated.blobObject.blobId` (base64url, 43 chars = 32 bytes). `alreadyCertified` response: `data.alreadyCertified.blobId`. `blobId` is always 32 bytes of base64url — decode → 64 hex chars → prefix `0x` for onchain storage. Blobs are `deletable: true` by default. Cost field is in FROST. |
 | D   | `bytes32` ↔ base64url conversion                    | Covered in §2 (upload route: base64url → bytes32) and §4 (walrus.ts: bytes32 → base64url for aggregator fetches). Walrus blobIds are always exactly 32 bytes so padding is not a concern.                                                                                                                                                                              |
 | E   | Epoch count constants                               | Covered in §4 — define `EPOCHS_LIVE = 1` and `EPOCHS_ARCHIVE = 15` as named constants in `walrus.ts`.                                                                                                                                                                                                                                                                  |
 | G   | React Query cache invalidation for live snapshots   | Covered in §8 — `rawBlobId` changes each move so the `useGameRecord` query key changes automatically. No manual invalidation needed.                                                                                                                                                                                                                                   |

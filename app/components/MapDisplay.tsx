@@ -130,7 +130,7 @@ export function MapDisplay({
 
   // Enemy-fleet preview ships (NodeMatchModal's pre-launch deployment map)
   // are synthetic — aiConfigToPreviewShip gives them a fake id and a zero
-  // owner address, since no real on-chain ship exists until the match
+  // owner address, since no real onchain ship exists until the match
   // actually starts. Mixing a fake id into this one batched
   // calculateShipAttributesByIds call reverts the whole call, so exclude
   // anything without a real owner rather than let it blank out attributes
@@ -157,7 +157,7 @@ export function MapDisplay({
       }
     });
     // Synthetic preview ships (excluded from the contract query above, no
-    // real on-chain data to fetch) still have real equipment/traits baked
+    // real onchain data to fetch) still have real equipment/traits baked
     // in — compute their attributes the same way SimulatedGameDisplay/
     // tutorial ships do, client-side, so their tooltips show real numbers
     // instead of nothing. Scoped to the zero-owner check specifically

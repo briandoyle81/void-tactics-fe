@@ -363,7 +363,7 @@ export function useGameplayInteraction({
         previewPosition,
         // Only the legacy chains allow moving directly onto a disabled
         // enemy's tile (see isRammingMovePreview's doc) — where the real
-        // resolver system exists, this would revert on-chain, so normal
+        // resolver system exists, this would revert onchain, so normal
         // movement rules apply and the faction ability is dispatched
         // separately via "ram"-mode targeting instead.
         canEnterOccupiedCell: (_row, _col, occupyingShipId) =>

@@ -10,7 +10,7 @@ import { useCurrentUser } from "./useCurrentUser";
 const GAMES_DETAIL_ACTIVE_EVENT = "void-tactics-games-detail-active";
 
 // Web2-mode counterpart to `useOwnedShips.ts` — fetches the current user's
-// ships from the Prisma-backed `/api/ships` route instead of an on-chain
+// ships from the Prisma-backed `/api/ships` route instead of an onchain
 // read. Deliberately named/typed distinctly from the web3 hook; see
 // app/types/web2Ship.ts for why the two never share a type.
 

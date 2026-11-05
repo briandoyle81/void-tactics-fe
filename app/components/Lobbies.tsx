@@ -158,7 +158,7 @@ const Lobbies: React.FC = () => {
   } = useLobbies();
 
   // PvP map picker — Maps now has a PvP/PvE/Both mode (see
-  // docs/Frontend_Update_Guide_Campaigns_Maps.md #2), enforced on-chain:
+  // docs/Frontend_Update_Guide_Campaigns_Maps.md #2), enforced onchain:
   // Lobbies.createLobby reverts InvalidMapId for a PvE-only map. Filter the
   // full preset list down to PvP-eligible maps (PvP or Both) here rather
   // than trusting whatever the form's default happened to be. Declared
@@ -677,7 +677,7 @@ const Lobbies: React.FC = () => {
     }
   }, [selectedLobby]);
 
-  // Load saved draft when opening fleet picker (no on-chain fleet yet for this lobby)
+  // Load saved draft when opening fleet picker (no onchain fleet yet for this lobby)
   useEffect(() => {
     if (
       !selectedLobby ||
@@ -732,7 +732,7 @@ const Lobbies: React.FC = () => {
     setSelectedVariant,
   ]);
 
-  // Persist draft while picking a fleet (not after fleet exists on-chain)
+  // Persist draft while picking a fleet (not after fleet exists onchain)
   useEffect(() => {
     if (
       !selectedLobby ||

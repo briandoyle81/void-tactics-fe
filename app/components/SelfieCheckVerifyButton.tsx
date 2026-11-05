@@ -13,7 +13,7 @@ import { WORLD_APP_ID, WORLD_SELFIE_CHECK_ACTION } from "../config/tournament";
 // Same proof-extraction shape as TournamentRegister.tsx's extractProofFields — IDKit v4 with
 // allow_legacy_proofs=true returns IDKitResultV3, responses[0] carries
 // {proof, merkle_root, nullifier}. Here the fields go to our own backend's off-chain verify call
-// (app/api/selfie-check/verify/route.ts), not a contract, since Selfie Check has no on-chain
+// (app/api/selfie-check/verify/route.ts), not a contract, since Selfie Check has no onchain
 // proof-verification path.
 function extractProofFields(
   result: IDKitResult,

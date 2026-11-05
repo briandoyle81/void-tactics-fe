@@ -114,7 +114,7 @@ address gameContract = gameEngineRegistry.engineOfGame(gameId);
 - `gameEngineRegistry.getEngines()` — every engine ever registered, in order, for a "which version was
   this" / changelog-style display if wanted. Not required for core gameplay.
 
-None of this is consulted on-chain by `moveShip` or any other per-turn call — it's a pure off-chain/FE
+None of this is consulted onchain by `moveShip` or any other per-turn call — it's a pure off-chain/FE
 convenience lookup, so there's no gas cost to using it and no behavior change to account for.
 
 ---

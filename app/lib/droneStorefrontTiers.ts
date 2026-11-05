@@ -1,4 +1,4 @@
-// Web2 counterpart to the on-chain DroneStorefront's seeded tier ladder
+// Web2 counterpart to the onchain DroneStorefront's seeded tier ladder
 // (docs/faction-2.md §3). Web3 makes this owner-adjustable via `addTier`;
 // this is a fixed constant matching the seeded defaults rather than an
 // admin-editable table — a deliberate scope cut for this pass (flag for a

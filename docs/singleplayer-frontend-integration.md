@@ -34,7 +34,7 @@ What's new since the last version of this doc, in order of how much it affects y
 
    **`prerequisites` is an array, and unlock is ANY-of, not ALL-of.** A node with `prerequisites: [5n, 8n]` unlocks if the player has completed node 5 _or_ node 8 — this is how shortcut nodes converge back into the main path. Render this as an actual graph (multiple incoming edges into one node), not a linear chain — the current seeded campaign has a 2-node dead-end branch and a hard-fight node whose completion skips three nodes on the main path (details below, under "current campaign shape").
 
-   On-chain data has **no display names or flavor text** — just `mapId`, cost/turn/score numbers, and the prerequisite graph. You need your own `nodeId -> {title, description, art}` mapping; nothing in the contracts gives you that.
+   Onchain data has **no display names or flavor text** — just `mapId`, cost/turn/score numbers, and the prerequisite graph. You need your own `nodeId -> {title, description, art}` mapping; nothing in the contracts gives you that.
 
 2. **Human builds a fleet and starts the match, in one call:**
 
@@ -100,7 +100,7 @@ AI ships used to be real ERC-721s minted fresh on `Ships.sol` every match. They'
 
 ## Current campaign shape (10 nodes)
 
-`NodeMap.getAllNodes()` gives you this graph directly, but here's the shape as seeded so you can sanity-check your rendering and build matching flavor copy (again: none of these names exist on-chain, this is just what the content is _for_):
+`NodeMap.getAllNodes()` gives you this graph directly, but here's the shape as seeded so you can sanity-check your rendering and build matching flavor copy (again: none of these names exist onchain, this is just what the content is _for_):
 
 ```
 node 1 (root, always unlocked)

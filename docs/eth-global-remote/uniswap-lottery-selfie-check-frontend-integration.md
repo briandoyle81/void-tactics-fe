@@ -64,7 +64,7 @@ const key = {
 | Role | Who | Responsibilities |
 |---|---|---|
 | **Player** | end users | Sell UTC for ETH to earn lottery entries; claim free ships / complete tutorial (once Selfie Check-verified, if a provider is wired). |
-| **Selfie-Check-verifying backend** | your relayer, authorized on-chain via `setAuthorizedVerifier` | Runs a Selfie Check against World's off-chain API, then calls `SelfieCheckEligibilityProvider.markVerified` on success. Holds no power beyond that one call — it cannot mint, transfer, or alter anything else. |
+| **Selfie-Check-verifying backend** | your relayer, authorized onchain via `setAuthorizedVerifier` | Runs a Selfie Check against World's off-chain API, then calls `SelfieCheckEligibilityProvider.markVerified` on success. Holds no power beyond that one call — it cannot mint, transfer, or alter anything else. |
 | **Contract owner** (`MAP_EDITOR` after the redeploy's ownership handover) | project admin wallet | Authorizes/revokes verifier backends, tunes lottery parameters, curates prize templates, grants ship-minting rights. |
 
 ---
@@ -73,8 +73,8 @@ const key = {
 
 ### 3.1 Why this shape
 
-Selfie Check has **no on-chain verification path** — unlike Orb-level World
-ID (which `Tournament.sol` already uses on-chain via `IWorldID`), Selfie Check
+Selfie Check has **no onchain verification path** — unlike Orb-level World
+ID (which `Tournament.sol` already uses onchain via `IWorldID`), Selfie Check
 verification is an off-chain REST call against World's API. **This repo's
 contracts have zero dependency on that API's exact request/response shape —
 that lives entirely in your backend.** Confirm the current schema directly
@@ -85,11 +85,11 @@ validity window, which `SelfieCheckEligibilityProvider.VERIFICATION_VALIDITY_PER
 deliberately mirrors (see 3.3).
 
 So the pattern is a trusted backend relay: your service verifies a Selfie
-Check off-chain, then calls one on-chain function to record that a wallet
+Check off-chain, then calls one onchain function to record that a wallet
 address is verified for a fixed window. This mirrors the same pattern this
 project already uses elsewhere for Fireblocks Flow fulfillment (a backend
 confirms something off-chain, then an authorized address relays the result
-on-chain).
+onchain).
 
 ### 3.2 The interface (`IEligibilityProvider`)
 

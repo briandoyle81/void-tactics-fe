@@ -132,7 +132,7 @@ function applyReactorTimerDelta(
 /**
  * Reduces a ship's hull by `damage` (floored at 0). Distinct from
  * `applyShootDamage`: matches DroneSwarmResolver/FlakArrayResolver's
- * hullDelta path on-chain, which never bumps the reactor-critical timer
+ * hullDelta path onchain, which never bumps the reactor-critical timer
  * even against an already-disabled (0 HP) target — that "keep shooting a
  * downed ship to finish it off" mechanic is specific to gun damage
  * (Game.sol's normal Shoot path), not special-effect hull damage.
@@ -184,7 +184,7 @@ function checkWinConditions(state: Web2GameDataView): { winner: string | null; r
  * destination isn't the target's own tile, a single-target special (EMP/
  * Repair Drones for variant 1, Drone Swarm for variant 2) whose target is
  * out of the special's range, and any attempt to activate a passive-only
- * special (variant 2's Additional Thruster — no on-chain resolver either).
+ * special (variant 2's Additional Thruster — no onchain resolver either).
  * (Self-centered AoE specials — Flak Array/Electric Storm — need no
  * separate target-range check; their blast radius is self-contained,
  * computed server-side from the ship's own destination tile; see the
@@ -294,7 +294,7 @@ function validateDestinationAndTarget(params: {
 
   if (actionType === ActionType.Special) {
     if (specialType !== 0 && !isActivatableSpecialWeb2(variant, specialType)) {
-      // Matches the on-chain revert: variant 2's Additional Thruster has no
+      // Matches the onchain revert: variant 2's Additional Thruster has no
       // registered resolver, so trying to *use* it (rather than just
       // benefit from its passive movement) is rejected outright.
       throw new GameActionError(400, "This special cannot be activated — it's passive-only");
@@ -840,7 +840,7 @@ export async function applyGameAction(
     // PvP (destroying a human opponent) always pays flat killRewardUtc,
     // regardless of variant. Destroying an AI-owned ship pays whatever
     // killRewardByVariant maps the *destroyed* ship's variant to — mirrors
-    // FactionRewardTokenRegistry.rewardToken(variant) on-chain; a variant
+    // FactionRewardTokenRegistry.rewardToken(variant) onchain; a variant
     // with no entry pays nothing (see docs/update/Frontend_Updates_2026-09-17.md §2).
     if (killCount > 0) {
       const attacker = await tx.user.findUnique({

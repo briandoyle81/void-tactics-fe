@@ -10,7 +10,7 @@ export type EconomyConfig = {
   // the ship's variant (docs/faction-2.md §1).
   killRewardUtc: number;
   // AI-kill reward, keyed by the *destroyed* ship's variant — mirrors
-  // FactionRewardTokenRegistry.rewardToken(variant) on-chain (see
+  // FactionRewardTokenRegistry.rewardToken(variant) onchain (see
   // docs/update/Frontend_Updates_2026-09-17.md §2). A variant with no entry
   // here pays nothing, mirroring the contract's RewardSkipped event. Only
   // applies to AI-owned-ship-destroyed kills; PvP always pays killRewardUtc

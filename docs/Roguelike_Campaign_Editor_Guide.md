@@ -40,7 +40,7 @@ Turn on Edit Mode, then click any node tile to open its edit panel.
 
 **Max Score / Creator Goes First** — the same mechanical fields the underlying match uses; Combat nodes only. There's no turn-time field: campaign and roguelike games are always unlimited, so saving keeps the node's stored value (new nodes get a default).
 
-**`[SAVE DETAILS]`** — writes Kind/Map/Max Score/Creator-Goes-First/Cost-Cap-Override on-chain in one transaction. This is separate from `[SAVE CONTENT]` — narrative and mechanics are independent writes.
+**`[SAVE DETAILS]`** — writes Kind/Map/Max Score/Creator-Goes-First/Cost-Cap-Override onchain in one transaction. This is separate from `[SAVE CONTENT]` — narrative and mechanics are independent writes.
 
 **`[EDIT ENEMY FLEET]`** (Combat nodes only, requires a map to be set) — opens the same ship-placement editor used by the standalone AI Encounters admin panel, scoped to this node's map. If you don't hold enemy-fleet-editor access, this instead opens a read-only fleet preview with a note on how to request access.
 
@@ -63,7 +63,7 @@ Roguelike edges are directional **children** — the node you're editing is the 
 
 Existing children are listed as chips (`#id →` for one-way, `#id ↔` for two-way) with an `×` to remove them (`removeChild`, immediate). A node with no children is a dead end — reaching it ends the run, which is a valid design (a finale), not necessarily a mistake.
 
-There is no on-chain cycle protection — the UI doesn't stop you from linking a node back into an ancestor. Double-check the direction before confirming a link on a large graph.
+There is no onchain cycle protection — the UI doesn't stop you from linking a node back into an ancestor. Double-check the direction before confirming a link on a large graph.
 
 ## Campaign Settings
 
@@ -91,7 +91,7 @@ Below that is **Win effect configuration** — the *global* numbers behind each 
 2. Load the contracts repo's current three seed files. They're used to keep existing keys (`m01`, `mainCampaign`, `f06`, …) the same, since the deploy references some of them directly.
 3. Click **`[DOWNLOAD SEED FILES]`** and copy the three downloads over the originals. An unchanged chain produces no diff.
 
-The export covers maps (tiles, impassable terrain, deployment zones, names, modes), AI ship configs, enemy placements, both campaign graphs, node titles/descriptions (only text actually set on chain), and roguelike win effects. The deploy seeds the titles into `NodeContentRegistry` and the win effects onto their nodes. Read any warnings the panel shows after exporting: they flag things like items with no on-chain match or a node whose numeric id will change.
+The export covers maps (tiles, impassable terrain, deployment zones, names, modes), AI ship configs, enemy placements, both campaign graphs, node titles/descriptions (only text actually set on chain), and roguelike win effects. The deploy seeds the titles into `NodeContentRegistry` and the win effects onto their nodes. Read any warnings the panel shows after exporting: they flag things like items with no onchain match or a node whose numeric id will change.
 
 Not exported: campaign-wide numbers that live outside the seed files (win-effect amounts, repair cost, required variants for campaigns other than `mainCampaign`). Web2 mode isn't covered; its export button still produces the older admin snapshot.
 

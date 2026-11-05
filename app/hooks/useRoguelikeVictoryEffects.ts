@@ -16,7 +16,7 @@ import {
   type RoguelikeVictoryEffects,
 } from "../utils/missionDossierRows";
 
-/** Web3: a roguelike node's win effects with their current on-chain values. */
+/** Web3: a roguelike node's win effects with their current onchain values. */
 export function useRoguelikeVictoryEffects(nodeId: bigint | undefined): RoguelikeVictoryEffects {
   const { data: effectAddresses } = useRoguelikeNodeWinEffects(nodeId);
   const addressByKey = useWinEffectAddresses();

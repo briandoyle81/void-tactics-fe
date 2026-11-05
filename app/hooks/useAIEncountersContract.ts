@@ -68,7 +68,7 @@ export function useGetMapPlacements(mapId: bigint | undefined) {
  * Total "enemy threat" for a campaign/roguelike node's map — derived as the
  * sum of each placed AI ship's cost (aiConfigToPreviewShip, the same
  * formula real player ships use), not a stored contract field. NodeMap and
- * RoguelikeNodeMap both dropped their on-chain `enemyThreat` field (removed
+ * RoguelikeNodeMap both dropped their onchain `enemyThreat` field (removed
  * from createNode/updateNode/getNode on both contracts, undocumented,
  * caught by live verification rather than any changelog) — this replaces
  * it for both, since both node kinds carry a `mapId` and AI placement is

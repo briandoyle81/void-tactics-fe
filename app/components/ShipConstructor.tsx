@@ -944,7 +944,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                       modificationCost !== null && (
                         <div className="mt-4 pt-3 border-t border-gunmetal">
                           <div className="text-sm font-bold text-amber font-mono">
-                            COST TO MODIFY (ON-CHAIN):{" "}
+                            COST TO MODIFY (ONCHAIN):{" "}
                             {formatEther(modificationCost as bigint)} UTC
                           </div>
                         </div>

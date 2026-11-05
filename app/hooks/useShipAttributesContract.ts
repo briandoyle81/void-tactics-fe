@@ -211,7 +211,7 @@ export function useSpecialRangeAt(
     [variant, version, special],
   );
   // version 0 is never a real pinned version (InvalidAttributesVersion
-  // on-chain) — guard it here so callers can pass a not-yet-loaded ship's
+  // onchain) — guard it here so callers can pass a not-yet-loaded ship's
   // version without tripping a doomed read.
   return useShipAttributesRead("getSpecialRangeAt", args, undefined, enabled && version > 0);
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { chainMoveOutcomes, landBoard, predictHit, shipStatusIn } from "../utils/movePlaybackBoard";
+import { weaponEffectFor } from "../utils/weaponPlayback";
 
 // Move playback (docs/eth-global-remote/animation-redesign): every move,
 // yours after SUBMIT and each enemy move as it arrives, plays on the board:
@@ -112,12 +114,15 @@ export function useMovePlayback() {
     () => (active && phase === "firing" ? [...landed, active.move] : landed),
     [landed, active, phase],
   );
+  const run = useMemo(() => [...landed, ...queue], [landed, queue]);
 
   return {
     active,
     isPlaying: queue.length > 0,
     /** Finished moves in this run, plus the active one once it has reached its tile. */
     landed: landedWithActive,
+    /** Every move in this run of the queue: finished, active and still to play. */
+    run,
     enqueue,
     markSeen,
     hasSeen,
@@ -149,6 +154,90 @@ export function useHeldBoard<G>(
     () => (hold ? (landed.length > 0 ? applyLanded(held, landed, activeKey) : held) : live),
     [hold, held, live, landed, activeKey, applyLanded],
   );
+}
+
+/** A ship's loadout, for what its move fires (weaponEffectFor). */
+export interface ShipLoadout {
+  variant: number;
+  mainWeapon: number;
+  special: number;
+}
+
+type RunBoardGame = {
+  shipIds: readonly (number | bigint | string)[];
+  shipAttributes: readonly {
+    hullPoints: number;
+    reactorCriticalTimer: number;
+    gunDamage: number;
+    damageReduction: number;
+  }[];
+  shipPositions: readonly {
+    shipId: number | bigint | string;
+    position: { row: number; col: number };
+    status?: 0 | 1 | 2;
+  }[];
+};
+
+/**
+ * The held board (useHeldBoard) and the active move for a live game, with
+ * each hit in a run of moves (an AI turn of several moves, an opponent's
+ * burst) chained from the one before (chainMoveOutcomes): a ship hit twice
+ * shows its hull after the first hit on the board and when the second
+ * cinematic opens, and only the last hit can destroy it. The live data only
+ * has the board after the whole run. Shared by web3, web2 and the tutorial.
+ */
+export function useRunBoard<G extends RunBoardGame>(params: {
+  live: G;
+  hold: boolean;
+  playback: Pick<MovePlayback, "landed" | "active" | "run">;
+  loadoutOf: (shipId: number) => ShipLoadout | undefined;
+}): { board: G; active: ActivePlayback | null } {
+  const { live, hold, playback, loadoutOf } = params;
+  // The board before the run: the same one useHeldBoard holds.
+  const preRunRef = useRef(live);
+  if (!hold) preRunRef.current = live;
+  const preRun = preRunRef.current;
+  const loadoutRef = useRef(loadoutOf);
+  loadoutRef.current = loadoutOf;
+
+  const outcomes = useMemo(() => {
+    const kindOf = (move: BoardMove) => {
+      const loadout = loadoutRef.current(move.shipId);
+      return loadout ? weaponEffectFor(move.actionType, loadout).kind : "none";
+    };
+    const attrsIn = (game: G, shipId: number) => {
+      const i = game.shipIds.findIndex((id) => Number(id) === shipId);
+      return i >= 0 ? game.shipAttributes[i] : undefined;
+    };
+    return chainMoveOutcomes({
+      run: playback.run,
+      statusBefore: (id) => shipStatusIn(preRun, id),
+      statusFinal: (id) => shipStatusIn(live, id),
+      destroyedFinal: (id) => live.shipPositions.find((p) => Number(p.shipId) === id)?.status === 1,
+      kindOf,
+      predict: (move, before) => {
+        const kind = kindOf(move);
+        return predictHit(
+          kind === "main" ? "weapon" : kind === "emp" ? "emp" : "other",
+          before,
+          attrsIn(preRun, move.shipId),
+          attrsIn(preRun, move.targetShipId),
+        );
+      },
+    });
+  }, [playback.run, preRun, live]);
+
+  const applyLanded = useCallback(
+    (game: G, landed: BoardMove[], activeKey: string | null) => landBoard(game, landed, activeKey, outcomes),
+    [outcomes],
+  );
+  const board = useHeldBoard(live, hold, playback, applyLanded);
+  const active = useMemo(() => {
+    const a = playback.active;
+    const o = a ? outcomes.get(a.move.key) : undefined;
+    return a && o ? { ...a, move: { ...a.move, killsTarget: o.killsTarget, targetAfter: o.targetAfter } } : a;
+  }, [playback.active, outcomes]);
+  return { board, active };
 }
 
 /** How long to wait for an enemy move's events before playing it from lastMove alone. */
@@ -207,12 +296,12 @@ export function useLiveMovePlayback(params: {
   };
 
   const enqueueEnemy = useCallback(
-    (items: { key: string; raw: RawMoveLike }[]) => {
+    (items: { key: string; raw: RawMoveLike; outcome?: Pick<BoardMove, "targetAfter" | "killsTarget"> }[]) => {
       const { isMine, toBoardMove, lastMove: lm, lastMoveKey: lmKey } = latest.current;
       const now = Date.now();
       const fresh = items.filter((i) => !isMine(i.raw.shipId) && !playedRecently(i.raw));
       fresh.forEach((i) => recentRef.current.set(contentKey(i.raw), now));
-      if (fresh.length > 0) playback.enqueue(fresh.map((i) => toBoardMove(i.key, i.raw)));
+      if (fresh.length > 0) playback.enqueue(fresh.map((i) => ({ ...toBoardMove(i.key, i.raw), ...i.outcome })));
       // These cover the lastMove we're holding for: it's accounted for.
       if (lm && items.some((i) => contentKey(i.raw) === contentKey(lm))) setSettledKey(lmKey);
     },

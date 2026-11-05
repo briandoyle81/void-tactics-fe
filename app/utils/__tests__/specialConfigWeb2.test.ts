@@ -50,7 +50,7 @@ describe("getSpecialName leftover slots", () => {
 });
 
 describe("isActivatableSpecialWeb2", () => {
-  it("Additional Thruster (variant 2 slot 3) cannot be activated — passive only, no on-chain resolver", () => {
+  it("Additional Thruster (variant 2 slot 3) cannot be activated — passive only, no onchain resolver", () => {
     expect(isActivatableSpecialWeb2(2, 3)).toBe(false);
   });
 

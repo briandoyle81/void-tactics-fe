@@ -6,7 +6,7 @@ import { setRankConfig } from "../utils/rankConfigCache";
 type RankConfigResponse = Record<number, { rankThresholds: number[]; rankBonusPct: number[] }>;
 
 // Web2 counterpart to useRankConfigSync.ts — keeps the shared rank-config
-// cache warm from the DB-backed tables instead of an on-chain read. Mount
+// cache warm from the DB-backed tables instead of an onchain read. Mount
 // once near the app root (see providers.tsx).
 export function useRankConfigSyncWeb2(): void {
   const { data } = useQuery({

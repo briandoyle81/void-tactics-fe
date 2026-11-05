@@ -98,7 +98,7 @@ Filler for unused slots should be inert (zero stats), so a future slot is never 
 ### 1.5 The new editor flow (per variant)
 
 1. **Variant picker** drives _both_ the attributes and costs panels.
-2. **Load**: `getVariantAttributes(variant, 0)` → current table. If `getCurrentAttributesVersion(variant) == 0` (or the call reverts `VariantNotConfigured`), show a "not configured" state; seeding it is just a publish, optionally pre-filled from another variant's `getVariantAttributes` — this **replaces** the old "seed a blank variant" idea (there is no on-chain copy function).
+2. **Load**: `getVariantAttributes(variant, 0)` → current table. If `getCurrentAttributesVersion(variant) == 0` (or the call reverts `VariantNotConfigured`), show a "not configured" state; seeding it is just a publish, optionally pre-filled from another variant's `getVariantAttributes` — this **replaces** the old "seed a blank variant" idea (there is no onchain copy function).
 3. **Edit** client-side; every array is a **full table**, not a delta.
 4. **Publish**: `setVariantAttributes(params)` → new version = `latest + 1`, live immediately; listen for `VariantAttributesPublished(variant, version)`. Show the new version number from `getCurrentAttributesVersion(variant)`.
 5. **History / rollback**: list versions `1..getLatestAttributesVersion(variant)` (each readable with `getVariantAttributes`); rollback = `setCurrentAttributesVersion(variant, v)`. Rollback only changes what _new_ calculations use; no version is ever deleted and `latest` never moves.

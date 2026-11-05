@@ -138,7 +138,7 @@ export function nodeContentTextClass(status: NodeContentStatus | undefined, okCl
 // pass, so callers building a full graph (structure + content) can read
 // `.title`/`.description` straight off each node instead of calling
 // resolveNodeContent separately per node and again for whichever node is
-// selected. Generic over both bigint ids (on-chain CampaignGraphNode/
+// selected. Generic over both bigint ids (onchain CampaignGraphNode/
 // RoguelikeNode) and number ids (web2's DB-native node shapes).
 export function mergeNodeContent<T extends { id: bigint | number }>(
   nodes: T[],

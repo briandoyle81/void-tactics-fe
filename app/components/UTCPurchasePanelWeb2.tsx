@@ -15,7 +15,7 @@ import { getTierColors } from "../utils/shipPurchaseTierDisplay";
 
 // Store › Credits (web2). Web2-mode counterpart to `UTCPurchasePanel.tsx` — same layout/copy
 // structure and tier-card look, but buys UTC directly via
-// `/api/utc/purchase` instead of an on-chain token purchase. Tiers/prices
+// `/api/utc/purchase` instead of an onchain token purchase. Tiers/prices
 // come from the same ship-pack tier list (`usePurchaseTiersWeb2`, via
 // `/api/utc/purchase`'s server-side preview) so pricing never drifts from
 // the ship-purchase flow; the UTC payout per tier is what recycling that

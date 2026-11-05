@@ -18,7 +18,7 @@ import {
  * "enemyScore" is fully reliable (opponentScore >= maxScore at loss time);
  * the caller falls back to "fleetDestroyed" when neither it nor a local
  * flee-intent flag applies — see GameDisplay.tsx's missionLossReason
- * computation for why (no on-chain field distinguishes "every ship
+ * computation for why (no onchain field distinguishes "every ship
  * retreated one-by-one" from "fleet destroyed in combat"). */
 export type MissionLossReason = "fled" | "fleetDestroyed" | "enemyScore";
 
@@ -48,7 +48,7 @@ interface GameResultModalProps {
   onPrimaryAction: () => void;
   /** Single-player only — swaps VICTORY/DEFEAT for mission-appropriate copy and shows the node title. */
   nodeId?: bigint;
-  /** The mission node's resolved title (on-chain / web2 content, no fallback text). */
+  /** The mission node's resolved title (onchain / web2 content, no fallback text). */
   nodeContent?: Pick<ResolvedNodeContent, "title" | "titleStatus">;
   missionLossReason?: MissionLossReason;
   /** Shown on any win (PvP or mission). */
@@ -79,7 +79,7 @@ const NO_ACTION = () => {};
 // not a separate campaign-only component (see feedback_no_parallel_
 // components memory). PvP keeps the existing VICTORY/DEFEAT wording;
 // passing `nodeId` switches to mission-appropriate copy and title. Display
-// only — result/completion are already recorded on-chain by the time this
+// only — result/completion are already recorded onchain by the time this
 // renders (Game.sol for the winner, SinglePlayerMatch.onGameEnded ->
 // NodeMap.recordCompletion for node unlocks), this never writes anything.
 export function GameResultModal({

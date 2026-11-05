@@ -1,5 +1,5 @@
 // Web2-mode lobby/fleet types. Parallel to (and never sharing a definition
-// with) the web3 `Lobby`/`Fleet` types in `./types.ts`, which model on-chain
+// with) the web3 `Lobby`/`Fleet` types in `./types.ts`, which model onchain
 // data (`bigint` ids, `0x${string}` addresses). Web2 lobbies are
 // Prisma-backed rows keyed by plain integer ids and owned by NextAuth user
 // ids (Google OAuth subs, not addresses) — see app/types/web2Ship.ts for why

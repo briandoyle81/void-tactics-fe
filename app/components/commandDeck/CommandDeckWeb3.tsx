@@ -26,7 +26,7 @@ import {
 const DEFAULT_ROGUELIKE_CAMPAIGN_ID = 1n;
 const NO_SHIP_IDS: bigint[] = [];
 
-/** Web3 adapter: reads the run, graph and tournaments on-chain and converts them for CommandDeck. */
+/** Web3 adapter: reads the run, graph and tournaments onchain and converts them for CommandDeck. */
 export function CommandDeckWeb3(
   props: Omit<CommandDeckProps, "operations" | "openTournamentCount" | "featuredPack">,
 ) {

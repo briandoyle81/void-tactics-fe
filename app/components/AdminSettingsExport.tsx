@@ -31,7 +31,7 @@ import {
 // Seed file names in the contracts repo (ignition/data/), read by
 // ignition/modules/DeployAndConfig.ts. Where the browser can write files
 // (Chromium's File System Access API), the panel opens the repo's ignition/
-// folder, reads the seeds and the deployment's record of their on-chain ids
+// folder, reads the seeds and the deployment's record of their onchain ids
 // (deployments/chain-<id>/, see seedDeploymentIds.ts) and saves over the
 // seed files in place; elsewhere it reads picked files and downloads under
 // the same names, to be dropped over the originals by hand.
@@ -94,7 +94,7 @@ function seedSlotOf(data: unknown): SeedSlot | null {
   return null;
 }
 
-// Exports every on-chain mission setting (maps, AI ship configs, enemy
+// Exports every onchain mission setting (maps, AI ship configs, enemy
 // placements, campaign + roguelike node graphs, node titles, roguelike win
 // effects and reward ships) as the three seed files the contracts deploy
 // reads, plus the app's reward ship copy. Takes the
@@ -334,12 +334,12 @@ function MissionSeedExportPanel() {
     <div className="mt-8 space-y-3 border border-purple-400 bg-black/40 p-4" style={{ borderRadius: 0 }}>
       <h4 className="text-lg font-bold text-purple tracking-widest">[EXPORT MISSION SEED FILES]</h4>
       <p className="text-xs text-text-muted">
-        Turns the current on-chain missions (maps, AI ship configs, enemy placements, campaign and roguelike
+        Turns the current onchain missions (maps, AI ship configs, enemy placements, campaign and roguelike
         nodes, node titles, roguelike win effects, reward ships) into the contracts repo&apos;s deploy seed
         files, and saves the app&apos;s reward ship copy (<code>app/data/content/{REWARD_SHIP_SNAPSHOT_FILE}</code>)
         with them. Open the contracts repo&apos;s current <code>ignition/</code> folder first: its{" "}
         <code>data/</code> seed files keep existing keys the same, and{" "}
-        <code>deployments/{DEPLOYMENT_FOLDER}/</code> says which on-chain id each key has.{" "}
+        <code>deployments/{DEPLOYMENT_FOLDER}/</code> says which onchain id each key has.{" "}
         {writable
           ? "Saving writes the seed files back into that folder and the reward ship copy into this repo's app/data/content/."
           : `This browser can't save into a folder, so drop the three seed downloads over the originals and ${REWARD_SHIP_SNAPSHOT_FILE} over app/data/content/${REWARD_SHIP_SNAPSHOT_FILE}.`}{" "}
@@ -395,7 +395,7 @@ function MissionSeedExportPanel() {
         ))}
         <li className={deployment ? "text-phosphor-green" : "text-amber"}>
           {deployment
-            ? `[LOADED] ${journalName ?? JOURNAL_FILE}${deployment.syncState ? ` + ${SYNC_STATE_FILE}` : ""} (on-chain ids)`
+            ? `[LOADED] ${journalName ?? JOURNAL_FILE}${deployment.syncState ? ` + ${SYNC_STATE_FILE}` : ""} (onchain ids)`
             : `[MISSING] deployments/${DEPLOYMENT_FOLDER}/${JOURNAL_FILE}: ids will follow seed order, as on a fresh deploy`}
         </li>
         {writable && (

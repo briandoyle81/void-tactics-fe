@@ -5,7 +5,7 @@ import { dbShipToShip } from "@/app/lib/dbToType";
 import { stringifyWithBigint } from "@/app/lib/bigintJson";
 
 // GET /api/lobbies/[id]/fleet/[fleetId] — a submitted fleet's ship roster,
-// for the Fleet View Modal (mirrors web3's public on-chain fleet reads).
+// for the Fleet View Modal (mirrors web3's public onchain fleet reads).
 // Any ship's owner can be returned here (not just the requester's own
 // ships, unlike /api/ships) — access is gated by lobby membership instead,
 // since viewing an opponent's already-submitted fleet is the whole point.

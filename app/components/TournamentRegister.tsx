@@ -20,7 +20,7 @@ import {
 } from "./TournamentRegisterPanel";
 
 // IDKit v4: with orbLegacy + allow_legacy_proofs=true the result is IDKitResultV3.
-// responses[0] carries { proof, merkle_root, nullifier } for on-chain semaphore verification.
+// responses[0] carries { proof, merkle_root, nullifier } for onchain semaphore verification.
 function extractProofFields(result: IDKitResult): {
   merkle_root: string;
   nullifier_hash: string;

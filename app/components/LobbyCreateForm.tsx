@@ -6,7 +6,7 @@ import { MapPickerModal, type MapPickerMap } from "./MapPickerModal";
 // Shared between Lobbies.tsx (web3) and LobbiesWeb2.tsx (web2) — the
 // Create Lobby form's threat/turn-pace/score-length selectors (ported
 // verbatim from Lobbies.tsx's checkbox-card UI). Submission and any
-// backend-specific fields (web3's "Reserve for Player" input + on-chain
+// backend-specific fields (web3's "Reserve for Player" input + onchain
 // cost breakdown) are caller-supplied via `extraFields`/`footer`, since
 // reservations aren't implemented server-side for web2 yet.
 export type ThreatScale = "skirmish" | "battle";

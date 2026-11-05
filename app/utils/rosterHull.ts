@@ -3,7 +3,7 @@ import type { Attributes } from "../types/types";
 // How a run stores each roster ship's hull, and how to stamp that onto
 // calculated Attributes (which otherwise always look like a full hull).
 
-/** On-chain / GameLens getShipHP: 0 means not yet damaged this run (full). */
+/** Onchain / GameLens getShipHP: 0 means not yet damaged this run (full). */
 export function currentHullFromOnchainRosterHp(raw: number, maxHull: number): number {
   if (maxHull <= 0) return 0;
   return raw === 0 ? maxHull : Math.min(maxHull, Math.max(0, raw));

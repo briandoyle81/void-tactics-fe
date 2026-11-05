@@ -6,7 +6,7 @@ import { apiMutate } from "../lib/apiMutate";
 import { USER_BALANCE_QUERY_KEY } from "./useUserBalanceWeb2";
 
 // Web2-mode counterpart to `useTournamentActions.ts` — player-facing writes
-// against the Prisma-backed API instead of on-chain contract calls. No
+// against the Prisma-backed API instead of onchain contract calls. No
 // World ID proof to build/submit here — sybil resistance is entirely
 // server-side (session + a unique DB constraint), so `register` just needs
 // the tournament id.

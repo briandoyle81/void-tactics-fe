@@ -1,7 +1,7 @@
 import { prisma } from "./prisma";
 import { maybeAdvanceRound } from "./tournamentBracket";
 
-// Web2 has no on-chain `gameResults` oracle contract, so a completed Game
+// Web2 has no onchain `gameResults` oracle contract, so a completed Game
 // must self-report back to its tournament match (if any) here — called
 // from every path that finalizes a Game (score win, flee, timeout).
 export async function resolveTournamentMatchIfApplicable(

@@ -36,8 +36,8 @@ interface Props {
 // Web2 counterpart to AdminSettingsExport.tsx — same aggregated JSON
 // snapshot (maps, AI ship configs/archetypes, per-map enemy placements,
 // campaign nodes), sourced from the Prisma-backed admin routes instead of
-// on-chain reads, gated on useWeb2Admin() instead of the three separate
-// on-chain admin roles. Read-only, same as web3.
+// onchain reads, gated on useWeb2Admin() instead of the three separate
+// onchain admin roles. Read-only, same as web3.
 export function AdminSettingsExportWeb2({ maps }: Props) {
   const isAdmin = useWeb2Admin();
   const [exporting, setExporting] = useState(false);

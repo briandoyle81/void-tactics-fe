@@ -257,7 +257,7 @@ export function TransactionButton({
 
       // `isConfirmed` (useWaitForTransactionReceipt's isSuccess) only means
       // a receipt was fetched — it stays true even when the transaction
-      // itself reverted on-chain (status: "reverted"), since viem doesn't
+      // itself reverted onchain (status: "reverted"), since viem doesn't
       // throw for that case. Without this check, every reverted write
       // (wrong turn, invalid move, etc.) across the app was silently
       // treated as a success: onSuccess fired, onError never did, and
@@ -267,7 +267,7 @@ export function TransactionButton({
       if (receipt.status === "reverted") {
         setIsLocallyPending(false);
         const revertError = new Error(
-          "Transaction reverted on-chain",
+          "Transaction reverted onchain",
         );
         completeTransaction(transactionId, false, revertError);
         onError?.(revertError);

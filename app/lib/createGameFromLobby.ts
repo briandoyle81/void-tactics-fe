@@ -29,7 +29,7 @@ export async function createGameFromLobby(
   joinerFleet: FleetWithShips,
   // Roguelike-only: ships carry damage sustained in earlier missions this
   // run (RoguelikeRosterShip.hp — see resolveRoguelikeRunIfApplicable.ts;
-  // 0 = undamaged, matching the on-chain getShipHP convention). Every other
+  // 0 = undamaged, matching the onchain getShipHP convention). Every other
   // caller (PvP, vs-AI, tournament) omits this and ships start at full
   // health, unchanged from before this param existed.
   startingDamageByShipId?: Map<number, number>,

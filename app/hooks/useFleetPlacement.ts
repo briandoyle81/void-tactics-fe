@@ -307,7 +307,7 @@ function useFleetPlacementCore<Id extends bigint | number, S extends FleetPlacem
 
   // Require at least one explicit manual placement before allowing
   // submission — a UX nudge so a player doesn't submit a fleet they never
-  // actually looked at, not an on-chain requirement.
+  // actually looked at, not an onchain requirement.
   const hasMovedShip = shipPositions.length > 0 && hasManuallyMoved;
 
   return {

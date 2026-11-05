@@ -17,7 +17,7 @@ import type { AIShipConfigWeb2 } from "../utils/aiShipConfigWeb2";
 // Web2 counterpart to AIEncountersAdminPanel.tsx (web3) — same layout/flow,
 // backed by AIShipConfig/AIMapPlacement rows via /api/admin/ai-ship-configs
 // and /api/admin/ai-map-placements instead of the AIEncounters contract, and
-// gated on useWeb2Admin() instead of on-chain isEncounterEditor. Traits here
+// gated on useWeb2Admin() instead of onchain isEncounterEditor. Traits here
 // use the plain 6-field ShipColors shape (web2 ships have no h3/s3/l3 —
 // that's a web3-only Colors field, see AIEncountersColors in types.ts).
 

@@ -6,7 +6,7 @@ import { AI_FLEET_MAX_KILLS } from "@/app/utils/aiFleet";
 // GET/POST /api/admin/ai-ship-configs — web2 counterpart to web3's
 // AIEncounters.createAIShipConfig/getAllAIShipConfigs, gated the same way
 // as the other web2 admin routes (requireWeb2Admin, not per-address
-// on-chain permissions — see AIEncountersAdminPanelWeb2.tsx).
+// onchain permissions — see AIEncountersAdminPanelWeb2.tsx).
 
 function isValidEquipment(v: unknown): v is { mainWeapon: number; armor: number; shields: number; special: number } {
   if (!v || typeof v !== "object") return false;

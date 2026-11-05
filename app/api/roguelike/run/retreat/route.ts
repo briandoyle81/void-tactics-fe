@@ -6,7 +6,7 @@
  * ABANDONED, no winner recorded — distinct from a loss) before the run
  * itself ends, matching web3's two-step "forfeit the match, then end the
  * run" semantics in one call (web2 has no per-call gas/latency reason to
- * split it into two requests the way the on-chain flow does).
+ * split it into two requests the way the onchain flow does).
  */
 
 import { NextResponse } from "next/server";

@@ -15,7 +15,7 @@ export interface AIMapPlacementWeb2 {
 
 // Web2 counterpart to useMapEnemyThreat (useAIEncountersContract.ts) — total
 // enemy fleet cost for a map, derived from its actual AI placements via the
-// player-facing /api/ai-map-placements read instead of an on-chain read.
+// player-facing /api/ai-map-placements read instead of an onchain read.
 // Also returns the raw placements so callers building an EnemyFleetPreview
 // (CampaignNodePreviewWeb2.tsx, RoguelikeGraphWeb2.tsx) don't need their own
 // duplicate fetch — same queryKey either way, so this was already one

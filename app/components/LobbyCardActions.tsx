@@ -36,7 +36,7 @@ interface LobbyCardActionsProps {
 // Shared lobby-card action block for `Lobbies.tsx` (web3) and
 // `LobbiesWeb2.tsx` (web2) — identical status/role gating, differing only in
 // which button implementation actually performs the join/accept/reject/leave
-// action (on-chain TransactionButton-wrapped vs plain REST onClick), which
+// action (onchain TransactionButton-wrapped vs plain REST onClick), which
 // callers supply as render-prop slots.
 export const LobbyCardActions: React.FC<LobbyCardActionsProps> = ({
   status,

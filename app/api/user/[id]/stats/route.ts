@@ -4,10 +4,10 @@ import { requireAuth } from "@/app/lib/auth";
 import { WEB2_TIE_SENTINEL } from "@/app/types/web2Game";
 
 // GET /api/user/[id]/stats — a player's win/loss record. Web2-mode
-// counterpart to web3's `usePlayerStats(address, chainId)` (an on-chain
+// counterpart to web3's `usePlayerStats(address, chainId)` (an onchain
 // read) — shown next to a lobby's creator/joiner in LobbiesWeb2.tsx, same
 // as Lobbies.tsx's `CreatorStats`. Any signed-in user can view any other
-// user's basic record (matches the on-chain read being public), gated only
+// user's basic record (matches the onchain read being public), gated only
 // on being signed in at all.
 export async function GET(
   _req: Request,

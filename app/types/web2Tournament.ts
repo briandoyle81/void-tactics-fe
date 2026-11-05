@@ -1,13 +1,13 @@
 // Web2-mode tournament types. Parallel to (never sharing a definition with)
 // the web3 `TournamentConfig`/`TournamentSummary`/`TournamentMatch` types in
-// `./types.ts`, which model on-chain data (`bigint` ids/fees, `0x${string}`
+// `./types.ts`, which model onchain data (`bigint` ids/fees, `0x${string}`
 // addresses). Web2 tournaments are Prisma-backed rows keyed by plain integer
 // ids, owned by NextAuth user ids (Google OAuth subs) — see
 // `app/types/web2Lobby.ts` for why the two systems never interoperate.
 //
 // Sybil resistance is "one registration per Google account" (a DB unique
 // constraint) instead of a World ID proof; entry fee/prize pool are the
-// existing in-app credit balance instead of on-chain ETH escrow, paid out
+// existing in-app credit balance instead of onchain ETH escrow, paid out
 // directly on finalize instead of via a pull-based claim step.
 
 export enum Web2TournamentState {

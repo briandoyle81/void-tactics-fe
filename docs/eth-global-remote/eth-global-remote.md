@@ -169,7 +169,7 @@ Extra points
 
     Pay-per-call inference, data, or compute metering rather than a flat per-request charge
     Multi-agent negotiation and settlement via A2A or ACP
-    On-chain agent identity using ERC-8004 or HCS-14
+    Onchain agent identity using ERC-8004 or HCS-14
     Agent discovery via UCP, or a directory that makes your service findable by other agents
     HTS tokens or custom fee schedules in the settlement path
     Verifiable payment audit trails on HCS
@@ -257,7 +257,7 @@ Build an enterprise finance application on Hedera using the Asset Tokenization S
 Ideas
 
     Tokenised collateral for repo. Post tokenised treasuries as collateral with programmatic proof and release.
-    Bonds with a lifecycle. Issuance, coupon payments, and redemption at maturity, all on-chain.
+    Bonds with a lifecycle. Issuance, coupon payments, and redemption at maturity, all onchain.
     Secondary market for ATS assets. Order book or auction with compliance enforced at transfer.
     Tokenised equities. KYC-gated register with automated corporate actions.
     Cashflow tokenisation. Invoices, receivables, or royalty streams sold at a discount and settled on maturity.

@@ -34,7 +34,7 @@ import { setUrlParams, type SetUrlParamsOptions, useUrlParam } from "../utils/ur
 // Web2-mode counterpart to `Tournaments.tsx`. Same single-elimination
 // lifecycle (create → register → start/bracket-generate → play each match
 // through the normal Lobby/Fleet/Game pipeline → finalize/payout), backed
-// by the Prisma tournament tables instead of the on-chain Tournament
+// by the Prisma tournament tables instead of the onchain Tournament
 // contract. Sybil resistance is "one registration per Google account"
 // instead of a World ID proof; entry fee/prize pool are in-app credits
 // instead of ETH, paid out directly on finalize instead of via a

@@ -59,7 +59,7 @@ function getGameMapState(uint _gameId) external view returns (
     Position[] memory impassablePositions   // NEW
 )
 ```
-No on-chain contract calls either of these — this is purely a frontend/admin-tooling-facing break.
+No onchain contract calls either of these — this is purely a frontend/admin-tooling-facing break.
 
 ### 1.3 Gameplay behavior change
 
@@ -100,7 +100,7 @@ If a ship's starting position isn't valid for the map's zone (custom or default)
 
 ---
 
-## 3. On-chain map names
+## 3. Onchain map names
 
 ```solidity
 mapping(uint => string) public mapName;

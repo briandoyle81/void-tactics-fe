@@ -4,7 +4,7 @@
 // campaign (see docs/update/Frontend_Update_Guide_Roguelike_Campaign.md).
 // Field shapes below are pulled directly from the deployed contracts' ABIs
 // (app/contracts/artifacts/DeployModule#Roguelike*.json), not just doc
-// prose, to guarantee they match on-chain reality.
+// prose, to guarantee they match onchain reality.
 
 export enum RunStatus {
   None,

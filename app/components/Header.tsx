@@ -264,10 +264,10 @@ function AuthModeChooser({
                   Web3 // Wallet
                 </h5>
                 <p className="font-mono text-sm uppercase tracking-wider text-text-muted mb-3">
-                  On-chain
+                  Onchain
                 </p>
                 <ul className="text-base text-text-secondary space-y-2 list-disc list-inside">
-                  <li>True on-chain ownership — every ship is really yours</li>
+                  <li>True onchain ownership — every ship is really yours</li>
                   <li>Safe and permissionless modding and data access</li>
                   <li>Permanent, provably fair battle history</li>
                 </ul>
@@ -320,7 +320,7 @@ function HeaderModeSwitchBadge({
     setAppMode(otherMode);
     toast(
       otherMode === "web2"
-        ? "Switched to Web2. Your on-chain fleet stays put — switch back to see it."
+        ? "Switched to Web2. Your onchain fleet stays put — switch back to see it."
         : "Switched to Web3. Your Web2 fleet stays put — switch back to see it.",
       { icon: "⚠️", duration: 5000 },
     );

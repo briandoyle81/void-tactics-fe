@@ -11,7 +11,7 @@ export const ARCHETYPE_LABEL: Record<Archetype, string> = {
 };
 
 // AI encounters only have an AIShipConfig (archetype template), not a
-// materialized on-chain ship — there's no owner/shipData to render with
+// materialized onchain ship — there's no owner/shipData to render with
 // (real AI ship instances only exist once a match actually starts, via
 // ShipsRouter). ShipImage just needs equipment/traits/colors to paint the
 // art, so this fills in inert placeholders for the fields that don't apply
@@ -44,7 +44,7 @@ export function aiConfigToPreviewShip(config: AIShipConfig, idOverride?: bigint)
       shipsDestroyed: Number(config.shipsDestroyed),
       costsVersion: 0,
       // Same threat/cost formula as real player ships (ShipAttributes.calculateShipCost) —
-      // AI ships never construct on-chain, so there's no stored cost to read.
+      // AI ships never construct onchain, so there's no stored cost to read.
       cost: calculateTutorialThreatPoints(
         config.equipment,
         {

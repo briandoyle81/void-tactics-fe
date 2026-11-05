@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/apiFetch";
 import type { Web2Tournament } from "../types/web2Tournament";
 
 // Web2-mode counterpart to `useTournamentList.ts` — fetches from the
-// Prisma-backed `/api/tournaments` route instead of an on-chain read.
+// Prisma-backed `/api/tournaments` route instead of an onchain read.
 export function useTournamentListWeb2({ enabled = true }: { enabled?: boolean } = {}) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["tournaments", "web2"],

@@ -106,6 +106,15 @@ Our future is in your hands.
     I recommend we intercept the freighter.  We can seize the cargo and examine the ship's nav logs to learn its destination.
     `,
   },
+  9: {
+    title: "Interception",
+    speaker: "adjutant",
+    description: `Admiral, the bad news is that we weren't able to recover any useful information from the remains of the freighter.  Harcourt's ships were pretty thorough in obliterating the hull.
+
+    The good news is that I followed a hunch and found that this isn't the first time Harcourt has tried his little asteroid claim trick. He filed an intent to claim another asteroid in this sector a week ago, but then abandoned the claim. Long range scanners found the remains of a battle, and a fleet with energy signatures matching the bug ships heading to the site.
+
+    I think this is what we're looking for! Harcourt must've left the site to try and chase us off. Let's head to the site and see what we can find.`,
+  },
 };
 
 export const CAMPAIGN_NODE_CONTENT: Record<

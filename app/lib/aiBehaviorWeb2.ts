@@ -4,14 +4,14 @@ import { hasLineOfSight, hasMovementPath, buildEnemyOccupiedGrid } from "../util
 import { getSpecialConfigWeb2 } from "../utils/specialConfigWeb2";
 import { getFactionAbilityConfigWeb2 } from "../utils/factionAbilityConfigWeb2";
 
-// Server-side port of the on-chain per-variant AI (Variant1AI.sol /
+// Server-side port of the onchain per-variant AI (Variant1AI.sol /
 // Variant2AI.sol, composed from the shared AIBehavior.sol library —
 // see docs/ai-behavior-registry.md), adapted to web2's Web2GameDataView
 // (number-native) the same way gameEngineWeb2.ts ports the resolvers.
 // Which faction a ship belongs to is its own traits.variant — see
 // aiTurnWeb2.ts, which reads it from the DB and passes it in here, exactly
 // like SinglePlayerMatch/RoguelikeMatch dispatch through AIBehaviorRegistry
-// on-chain. Kept as a cheap ordered priority list per archetype, same as
+// onchain. Kept as a cheap ordered priority list per archetype, same as
 // the contracts: this decides one ship's move; it doesn't search/plan
 // ahead. The caller (aiTurnWeb2.ts) wraps the result in a try/catch-and-Pass
 // fallback exactly like SinglePlayerMatch._takeShipTurn does, since (like

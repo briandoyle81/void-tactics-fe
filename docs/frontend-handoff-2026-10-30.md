@@ -73,7 +73,7 @@ The `PlayerStatsUpdated(player, wins, losses, totalGames)` event keeps its shape
 
 ### Frontend changes needed
 
-- `app/hooks/usePlayerStats.ts` and `app/types/types.ts`: drop `totalGames` from the on-chain `PlayerStats` type and compute it as `wins + losses` where it's shown.
+- `app/hooks/usePlayerStats.ts` and `app/types/types.ts`: drop `totalGames` from the onchain `PlayerStats` type and compute it as `wins + losses` where it's shown.
 
 ---
 

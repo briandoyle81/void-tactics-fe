@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/apiFetch";
 import { Web2Lobby } from "../types/web2Lobby";
 
 // Web2-mode counterpart to `useLobbyList.ts` — fetches from the
-// Prisma-backed `/api/lobbies` route instead of an on-chain read.
+// Prisma-backed `/api/lobbies` route instead of an onchain read.
 
 export function useLobbyListWeb2() {
   const { data, isLoading, error, refetch } = useQuery({

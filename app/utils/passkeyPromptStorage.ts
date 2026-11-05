@@ -49,6 +49,22 @@ export function isPasskeyMarkedOnDevice(userId: string): boolean {
   }
 }
 
+/**
+ * Some account on this device has a passkey here (any of the marks above).
+ * The sign-in panel (SignInPanel) puts passkey sign-in first when it does;
+ * signed out, it can't know which account is coming back.
+ */
+export function isAnyPasskeyMarkedOnDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const raw = localStorage.getItem(PASSKEY_ON_DEVICE_KEY);
+    if (!raw) return false;
+    return Object.values(JSON.parse(raw) as Record<string, boolean>).some((v) => v === true);
+  } catch {
+    return false;
+  }
+}
+
 export function markPasskeyOnDevice(userId: string): void {
   if (typeof window === "undefined") return;
   try {

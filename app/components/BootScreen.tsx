@@ -1,54 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { useCallback, useState } from "react";
 import posthog from "posthog-js";
-import { useOpenWalletSignIn } from "../hooks/useOpenWalletSignIn";
 import { ArtSlot } from "./ArtSlot";
 import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink } from "./BrandLinks";
-import { WEB2_SIGN_IN_ENABLED } from "../config/alpha";
+import { SignInPanel, type SignInStep } from "./signIn/SignInPanel";
 
 const DISPLAY_FONT = { fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" } as const;
 
-function SignInOption({
-  title,
-  body,
-  action,
-  color,
-  onClick,
-}: {
-  title: string;
-  body: string;
-  action: string;
-  color: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group grid gap-1 border-2 border-solid p-4 text-left transition-colors duration-150 hover:bg-steel"
-      style={{ borderColor: color, backgroundColor: "rgba(12,17,23,0.85)" }}
-    >
-      <span className="flex items-baseline justify-between gap-3">
-        <span className="text-2xl font-bold uppercase tracking-wider" style={{ ...DISPLAY_FONT, color }}>
-          {title}
-        </span>
-        <span className="font-mono text-xs font-bold uppercase tracking-wider" style={{ color }}>
-          {action} ›
-        </span>
-      </span>
-      <span className="text-sm text-text-secondary" style={DISPLAY_FONT}>
-        {body}
-      </span>
-    </button>
-  );
-}
-
 /**
- * The client's sign-in screen for signed-out players: a wallet or Google,
- * with the first battle (First Contact, no sign-in needed) as a smaller
- * option below. New players skip this and land in the battle directly; see
+ * The client's sign-in screen for signed-out players: the title, the sign-in
+ * panel (SignInPanel, shared with SignInModal), and the first battle (First
+ * Contact, no sign-in needed) below it while the player is choosing how to
+ * sign in. New players skip this screen and land in the battle directly; see
  * signedOutLanding in tutorialCompletion.ts.
  */
 export function BootScreen({
@@ -58,7 +23,8 @@ export function BootScreen({
   onStartFirstBattle: () => void;
   firstBattleCompleted: boolean;
 }) {
-  const openWalletSignIn = useOpenWalletSignIn();
+  const [step, setStep] = useState<SignInStep>("email");
+  const onStepChange = useCallback((next: SignInStep) => setStep(next), []);
 
   return (
     <ArtSlot slot="bootBackdrop" className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10">
@@ -73,43 +39,25 @@ export function BootScreen({
           <HeaderAlphaBadge />
         </div>
 
-        <div className="grid gap-3">
-          <SignInOption
-            title="Wallet"
-            body="Your ships are yours on-chain. Every move is recorded."
-            action="Connect"
-            color="var(--color-cyan)"
-            onClick={() => void openWalletSignIn()}
-          />
-          {WEB2_SIGN_IN_ENABLED && (
-            <SignInOption
-              title="Google"
-              body="Play instantly. No wallet needed."
-              action="Sign in"
-              color="var(--color-amber)"
-              onClick={() => {
-                posthog.capture("web2_sign_in_clicked", { surface: "boot" });
-                void signIn("google");
-              }}
-            />
-          )}
-        </div>
+        <SignInPanel surface="boot" onStepChange={onStepChange} />
 
-        <div className="grid justify-items-center gap-1 text-center">
-          <span className="font-mono text-xs uppercase tracking-wider text-text-muted">
-            {firstBattleCompleted ? "Want another run at it?" : "No account yet?"}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              posthog.capture("boot_first_battle_clicked");
-              onStartFirstBattle();
-            }}
-            className="px-4 py-1 font-mono text-sm font-bold uppercase tracking-wider text-phosphor-green underline-offset-4 hover:underline"
-          >
-            {firstBattleCompleted ? "Replay First Contact" : "Play First Contact"} ›
-          </button>
-        </div>
+        {(step === "email" || step === "wallets") && (
+          <div className="grid justify-items-center gap-1 text-center">
+            <span className="font-mono text-xs uppercase tracking-wider text-text-muted">
+              {firstBattleCompleted ? "Want another run at it?" : "No account yet?"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                posthog.capture("boot_first_battle_clicked");
+                onStartFirstBattle();
+              }}
+              className="px-4 py-1 font-mono text-sm font-bold uppercase tracking-wider text-phosphor-green underline-offset-4 hover:underline"
+            >
+              {firstBattleCompleted ? "Replay First Contact" : "Play First Contact"} ›
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-wider text-text-muted">
           <HeaderDiscordLink compact />

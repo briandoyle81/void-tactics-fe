@@ -7,7 +7,7 @@ import React from "react";
 // grid, fleet-view buttons). Ported verbatim from Lobbies.tsx. The action
 // section (join/accept/reject/leave/select-fleet) is caller-supplied via
 // `actions` since the write mechanism genuinely differs (web3: self-
-// contained on-chain write-hook button components; web2: REST calls) —
+// contained onchain write-hook button components; web2: REST calls) —
 // same render-prop pattern as `RecycleConfirmModal`'s `confirmButton`.
 interface LobbyCardProps {
   lobbyIdLabel: string;

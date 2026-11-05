@@ -6,7 +6,7 @@ import { requireAuth } from "@/app/lib/auth";
 // of a single map's AI placements, for enemy-fleet previews (mission cards,
 // fleet-selection maps, roguelike threat display). Same query as
 // /api/admin/ai-map-placements' GET, minus the requireWeb2Admin() gate —
-// mirrors web3's public on-chain AIEncounters.getMapPlacements read, which
+// mirrors web3's public onchain AIEncounters.getMapPlacements read, which
 // has no admin restriction. The admin route keeps its own GET (used by
 // AIEncountersAdminPanelWeb2's editor) alongside PUT/DELETE.
 export async function GET(req: NextRequest) {

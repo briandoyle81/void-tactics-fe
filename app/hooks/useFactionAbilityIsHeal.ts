@@ -9,7 +9,7 @@
  * was dropped; see
  * docs/eth-global-remote/frontend-handoff-attributes-costs-and-ai-2026-09-21.md §7
  * / docs/ai-behavior-registry.md's "ABI changes" section). There is no
- * on-chain source for this any more, and no indication a variant's ability
+ * onchain source for this any more, and no indication a variant's ability
  * *kind* (heal vs. ram) will ever change independently of redeploying that
  * variant's whole faction ability resolver — `RamResolver` (variant 1) and
  * `RepairResolver` (variant 2) are wired in once, at deploy, via

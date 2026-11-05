@@ -1,5 +1,5 @@
 // Web2-mode counterpart to `lobbyFormatters.ts`'s number-formatting
-// functions. The web3 versions take `bigint` (matching on-chain reads);
+// functions. The web3 versions take `bigint` (matching onchain reads);
 // web2 lobby fields are plain `number` from Prisma, so these are separate
 // functions rather than forcing a shared bigint/number signature. The
 // underlying threshold constants (and non-formatting exports like

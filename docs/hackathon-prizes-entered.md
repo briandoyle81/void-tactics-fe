@@ -35,7 +35,7 @@ worldnetwork
 Open page →
 About
 
-World’s developer stack helps builders create products for verified humans and AI-assisted interactions. World ID enables apps to confirm someone is a unique human without revealing their identity. Mini Apps provide developers with a native distribution channel within World App. AgentKit helps identify when agents are backed by real humans rather than bots or scripts. World Chain provides the on-chain infrastructure to build, transact, and scale these experiences. ProveKit is a zk proving library, allowing someone to write their circuits in Noir and prove them.
+World’s developer stack helps builders create products for verified humans and AI-assisted interactions. World ID enables apps to confirm someone is a unique human without revealing their identity. Mini Apps provide developers with a native distribution channel within World App. AgentKit helps identify when agents are backed by real humans rather than bots or scripts. World Chain provides the onchain infrastructure to build, transact, and scale these experiences. ProveKit is a zk proving library, allowing someone to write their circuits in Noir and prove them.
 Prizes
 
 ↗

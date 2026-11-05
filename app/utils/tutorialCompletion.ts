@@ -3,7 +3,7 @@ import { TUTORIAL_COMPLETED_STEPS_KEY } from "../types/onboarding";
 // Whether a player has done the tutorial ("first battle"), from what this
 // device knows. Players who haven't get it as the first mission on the
 // Operations map (tutorialPrelude.ts); useTutorialCompleted /
-// useTutorialCompletedWeb2 add the on-chain claim and the web2 account flag.
+// useTutorialCompletedWeb2 add the onchain claim and the web2 account flag.
 
 // Fired when any of these records change, so screens that stay mounted
 // (the Operations map is kept alive) re-read them.

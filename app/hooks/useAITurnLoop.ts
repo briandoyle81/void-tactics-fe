@@ -27,7 +27,7 @@ interface UseAITurnLoopParams {
   gameId: bigint;
   isAITurn: boolean;
   isGameOver: boolean;
-  // Changes whenever fresh on-chain state lands for this game (e.g. a move
+  // Changes whenever fresh onchain state lands for this game (e.g. a move
   // timestamp) — used to re-check `isAITurn` after each takeAITurn call
   // without racing ahead of confirmed chain data.
   lastMoveSignal: string;

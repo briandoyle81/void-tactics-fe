@@ -39,7 +39,7 @@ function findUnmovedAiShip(state: Web2GameDataView): number | null {
  * Takes one AI ship's turn — the web2 counterpart to
  * SinglePlayerMatch.takeAITurn. Moves exactly one AI ship per call; the
  * client re-calls this while it's still the AI's turn (see
- * useAITurnLoopWeb2.ts), mirroring the on-chain one-call-per-ship pattern.
+ * useAITurnLoopWeb2.ts), mirroring the onchain one-call-per-ship pattern.
  */
 export async function takeAiTurn(gameId: number): Promise<AiTurnResult> {
   const game = await prisma.game.findUnique({ where: { id: gameId }, include: { lobby: true } });

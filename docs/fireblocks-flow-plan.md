@@ -321,7 +321,7 @@ export type FlowPaymentStatus =
   | "attaching" // POST /sdk/.../source
   | "quoting" // POST /sdk/.../quote
   | "preparing" // POST /sdk/.../prepare
-  | "signing" // wallet signs on-chain
+  | "signing" // wallet signs onchain
   | "broadcasting" // POST /sdk/.../broadcast
   | "polling" // polling settlementState
   | "minting" // POST /api/flow/fulfill
@@ -419,7 +419,7 @@ export function useFireblocksFlowPayment() {
         if (!payload?.evmTransaction)
           throw new Error("No EVM signing payload returned");
 
-        // Step 6: Sign and broadcast on-chain
+        // Step 6: Sign and broadcast onchain
         setStatus("signing");
         const txHash = await signEVM(walletClient, payload);
 

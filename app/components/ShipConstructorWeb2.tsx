@@ -18,7 +18,7 @@ import type { Web2Ship } from "../types/web2Ship";
 // economy this component's REAL job is to give web2 parity for; only the
 // CUSTOMIZE flow (DroneYard.modifyShip's web2 equivalent,
 // `/api/ships/[id]/customize`) has an actual gap to close. Cost preview
-// comes from the same route's GET handler instead of an on-chain
+// comes from the same route's GET handler instead of an onchain
 // `calculateCostToModify` read, and there's no UTC-approval step since web2
 // balances are debited server-side, not via ERC20 allowance.
 
@@ -135,7 +135,7 @@ const ShipConstructorWeb2: React.FC<ShipConstructorWeb2Props> = ({
     return list;
   }, [originalShip, mainWeapon, armor, shields, special, accuracy, hull, speed, shiny]);
 
-  // Cost preview — mirrors web3's on-chain calculateCostToModify read, but
+  // Cost preview — mirrors web3's onchain calculateCostToModify read, but
   // as a plain GET so it never mutates anything.
   useEffect(() => {
     if (selectedShipId == null || changes.length === 0) {

@@ -5,7 +5,7 @@
 The two branches diverged much further than "a little UI/UX drift." They
 share a merge-base at `a989c53` ("Add weapon impact effects"), and the full
 diff is **346 files changed, +36,547/-76,514 lines**. `explore-traditional`
-is a wholesale conversion of the data layer from on-chain
+is a wholesale conversion of the data layer from onchain
 (wagmi/viem/contracts) to a traditional Postgres/Neon + Prisma backend with
 ~33 new REST/SSE API routes, plus roughly 20 commits of independent UI/UX and
 gameplay work layered on top of that conversion.
@@ -27,7 +27,7 @@ than re-deriving it.
 | Auth/identity | Wallet connection (RainbowKit) | NextAuth (`AuthButton.tsx`, `Connect.tsx`) + `useCurrentUser.ts` |
 | Chain config | `app/providers.tsx`, `app/config/networks.ts`, `app/config/contracts.ts` | Stubbed/removed — no multi-chain, no wagmi provider |
 | Game state hooks | `use*Contract.ts` hooks hitting wagmi | Same filenames, gutted to hit REST/SSE instead (`useGameStream.ts`, `useGamePolling.ts`) |
-| Payments | On-chain (Flow payment modal, USD/UTC purchase flows via contract) | In-app currency via `HeaderUtcWidget.tsx` + `/api/ships/purchase/usd|utc` |
+| Payments | Onchain (Flow payment modal, USD/UTC purchase flows via contract) | In-app currency via `HeaderUtcWidget.tsx` + `/api/ships/purchase/usd|utc` |
 | Removed subsystems | N/A | Tournament system and Flow-payment components deleted entirely (`useTournament*.ts` ×4, `TournamentAdminPanel/Bracket/Card/Register.tsx`, `useFlowPaymentModal.ts`, `FlowPaymentButton/Modal.tsx`) |
 
 **Implication for "switch between web3 and web2":** this needs a real
@@ -86,7 +86,7 @@ each (its Tier A/B/C plan).
    rule and still ports on top of the existing gate check.
 4. **Draw/tie game outcomes: proceed, contract update assumed.** Port the
    `Games.tsx` tie UI (`TIE_ADDRESS` sentinel, purple "DRAW" styling) on the
-   assumption that main's on-chain `GameContract` will be updated separately
+   assumption that main's onchain `GameContract` will be updated separately
    to support/emit a draw winner value. The frontend work isn't blocked on
    that update landing first, but the feature won't function in production
    until it does — track the contract change as a dependency, not a

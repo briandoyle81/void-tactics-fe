@@ -6,7 +6,7 @@ import type { Web2TournamentDetail } from "../types/web2Tournament";
 
 // Web2-mode counterpart to `useTournament.ts` — fetches config, registrants,
 // and the full bracket from `/api/tournaments/[id]` instead of a batched
-// on-chain read. No event subscriptions available without a chain, so this
+// onchain read. No event subscriptions available without a chain, so this
 // polls while mounted.
 export function useTournamentWeb2(tournamentId: number | null) {
   const { data, isLoading, error, refetch } = useQuery({

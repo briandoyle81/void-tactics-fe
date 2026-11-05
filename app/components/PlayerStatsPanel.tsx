@@ -5,7 +5,7 @@ import React from "react";
 // Shared between Profile.tsx (web3) and ProfileWeb2.tsx (web2) — the
 // STATISTICS + ACHIEVEMENTS card pair. Statistics split in half: PvP on the
 // left, PvE (missions, runs, the tutorial) on the right (playerRecord.ts).
-// `draws` is web2 PvP only (on-chain games have no tie concept yet);
+// `draws` is web2 PvP only (onchain games have no tie concept yet);
 // `signInPrompt` differs (wallet vs session) so it's caller-supplied.
 export interface PlayerRecordColumn {
   wins: number;

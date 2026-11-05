@@ -1,7 +1,7 @@
 // Web3 tournaments gained a `Starting` state (Tournament.sol's post-
 // registration randomness-request step, before buildBracket() reveals the
 // shuffle and reaches Active) that web2 tournaments have no equivalent of —
-// web2 never needed on-chain randomness, so its state ordinals stayed at
+// web2 never needed onchain randomness, so its state ordinals stayed at
 // Registration/Active/Complete/Cancelled (0-3) while web3's shifted to fit
 // Starting in at ordinal 1. The two enums no longer share an ordinal space,
 // so each flow gets its own label/color map instead of one shared

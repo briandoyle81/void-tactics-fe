@@ -18,7 +18,7 @@ const attrs = (hull: number, max = 100): Attributes => ({
 });
 
 describe("roster hull", () => {
-  it("treats on-chain 0 as full, and a nonzero value as current HP", () => {
+  it("treats onchain 0 as full, and a nonzero value as current HP", () => {
     expect(currentHullFromOnchainRosterHp(0, 80)).toBe(80);
     expect(currentHullFromOnchainRosterHp(40, 80)).toBe(40);
     expect(currentHullFromOnchainRosterHp(99, 80)).toBe(80);

@@ -5,7 +5,7 @@ import React from "react";
 // Shared between UTCPurchaseModal.tsx (web3) and UTCPurchaseModalWeb2.tsx —
 // the tier-card body (amount / pay / receive / footer hint). Purely
 // presentational; each side wraps it in its own interactive button
-// (UTCPurchaseButton's on-chain TransactionButton vs a plain <button> that
+// (UTCPurchaseButton's onchain TransactionButton vs a plain <button> that
 // opens a confirm modal) since that's the genuinely different piece — the
 // write mutation mechanism, not the card layout.
 interface UTCPurchaseTierCardContentProps {

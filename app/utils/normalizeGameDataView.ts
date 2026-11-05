@@ -1,8 +1,8 @@
 import { ActionType, GameDataView } from "../types/types";
 
-// Raw on-chain Game.ActionType only goes up to FactionAbility=5. Our shared
+// Raw onchain Game.ActionType only goes up to FactionAbility=5. Our shared
 // ActionType enum additionally carries web2-only ClaimPoints=5 (see the
-// enum's doc comment in types.ts), so a raw on-chain 5 must be remapped
+// enum's doc comment in types.ts), so a raw onchain 5 must be remapped
 // to the (non-colliding) ActionType.FactionAbility=7 before it reaches any
 // shared display component — otherwise it would be misread as ClaimPoints.
 const RAW_ONCHAIN_FACTION_ABILITY = 5;
@@ -10,7 +10,7 @@ const RAW_ONCHAIN_FACTION_ABILITY = 5;
 /**
  * Normalizes a `GameDataView` freshly decoded from `Game.getGame`/
  * `getGamesFromIds` so its `lastMove.actionType` uses the app-wide
- * `ActionType` enum's values rather than the raw on-chain uint8.
+ * `ActionType` enum's values rather than the raw onchain uint8.
  */
 export function normalizeGameDataView(data: GameDataView): GameDataView {
   if (!data.lastMove) return data;
@@ -26,7 +26,7 @@ export function normalizeGameDataView(data: GameDataView): GameDataView {
   };
 }
 
-/** A raw on-chain `Game.ActionType` (lastMove, a Move event) as the app-wide `ActionType`. */
+/** A raw onchain `Game.ActionType` (lastMove, a Move event) as the app-wide `ActionType`. */
 export function fromOnChainActionType(actionType: number): number {
   return actionType === RAW_ONCHAIN_FACTION_ABILITY ? ActionType.FactionAbility : actionType;
 }

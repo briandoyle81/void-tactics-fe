@@ -340,7 +340,7 @@ describe("hasMovementPath", () => {
     expect(hasMovementPath(5, 5, 6, 6, impassable)).toBe(false);
   });
 
-  it("OR's extra occupancy into the path the same way enemy ships block on-chain", () => {
+  it("OR's extra occupancy into the path the same way enemy ships block onchain", () => {
     const extra = emptyGrid();
     extra[5][7] = true;
     expect(hasMovementPath(5, 5, 5, 9, emptyGrid(), extra)).toBe(false);

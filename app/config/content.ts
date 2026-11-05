@@ -1,7 +1,7 @@
 // Web3 mission text and map names. The contracts no longer store them
 // (Maps.mapName and NodeContentRegistry were removed — see
 // docs/redesign-10-7/frontend-handoff-rpc-cost-suggestions-2026-10-08.md §4),
-// so they ship with the app, keyed by on-chain id:
+// so they ship with the app, keyed by onchain id:
 // - app/data/content/mapNames.ts: map name by map id, edited by hand.
 // - app/data/dialog/nodeContent.ts: node title and description by node id,
 //   next to the rest of each mission's writing (briefing speakers, dialog).

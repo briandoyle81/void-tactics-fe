@@ -100,7 +100,7 @@ export function useConstructShips() {
         ...(await getLegacyGasPriceOverridesForWrite(activeChainId, publicClient)),
       });
       const receipt = await waitForTransactionReceipt(wagmiConfig, { hash, chainId: activeChainId });
-      if (receipt.status === "reverted") throw new Error("Transaction reverted on-chain");
+      if (receipt.status === "reverted") throw new Error("Transaction reverted onchain");
 
       // Construction is what populates a ship's real attributes (equipment is
       // all zeros until then). The by-ids attributes cache is keyed only by

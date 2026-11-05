@@ -117,7 +117,7 @@ function calcBaseDamageReduction(ship: Web2Ship, tables: ShipAttributeTables): n
 
 // Attribute calculation for a ship based directly on the ShipAttributes
 // contract tables (guns/armors/shields), including the same rank and
-// fore-accuracy scaling the on-chain contract applies:
+// fore-accuracy scaling the onchain contract applies:
 // - Base values from the ship's own variant's Gun/Armor/Shield tables
 // - Rank multiplier applied as a percentage to range, damage, hull,
 //   movement, and damageReduction

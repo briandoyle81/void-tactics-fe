@@ -20,7 +20,7 @@ import { PREVIEW_REFRESH_INTERVAL_MS, toPreviewShipWeb2 } from "../../utils/prev
 const NO_ROSTER: RoguelikeRosterEntryWeb2[] = [];
 const RESUPPLY_KIND = 1;
 
-/** Web2 adapter: same Command Deck data from the API instead of on-chain reads. */
+/** Web2 adapter: same Command Deck data from the API instead of onchain reads. */
 export function CommandDeckWeb2(
   props: Omit<CommandDeckProps, "operations" | "openTournamentCount" | "featuredPack">,
 ) {

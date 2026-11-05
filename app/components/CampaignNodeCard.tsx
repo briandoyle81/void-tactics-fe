@@ -49,7 +49,7 @@ interface CampaignNodeCardProps {
 // underneath. Nodes you can't reach yet are NOT dimmed/grayed — the whole
 // chart stays visible at full opacity; only your current position and the
 // lanes leading to your next available nodes are highlighted (see
-// JumpLanes in CampaignGraph.tsx). Replay is allowed on-chain
+// JumpLanes in CampaignGraph.tsx). Replay is allowed onchain
 // (startNodeMatch only checks isNodeUnlocked, never "already completed" —
 // confirmed against SinglePlayerMatch.sol), so completed nodes stay
 // clickable.

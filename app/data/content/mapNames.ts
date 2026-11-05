@@ -1,4 +1,4 @@
-// Web3 map names, by on-chain map id. (Web2 keeps its own in Postgres.)
+// Web3 map names, by onchain map id. (Web2 keeps its own in Postgres.)
 //
 // On a fresh deploy ids are 1–30 single-player, 31–60 roguelike, 61–66 PvP
 // (seed order from the contracts repo's ignition/data/*StarterContent.json).
@@ -59,7 +59,7 @@ export const MAP_NAMES: Record<number, string> = {
   49: "Reactor Core — Roguelike Dead End 4",
   50: "Twin Pillars — Roguelike Dead End 5",
   51: "Asteroid Field — Roguelike Dead End 6",
-  52: "Reactor Core — Roguelike Shortcut",
+  52: "Illegal Mining Outpost",
   53: "Asteroid Field — Roguelike Shortcut 2",
   54: "Reactor Core — Roguelike Shortcut 3",
   55: "Reactor Core — Roguelike Finale 1",

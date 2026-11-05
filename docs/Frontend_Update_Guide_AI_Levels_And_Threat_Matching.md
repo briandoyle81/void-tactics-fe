@@ -2,7 +2,7 @@
 
 **Written: 2026-07-31.** This is a delta doc — it covers everything that changed *after* `Frontend_Update_Guide_Campaigns_Maps.md` (2026-07-30). Read that one first if you haven't already; this one only covers what's new since. `docs/singleplayer-frontend-integration.md` is still the base reference for the overall single-player flow.
 
-**Update 2026-08-18:** section 3's "25 configs" is now stale — see `docs/faction-2.md` section 8. `AIEncounters.aiShipConfigs` is now **50** entries: the original 25 variant-1 configs described below are untouched, plus 25 new variant-2 configs added alongside them. All 30 seeded campaign map placements were repointed to the new variant-2 configs, so the *live* campaign now fields variant-2 AI fleets — the cost table and archetype behavior in this section still describe the (still-existing, still on-chain, just no longer placed on any seeded map) variant-1 configs specifically. Don't hardcode "50" as a ceiling either; re-read `getAllAIShipConfigs().length`.
+**Update 2026-08-18:** section 3's "25 configs" is now stale — see `docs/faction-2.md` section 8. `AIEncounters.aiShipConfigs` is now **50** entries: the original 25 variant-1 configs described below are untouched, plus 25 new variant-2 configs added alongside them. All 30 seeded campaign map placements were repointed to the new variant-2 configs, so the *live* campaign now fields variant-2 AI fleets — the cost table and archetype behavior in this section still describe the (still-existing, still onchain, just no longer placed on any seeded map) variant-1 configs specifically. Don't hardcode "50" as a ceiling either; re-read `getAllAIShipConfigs().length`.
 
 ## 1. AI movement/targeting behavior changed (no ABI impact, but visible in play)
 
@@ -24,9 +24,9 @@ Root-caused and fixed a real out-of-gas bug: the `moveShip` call that ends a gam
 
 `AIEncounters.aiShipConfigs` went from 5 entries (one per archetype) to 25 — Levels I through V for each of Grunt/Aggressor/Sniper/Support/Turtle. Same `getAIShipConfig`/`getAllAIShipConfigs` getters, just more rows. If your admin fleet editor has a config picker, it should already handle this since nothing about the shape changed — just confirm it isn't hardcoding "5 configs" or config ids 1-5 anywhere.
 
-Also fixed: **Grunt and Sniper previously had zero armor and zero shields** (an oversight, not intentional). Every archetype now carries exactly one of the two (never both — armor XOR shields is enforced by design, not on-chain): Grunt/Aggressor/Turtle use armor, Sniper/Support use shields. This changed their on-chain cost (`calculateShipCost`) slightly; if you cached/displayed old cost numbers for these five base configs, refresh from `getAIShipConfig`.
+Also fixed: **Grunt and Sniper previously had zero armor and zero shields** (an oversight, not intentional). Every archetype now carries exactly one of the two (never both — armor XOR shields is enforced by design, not onchain): Grunt/Aggressor/Turtle use armor, Sniper/Support use shields. This changed their onchain cost (`calculateShipCost`) slightly; if you cached/displayed old cost numbers for these five base configs, refresh from `getAIShipConfig`.
 
-Approximate on-chain cost per config, if you want it for a difficulty/tier display (deterministic — AI configs use fixed equipment, not RNG, so this won't drift):
+Approximate onchain cost per config, if you want it for a difficulty/tier display (deterministic — AI configs use fixed equipment, not RNG, so this won't drift):
 
 | Archetype | I | II | III | IV | V |
 |---|---|---|---|---|---|

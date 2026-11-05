@@ -25,7 +25,7 @@ Note: Two Dynamic prizes from one project — confirm with ETHGlobal/Dynamic bef
 Four integrations, each doing genuine work:
 
 1. **Tournament mode** — bracketed competitive play with entry and prize distribution
-2. **Walrus match records** — every completed game stores a permanent record blob; blob ID anchored on-chain
+2. **Walrus match records** — every completed game stores a permanent record blob; blob ID anchored onchain
 3. **World ID anti-sybil** — tournament registration requires a World ID proof; one human = one bracket slot
 4. **Dynamic** — social login + embedded wallets (web2 onboarding); Dynamic Flow for cross-chain ship purchases
 
@@ -154,7 +154,7 @@ import { IDKitWidget, VerificationLevel } from "@worldcoin/idkit";
 
 ### Smart Contract Verification
 
-The tournament contract calls the World ID router on-chain to verify the proof:
+The tournament contract calls the World ID router onchain to verify the proof:
 
 ```solidity
 IWorldID public worldId;
@@ -311,13 +311,13 @@ Dynamic Flow presents its own payment selector UI (source chain, source token). 
 ### Sui / Walrus
 
 - [ ] App reads from or writes to Walrus as a core part of the tournament flow
-- [ ] Working demo: complete a tournament game, show the blob ID recorded on-chain, fetch and display the match record
+- [ ] Working demo: complete a tournament game, show the blob ID recorded onchain, fetch and display the match record
 - [ ] Existing product adopting Walrus (not built from scratch)
 
 ### World ID (Track C)
 
 - [ ] Existing product with a clear plan for what ships/improves during the hackathon
-- [ ] World ID used meaningfully — proof verified on-chain, nullifier prevents double registration
+- [ ] World ID used meaningfully — proof verified onchain, nullifier prevents double registration
 - [ ] Demo: attempt to register the same World ID twice, show it is rejected
 
 ### Dynamic (Best Overall Use)
@@ -339,7 +339,7 @@ Dynamic Flow presents its own payment selector UI (source chain, source token). 
 2. **Purchase a ship.** Show Dynamic Flow: player pays with ETH, ship appears on Flow Testnet.
 3. **Enter tournament.** Click "Register." IDKit modal opens, player approves in World App. Entry fee paid. Show that attempting to register again with the same World ID is rejected.
 4. **Play a tournament match.** Submit a move — no wallet popup. The game confirm widget IS the transaction.
-5. **Game ends.** Show the match record blob ID stored on-chain. Click "View Record" — fetch from Walrus, render the match summary.
+5. **Game ends.** Show the match record blob ID stored onchain. Click "View Record" — fetch from Walrus, render the match summary.
 
 ---
 

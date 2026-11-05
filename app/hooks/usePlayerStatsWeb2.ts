@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/apiFetch";
 
 // Web2-mode counterpart to `usePlayerStats(address, chainId)` — a player's
 // win/loss record, backed by GET /api/user/[id]/stats instead of an
-// on-chain read.
+// onchain read.
 export function usePlayerStatsWeb2(userId: string | null) {
   const { data } = useQuery({
     queryKey: ["user", "stats", userId],

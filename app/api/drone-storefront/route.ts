@@ -4,7 +4,7 @@ import { requireAuth } from "@/app/lib/auth";
 import { nextTierCost, MAX_TIER } from "@/app/lib/droneStorefrontTiers";
 
 // GET /api/drone-storefront — web2 counterpart to useDroneStorefront.ts's
-// on-chain droneCoreTier/tierCoreCost/DEC-balance reads.
+// onchain droneCoreTier/tierCoreCost/DEC-balance reads.
 export async function GET() {
   const { userId, error } = await requireAuth();
   if (error) return error;

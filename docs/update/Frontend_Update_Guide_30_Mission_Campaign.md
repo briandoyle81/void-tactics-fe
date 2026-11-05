@@ -33,7 +33,7 @@ Every node's actual AI fleet cost matches its `enemyThreat` number (exact or wit
 **Action for you:**
 - Any UI that lists/paginates campaign nodes should handle 30 entries now, not 10.
 - If you display a "campaign progress" percentage or map, it should be driven by `getCampaignCompletion`/`isCampaignFullyCompleted` against the live node count, not a hardcoded 10.
-- If you cached or hardcoded any of the old node names (`starter`, `nebula`, `outpost`, `junkyard`, `asteroidField`, `driftWreck`, `silentHulk`, `warlordsRedoubt`, `gauntlet`, `bastion`) or their ids, those are gone. The new nodes have plain keys (`m01`-`m15`, `d01`-`d06`, `s01`-`s03`, `f01`-`f06`) used only as internal deploy-script labels — nothing on-chain exposes node names/flavor text (same "no display strings on-chain" convention as before), so your own name/flavor-text mapping needs a full rewrite against the new id range regardless.
+- If you cached or hardcoded any of the old node names (`starter`, `nebula`, `outpost`, `junkyard`, `asteroidField`, `driftWreck`, `silentHulk`, `warlordsRedoubt`, `gauntlet`, `bastion`) or their ids, those are gone. The new nodes have plain keys (`m01`-`m15`, `d01`-`d06`, `s01`-`s03`, `f01`-`f06`) used only as internal deploy-script labels — nothing onchain exposes node names/flavor text (same "no display strings onchain" convention as before), so your own name/flavor-text mapping needs a full rewrite against the new id range regardless.
 
 ## 2. AI ship movement: ships holding a scoring tile now stay put instead of wandering off
 

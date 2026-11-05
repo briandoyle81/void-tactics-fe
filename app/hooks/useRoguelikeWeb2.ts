@@ -13,14 +13,14 @@ import {
 } from "../utils/analytics/gameEvents";
 
 // Web2-mode counterpart to useRoguelikeRun.ts/useRoguelikeMatch.ts —
-// Prisma-backed run/roster reads and mutations instead of on-chain
+// Prisma-backed run/roster reads and mutations instead of onchain
 // RoguelikeRun/RoguelikeMatch reads/writes. Node/run/ship ids are plain
 // numbers (DB-native), not bigint.
 
 export interface RoguelikeRosterEntryWeb2 {
   id: number;
   shipId: number;
-  hp: number; // 0 = undamaged/full, matches the on-chain getShipHP convention
+  hp: number; // 0 = undamaged/full, matches the onchain getShipHP convention
   ship: Web2Ship;
 }
 
@@ -120,7 +120,7 @@ export function useRoguelikeCampaignNodesWeb2(campaignId: number | undefined) {
 
 export type RoguelikeNodeWeb2WithContent = RoguelikeNodeWeb2 & ResolvedNodeContent;
 
-/** Web2 counterpart to useRoguelikeNodeMap.ts's useRoguelikeGraphWithContent — same structure+content merge, Prisma-backed instead of on-chain. */
+/** Web2 counterpart to useRoguelikeNodeMap.ts's useRoguelikeGraphWithContent — same structure+content merge, Prisma-backed instead of onchain. */
 export function useRoguelikeCampaignNodesWeb2WithContent(campaignId: number | undefined) {
   const graph = useRoguelikeCampaignNodesWeb2(campaignId);
   // Titles only matter once there's a campaign to show.

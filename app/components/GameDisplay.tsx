@@ -138,7 +138,7 @@ import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
-import { useHeldBoard, useLiveMovePlayback, useReplayPlayback, type BoardMove } from "../hooks/useMovePlayback";
+import { useRunBoard, type ShipLoadout, useLiveMovePlayback, useReplayPlayback, type BoardMove } from "../hooks/useMovePlayback";
 
 /** Replay autoplay: the pause after a turn's move has played, before the next. */
 const REPLAY_AUTOPLAY_PAUSE_MS = 600;
@@ -310,6 +310,9 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   );
   /** Ship variants, for a Ram's end tile (filled in once shipMap exists below). */
   const shipVariantsRef = React.useRef(new Map<number, number>());
+  /** Ship loadouts, for what each move in a run fires (useRunBoard; filled in with the variants). */
+  const shipLoadoutsRef = React.useRef(new Map<number, ShipLoadout>());
+  const loadoutOf = React.useCallback((shipId: number) => shipLoadoutsRef.current.get(shipId), []);
   /** The board as drawn, for a move's pre-move target tile. */
   const drawnShipPositionsRef = React.useRef(chainGame.shipPositions);
   const toBoardMove = React.useCallback(
@@ -334,7 +337,16 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     disabled: replayStep !== null,
   });
   const { playback, enqueueEnemy, enqueueOwn } = livePlayback;
-  const game = useHeldBoard(liveGame, livePlayback.hold, playback, landWeb3Positions);
+  // Each hit in a run (an AI turn of several moves) starts from the one
+  // before: the board and the cinematics show the damage building up, not
+  // the run's end state on every hit (yours predicted from the pending move,
+  // an enemy's run ending on the chain data).
+  const { board: game, active: playbackActive } = useRunBoard({
+    live: liveGame,
+    hold: livePlayback.hold,
+    playback,
+    loadoutOf,
+  });
   drawnShipPositionsRef.current = game.shipPositions;
   React.useEffect(
     () =>
@@ -343,23 +355,6 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       ),
     [initialGame.metadata.gameId, enqueueEnemy],
   );
-  // A kill: the target is destroyed in the chain data by the time it fires.
-  // The target's hull after the move comes from the live board (yours
-  // predicted from the pending move, an enemy's from the chain).
-  const playbackActive = React.useMemo(() => {
-    const active = playback.active;
-    if (!active || !active.move.targetShipId) return active;
-    if (active.move.killsTarget != null && active.move.targetAfter) return active;
-    const target = chainGame.shipPositions.find((p) => Number(p.shipId) === active.move.targetShipId);
-    return {
-      ...active,
-      move: {
-        ...active.move,
-        killsTarget: active.move.killsTarget ?? target?.status === 1,
-        targetAfter: active.move.targetAfter ?? shipStatusIn(liveGame, active.move.targetShipId),
-      },
-    };
-  }, [playback.active, chainGame.shipPositions, liveGame]);
   const gridPlayback = React.useMemo(
     () => ({ active: playbackActive, onPhaseDone: playback.advance }),
     [playbackActive, playback.advance],
@@ -758,7 +753,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     });
     return map;
   }, [gameShips]);
-  shipMap.forEach((ship, id) => shipVariantsRef.current.set(Number(id), Number(ship.traits.variant)));
+  shipMap.forEach((ship, id) => {
+    shipVariantsRef.current.set(Number(id), Number(ship.traits.variant));
+    shipLoadoutsRef.current.set(Number(id), {
+      variant: Number(ship.traits.variant),
+      mainWeapon: Number(ship.equipment.mainWeapon),
+      special: Number(ship.equipment.special),
+    });
+  });
 
   // GameEvents.tsx is number/string-native (shared with web2) — build a
   // string-keyed view of shipMap for it here rather than changing the
@@ -1832,7 +1834,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     if (pendingMoveReceipt) {
       setPendingMoveTx(null);
       if (pendingMoveReceipt.status === "reverted") {
-        completeTransaction(pendingMoveTx.transactionId, false, new Error("Transaction reverted on-chain"));
+        completeTransaction(pendingMoveTx.transactionId, false, new Error("Transaction reverted onchain"));
         handleMoveSubmitError(new Error("execution reverted"));
         return;
       }
@@ -2578,7 +2580,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // Otherwise the reliably-inferrable "enemyScore" (they
   // hit the target first) vs. the fallback "fleetDestroyed" (covers both
   // genuine combat losses and the rare all-ships-retreated-individually
-  // case — no on-chain field distinguishes the two).
+  // case — no onchain field distinguishes the two).
   const missionLossReason: MissionLossReason | undefined =
     isVsAIGame && gameWinnerResult === "opponent"
       ? didFlee
@@ -2856,7 +2858,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     // the single-player "AI is stuck" case instead).
     // Game.sol never self-enforces turnTime and
     // SinglePlayerMatch has no timeout function, so vs-AI turns
-    // are already unlimited on-chain — don't show the "opponent
+    // are already unlimited onchain — don't show the "opponent
     // can claim victory" warning for a timer that can't actually
     // cost the player anything.
     const timeoutEnabled =

@@ -81,7 +81,7 @@ describe("getRankProgressInfo", () => {
 
 // Regression coverage for the rank-hardcoding fix (see rankConfigCache.ts):
 // rank used to be permanently pinned to a hardcoded 10/30/100/300/1000
-// ladder no matter what an admin published on-chain/in the DB for a
+// ladder no matter what an admin published onchain/in the DB for a
 // variant. It must now track that variant's live rankConfigCache entry.
 describe("calculateShipRank / getRankProgressInfo — live per-variant config", () => {
   const CUSTOM_VARIANT = 42;

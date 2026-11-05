@@ -9,7 +9,7 @@ import { GameAdminPanel } from "./GameAdminPanel";
 import { AdminSettingsExport } from "./AdminSettingsExport";
 
 // Admin tab (web3): every admin panel that isn't map editing, moved out of
-// Maps.tsx. Each panel gates itself on its own on-chain role (encounter
+// Maps.tsx. Each panel gates itself on its own onchain role (encounter
 // editor, contract owner, ...) and renders nothing for anyone else.
 export default function Admin() {
   const { data: allMapsData } = useGetAllPresetMaps();

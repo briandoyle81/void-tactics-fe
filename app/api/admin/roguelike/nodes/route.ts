@@ -5,7 +5,7 @@ import { requireWeb2Admin } from "@/app/lib/auth";
 // GET/POST /api/admin/roguelike/nodes — web2 counterpart to
 // RoguelikeNodeMap.createNode/getNode. Takes every field regardless of
 // kind (Combat=0/Resupply=1) — Combat-only fields are meaningless but
-// harmless for a Resupply node, same as the on-chain contract's shape.
+// harmless for a Resupply node, same as the onchain contract's shape.
 
 function parseNodeBody(body: unknown) {
   const b = (body ?? {}) as Record<string, unknown>;

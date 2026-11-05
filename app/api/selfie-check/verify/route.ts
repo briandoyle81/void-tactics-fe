@@ -5,8 +5,8 @@ import { baseSepolia } from "viem/chains";
 import { WORLD_RP_ID, WORLD_SELFIE_CHECK_ACTION } from "@/app/config/tournament";
 import { CONTRACT_ADDRESSES_BY_CHAIN_ID } from "@/app/config/contracts";
 
-// Selfie Check has no on-chain proof-verification path (unlike Orb-level World ID, which
-// Tournament.sol verifies on-chain directly) — verification is this one off-chain REST call
+// Selfie Check has no onchain proof-verification path (unlike Orb-level World ID, which
+// Tournament.sol verifies onchain directly) — verification is this one off-chain REST call
 // against World's own API. See
 // docs/eth-global-remote/uniswap-lottery-selfie-check-frontend-integration.md §3.
 //
@@ -154,6 +154,6 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[selfie-check/verify] markVerified failed:", message);
-    return NextResponse.json({ error: `On-chain verification failed: ${message}` }, { status: 500 });
+    return NextResponse.json({ error: `Onchain verification failed: ${message}` }, { status: 500 });
   }
 }

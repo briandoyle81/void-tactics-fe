@@ -1,4 +1,4 @@
-# Frontend Handoff — Lottery Draws, Block-Hash Randomness, On-Chain Destroyed/Unconstructed Art
+# Frontend Handoff — Lottery Draws, Block-Hash Randomness, Onchain Destroyed/Unconstructed Art
 
 _Written 2026-10-17. Combines three earlier handoffs into one doc, current as of this date:_
 - _`frontend-handoff-lottery-prize-retry-2026-10-14.md`_
@@ -123,11 +123,11 @@ Whenever convenient, the owner (MAP_EDITOR in production) calls `RandomManager.r
 
 ---
 
-## 3. Destroyed and unconstructed ships render on-chain art
+## 3. Destroyed and unconstructed ships render onchain art
 
 ### What changed
 
-`tokenURI`'s `image` is now an on-chain SVG data URI, specific to each variant, for these two states. Each one used to be a single shared IPFS image:
+`tokenURI`'s `image` is now an onchain SVG data URI, specific to each variant, for these two states. Each one used to be a single shared IPFS image:
 - **Destroyed ships:** variant 1 and variant 2 explosion art. Previously `ipfs://bafkreige3z6...`.
 - **Unconstructed ships:** variant 1 and variant 2 unconstructed art. Previously `ipfs://bafkreibc3fdr...`.
 
@@ -149,7 +149,7 @@ The art is stored already base64-encoded. It's split across leaf contracts so ea
     - Explosions: `variant-{1,2}-explosion/variant-{1,2}-explosion-256px-portrait.svg`.
     - Unconstructed: `v{1,2}-unconstructed/v{1,2}-unconstructed-256px-merge35.svg`.
 
-    The on-chain copies differ only in using `fill="#..."` attributes instead of `style="fill:#...;"`.
+    The onchain copies differ only in using `fill="#..."` attributes instead of `style="fill:#...;"`.
   - The joined `render()` output of the leaves, which is base64.
   - The `image` field from `tokenURI`.
 - **Constructor ABI:** `ImageRenderer` and `ImageRendererV2` take two more arguments, `address[] _destroyedParts` and `address[] _unconstructedParts`. Two new views come with them: `destroyedParts(uint)` and `unconstructedParts(uint)`.

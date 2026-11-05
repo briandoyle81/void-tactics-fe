@@ -66,7 +66,7 @@ export async function claimedNodeIds(userId: string, nodeIds: readonly number[])
 /**
  * Mints the node's reward ship to the winner, constructed, and records the
  * award. Returns the new ship id, or null when nothing mints: no grant
- * configured (on-chain that's a WinEffectFailed; the win still counts) or a
+ * configured (onchain that's a WinEffectFailed; the win still counts) or a
  * once-only grant this player already claimed.
  */
 export async function grantRewardShip(nodeId: number, winnerId: string, lobbyId: number): Promise<number | null> {

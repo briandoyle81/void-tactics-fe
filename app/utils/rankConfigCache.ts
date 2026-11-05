@@ -1,7 +1,7 @@
 // Live per-variant rank config (kill thresholds + hull/range/etc. bonus
 // percentages) — see docs/eth-global-remote/frontend-handoff-attributes-costs-and-ai-2026-09-21.md
 // §1.2/§8: as of the 2026-09-20/21 redesign these are admin-editable data
-// on both sides (`ShipAttributes.setVariantAttributes` on-chain,
+// on both sides (`ShipAttributes.setVariantAttributes` onchain,
 // `/api/admin/ship-attribute-tables` in web2), not hardcoded constants.
 //
 // `shipLevel.ts`'s rank display (ship-card badges, the navy rank filter,
@@ -9,10 +9,10 @@
 // almost none of which have a wagmi/React-Query hook round trip readily at
 // hand. Rather than thread a `rankConfig` prop through every one of them,
 // this is a small synchronous read-through cache: `useRankConfigSync`
-// (web3, on-chain) and `useRankConfigSyncWeb2` (web2, DB-backed) each
+// (web3, onchain) and `useRankConfigSyncWeb2` (web2, DB-backed) each
 // mount once near the app root (see providers.tsx) and keep it warm;
 // `getRankConfig` reads whatever's cached, falling back to
-// DEFAULT_RANK_CONFIG (today's on-chain/DB default values) before the
+// DEFAULT_RANK_CONFIG (today's onchain/DB default values) before the
 // first fetch resolves or for a variant that was never configured.
 //
 // One shared cache keyed only by variant (not by mode) is deliberate: the
