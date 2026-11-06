@@ -18,6 +18,7 @@ import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
 import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
 import { ClearOAuthRedirectParams } from "./components/ClearOAuthRedirectParams";
 import { GasGrantClaimer } from "./components/GasGrantClaimer";
+import { RegisterGasSponsorship } from "./hooks/useSponsoredWriteContract";
 import { recordRpcRequest } from "./utils/rpcUsage";
 
 // Base Sepolia RPC for reads (wagmi) and wallet writes (Dynamic). Set
@@ -110,6 +111,7 @@ const AppContent = memo(function AppContent({ children }: { children: ReactNode 
       <RestoreWalletConnection />
       <ClearOAuthRedirectParams />
       <GasGrantClaimer />
+      <RegisterGasSponsorship />
       <ShipArtCacheGuard />
       <SignInModal />
       <TransactionProvider>{children}</TransactionProvider>

@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWriteContract, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import type { Address } from "viem";
 import { useRoguelikeNodeMapContract } from "./useRoguelikeNodeMap";
 import { useRoguelikeResupplyContract } from "./useRoguelikeResupply";
 import { RoguelikeNodeKind } from "../types/roguelike";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 export function useRoguelikeNodeMapAdmin() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const nodeMapContract = useRoguelikeNodeMapContract();
   const resupplyContract = useRoguelikeResupplyContract();
   const publicClient = usePublicClient({ chainId: nodeMapContract.chainId });

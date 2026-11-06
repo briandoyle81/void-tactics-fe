@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useConfig, useWriteContract } from "wagmi";
+import { useConfig } from "wagmi";
 import { estimateGas, waitForTransactionReceipt } from "wagmi/actions";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateShipsReads } from "./useShipsContract";
@@ -16,6 +16,7 @@ import {
   trackResupplyEntered,
   trackRunStarted,
 } from "../utils/analytics/gameEvents";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const CHAIN_ID = baseSepolia.id;
 const ROGUELIKE_MATCH_ABI = CONTRACT_ABIS.ROGUELIKE_MATCH as Abi;
@@ -46,7 +47,7 @@ export function useRoguelikeMatchContract() {
 }
 
 export function useRoguelikeMatch() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const config = useConfig();
   const queryClient = useQueryClient();
 

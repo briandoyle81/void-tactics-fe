@@ -22,6 +22,26 @@ const eslintConfig = [
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  // Contract writes go through useSponsoredWriteContract, so Dynamic can
+  // sponsor the embedded wallet's gas (see that file).
+  {
+    files: ["app/**/*.{ts,tsx}"],
+    ignores: ["app/hooks/useSponsoredWriteContract.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "wagmi",
+              importNames: ["useWriteContract"],
+              message: "Use useSponsoredWriteContract (app/hooks/useSponsoredWriteContract.ts) so embedded-wallet gas is sponsored.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

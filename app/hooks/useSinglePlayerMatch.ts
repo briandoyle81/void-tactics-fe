@@ -1,12 +1,13 @@
 "use client";
 import { useCallback } from "react";
-import { useConfig, useReadContract, useWriteContract } from "wagmi";
+import { useConfig, useReadContract } from "wagmi";
 import { estimateGas } from "wagmi/actions";
 import { baseSepolia } from "viem/chains";
 import { encodeFunctionData, type Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
 import { paddedGasLimit } from "../utils/gasLimit";
 import { aiTurnGas } from "../utils/aiTurnReceipt";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 // SinglePlayerMatch is Base Sepolia only today — pin to that chain directly
 // rather than following the connected wallet/picker chain, same pattern as
@@ -41,7 +42,7 @@ const START_NODE_MATCH_GAS_FLOOR = 5_500_000n;
 const START_NODE_MATCH_GAS_FALLBACK = 10_000_000n;
 
 export function useSinglePlayerMatch() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const config = useConfig();
 
   // Builds the human's fleet and starts the Game session in one call —

@@ -7,7 +7,6 @@ import {
   useAccount,
   useBalance,
   useReadContract,
-  useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
 } from "wagmi";
@@ -19,6 +18,7 @@ import { useMapExists } from "../hooks/useMapsContract";
 import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import { useSwitchToSelectedChainIfNeeded } from "../hooks/useSwitchToSelectedChainIfNeeded";
 import posthog from "posthog-js";
+import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
 
 interface LobbyCreateButtonProps {
   costLimit: bigint;
@@ -134,7 +134,7 @@ export function LobbyCreateButton({
     chainId,
   });
 
-  const { writeContract: writeUTC, data: approveHash } = useWriteContract();
+  const { writeContract: writeUTC, data: approveHash } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId });
   const { isLoading: isApproving, isSuccess: approveSuccess } =
     useWaitForTransactionReceipt({

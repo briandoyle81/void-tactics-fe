@@ -1,12 +1,13 @@
 "use client";
 
-import { useWriteContract, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import { useCallback } from "react";
 import { baseSepolia } from "viem/chains";
 import { parseEventLogs, type Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import { BASE_SEPOLIA_TOURNAMENT_ADDRESS } from "./useTournament";
 import type { TournamentConfig } from "../types/types";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const TOURNAMENT_ABI = CONTRACT_ABIS.TOURNAMENT as Abi;
 const LOBBIES_ABI = CONTRACT_ABIS.LOBBIES as Abi;
@@ -15,7 +16,7 @@ const CHAIN_ID = baseSepolia.id;
 const ZERO_BLOB = ("0x" + "0".repeat(64)) as `0x${string}`;
 
 export function useTournamentAdmin() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const createMatchLobby = useCallback(

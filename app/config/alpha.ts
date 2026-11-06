@@ -31,3 +31,12 @@ export const TOURNAMENTS_ENABLED = false;
  * bring it back.
  */
 export const WEB2_SIGN_IN_ENABLED = false;
+
+/**
+ * The test-ETH gas faucet (/api/faucet/gas, GasGrantClaimer) for Dynamic
+ * embedded wallets. Off: Dynamic sponsors the embedded wallet's gas now
+ * (useSponsoredWriteContract), and the faucet only ever served embedded
+ * wallets. The client stops asking and the route refuses. Flip to true to
+ * bring it back.
+ */
+export const GAS_FAUCET_ENABLED = false;

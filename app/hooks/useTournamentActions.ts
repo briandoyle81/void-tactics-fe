@@ -1,11 +1,12 @@
 "use client";
 
-import { useWriteContract, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import { useCallback } from "react";
 import { baseSepolia } from "viem/chains";
 import { decodeAbiParameters, type Abi } from "viem";
 import { CONTRACT_ABIS } from "../config/contracts";
 import { BASE_SEPOLIA_TOURNAMENT_ADDRESS } from "./useTournament";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const TOURNAMENT_ABI = CONTRACT_ABIS.TOURNAMENT as Abi;
 const CHAIN_ID = baseSepolia.id;
@@ -17,7 +18,7 @@ interface IdKitResult {
 }
 
 export function useTournamentActions() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const register = useCallback(

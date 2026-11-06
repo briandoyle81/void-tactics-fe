@@ -1,7 +1,6 @@
 import {
   useAccount,
   useReadContract,
-  useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
 } from "wagmi";
@@ -18,6 +17,7 @@ import { getVariantForChainId } from "../config/networks";
 import { useSelectedChainId } from "./useSelectedChainId";
 import { useSwitchToSelectedChainIfNeeded } from "./useSwitchToSelectedChainIfNeeded";
 import { useConstructAfterMint } from "./useConstructAfterMint";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -137,7 +137,7 @@ export function useFreeShipClaiming() {
       : DEFAULT_COOLDOWN_SECONDS;
 
   // Write contract for claiming
-  const { writeContract, isPending, error, data: hash } = useWriteContract();
+  const { writeContract, isPending, error, data: hash } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: activeChainId });
   const constructAfterMint = useConstructAfterMint();
 

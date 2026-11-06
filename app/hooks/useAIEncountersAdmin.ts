@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWriteContract, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import { parseEventLogs, type Abi, type Address } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
@@ -11,6 +11,7 @@ import {
   ShipEquipment,
   AIEncountersTraits,
 } from "../types/types";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const CHAIN_ID = baseSepolia.id;
 const AI_ENCOUNTERS_ABI = CONTRACT_ABIS.AI_ENCOUNTERS as Abi;
@@ -18,7 +19,7 @@ const AI_ENCOUNTERS_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
   .AI_ENCOUNTERS as `0x${string}`;
 
 export function useAIEncountersAdmin() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const createAIShipConfig = useCallback(

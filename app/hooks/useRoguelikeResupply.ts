@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { usePublicClient, useReadContract } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const CHAIN_ID = baseSepolia.id;
 const ROGUELIKE_RESUPPLY_ABI = CONTRACT_ABIS.ROGUELIKE_RESUPPLY as Abi;
@@ -37,7 +38,7 @@ export function useRepairCostPerHP() {
 // here. resupplyModifyRoster needs no approval, so it's a plain write like
 // useRoguelikeMatch's functions.
 export function useRoguelikeResupply() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const resupplyModifyRoster = useCallback(

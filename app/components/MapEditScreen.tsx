@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { JOINER_ZONE_CHANGED_NOTE } from "../utils/deploymentZone";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import {
   useCreatorZonePositions,
   useGetPresetMapImpassable,
@@ -16,6 +16,7 @@ import { MapEditor, withMapViewCleared } from "./MapEditor";
 import { MapEditorHeader } from "./MapEditorHeader";
 import { MapMode, type MapPosition, type ScoringPosition } from "../types/types";
 import { MAP_ADMIN_ADDRESS } from "../config/alpha";
+import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
 
 interface MapEditScreenProps {
   /** Existing map to edit; omit to create a new map. */
@@ -42,7 +43,7 @@ export function MapEditScreen({
   const { address } = useAccount();
   const canEdit = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
   const mapsContract = useMapsContract();
-  const mapsWrite = useWriteContract();
+  const mapsWrite = useSponsoredWriteContract();
   const isEditing = mapId !== undefined;
   // Mode for a map being created — Both by default, since that's valid for
   // every picker (PvP lobbies and campaign nodes alike) until the admin
@@ -209,7 +210,7 @@ function Web3MapSaveButton({
   onSuccess: () => void;
 }) {
   const mapsContract = useMapsContract();
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient();
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = mapId !== undefined;

@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { useReadContract, useWriteContract } from "wagmi";
+import { useReadContract } from "wagmi";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import type { Abi } from "viem";
 import { Lobby, PlayerLobbyStateTuple, tupleToPlayerLobbyState } from "../types/types";
 import { useSelectedChainId } from "./useSelectedChainId";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 /** Lobbies contract target for the in-app network picker (reads and intended writes). */
 export function useLobbiesChainParams() {
@@ -40,7 +41,7 @@ export function useLobbiesRead(
 
 // Hook for writing to contract with proper typing
 export function useLobbiesWrite() {
-  return useWriteContract();
+  return useSponsoredWriteContract();
 }
 
 // Helper hooks for common operations

@@ -1,7 +1,6 @@
 import {
   useAccount,
   useBalance,
-  useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
 } from "wagmi";
@@ -9,6 +8,7 @@ import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWr
 import { getContractAddresses } from "../config/contracts";
 import { toast } from "react-hot-toast";
 import { useOwnedShips } from "./useOwnedShips";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 const POST_PURCHASE_REFETCH_DELAY_MS = 2000;
 import { useEffect } from "react";
@@ -54,7 +54,7 @@ export function useShipPurchasing() {
     chainId: activeChainId,
   });
 
-  const { writeContract, isPending, error, data: hash } = useWriteContract();
+  const { writeContract, isPending, error, data: hash } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: activeChainId });
 
   const {

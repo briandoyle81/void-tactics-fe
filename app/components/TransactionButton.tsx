@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
+import { useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import type { Abi, TransactionReceipt } from "viem";
 import { toast } from "react-hot-toast";
 import { useTransaction } from "../providers/TransactionContext";
@@ -11,6 +11,7 @@ import {
   bumpedLegacyGasPriceForRetry,
   getLegacyGasPriceOverridesForWrite,
 } from "../utils/legacyGasPriceForWrite";
+import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
 
 export type TransactionFollowUp = () => void | Promise<void>;
 
@@ -77,7 +78,7 @@ export function TransactionButton({
   const selectedChainId = useSelectedChainId();
   const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
   const publicClient = usePublicClient({ chainId: selectedChainId });
-  const { writeContract, isPending, error, data: hash } = useWriteContract();
+  const { writeContract, isPending, error, data: hash } = useSponsoredWriteContract();
   const {
     transactionState,
     startTransaction,
@@ -215,7 +216,7 @@ export function TransactionButton({
         });
       }
 
-      // Note: The hash will be available in the hash variable from useWriteContract
+      // Note: The hash will be available in the hash variable from useSponsoredWriteContract
       // We'll trigger onTransactionSent in a useEffect when hash becomes available
     } catch (err: unknown) {
       const detail = messageFromUnknownError(err);

@@ -1,4 +1,4 @@
-import { useReadContract, useWriteContract } from "wagmi";
+import { useReadContract } from "wagmi";
 import {
   CONTRACT_ABIS,
   CONTRACT_ADDRESSES_BY_CHAIN_ID,
@@ -7,6 +7,7 @@ import {
 import type { Abi } from "viem";
 import type { QueryClient } from "@tanstack/react-query";
 import { useSelectedChainId } from "./useSelectedChainId";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 // Hook for reading contract data
 export function useShipsContract() {
@@ -52,7 +53,7 @@ export function useShipsRead(
 
 // Hook for writing to contract with proper typing
 export function useShipsWrite() {
-  return useWriteContract();
+  return useSponsoredWriteContract();
 }
 
 // Type-safe contract function names

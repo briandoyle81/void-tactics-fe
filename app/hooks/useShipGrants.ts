@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, usePublicClient, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { useAccount, usePublicClient, useReadContract, useReadContracts } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import type { Abi, Address } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
@@ -9,6 +9,7 @@ import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
 import type { NodeRewardShip, ShipGrantSpec } from "../utils/shipGrant";
 import { REWARD_SHIP_SNAPSHOT, SNAPSHOT_REWARD_SHIPS } from "../config/rewardShips";
 import { isSnapshotForContract } from "../utils/rewardShipSnapshot";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 // Web3 reads and owner writes for ShipGrantWinEffect's per-node reward ships
 // (docs/frontend-handoff-2026-10-19.md §2). The contract's ShipGrant tuple
@@ -176,7 +177,7 @@ export function useIsShipGrantOwner() {
 
 /** Owner writes: setGrant, clearGrant, resetClaim. Each resolves to the mined tx hash. */
 export function useShipGrantAdmin() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const send = useCallback(

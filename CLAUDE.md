@@ -58,6 +58,7 @@ Four testnets are configured: **Base Sepolia** (84532, the default), **Flow Test
 3. Ship data fetched via `useOwnedShips` (reads contract) → images pre-loaded by `useShipImageCache`
 4. Game state polled by `usePlayerGames`; client-side turn simulation handled by `useSimulatedGameState`
 5. Transactions flow through `TransactionProvider` which surfaces pending/success/error toasts
+6. Every contract write uses `useSponsoredWriteContract` (`app/hooks/useSponsoredWriteContract.ts`, a drop-in for wagmi's `useWriteContract`, which lint forbids): with the Dynamic embedded wallet and Dynamic's EVM gas sponsorship on, it simulates the call and relays it through Dynamic (gas sponsored, EIP-7702); a browser wallet sends normally and pays its own gas
 
 ## Content and RPC (2026-10-08 redeploy)
 

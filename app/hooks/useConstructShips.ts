@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useConfig, usePublicClient, useWriteContract } from "wagmi";
+import { useConfig, usePublicClient } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
@@ -10,6 +10,7 @@ import { invalidateShipAttributesByIdsCache } from "../utils/shipAttributesLocal
 import { useEnsureConstructable } from "./useRandomManager";
 import { useSelectedChainId } from "./useSelectedChainId";
 import { useSwitchToSelectedChainIfNeeded } from "./useSwitchToSelectedChainIfNeeded";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 // constructShips reverts the whole batch if any id is already constructed
 // (selector 0xa6639c3e); RequestExpired can still bubble up from
@@ -64,7 +65,7 @@ export function useConstructShips() {
   const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
   const publicClient = usePublicClient({ chainId: activeChainId });
   const wagmiConfig = useConfig();
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const ensureConstructable = useEnsureConstructable();
 
   return useCallback(

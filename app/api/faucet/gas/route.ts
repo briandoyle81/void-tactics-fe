@@ -5,6 +5,7 @@ import { baseSepolia } from "viem/chains";
 import { prisma } from "@/app/lib/prisma";
 import { Prisma } from "@/app/generated/prisma";
 import { DynamicAuthError, verifyDynamicJwt } from "@/app/lib/dynamicJwt";
+import { GAS_FAUCET_ENABLED } from "@/app/config/alpha";
 
 // POST /api/faucet/gas — one-time test ETH for a new player's Dynamic
 // embedded wallet on Base Sepolia, so they can pay for their first
@@ -56,7 +57,8 @@ const isUniqueViolation = (e: unknown) =>
   e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 
 export async function POST(req: NextRequest) {
-  if (!FAUCET_KEY) return json({ status: "ineligible", reason: "faucet-disabled" });
+  // Off while Dynamic sponsors embedded-wallet gas (GAS_FAUCET_ENABLED).
+  if (!GAS_FAUCET_ENABLED || !FAUCET_KEY) return json({ status: "ineligible", reason: "faucet-disabled" });
 
   let claims;
   try {

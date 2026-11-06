@@ -127,7 +127,6 @@ import {
   usePublicClient,
   useReadContract,
   useWaitForTransactionReceipt,
-  useWriteContract,
 } from "wagmi";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
@@ -155,6 +154,7 @@ import {
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 import { useMovePlayback, useRunBoard, type ShipLoadout } from "../hooks/useMovePlayback";
 import { boardMoveFromRaw, shipStatusIn } from "../utils/movePlaybackBoard";
+import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
 
 /** A tutorial last move's identity: which ship did what, from where to where. */
 function tutorialMoveKey(m: NonNullable<SimulatedGameState["lastMove"]>): string {
@@ -321,7 +321,7 @@ export function SimulatedGameDisplay({
     isPending: isTutorialClaimPending,
     data: tutorialClaimHash,
     error: tutorialClaimWriteError,
-  } = useWriteContract();
+  } = useSponsoredWriteContract();
 
   // Gates completeTutorialWinPath/completeTutorialLossPath on Selfie Check
   // verification when TutorialClaim.eligibilityProvider is set. Already live:

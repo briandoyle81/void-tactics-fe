@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWriteContract, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import type { Abi, Address } from "viem";
 import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
 
 // Owner-only config setters for the DEC Bonus and Heal Above Floor win-effect
 // resolvers; Grant Ship is per node (useShipGrants.ts's useShipGrantAdmin)
@@ -15,7 +16,7 @@ import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contrac
 const CHAIN_ID = baseSepolia.id;
 
 export function useWinEffectsAdmin() {
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync } = useSponsoredWriteContract();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
 
   const setDecBonusAmount = useCallback(

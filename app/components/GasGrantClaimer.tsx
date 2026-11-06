@@ -7,12 +7,14 @@ import { usePublicClient } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import { toast } from "react-hot-toast";
 import { getSelectedChainId, VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
+import { GAS_FAUCET_ENABLED } from "../config/alpha";
 
 // Asks /api/faucet/gas once for test ETH when a player's Dynamic embedded
 // wallet is in use on Base Sepolia (the server decides eligibility and
 // enforces once-per-wallet; this only avoids asking again). Remembered per
 // address in localStorage once the server says sent or already claimed. Testnet
 // only, until an onramp replaces it. Mounted once in providers.tsx.
+// Off (GAS_FAUCET_ENABLED) while Dynamic sponsors embedded-wallet gas.
 
 const DONE_KEY = "vt-gas-grant-v1";
 
@@ -73,7 +75,7 @@ export function GasGrantClaimer() {
   }, [publicClient, queryClient]);
 
   useEffect(() => {
-    if (chainId !== baseSepolia.id || !address || !isEmbedded || isDone(address)) return;
+    if (!GAS_FAUCET_ENABLED || chainId !== baseSepolia.id || !address || !isEmbedded || isDone(address)) return;
     let cancelled = false;
     void (async () => {
       const token = getAuthToken();
