@@ -64,7 +64,8 @@ const SOUND_STOP_AFTER_MS = 200;
 
 /** Each wave's launch (and its beep); its saw starts SAW_AT_MS later. */
 const WAVES_MS = [0, 150, 300, 450];
-const SAW_AT_MS = 960;
+/** The cutting starts (the damage lands): the combat cinematic's hit. */
+export const SAW_AT_MS = 960;
 const OUT_MS = 700;
 const CUT_END_MS = SAW_AT_MS + 1150;
 const HOME_MS = 2900;

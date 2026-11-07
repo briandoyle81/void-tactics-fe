@@ -75,6 +75,15 @@ describe("landShipPositions", () => {
     expect(landed[1].status).toBe(2);
   });
 
+  it("a ship repairing itself (variant 2's faction ability) stays on the board", () => {
+    const selfRepair = move("a", { actionType: 7, targetShipId: 2, shipId: 2, from: { row: 0, col: 5 }, to: { row: 1, col: 5 } });
+    for (const active of ["a", null]) {
+      const landed = landShipPositions(positions, [selfRepair], active);
+      expect(landed[1].position).toEqual({ row: 1, col: 5 });
+      expect(landed[1].status).toBe(0);
+    }
+  });
+
   it("a retreat leaves the board", () => {
     const landed = landShipPositions(positions, [move("a", { actionType: 2, to: { row: 0, col: 0 } })], "a");
     expect(landed[0].status).toBe(2);

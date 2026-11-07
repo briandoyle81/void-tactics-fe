@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { erc20Approval } from "../utils/approvalSteps";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
 import {
   CONTRACT_ABIS,
@@ -56,19 +57,6 @@ const SHIP_PURCHASE_UTC_ABI = [
     ],
     name: "purchaseWithUTC",
     outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const UTC_APPROVE_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "spender", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
     stateMutability: "nonpayable",
     type: "function",
   },
@@ -194,9 +182,6 @@ export function ShipPurchaseButton({
       if (utcBalance === undefined || (utcBalance as bigint) < price) {
         return "Insufficient UTC balance";
       }
-      if (!utcApproved) {
-        return "Please approve UTC transfer first";
-      }
     }
     return true;
   }, [
@@ -204,7 +189,6 @@ export function ShipPurchaseButton({
     flowBalance,
     utcBalance,
     utcBalancePending,
-    utcApproved,
     price,
     paymentMethod,
   ]);
@@ -223,60 +207,28 @@ export function ShipPurchaseButton({
       payment_method: paymentMethod,
       price_eth: formatEther(price),
     });
+    if (paymentMethod === "UTC") void refetchAllowance();
     await refetch?.();
     await onSuccess?.();
-  }, [onSuccess, refetch, tier, paymentMethod, price]);
+  }, [onSuccess, refetch, refetchAllowance, tier, paymentMethod, price]);
 
-  // If UTC payment and not approved, show approve button
-  if (paymentMethod === "UTC" && !utcApproved) {
-    const utcAmount = formatEther(price);
-    return (
-      <TransactionButton
-        transactionId={`approve-utc-ship-purchaser-tier-${tier}-${address}`}
-        contractAddress={contractAddresses.UNIVERSAL_CREDITS as `0x${string}`}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        abi={UTC_APPROVE_ABI as any}
-        functionName="approve"
-        args={[contractAddresses.SHIP_PURCHASER as `0x${string}`, price]}
-        className={`${className} whitespace-nowrap`}
-        disabled={
-          disabled ||
-          !address ||
-          (!utcBalancePending &&
-            (utcBalance === undefined || (utcBalance as bigint) < price))
-        }
-        loadingText={`[APPROVING ${utcAmount} UTC...]`}
-        errorText="[ERROR APPROVING]"
-        onSuccess={async () => {
-          await refetchAllowance();
-          toast.success("UTC approved successfully!");
-        }}
-        onError={(error) => {
-          console.error("Failed to approve UTC:", error);
-          toast.error("Failed to approve UTC transfer");
-        }}
-        validateBeforeTransaction={() => {
-          if (!address) {
-            return "Please connect your wallet";
-          }
-          if (utcBalancePending) {
-            return "Loading UTC balance...";
-          }
-          if (utcBalance === undefined || (utcBalance as bigint) < price) {
-            return "Insufficient UTC balance";
-          }
-          return true;
-        }}
-      >
-        <div className="flex flex-col items-center gap-2">
-          {children}
-          <span className="text-[11px] uppercase tracking-[0.08em]">
-            [CLICK TO APPROVE {utcAmount} UTC]
-          </span>
-        </div>
-      </TransactionButton>
-    );
-  }
+  // Paying in UTC: the ShipPurchaser's allowance is approved first if it's
+  // short, then the purchase goes straight after (one click).
+  const utcApprovals = React.useMemo(
+    () =>
+      paymentMethod === "UTC" && address
+        ? [
+            erc20Approval({
+              token: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
+              owner: address,
+              spender: contractAddresses.SHIP_PURCHASER as `0x${string}`,
+              amount: price,
+              loadingText: `[APPROVING ${formatEther(price)} UTC...]`,
+            }),
+          ]
+        : undefined,
+    [paymentMethod, address, contractAddresses.UNIVERSAL_CREDITS, contractAddresses.SHIP_PURCHASER, price],
+  );
 
   if (paymentMethod === "UTC") {
     return (
@@ -292,8 +244,13 @@ export function ShipPurchaseButton({
           referralAddress,
           purchaseVariant,
         ]}
+        approvals={utcApprovals}
         className={className}
-        disabled={disabled}
+        disabled={
+          disabled ||
+          !address ||
+          (!utcBalancePending && (utcBalance === undefined || (utcBalance as bigint) < price))
+        }
         loadingText="[PURCHASING...]"
         errorText="[ERROR PURCHASING]"
         onReceipt={handleMintReceipt}

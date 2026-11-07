@@ -449,6 +449,27 @@ export function useGameplayInteraction({
     [selectedShipId, previewPosition, shipMap, playerAddress, getShipAttributes, blockedGrid, aliveShipPositions, selectedWeaponType, specialRange, specialType, isRammingMovePreview, isFactionAbilitySupported, selectedShipFactionAbilityRange, selectedShipFactionAbilityIsHeal, selectedEnemyOccupiedGrid, selectedShip],
   );
 
+  // Switching what the ship fires (weapon, special, ram) keeps a locked
+  // target only if it's a target for the new choice: a ship picked in gun
+  // range can be out of the special's (EMP: range 1, and range is
+  // |dRow| + |dCol| onchain, so a diagonal neighbour is 2 away), and
+  // submitting it reverts (the resolver's OutOfRange). Checked once the new
+  // choice's range has loaded. Ram mode and Flak (target 0) manage their own.
+  const targetCheckPendingRef = useRef(false);
+  const lastWeaponTypeRef = useRef(selectedWeaponType);
+  if (lastWeaponTypeRef.current !== selectedWeaponType) {
+    lastWeaponTypeRef.current = selectedWeaponType;
+    targetCheckPendingRef.current = true;
+  }
+  React.useEffect(() => {
+    if (!targetCheckPendingRef.current) return;
+    if (selectedWeaponType === "special" && specialRange == null) return; // range still loading
+    if (selectedWeaponType === "ram" && selectedShipFactionAbilityRange == null) return;
+    targetCheckPendingRef.current = false;
+    if (targetShipId == null || targetShipId === 0 || isResolverRamMode) return;
+    if (!validTargets.some((t) => t.shipId === targetShipId)) setTargetShipId(null);
+  }, [selectedWeaponType, specialRange, selectedShipFactionAbilityRange, targetShipId, isResolverRamMode, validTargets]);
+
   const labelTargets = useMemo(
     () =>
       computeLabelTargets({

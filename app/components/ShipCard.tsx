@@ -357,19 +357,6 @@ const ShipCard: React.FC<ShipCardProps> = ({
         {/* Game view indicators for tooltip */}
         {(tooltipMode || gameViewMode) && inGameAttributes && (
           <>
-            {/* Moved badge */}
-            {hasMoved && (
-              <div
-                className={`absolute ${
-                  flipShip ? "bottom-0 right-0" : "bottom-0 left-0"
-                } m-1 w-4 h-4 rounded-full text-[10px] font-mono flex items-center justify-center ${
-                  isCurrentPlayerShip ? "bg-cyan/80" : "bg-warning-red/80"
-                } text-text-primary`}
-              >
-                M
-              </div>
-            )}
-
             {/* Reactor critical skulls */}
             {inGameAttributes.reactorCriticalTimer > 0 && (
               <div

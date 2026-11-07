@@ -233,6 +233,7 @@ function JumpLanes({
       const commonProps = {
         stroke,
         strokeWidth: isFrontier || isCleared ? 2 : 1.5,
+        // The frontier's dashes flow (campaign-lane-flow moves 24 px a loop, two of these periods).
         strokeDasharray: isCleared ? undefined : isFrontier ? "6 6" : "3 5",
         className: isFrontier && !isSkipped ? "campaign-lane-active" : undefined,
         opacity: isSkipped ? 0.35 : isCleared || isFrontier ? 0.9 : 0.8,

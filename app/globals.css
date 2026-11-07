@@ -943,10 +943,12 @@ select:focus {
 }
 
 /* Flowing dash along an active (unlocked-but-not-completed) jump lane —
-   draws the eye toward the frontier without animating every lane. */
+   draws the eye toward the frontier without animating every lane. One loop
+   moves a whole number of dash periods (the lane's "6 6", 12 px, in
+   CampaignGraphCanvas), or the dashes jump back each time it repeats. */
 @keyframes campaign-lane-flow {
   to {
-    stroke-dashoffset: -20;
+    stroke-dashoffset: -24;
   }
 }
 
@@ -991,7 +993,8 @@ select:focus {
 }
 
 .campaign-lane-active {
-  animation: campaign-lane-flow 1.2s linear infinite;
+  /* 24 px per 1.44 s: the same speed as before. */
+  animation: campaign-lane-flow 1.44s linear infinite;
 }
 
 .campaign-node-unlocked {
@@ -1070,10 +1073,12 @@ select:focus {
   animation-iteration-count: 1 !important;
 }
 
+/* The aiming preview's weapon fire (GameGridOverlays). No CSS filter: the
+   effects are canvases that draw in hologram green inside it (canvasFx.ts
+   hologramContext); a filter over this board-sized layer was re-run on
+   every frame and made the previews hitch. */
 .weapon-hologram {
-  filter: grayscale(1) sepia(1) hue-rotate(72deg) saturate(7) brightness(1.25)
-    drop-shadow(0 0 2px var(--color-phosphor-green))
-    drop-shadow(0 0 6px color-mix(in srgb, var(--color-phosphor-green) 50%, transparent));
+  isolation: isolate;
 }
 
 /* Hold: 500ms fade to hologram, 250ms hold, 500ms fade to solid, 250ms hold. */

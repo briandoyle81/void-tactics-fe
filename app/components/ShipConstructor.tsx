@@ -7,6 +7,7 @@ import { ShipSpecControls } from "./ship/ShipSpecControls";
 import { toShipVisual } from "../utils/toShipVisual";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useAccount, useReadContract } from "wagmi";
+import { erc20Approval } from "../utils/approvalSteps";
 import { TransactionButton } from "./TransactionButton";
 import { CONTRACT_ADDRESSES, CONTRACT_ABIS } from "../config/contracts";
 import { toast } from "react-hot-toast";
@@ -313,24 +314,23 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
     query: { enabled: mode === "customize" && !!address },
   });
 
-  const { data: utcAllowance, refetch: refetchAllowance } = useReadContract({
-    address: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as any,
-    functionName: "allowance",
-    args:
-      address && CONTRACT_ADDRESSES.DRONE_YARD
-        ? [address, CONTRACT_ADDRESSES.DRONE_YARD]
+  // DroneYard's UTC allowance is approved first if it's short, then the
+  // modification goes straight after (one click on CUSTOMIZE SHIP).
+  const modifyApprovals = React.useMemo(
+    () =>
+      address && modificationCost
+        ? [
+            erc20Approval({
+              token: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
+              owner: address,
+              spender: CONTRACT_ADDRESSES.DRONE_YARD as `0x${string}`,
+              amount: modificationCost as bigint,
+              loadingText: `[APPROVING ${formatEther(modificationCost as bigint)} UTC...]`,
+            }),
+          ]
         : undefined,
-    query: { enabled: mode === "customize" && !!address },
-  });
-
-  const needsApproval =
-    mode === "customize" &&
-    modificationCost !== undefined &&
-    modificationCost !== null &&
-    utcAllowance !== undefined &&
-    (utcAllowance as bigint) < (modificationCost as bigint);
+    [address, modificationCost],
+  );
 
   // Calculate a human-readable list of changes (purely UI; cost is from contract)
   const changes = useMemo(() => {
@@ -634,7 +634,6 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                           PAYMENT PROCESS:
                         </p>
                         <ul className="list-disc list-inside ml-2 space-y-0.5 mt-1 text-xs">
-                          <li>Approve UTC for the DroneYard contract</li>
                           <li>Pay the calculated modification cost in UTC</li>
                         </ul>
                         <p className="mt-2 text-xs opacity-80">
@@ -752,44 +751,6 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                     borderRadius: 0, // Square corners for industrial theme
                   }}
                 >
-                  {needsApproval ? (
-                    <TransactionButton
-                      transactionId={`approve-drone-yard-${selectedShipId}-${address}`}
-                      contractAddress={
-                        CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`
-                      }
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      abi={CONTRACT_ABIS.UNIVERSAL_CREDITS as any}
-                      functionName="approve"
-                      args={[
-                        CONTRACT_ADDRESSES.DRONE_YARD as `0x${string}`,
-                        modificationCost ?? 0n,
-                      ]}
-                      className="w-full px-6 py-3 mb-3 rounded-none border-2 border-amber text-amber hover:border-amber hover:text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      loadingText="[APPROVING UTC...]"
-                      errorText="[ERROR APPROVING]"
-                      onSuccess={async () => {
-                        toast.success("UTC approved for DroneYard");
-                        await refetchAllowance?.();
-                      }}
-                      validateBeforeTransaction={() => {
-                        if (!address) return "Please connect your wallet";
-                        if (!modificationCost) return "Cost not available";
-                        if (
-                          !utcBalance ||
-                          (utcBalance as bigint) < (modificationCost as bigint)
-                        ) {
-                          return "Insufficient UTC balance";
-                        }
-                        return true;
-                      }}
-                    >
-                      {modificationCost
-                        ? `[APPROVE ${formatEther(modificationCost as bigint)} UTC]`
-                        : "[APPROVE UTC]"}
-                    </TransactionButton>
-                  ) : null}
-
                   <TransactionButton
                     transactionId={`customize-ship-${selectedShipId}-${address}`}
                     contractAddress={
@@ -799,15 +760,14 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                     abi={CONTRACT_ABIS.DRONE_YARD as any}
                     functionName="modifyShip"
                     args={[selectedShipId, buildDroneYardShipStruct]}
+                    approvals={modifyApprovals}
                     className="w-full px-6 py-3 rounded-none border-2 border-amber text-amber hover:border-amber hover:text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     loadingText="[CUSTOMIZING SHIP...]"
                     errorText="[ERROR CUSTOMIZING]"
                     disabled={
                       !modificationCost ||
                       !utcBalance ||
-                      (utcBalance as bigint) < (modificationCost as bigint) ||
-                      (utcAllowance !== undefined &&
-                        (utcAllowance as bigint) < (modificationCost as bigint))
+                      (utcBalance as bigint) < (modificationCost as bigint)
                     }
                     onSuccess={async () => {
                       toast.success("Ship customized successfully!");
@@ -817,7 +777,6 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                       );
                       await Promise.all([
                         refetchModificationCost?.(),
-                        refetchAllowance?.(),
                         refetchShips(),
                       ]);
                     }}
@@ -853,12 +812,6 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                         (utcBalance as bigint) < (modificationCost as bigint)
                       ) {
                         return "Insufficient UTC balance";
-                      }
-                      if (
-                        utcAllowance !== undefined &&
-                        (utcAllowance as bigint) < (modificationCost as bigint)
-                      ) {
-                        return "Please approve UTC first";
                       }
                       return true;
                     }}

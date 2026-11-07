@@ -7,6 +7,7 @@ import type { Abi, TransactionReceipt } from "viem";
 import { UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
 import { toast } from "react-hot-toast";
 import { TransactionButton } from "./TransactionButton";
+import { erc20Approval, type ApprovalStep } from "../utils/approvalSteps";
 import lotteryHookDeploy from "../contracts/base-sepolia/uniswap-lottery-hook.json";
 import { useUtcLotteryHook } from "../hooks/useUtcLotteryHook";
 import { useLotteryPrizes } from "../hooks/useLotteryPrizes";
@@ -23,10 +24,8 @@ import {
   UNIVERSAL_ROUTER_ADDRESS,
   encodeUtcSellSwap,
 } from "../config/uniswapV4";
-import { CONTRACT_ABIS } from "../config/contracts";
 
 const LOTTERY_HOOK_ABI = lotteryHookDeploy.abi as Abi;
-const UTC_ABI = CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi;
 
 const MAX_UINT160 = (1n << 160n) - 1n;
 const MAX_UINT256 = (1n << 256n) - 1n;
@@ -184,9 +183,6 @@ export function UtcLotteryPanel() {
     isSupported: isSwapSupported,
     utcAddress,
     utcBalance,
-    erc20AllowanceToPermit2,
-    permit2AmountWei,
-    permit2Expiration,
     refetchAll: refetchSellSwapState,
   } = useUtcSellSwap();
 
@@ -206,15 +202,44 @@ export function UtcLotteryPanel() {
 
   const insufficientBalance =
     amountInWei != null && utcBalance != null && amountInWei > utcBalance;
-  const needsErc20Approval =
-    amountInWei != null && (erc20AllowanceToPermit2 == null || erc20AllowanceToPermit2 < amountInWei);
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const needsPermit2Approval =
-    !needsErc20Approval &&
-    amountInWei != null &&
-    (permit2AmountWei < amountInWei || permit2Expiration <= nowSeconds);
-  const readyToSwap =
-    !needsErc20Approval && !needsPermit2Approval && amountInWei != null && amountOutMinimumWei != null;
+  const readyToSwap = amountInWei != null && amountOutMinimumWei != null;
+
+  // Selling takes up to three transactions, all on the one SELL click: UTC
+  // approved to Permit2 (once, the maximum), Permit2 letting the Universal
+  // Router spend it (30 days at a time), then the swap. Each approval is
+  // read fresh on the click and skipped when it's already in place.
+  const sellApprovals = useMemo(() => {
+    if (!address || !utcAddress || amountInWei == null) return undefined;
+    const steps: ApprovalStep[] = [
+      erc20Approval({
+        token: utcAddress,
+        owner: address,
+        spender: PERMIT2_ADDRESS,
+        amount: amountInWei,
+        approveAmount: MAX_UINT256,
+        loadingText: "[APPROVING UTC...]",
+      }),
+      {
+        loadingText: "[APPROVING ROUTER...]",
+        isNeeded: async (client) => {
+          const [amount, expiration] = (await client.readContract({
+            address: PERMIT2_ADDRESS,
+            abi: PERMIT2_ABI,
+            functionName: "allowance",
+            args: [address, utcAddress, UNIVERSAL_ROUTER_ADDRESS],
+          })) as readonly [bigint, number, number];
+          return amount < amountInWei || Number(expiration) <= Math.floor(Date.now() / 1000);
+        },
+        call: {
+          address: PERMIT2_ADDRESS,
+          abi: PERMIT2_ABI as Abi,
+          functionName: "approve",
+          args: [utcAddress, UNIVERSAL_ROUTER_ADDRESS, MAX_UINT160, BigInt(Math.floor(Date.now() / 1000) + PERMIT2_APPROVAL_WINDOW_SECONDS)],
+        },
+      },
+    ];
+    return steps;
+  }, [address, utcAddress, amountInWei]);
 
   const swapEncoding = useMemo(() => {
     if (!readyToSwap || !address || amountInWei == null || amountOutMinimumWei == null) return null;
@@ -460,66 +485,14 @@ export function UtcLotteryPanel() {
                     )}
                   </div>
 
-                  {needsErc20Approval ? (
-                    <TransactionButton
-                      transactionId={`approve-utc-permit2-${address}`}
-                      contractAddress={utcAddress}
-                      abi={UTC_ABI}
-                      functionName="approve"
-                      args={[PERMIT2_ADDRESS, MAX_UINT256]}
-                      className="w-full px-4 py-3 rounded-none border-2 border-amber text-amber hover:bg-amber/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!amountInWei || insufficientBalance}
-                      loadingText="[APPROVING...]"
-                      errorText="[ERROR APPROVING]"
-                      onSuccess={async () => {
-                        await refetchSellSwapState();
-                        toast.success("UTC approved for Permit2");
-                      }}
-                      onError={(error) => {
-                        console.error("Failed to approve UTC:", error);
-                        toast.error("Failed to approve UTC");
-                      }}
-                      validateBeforeTransaction={() => {
-                        if (!amountInWei) return "Enter an amount";
-                        if (insufficientBalance) return "Insufficient UTC balance";
-                        return true;
-                      }}
-                    >
-                      [APPROVE UTC]
-                    </TransactionButton>
-                  ) : needsPermit2Approval ? (
-                    <TransactionButton
-                      transactionId={`approve-permit2-router-${address}`}
-                      contractAddress={PERMIT2_ADDRESS}
-                      abi={PERMIT2_ABI}
-                      functionName="approve"
-                      args={[
-                        utcAddress,
-                        UNIVERSAL_ROUTER_ADDRESS,
-                        MAX_UINT160,
-                        BigInt(Math.floor(Date.now() / 1000) + PERMIT2_APPROVAL_WINDOW_SECONDS),
-                      ]}
-                      className="w-full px-4 py-3 rounded-none border-2 border-amber text-amber hover:bg-amber/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                      loadingText="[APPROVING...]"
-                      errorText="[ERROR APPROVING]"
-                      onSuccess={async () => {
-                        await refetchSellSwapState();
-                        toast.success("Router approved");
-                      }}
-                      onError={(error) => {
-                        console.error("Failed to approve router:", error);
-                        toast.error("Failed to approve router");
-                      }}
-                    >
-                      [APPROVE ROUTER]
-                    </TransactionButton>
-                  ) : (
+                  {(
                     <TransactionButton
                       transactionId={`sell-utc-${address}-${sellAmount}`}
                       contractAddress={UNIVERSAL_ROUTER_ADDRESS}
                       abi={UNIVERSAL_ROUTER_ABI}
                       functionName="execute"
                       gas={sellGas}
+                      approvals={sellApprovals}
                       args={
                         swapEncoding
                           ? [swapEncoding.commands, swapEncoding.inputs, swapDeadline]

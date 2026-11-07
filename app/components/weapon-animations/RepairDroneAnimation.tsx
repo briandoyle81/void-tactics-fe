@@ -97,7 +97,8 @@ interface RepairDroneAnimationProps {
 }
 
 const OUT_MS = 1000;
-const SCAN_END_MS = 1350;
+/** The welding starts (the repair lands): the combat cinematic's hit. */
+export const SCAN_END_MS = 1350;
 const WELD_END_MS = 2100;
 const HOME_MS = 2900;
 const LIFT_MS = 200;

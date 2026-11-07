@@ -122,12 +122,107 @@ export function strokeRing(
   ctx.stroke();
 }
 
+/** The aiming preview's hologram wrapper (GameGridOverlays): effects inside it draw in hologram green. */
+export const WEAPON_HOLOGRAM_CLASS = "weapon-hologram";
+/** A hologram canvas's resolution cap: a preview, and soft anyway. */
+const HOLOGRAM_MAX_PIXEL_RATIO = 2;
+/** Sprites (the drones) in a hologram: the look the preview's CSS filter used to give everything. */
+const HOLOGRAM_SPRITE_FILTER = "grayscale(1) sepia(1) hue-rotate(72deg) saturate(7) brightness(1.25)";
+
+const hologramColorCache = new Map<string, string>();
+
+/**
+ * A colour as the aiming preview's hologram shows it: phosphor green at the
+ * colour's brightness, the brightest running to white, alpha kept. Accepts
+ * rgb()/rgba() and hex; anything else (a named colour) is returned as is.
+ */
+export function hologramColor(css: string): string {
+  const cached = hologramColorCache.get(css);
+  if (cached) return cached;
+  let r: number;
+  let g: number;
+  let b: number;
+  let a = 1;
+  const fn = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)$/i.exec(css);
+  if (fn) {
+    r = +fn[1];
+    g = +fn[2];
+    b = +fn[3];
+    if (fn[4] != null) a = +fn[4];
+  } else if (/^#([\da-f]{3}|[\da-f]{6}|[\da-f]{8})$/i.test(css)) {
+    const hex = css.length === 4 ? css.slice(1).replace(/./g, (c) => c + c) : css.slice(1);
+    r = parseInt(hex.slice(0, 2), 16);
+    g = parseInt(hex.slice(2, 4), 16);
+    b = parseInt(hex.slice(4, 6), 16);
+    if (hex.length === 8) a = parseInt(hex.slice(6, 8), 16) / 255;
+  } else {
+    return css;
+  }
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  const green = Math.min(1, lum * 1.6);
+  const white = Math.max(0, (lum - 0.7) / 0.3);
+  const out = `rgba(${Math.round(217 * white)},${Math.round(255 * green)},${Math.round(76 * green + 120 * white)},${a})`;
+  if (hologramColorCache.size > 4096) hologramColorCache.clear();
+  hologramColorCache.set(css, out);
+  return out;
+}
+
+/**
+ * A context that draws whatever an effect paints in hologram green: every
+ * colour it sets (fill, stroke, shadow, gradient stops) goes through
+ * hologramColor, and images get the hologram filter. The aiming preview used
+ * to get this look from a CSS filter over its board-sized layer, which the
+ * browser re-ran on every frame of a canvas effect (around 4x the frame time,
+ * measured); recolouring at the source costs next to nothing.
+ */
+function hologramContext(real: CanvasRenderingContext2D): CanvasRenderingContext2D {
+  const gradients = new WeakMap<object, CanvasGradient>();
+  const wrapGradient = (gradient: CanvasGradient) => {
+    const wrapper = { addColorStop: (offset: number, color: string) => gradient.addColorStop(offset, hologramColor(color)) };
+    gradients.set(wrapper, gradient);
+    return wrapper;
+  };
+  const methods = new Map<PropertyKey, unknown>();
+  return new Proxy(real, {
+    get(target, key) {
+      const cached = methods.get(key);
+      if (cached) return cached;
+      let value: unknown;
+      if (key === "createRadialGradient" || key === "createLinearGradient") {
+        const create = target[key].bind(target) as (...args: number[]) => CanvasGradient;
+        value = (...args: number[]) => wrapGradient(create(...args));
+      } else if (key === "drawImage") {
+        const draw = target.drawImage.bind(target) as (...args: unknown[]) => void;
+        value = (...args: unknown[]) => {
+          const before = target.filter;
+          target.filter = HOLOGRAM_SPRITE_FILTER;
+          draw(...args);
+          target.filter = before;
+        };
+      } else {
+        const own = Reflect.get(target, key, target);
+        if (typeof own !== "function") return own;
+        value = own.bind(target);
+      }
+      methods.set(key, value);
+      return value;
+    },
+    set(target, key, value) {
+      if (key === "fillStyle" || key === "strokeStyle" || key === "shadowColor") {
+        value = typeof value === "string" ? hologramColor(value) : (gradients.get(value as object) ?? value);
+      }
+      return Reflect.set(target, key, value, target);
+    },
+  }) as CanvasRenderingContext2D;
+}
+
 /**
  * Sizes `canvas` to the grid's layout box (so it shares the grid's
  * coordinates, inside any pan/zoom transform) at the pixels it's actually
  * shown at, and keeps it sized. `begin()` clears it and returns the context
  * set up for layout pixels and additive drawing ("normal": ordinary drawing),
- * or null before it has a size.
+ * or null before it has a size. Inside the aiming preview's hologram wrapper
+ * the context draws in hologram green (hologramContext), at most 2x resolution.
  */
 export function attachOverlayCanvas(
   grid: HTMLElement,
@@ -135,13 +230,15 @@ export function attachOverlayCanvas(
   mode: "add" | "normal" = "add",
 ) {
   const ctx = canvas.getContext("2d");
+  const hologram = !!canvas.closest(`.${WEAPON_HOLOGRAM_CLASS}`);
+  const drawCtx = ctx && hologram ? hologramContext(ctx) : ctx;
   let layoutW = 0;
   let layoutH = 0;
   let pixelRatio = 1;
   let checkedAt = 0;
   const ratioNow = (width: number) => {
-    const shown = grid.getBoundingClientRect().width / Math.max(width, 1);
-    return Math.min(3, (window.devicePixelRatio || 1) * Math.max(1, shown));
+    const scale = grid.getBoundingClientRect().width / Math.max(width, 1);
+    return Math.min(hologram ? HOLOGRAM_MAX_PIXEL_RATIO : 3, (window.devicePixelRatio || 1) * Math.max(1, scale));
   };
   const resize = () => {
     const { width, height } = gridLayoutSize(grid);
@@ -158,7 +255,7 @@ export function attachOverlayCanvas(
   ro.observe(grid);
   return {
     begin(): CanvasRenderingContext2D | null {
-      if (!ctx) return null;
+      if (!ctx || !drawCtx) return null;
       // Zoom is a transform, which a ResizeObserver doesn't see: re-check the
       // shown scale a few times a second and re-size when it has changed, so
       // the effect stays sharp after zooming in.
@@ -173,7 +270,7 @@ export function attachOverlayCanvas(
       if (!layoutW || !layoutH) return null;
       ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
       ctx.globalCompositeOperation = mode === "add" ? "lighter" : "source-over";
-      return ctx;
+      return drawCtx;
     },
     dispose() {
       ro.disconnect();

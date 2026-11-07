@@ -1406,28 +1406,6 @@ export const GameGridCell = React.memo(function GameGridCell({
                             </div>
                           );
                         })()}
-                        {/* Moved badge */}
-                        {movedShipIdsSet.has(cell.shipId) && (
-                          <div
-                            className={`absolute z-20 flex items-center justify-center rounded-full font-mono text-white ${
-                              cell.isCreator
-                                ? "bottom-0 right-0"
-                                : "bottom-0 left-0"
-                            } ${
-                              isShipOwnedByCurrentPlayer(cell.shipId)
-                                ? "bg-cyan/60"
-                                : "bg-warning-red/60"
-                            }`}
-                            style={{
-                              width: "clamp(8px, 14cqw, 12px)",
-                              height: "clamp(8px, 14cqw, 12px)",
-                              margin: "clamp(1px, 2cqw, 2px)",
-                              fontSize: "clamp(6px, 9cqw, 8px)",
-                            }}
-                          >
-                            M
-                          </div>
-                        )}
                         {/* Team dot + rank stars: same top row, opposite corners (not inside mirrored ShipImage) */}
                         {(() => {
                           const isProposedMovePreview =

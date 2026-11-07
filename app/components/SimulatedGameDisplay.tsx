@@ -1816,6 +1816,17 @@ export function SimulatedGameDisplay({
     selectedEnemyOccupiedGrid,
   ]);
 
+  // Switching what the ship fires keeps a locked target only if it's a
+  // target for the new choice (same as useGameplayInteraction): a ship
+  // picked in gun range can be out of the special's.
+  const lastWeaponTypeRef = useRef(selectedWeaponType);
+  useEffect(() => {
+    if (lastWeaponTypeRef.current === selectedWeaponType) return;
+    lastWeaponTypeRef.current = selectedWeaponType;
+    if (targetShipId == null || targetShipId === 0n) return;
+    if (!validTargets.some((t) => t.shipId === targetShipId.toString())) setTargetShipId(null);
+  }, [selectedWeaponType, targetShipId, validTargets]);
+
   // Assist isn't in the game any more (the live games pass empty lists too).
   const assistableTargets = EMPTY_TUTORIAL_TARGETS;
   const assistableTargetsFromStart = EMPTY_TUTORIAL_TARGETS;

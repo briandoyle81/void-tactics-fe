@@ -5,6 +5,7 @@ import { useAccount, useReadContract } from "wagmi";
 import { baseSepolia } from "viem/chains";
 import type { Abi } from "viem";
 import { toast } from "react-hot-toast";
+import { erc20Approval } from "../utils/approvalSteps";
 import { TransactionButton } from "./TransactionButton";
 import { formatUtcWei } from "../utils/formatUtc";
 import { RepairConfirmModal, type RepairConfirmShip } from "./RepairConfirmModal";
@@ -31,19 +32,6 @@ import { ResupplyRepairBox } from "./ResupplyRepairBox";
 import { WeakerFleetToggle } from "./WeakerFleetToggle";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
 import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
-
-const UTC_APPROVE_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "spender", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
 
 interface RoguelikeResupplyPanelProps {
   run: RoguelikeRun;
@@ -172,16 +160,25 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
     chainId: baseSepolia.id,
     query: { enabled: !!address && totalMissingHP > 0 },
   });
-  const { data: utcAllowance, refetch: refetchAllowance } = useReadContract({
-    address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "allowance",
-    args: address ? [address, ROGUELIKE_RESUPPLY_ADDRESS] : undefined,
-    chainId: baseSepolia.id,
-    query: { enabled: !!address && totalMissingHP > 0 },
-  });
   const repairCost = (repairCostPerHP ?? 0n) * BigInt(totalMissingHP);
-  const utcApproved = (utcAllowance as bigint | undefined) != null && (utcAllowance as bigint) >= repairCost;
+  const canAffordRepair = (utcBalance as bigint | undefined) != null && (utcBalance as bigint) >= repairCost;
+  // The resupply contract's UTC allowance is approved first if it's short,
+  // then the repair goes straight after, on the one Confirm.
+  const repairApprovals = React.useMemo(
+    () =>
+      address && repairCost > 0n
+        ? [
+            erc20Approval({
+              token: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
+              owner: address,
+              spender: ROGUELIKE_RESUPPLY_ADDRESS,
+              amount: repairCost,
+              loadingText: `[APPROVING ${formatUtcWei(repairCost)} UTC...]`,
+            }),
+          ]
+        : undefined,
+    [address, repairCost, contractAddresses.UNIVERSAL_CREDITS],
+  );
   const repairKeys = React.useMemo(
     () => Array.from(selectedRosterKeys).filter((key) => {
       const id = BigInt(key);
@@ -283,39 +280,12 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
               costLabel={formatUtcWei(repairCost)}
               missingHp={totalMissingHP}
               action={
-                !utcApproved ? (
-                  <TransactionButton
-                    transactionId={`approve-utc-roguelike-repair-${address}`}
-                    contractAddress={contractAddresses.UNIVERSAL_CREDITS as `0x${string}`}
-                    abi={UTC_APPROVE_ABI as Abi}
-                    functionName="approve"
-                    args={[ROGUELIKE_RESUPPLY_ADDRESS, repairCost]}
-                    className="border-2 border-cyan px-4 py-2 text-xs font-bold uppercase tracking-wider text-cyan transition-colors hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={(utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost}
-                    loadingText="[APPROVING...]"
-                    errorText="[ERROR APPROVING]"
-                    onSuccess={async () => {
-                      await refetchAllowance();
-                      toast.success("UTC approved!");
-                    }}
-                    onError={(error) => {
-                      console.error("Failed to approve UTC:", error);
-                      toast.error("Failed to approve UTC transfer");
-                    }}
-                    validateBeforeTransaction={() => {
-                      if (!address) return "Please connect your wallet";
-                      if ((utcBalance as bigint | undefined) == null || (utcBalance as bigint) < repairCost) {
-                        return "Insufficient UTC balance";
-                      }
-                      return true;
-                    }}
-                  >
-                    [APPROVE {formatUtcWei(repairCost)} UTC]
-                  </TransactionButton>
-                ) : (
+                (
                   <button
                     type="button"
                     onClick={() => setIsRepairConfirmOpen(true)}
+                    disabled={!canAffordRepair}
+                    title={canAffordRepair ? undefined : "Insufficient UTC balance"}
                     className="border-2 border-phosphor-green px-4 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ borderRadius: 0 }}
                   >
@@ -347,6 +317,8 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
             abi={CONTRACT_ABIS.ROGUELIKE_RESUPPLY as Abi}
             functionName="resupplyRepair"
             args={[repairKeys.map((id) => BigInt(id))]}
+            approvals={repairApprovals}
+            validateBeforeTransaction={() => (canAffordRepair ? true : "Insufficient UTC balance")}
             className="h-11 w-full border-2 border-phosphor-green bg-phosphor-green/10 px-4 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/20 disabled:cursor-not-allowed disabled:opacity-50"
             loadingText="[REPAIRING...]"
             errorText="[ERROR REPAIRING]"

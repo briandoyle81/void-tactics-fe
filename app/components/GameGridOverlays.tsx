@@ -1,5 +1,6 @@
 "use client";
 
+import { WEAPON_HOLOGRAM_CLASS } from "./weapon-animations/canvasFx";
 import React from "react";
 import { Attributes, canonicalSpecialSlot } from "../types/types";
 import {
@@ -36,10 +37,14 @@ function isLightningFieldShip(ship: GridShip | undefined): boolean {
   );
 }
 
+const HOLOGRAM_WRAPPER_STYLE: React.CSSProperties = { isolation: "isolate", filter: "none" };
+
 function hologramWeaponFire(active: boolean, node: React.ReactNode) {
   if (!active || node == null) return node;
   return (
-    <div className="weapon-hologram absolute inset-0 pointer-events-none">
+    // Its effects tint themselves green (canvasFx.ts): no CSS filter here
+    // (a filter over this board-sized layer re-ran every frame and hitched).
+    <div className={`${WEAPON_HOLOGRAM_CLASS} absolute inset-0 pointer-events-none`} style={HOLOGRAM_WRAPPER_STYLE}>
       {node}
     </div>
   );

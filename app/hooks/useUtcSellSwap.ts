@@ -21,10 +21,10 @@ const UTC_ABI = CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi;
 /**
  * Read-side state for selling UTC through Universal Router + Permit2 (see
  * docs/eth-global-remote/uniswap-lottery-selfie-check-frontend-integration.md §4 and Part 2 item
- * 10 of the plan). The actual swap submission happens via TransactionButton in
- * UtcLotteryPanel.tsx (three possible steps: ERC20 approve to Permit2, Permit2 approve to
- * Universal Router, then the swap itself) — this hook only exposes the live reads needed to
- * decide which step to show.
+ * 10 of the plan). The swap is submitted by the SELL TransactionButton in
+ * UtcLotteryPanel.tsx, which sends up to three transactions on the one click (ERC20 approve to
+ * Permit2, Permit2 approve to Universal Router, then the swap itself; the approvals are read
+ * fresh and skipped when in place). This hook exposes the live reads (balance, allowances).
  */
 export function useUtcSellSwap() {
   const activeChainId = useSelectedChainId();

@@ -31,8 +31,11 @@ export function landShipPositions<
     // the victim off. It leaves the board as soon as the rammer lands on its
     // tile (the ram's animation draws it tumbling away): a tile holds one
     // ship, so a victim left there would cover the rammer.
+    // (A variant-2 ship's faction ability is a repair, which can target the
+    // ship itself: it ends on its own tile and must stay on the board.)
     const isRam =
       move.actionType === ACTION_FACTION_ABILITY &&
+      move.targetShipId !== move.shipId &&
       !move.killsTarget &&
       move.to.row === target.position.row &&
       move.to.col === target.position.col;

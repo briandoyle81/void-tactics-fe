@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useReadContracts } from "wagmi";
+import { keepPreviousData } from "@tanstack/react-query";
 import { baseSepolia } from "viem/chains";
 import type { Abi } from "viem";
 import {
@@ -12,6 +13,7 @@ import {
 import { useSelectedChainId } from "./useSelectedChainId";
 import { Ship } from "../types/types";
 import { AI_SHIP_ID_OFFSET, cacheShipsData } from "./useShipDataCache";
+import { shipIdsKey } from "../utils/shipIdsKey";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -43,9 +45,13 @@ export function useShipsByIds(shipIds: bigint[]) {
   const abi = useRouter ? SHIPS_ROUTER_ABI : SHIPS_ABI;
 
   // Callers often pass a freshly allocated id array from game poll data even
-  // when the ids did not change. Key off contents so we do not rebuild the
-  // multicall (or trip a stale-time-0 refetch) every getGame tick.
-  const idsKey = shipIds.map((id) => id.toString()).join(",");
+  // when the ids did not change. Key off contents, in a fixed order, so we do
+  // not rebuild the multicall (or trip a stale-time-0 refetch) every getGame
+  // tick, nor when the same ships come in another order: GameDisplay lists a
+  // game's active ships first, so a ship that retreats or is destroyed (out of
+  // the active lists, still in shipPositions) moves to the end. That was a new
+  // query with no data, so every ship left the board until it came back.
+  const idsKey = shipIdsKey(shipIds);
   const stableShipIds = useMemo(
     () => idsKey.split(",").filter(Boolean).map((id) => BigInt(id)),
     [idsKey],
@@ -71,6 +77,9 @@ export function useShipsByIds(shipIds: bigint[]) {
       refetchOnReconnect: false,
       staleTime: Infinity,
       notifyOnChangeProps: ["data", "error"],
+      // When the set of ships does change, keep drawing the ones we have
+      // until the new set arrives, rather than an empty board.
+      placeholderData: keepPreviousData,
     },
   });
 
@@ -102,28 +111,34 @@ export function useShipsByIds(shipIds: bigint[]) {
       })),
     [aiShips, shipAttributesAddress, activeChainId],
   );
-  const { data: costData } = useReadContracts({
+  const { data: costData, isPlaceholderData: costsArePrevious } = useReadContracts({
     contracts: costContracts,
     query: {
       enabled: aiShips.length > 0 && !!shipAttributesAddress,
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       staleTime: Infinity,
+      placeholderData: keepPreviousData,
     },
   });
 
+  // Each AI ship's cost by id. The results line up with aiShips only once
+  // they're this list's own (not the previous list's, kept while it loads).
+  const costByIdRef = useRef(new Map<bigint, number>());
   const ships = useMemo(() => {
     if (aiShips.length === 0) return fetchedShips;
-    const costById = new Map<bigint, number>();
-    aiShips.forEach((ship, i) => {
-      const cost = costData?.[i]?.result;
-      if (cost != null) costById.set(ship.id, Number(cost));
-    });
+    const costById = costByIdRef.current;
+    if (!costsArePrevious) {
+      aiShips.forEach((ship, i) => {
+        const cost = costData?.[i]?.result;
+        if (cost != null) costById.set(ship.id, Number(cost));
+      });
+    }
     return fetchedShips.map((ship) => {
       const cost = costById.get(ship.id);
       return cost == null ? ship : { ...ship, shipData: { ...ship.shipData, cost } };
     });
-  }, [fetchedShips, aiShips, costData]);
+  }, [fetchedShips, aiShips, costData, costsArePrevious]);
 
   // cacheShipsData itself skips AI ship ids (pooled/reused across matches —
   // see useShipDataCache.ts for why caching those long-term is wrong, not

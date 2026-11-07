@@ -1,24 +1,15 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
+import { erc20Approval } from "../utils/approvalSteps";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import {
-  useAccount,
-  useBalance,
-  useReadContract,
-  useWaitForTransactionReceipt,
-  usePublicClient,
-} from "wagmi";
-import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWrite";
+import { useAccount, useBalance, useReadContract } from "wagmi";
 import type { Abi, Address } from "viem";
 import { parseEther, formatEther } from "viem";
-import { toast } from "react-hot-toast";
 import { useMapExists } from "../hooks/useMapsContract";
 import { useSelectedChainId } from "../hooks/useSelectedChainId";
-import { useSwitchToSelectedChainIfNeeded } from "../hooks/useSwitchToSelectedChainIfNeeded";
 import posthog from "posthog-js";
-import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
 
 interface LobbyCreateButtonProps {
   costLimit: bigint;
@@ -57,19 +48,6 @@ const LOBBY_CREATE_ABI = [
   },
 ] as const;
 
-const UTC_APPROVE_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "spender", type: "address" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
 export function LobbyCreateButton({
   costLimit,
   turnTime,
@@ -89,9 +67,6 @@ export function LobbyCreateButton({
   const { address } = useAccount();
   const chainId = useSelectedChainId();
   const contractAddresses = getContractAddresses(chainId);
-  const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
-  const [isApprovingUTC, setIsApprovingUTC] = useState(false);
-  const [utcApproved, setUtcApproved] = useState(false);
 
   // Check if this is a reserved lobby
   const isReserved =
@@ -111,18 +86,6 @@ export function LobbyCreateButton({
     chainId,
   });
 
-  // Read UTC allowance
-  const { data: utcAllowance, refetch: refetchAllowance } = useReadContract({
-    address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "allowance",
-    args:
-      address && contractAddresses.LOBBIES
-        ? [address, contractAddresses.LOBBIES]
-        : undefined,
-    chainId,
-  });
-
   // Check if map exists
   const { data: mapExists } = useMapExists(Number(selectedMapId));
 
@@ -134,14 +97,6 @@ export function LobbyCreateButton({
     chainId,
   });
 
-  const { writeContract: writeUTC, data: approveHash } = useSponsoredWriteContract();
-  const publicClient = usePublicClient({ chainId });
-  const { isLoading: isApproving, isSuccess: approveSuccess } =
-    useWaitForTransactionReceipt({
-      hash: approveHash,
-      chainId,
-    });
-
   // UTC is required only for the reservation fee (1 UTC). Additional lobby fee is native.
   // A player's first unresolved AI reservation is free (Lobbies.createLobby waives the fee) —
   // skipReservationFee reflects that, read from playerState.activeAILobbiesCount by the caller.
@@ -149,73 +104,6 @@ export function LobbyCreateButton({
     if (isReserved && !skipReservationFee) return parseEther("1");
     return 0n;
   }, [isReserved, skipReservationFee]);
-
-  // Type-safe UTC balance
-  const utcBalanceBigInt = React.useMemo(() => utcBalance as bigint | undefined, [utcBalance]);
-
-  // Check if UTC is approved
-  React.useEffect(() => {
-    if (totalUtcRequired > 0n && utcAllowance !== undefined) {
-      setUtcApproved((utcAllowance as bigint) >= totalUtcRequired);
-    } else if (totalUtcRequired === 0n) {
-      setUtcApproved(true); // No approval needed if no UTC required
-    }
-  }, [totalUtcRequired, utcAllowance]);
-
-  // Handle approval success: keep the button busy until allowance is
-  // actually readable so CREATE does not flash in between.
-  React.useEffect(() => {
-    if (!approveSuccess) return;
-    let cancelled = false;
-    void (async () => {
-      await refetchAllowance();
-      if (cancelled) return;
-      setIsApprovingUTC(false);
-      toast.success("UTC approved successfully!");
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [approveSuccess, refetchAllowance]);
-
-  const handleApproveUTC = useCallback(async () => {
-    if (!address || totalUtcRequired === 0n) return;
-
-    // Check balance
-    if (!utcBalanceBigInt || utcBalanceBigInt < totalUtcRequired) {
-      toast.error(
-        `Insufficient UTC balance. Need ${formatEther(totalUtcRequired)} UTC.`
-      );
-      return;
-    }
-
-    setIsApprovingUTC(true);
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeUTC({
-        address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-        abi: UTC_APPROVE_ABI,
-        functionName: "approve",
-        args: [contractAddresses.LOBBIES as `0x${string}`, totalUtcRequired],
-        chainId,
-        ...(await getLegacyGasPriceOverridesForWrite(chainId, publicClient)),
-      });
-    } catch (err) {
-      setIsApprovingUTC(false);
-      console.error("Failed to approve UTC:", err);
-      toast.error("Failed to approve UTC transfer");
-    }
-  }, [
-    address,
-    chainId,
-    contractAddresses.LOBBIES,
-    contractAddresses.UNIVERSAL_CREDITS,
-    publicClient,
-    switchToSelectedChainIfNeeded,
-    totalUtcRequired,
-    utcBalanceBigInt,
-    writeUTC,
-  ]);
 
   const validateBeforeTransaction = React.useCallback(() => {
     if (!address) {
@@ -242,9 +130,6 @@ export function LobbyCreateButton({
       if (!balance || balance < totalUtcRequired) {
         return `Insufficient UTC balance. Need ${formatEther(totalUtcRequired)} UTC.`;
       }
-      if (!utcApproved) {
-        return `Please approve ${formatEther(totalUtcRequired)} UTC transfer first`;
-      }
     }
     // Check native balance for additional lobby fee
     if (value > 0n) {
@@ -262,8 +147,7 @@ export function LobbyCreateButton({
     isReserved,
     reservedJoiner,
     totalUtcRequired,
-    utcBalanceBigInt,
-    utcApproved,
+    utcBalance,
     value,
     nativeBalance,
   ]);
@@ -276,37 +160,25 @@ export function LobbyCreateButton({
     [address, costLimit, turnTime, selectedMapId, maxScore, reservedJoiner]
   );
 
-  // If UTC is required (reserved lobby) and not approved, show approve button
-  if (
-    totalUtcRequired > 0n &&
-    !utcApproved &&
-    !isApprovingUTC &&
-    !isApproving
-  ) {
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="text-xs text-amber font-mono">
-          <div>Required: 1 UTC (reservation fee){value > 0n ? ` + ${formatEther(value)} ${nativeBalance?.symbol ?? "native"} (lobby fee)` : ""}</div>
-        </div>
-        <button
-          onClick={handleApproveUTC}
-          disabled={!utcBalanceBigInt || utcBalanceBigInt < totalUtcRequired}
-          className={`${className.replace(/\brounded(-\w+)?\b/g, "").replace(/\s+/g, " ").trim()} ${
-            !utcBalanceBigInt || utcBalanceBigInt < totalUtcRequired
-              ? "opacity-50 cursor-not-allowed"
-              : ""
-          }`}
-          style={{
-            borderRadius: 0, // Square corners for industrial theme
-          }}
-        >
-          {`[APPROVE ${formatEther(totalUtcRequired)} UTC]`}
-        </button>
-      </div>
-    );
-  }
+  // The reservation fee: the Lobbies contract's UTC allowance is approved
+  // first if it's short, then the lobby is created straight after (one click).
+  const utcApprovals = React.useMemo(
+    () =>
+      totalUtcRequired > 0n && address
+        ? [
+            erc20Approval({
+              token: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
+              owner: address,
+              spender: contractAddresses.LOBBIES as `0x${string}`,
+              amount: totalUtcRequired,
+              loadingText: `[APPROVING ${formatEther(totalUtcRequired)} UTC...]`,
+            }),
+          ]
+        : undefined,
+    [totalUtcRequired, address, contractAddresses.UNIVERSAL_CREDITS, contractAddresses.LOBBIES],
+  );
 
-   return (
+  return (
     <TransactionButton
       transactionId={transactionId}
       contractAddress={contractAddresses.LOBBIES as `0x${string}`}
@@ -321,11 +193,10 @@ export function LobbyCreateButton({
         reservedJoiner || zeroAddress,
       ]}
       value={value}
+      approvals={utcApprovals}
       className={className}
-      disabled={disabled || isApprovingUTC || isApproving}
-      loadingText={
-        isApprovingUTC || isApproving ? "[APPROVING UTC...]" : "[CREATING...]"
-      }
+      disabled={disabled}
+      loadingText="[CREATING...]"
       errorText="[ERROR CREATING]"
       onSuccess={async () => {
         posthog.capture("lobby_created", {

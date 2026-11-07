@@ -140,13 +140,14 @@ export function MovePlaybackLayer({
     : null;
   const distanceCells = move && targetPos ? Math.hypot(move.to.row - targetPos.row, move.to.col - targetPos.col) : 0;
   const targetShip = move?.targetShipId ? shipMap.get(move.targetShipId) : undefined;
-  // A ship repairing itself stays on the board: the cinematic needs two ships.
+  // A ship repairing itself plays in a single panel; any other move aimed at
+  // its own ship stays on the board.
   const cinematic =
     combatView === "cinematic" &&
     cinematicCovers(effect) &&
     !!targetShip &&
     !!targetPos &&
-    move?.targetShipId !== move?.shipId;
+    (move?.targetShipId !== move?.shipId || effect.kind === "repair");
   // An on-board ram slides to the tile it rams from (`ramFrom`), then
   // charges its victim (RamAnimation). A cinematic ram charges in its panels
   // instead of sliding on the board: the board puts the rammer on the

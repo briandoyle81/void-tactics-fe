@@ -1,5 +1,6 @@
 "use client";
 
+import { RESOLVER_ERRORS } from "../config/resolverErrors";
 import React, { useState } from "react";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { isAoeSpecialWeb2, isLightningFieldSpecial, isRepairDronesSpecial } from "../utils/specialConfigWeb2";
@@ -184,6 +185,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const gameContract = useGameContract(
     baseSepolia.id,
     initialGame.metadata.gameId,
+  );
+  // A move can revert in a special's resolver: its errors decode by name too.
+  const moveShipAbi = React.useMemo(
+    () => [...(gameContract.abi as readonly unknown[]), ...RESOLVER_ERRORS] as unknown as typeof gameContract.abi,
+    [gameContract],
   );
   const pvpMatchContract = usePvPMatchContract();
 
@@ -1364,12 +1370,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         toast.error("Transaction declined by user");
       } else if (errorMessage.includes("insufficient funds")) {
         toast.error("Insufficient funds for transaction");
-      } else if (errorMessage.includes("gas")) {
-        toast.error("Transaction failed due to gas estimation error");
-      } else if (errorMessage.includes("execution reverted")) {
-        toast.error(
-          "Transaction reverted - check if it's your turn and ship is valid",
-        );
+      // The contract's own errors first: a decoded revert's message also
+      // says "execution reverted", which would otherwise hide them all.
       } else if (errorMessage.includes("NotYourTurn")) {
         toast.error("It's not your turn to move");
       } else if (errorMessage.includes("ShipNotFound")) {
@@ -1380,6 +1382,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         );
       } else if (errorMessage.includes("PositionOccupied")) {
         toast.error("Target position is already occupied");
+      } else if (errorMessage.includes("OutOfRange")) {
+        toast.error("That target is out of range for this action. Pick a target in range");
+      } else if (errorMessage.includes("TargetNotEnemy") || errorMessage.includes("TargetNotFriendly")) {
+        toast.error("That ship can't be the target of this action");
       } else if (
         errorMessage.includes("TargetNotFound") ||
         errorMessage.includes("InvalidRamTarget")
@@ -1387,6 +1393,12 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         toast.error(
           "That target is no longer in the game — select a new target",
         );
+      } else if (errorMessage.includes("execution reverted")) {
+        toast.error(
+          "Transaction reverted - check if it's your turn and ship is valid",
+        );
+      } else if (/\bgas\b/i.test(errorMessage)) {
+        toast.error("Transaction failed due to gas estimation error");
       } else {
         toast.error(`Transaction failed: ${errorMessage}`);
       }
@@ -1871,7 +1883,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       <TransactionButton
         transactionId={`move-ship-${selectedShipId}-${game.metadata.gameId}`}
         contractAddress={gameContract.address}
-        abi={gameContract.abi}
+        abi={moveShipAbi}
         functionName="moveShip"
         args={[
           game.metadata.gameId,
@@ -1929,11 +1941,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       </TransactionButton>
     );
   }, [
+    moveShipAbi,
     showConfirmWidget,
     selectedShipId,
     game.metadata.gameId,
     gameContract.address,
-    gameContract.abi,
     computedMoveCoords.row,
     computedMoveCoords.col,
     computedActionType,
@@ -1989,7 +2001,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                 <TransactionButton
                   transactionId={`move-ship-${selectedShipId}-${game.metadata.gameId}`}
                   contractAddress={gameContract.address}
-                  abi={gameContract.abi}
+                  abi={moveShipAbi}
                   functionName="moveShip"
                   args={[
                     game.metadata.gameId,

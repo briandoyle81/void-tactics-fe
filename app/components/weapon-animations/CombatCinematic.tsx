@@ -13,8 +13,8 @@ import { MissileShootingAnimation } from "./MissileShootingAnimation";
 import { PlasmaShootingAnimation } from "./PlasmaShootingAnimation";
 import { MiningDrillAnimation } from "./MiningDrillAnimation";
 import { EmpWaveAnimation } from "./EmpWaveAnimation";
-import { AttackDroneAnimation } from "./AttackDroneAnimation";
-import { RepairDroneAnimation } from "./RepairDroneAnimation";
+import { AttackDroneAnimation, SAW_AT_MS } from "./AttackDroneAnimation";
+import { RepairDroneAnimation, SCAN_END_MS } from "./RepairDroneAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs } from "./ShipExplosionSound";
 import { WeaponSoundsMuted, useWeaponSoundsMuted } from "./weaponSounds";
 import { paintRamLight, playRamCrash, rammerAt, type RamLayout, type RamTiming } from "./RamAnimation";
@@ -66,6 +66,9 @@ const PANEL_A: Pt[] = [{ x: 1.5, y: 3 }, { x: 64, y: 3 }, { x: 58, y: 58 }, { x:
 const PANEL_B: Pt[] = [{ x: 40, y: 47 }, { x: 98.5, y: 40 }, { x: 98.5, y: 97 }, { x: 34, y: 97 }];
 const ANCHOR_A: Pt = { x: 21, y: 31 };
 const ANCHOR_B: Pt = { x: 73, y: 72 };
+// A ship repairing itself has one panel, centred, its ship at the middle.
+const PANEL_SOLO: Pt[] = [{ x: 20, y: 6 }, { x: 82, y: 3 }, { x: 80, y: 94 }, { x: 18, y: 97 }];
+const ANCHOR_SOLO: Pt = { x: 50, y: 50 };
 /** A staged cell's size as a fraction of the stage height. */
 const CELL_OF_STAGE_H = 0.22;
 
@@ -147,8 +150,9 @@ export function cinematicDurationMs(effect: WeaponEffectKind): number {
 
 /** When the shot lands, ms after mount (the timing the game's explosion sound uses). */
 function hitAtMs(effect: WeaponEffectKind): number {
-  // Drones reach the target about 30% into their 3.2 s flight.
-  if (effect.kind === "attackDrones" || effect.kind === "repair") return FIRE_AT_MS + 3200 * 0.3;
+  // The drones' work lands when the first ones start cutting or welding.
+  if (effect.kind === "attackDrones") return FIRE_AT_MS + SAW_AT_MS;
+  if (effect.kind === "repair") return FIRE_AT_MS + SCAN_END_MS;
   if (effect.kind === "ram") return FIRE_AT_MS + RAM_WINDUP_MS + RAM_CHARGE_MS;
   if (effect.kind !== "main") return FIRE_AT_MS + 300;
   return (
@@ -786,10 +790,12 @@ export const CombatCinematic = React.memo(function CombatCinematic({
         boardRef={boardRef}
       />
     ) : null;
+  // A ship repairing itself: one panel, its drones working on its own hull.
+  const solo = attacker.id === defender.id;
   const weaponProps = {
     effect,
     attacker: stagedAttacker,
-    defender: stagedDefender,
+    defender: solo ? stagedAttacker : stagedDefender,
     facingRight: attackerIsCreator,
     ship: attacker,
   };
@@ -807,88 +813,123 @@ export const CombatCinematic = React.memo(function CombatCinematic({
     >
       {stage.w > 0 && (
         <div className="relative" style={{ width: stage.w, height: stage.h, containerType: "size" }}>
-          <CinematicPanel
-            z={1}
-            poly={polyA}
-            anchor={anchorA}
-            focus={stagedAttacker}
-            stage={stage}
-            ship={attacker}
-            shipFacesRight={attackerIsCreator}
-            shipHidden={isRam}
-            background={background}
-            nebula={attackerInNebula}
-            enterFrom={{ x: -18 * dir, y: -14 }}
-            state={a}
-            shake={0}
-            flash={0}
-            caption={shipCaption(
-              attacker,
-              isRam ? "Ramming" : `${isRepair ? "Repairing" : "Attacking"} · ${weaponName(effect, attacker)}`,
-            )}
-            captionColor={attackerIsMine ? MY_COLOR : THEIR_COLOR}
-            captionAt="top"
-            captionSide={attackerIsCreator ? "left" : "right"}
-            boardRef={boardA}
-          >
-            {rammer(boardA)}
-            {firing && !isRam && (
-              <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
-                <StagedWeapon {...weaponProps} boardRef={boardA} soundOnceKey={soundOnceKey} />
-              </div>
-            )}
-          </CinematicPanel>
-          <CinematicPanel
-            z={2}
-            poly={polyB}
-            anchor={anchorB}
-            focus={stagedDefender}
-            stage={stage}
-            ship={wreck}
-            shipFacesRight={isRepair ? attackerIsCreator : !attackerIsCreator}
-            shipDisabled={((defenderDisabled && !restoredByRepair) || disabledByHit) && !wrecked}
-            shipStatus={wrecked ? null : defenderStatus}
-            shipStatusAfter={hit > 0 && !isRam ? defenderStatusAfter : null}
-            knockOff={knockOff}
-            hullDrainMs={hullDrainMs(effect, killsTarget)}
-            background={background}
-            nebula={defenderInNebula}
-            enterFrom={{ x: 18 * dir, y: 14 }}
-            state={b}
-            shake={isRepair ? 0 : hit}
-            flash={hit}
-            flashKind={isRepair ? "heal" : "hit"}
-            caption={shipCaption(
-              defender,
-              isRepair
-                ? hit > 0
-                  ? "Repaired"
-                  : "Receiving repairs"
-                : isRam
-                  ? hit > 0
-                    ? "Rammed"
-                    : "Defending"
-                  : wrecked
-                  ? "Destroyed"
-                  : disabledByHit
-                    ? "Disabled"
-                    : "Defending",
-            )}
-            captionColor={isRepair === attackerIsMine ? MY_COLOR : THEIR_COLOR}
-            captionAt="bottom"
-            captionSide={attackerIsCreator ? "right" : "left"}
-            boardRef={boardB}
-          >
-            {/* The same shot, from the same moment; its sounds are A's. */}
-            {rammer(boardB)}
-            <WeaponSoundsMuted value={true}>
-              {firing && !isRam && (
+          {solo ? (
+            <CinematicPanel
+              z={1}
+              poly={flip ? mirrorPts(PANEL_SOLO) : PANEL_SOLO}
+              anchor={ANCHOR_SOLO}
+              focus={stagedAttacker}
+              stage={stage}
+              ship={attacker}
+              shipFacesRight={attackerIsCreator}
+              shipStatus={defenderStatus}
+              shipStatusAfter={hit > 0 ? defenderStatusAfter : null}
+              hullDrainMs={hullDrainMs(effect, false)}
+              background={background}
+              nebula={attackerInNebula}
+              enterFrom={{ x: 0, y: 14 }}
+              state={a}
+              shake={0}
+              flash={hit}
+              flashKind="heal"
+              caption={shipCaption(attacker, hit > 0 ? "Repaired" : `Repairing · ${weaponName(effect, attacker)}`)}
+              captionColor={attackerIsMine ? MY_COLOR : THEIR_COLOR}
+              captionAt="top"
+              captionSide={attackerIsCreator ? "left" : "right"}
+              boardRef={boardA}
+            >
+              {firing && (
                 <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
-                  <StagedWeapon {...weaponProps} boardRef={boardB} soundOnceKey={`${soundOnceKey}:defender`} attackerShown={false} />
+                  <StagedWeapon {...weaponProps} boardRef={boardA} soundOnceKey={soundOnceKey} />
                 </div>
               )}
-            </WeaponSoundsMuted>
-          </CinematicPanel>
+            </CinematicPanel>
+          ) : (
+            <>
+            <CinematicPanel
+              z={1}
+              poly={polyA}
+              anchor={anchorA}
+              focus={stagedAttacker}
+              stage={stage}
+              ship={attacker}
+              shipFacesRight={attackerIsCreator}
+              shipHidden={isRam}
+              background={background}
+              nebula={attackerInNebula}
+              enterFrom={{ x: -18 * dir, y: -14 }}
+              state={a}
+              shake={0}
+              flash={0}
+              caption={shipCaption(
+                attacker,
+                isRam ? "Ramming" : `${isRepair ? "Repairing" : "Attacking"} · ${weaponName(effect, attacker)}`,
+              )}
+              captionColor={attackerIsMine ? MY_COLOR : THEIR_COLOR}
+              captionAt="top"
+              captionSide={attackerIsCreator ? "left" : "right"}
+              boardRef={boardA}
+            >
+              {rammer(boardA)}
+              {firing && !isRam && (
+                <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
+                  <StagedWeapon {...weaponProps} boardRef={boardA} soundOnceKey={soundOnceKey} />
+                </div>
+              )}
+            </CinematicPanel>
+            <CinematicPanel
+              z={2}
+              poly={polyB}
+              anchor={anchorB}
+              focus={stagedDefender}
+              stage={stage}
+              ship={wreck}
+              shipFacesRight={isRepair ? attackerIsCreator : !attackerIsCreator}
+              shipDisabled={((defenderDisabled && !restoredByRepair) || disabledByHit) && !wrecked}
+              shipStatus={wrecked ? null : defenderStatus}
+              shipStatusAfter={hit > 0 && !isRam ? defenderStatusAfter : null}
+              knockOff={knockOff}
+              hullDrainMs={hullDrainMs(effect, killsTarget)}
+              background={background}
+              nebula={defenderInNebula}
+              enterFrom={{ x: 18 * dir, y: 14 }}
+              state={b}
+              shake={isRepair ? 0 : hit}
+              flash={hit}
+              flashKind={isRepair ? "heal" : "hit"}
+              caption={shipCaption(
+                defender,
+                isRepair
+                  ? hit > 0
+                    ? "Repaired"
+                    : "Receiving repairs"
+                  : isRam
+                    ? hit > 0
+                      ? "Rammed"
+                      : "Defending"
+                    : wrecked
+                    ? "Destroyed"
+                    : disabledByHit
+                      ? "Disabled"
+                      : "Defending",
+              )}
+              captionColor={isRepair === attackerIsMine ? MY_COLOR : THEIR_COLOR}
+              captionAt="bottom"
+              captionSide={attackerIsCreator ? "right" : "left"}
+              boardRef={boardB}
+            >
+              {/* The same shot, from the same moment; its sounds are A's. */}
+              {rammer(boardB)}
+              <WeaponSoundsMuted value={true}>
+                {firing && !isRam && (
+                  <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
+                    <StagedWeapon {...weaponProps} boardRef={boardB} soundOnceKey={`${soundOnceKey}:defender`} attackerShown={false} />
+                  </div>
+                )}
+              </WeaponSoundsMuted>
+            </CinematicPanel>
+            </>
+          )}
         </div>
       )}
       {killsTarget ? (

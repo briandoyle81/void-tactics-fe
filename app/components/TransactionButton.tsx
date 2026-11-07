@@ -12,6 +12,7 @@ import {
   getLegacyGasPriceOverridesForWrite,
 } from "../utils/legacyGasPriceForWrite";
 import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
+import type { ApprovalStep } from "../utils/approvalSteps";
 
 export type TransactionFollowUp = () => void | Promise<void>;
 
@@ -27,6 +28,13 @@ interface TransactionButtonProps {
   value?: bigint;
   /** Gas limit; omitted, the wallet estimates it. */
   gas?: bigint;
+  /**
+   * Transactions this one needs first (e.g. a UTC approval; see
+   * utils/approvalSteps.ts). On the one click, each that's still needed is
+   * sent and confirmed in order, then this button's own transaction goes
+   * straight after, with no second click.
+   */
+  approvals?: readonly ApprovalStep[];
 
   // Button appearance
   children: React.ReactNode;
@@ -61,6 +69,7 @@ export function TransactionButton({
   args = [],
   value,
   gas,
+  approvals,
   children,
   className = "",
   disabled = false,
@@ -79,6 +88,10 @@ export function TransactionButton({
   const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
   const publicClient = usePublicClient({ chainId: selectedChainId });
   const { writeContract, isPending, error, data: hash } = useSponsoredWriteContract();
+  // The approvals' own writes, kept apart so `hash` above stays this button's transaction.
+  const { writeContractAsync: writeApprovalAsync } = useSponsoredWriteContract();
+  /** The approval being sent, while one is (its loading text). */
+  const [approvalText, setApprovalText] = React.useState<string | null>(null);
   const {
     transactionState,
     startTransaction,
@@ -179,6 +192,21 @@ export function TransactionButton({
       startTransaction(transactionId);
       setIsLocallyPending(true); // Set local pending state
 
+      // What this needs first (approvals), each confirmed before the next.
+      for (const step of approvals ?? []) {
+        if (!publicClient) throw new Error("No RPC client available");
+        if (!(await step.isNeeded(publicClient))) continue;
+        setApprovalText(step.loadingText);
+        const approvalHash = await writeApprovalAsync({
+          ...step.call,
+          chainId: selectedChainId,
+          ...(await getLegacyGasPriceOverridesForWrite(selectedChainId, publicClient)),
+        } as Parameters<typeof writeApprovalAsync>[0]);
+        const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+        if (approvalReceipt.status === "reverted") throw new Error("Approval reverted onchain");
+      }
+      setApprovalText(null);
+
       // Execute the contract call
       const writePayload = {
         address: contractAddress,
@@ -224,6 +252,7 @@ export function TransactionButton({
         ? `${detail}\n\nHint: wallet/RPC nonce state may be stuck. Try clearing wallet activity/nonce state, then retry.`
         : detail;
       const error = new Error(normalized);
+      setApprovalText(null);
       setIsLocallyPending(false); // Reset local pending state on error
       completeTransaction(transactionId, false, error);
       onError?.(error);
@@ -384,7 +413,7 @@ export function TransactionButton({
 
   let buttonContent = children;
   if (isTransactionPending) {
-    buttonContent = loadingText;
+    buttonContent = approvalText ?? loadingText;
   } else if (hasTransactionError) {
     buttonContent = errorText;
   }
