@@ -16,6 +16,7 @@ import {
 } from "@dynamic-labs-sdk/evm";
 import { addWaasEvmExtension } from "@dynamic-labs-sdk/evm/waas";
 import posthog from "posthog-js";
+import { GAS_SPONSORSHIP_ENABLED } from "../config/alpha";
 
 // Gas sponsorship (Dynamic's native EVM sponsorship, Sponsor Gas › Dynamic in
 // the dashboard). Dynamic only pays for transactions sent through its relayer
@@ -28,8 +29,8 @@ import posthog from "posthog-js";
 //   broadcast it, so callers wait for the receipt as before. msg.sender is
 //   still the player's address (EIP-7702; the first send delegates the wallet
 //   once, automatically). The receipt's `from` is Dynamic's relayer.
-// - A browser wallet, or sponsorship off: wagmi's writeContract, as before
-//   (the player pays gas).
+// - A browser wallet, or sponsorship off (here, GAS_SPONSORSHIP_ENABLED, or in
+//   Dynamic's dashboard): wagmi's writeContract, as before (the player pays gas).
 
 const EMBEDDED_PROVIDER_PREFIX = "dynamicwaas";
 const STATUS_POLL_MS = 750;
@@ -45,7 +46,7 @@ let waasExtensionAdded = false;
 export function RegisterGasSponsorship() {
   const { sdkHasLoaded } = useDynamicContext();
   useEffect(() => {
-    if (!sdkHasLoaded || waasExtensionAdded) return;
+    if (!GAS_SPONSORSHIP_ENABLED || !sdkHasLoaded || waasExtensionAdded) return;
     try {
       addWaasEvmExtension();
       waasExtensionAdded = true;
@@ -58,7 +59,7 @@ export function RegisterGasSponsorship() {
 
 /** The player's embedded wallet account, when Dynamic will sponsor its gas. */
 function sponsorableAccount(address: Address | undefined): EvmWalletAccount | null {
-  if (!address || !waasExtensionAdded) return null;
+  if (!GAS_SPONSORSHIP_ENABLED || !address || !waasExtensionAdded) return null;
   try {
     if (!isEvmGasSponsorshipEnabled()) return null;
     const lower = address.toLowerCase();

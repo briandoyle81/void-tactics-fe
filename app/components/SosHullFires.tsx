@@ -1,6 +1,7 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { sosFailingLayout } from "./sosState";
 
 function loopTime(baseSeconds: number, scale: number) {
   return `${(baseSeconds * scale).toFixed(2)}s`;
@@ -146,10 +147,16 @@ function measureShipArtBox(host: HTMLElement, img: HTMLImageElement): ArtBox | n
   };
 }
 
-export function SosHullFires({ shipId }: { shipId: string | number }) {
+/**
+ * A disabled ship's hull fires, over its art. With `failing` (on the board,
+ * and the effects that take a disabled ship over), also its failing systems:
+ * a navigation strobe and two points shorting out (sosState.ts).
+ */
+export function SosHullFires({ shipId, failing = false }: { shipId: string | number; failing?: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [artBox, setArtBox] = useState<ArtBox | null>(null);
   const { breaches, vents } = useMemo(() => layoutForShip(shipId), [shipId]);
+  const failingLayout = useMemo(() => (failing ? sosFailingLayout(shipId) : null), [failing, shipId]);
 
   useLayoutEffect(() => {
     const host = hostRef.current?.parentElement;
@@ -269,6 +276,37 @@ export function SosHullFires({ shipId }: { shipId: string | number }) {
               />
             </span>
           ))}
+          {failingLayout && (
+            <>
+              <span className="sos-strobe" style={{ left: `${failingLayout.beacon.left}%`, top: `${failingLayout.beacon.top}%` }} />
+              {failingLayout.zaps.map((zap, i) => (
+                <span
+                  key={`zap-${i}`}
+                  className="sos-zap"
+                  style={{
+                    left: `${zap.left}%`,
+                    top: `${zap.top}%`,
+                    animationDuration: `${zap.durationS.toFixed(2)}s`,
+                    animationDelay: `${zap.delayS.toFixed(2)}s`,
+                  }}
+                >
+                  <span className="sos-zap-flash" />
+                  {zap.sparks.map((spark, j) => (
+                    <span
+                      key={j}
+                      className="sos-zap-spark"
+                      style={
+                        {
+                          "--sos-spark-angle": `${spark.angleDeg.toFixed(0)}deg`,
+                          "--sos-spark-distance": `${spark.distancePct.toFixed(0)}%`,
+                        } as CSSProperties
+                      }
+                    />
+                  ))}
+                </span>
+              ))}
+            </>
+          )}
         </>
       ) : null}
     </div>

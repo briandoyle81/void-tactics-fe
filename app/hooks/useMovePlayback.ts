@@ -23,6 +23,8 @@ export interface BoardMove {
   actionType: number;
   /** 0 when the move has no target. */
   targetShipId: number;
+  /** A Ram: the tile it rams from (where it slides to before the charge); `to` is its victim's tile. */
+  ramFrom?: { row: number; col: number };
   /** The target was destroyed by this move: its explosion plays after the hit. */
   killsTarget?: boolean;
   /** The target's hull and reactor damage once this move lands (the cinematic's hull bar drains to it). */

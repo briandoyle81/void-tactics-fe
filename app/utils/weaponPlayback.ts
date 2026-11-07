@@ -7,14 +7,26 @@
 // sound lengths in public/sound/).
 
 import {
-  FLEE_GLOW_BUILD_MS,
-  FLEE_ZOOM_DURATION_MS,
+  ATTACK_DRONES_MS,
+  EMP_MS,
+  FLAK_MS,
+  LASER_BEAM_COUNT,
+  LASER_FIRE_INTERVAL_MS,
+  LASER_SCORCH_MS,
+  MINING_DRILL_MS,
+  PLASMA_BURST_MS,
+  REPAIR_DRONES_MS,
   LASER_TRACE_PERIOD_MS,
+  LIGHTNING_FIELD_MS,
   MISSILE_IMPACT_DURATION_MS,
   MISSILE_SECOND_FIRE_DELAY_MS,
   RAILGUN_IMPACT_DURATION_MS,
+  railgunChargeMs,
+  railgunSpeedCellsPerSec,
   TORPEDO_IMPACT_DURATION_MS,
   TORPEDO_SPEED_SCALE,
+  RAM_MS,
+  RETREAT_MS,
 } from "../constants/animationTiming";
 
 /** What a move fires: its main weapon, a special (by kind) or the faction ability. */
@@ -29,18 +41,8 @@ export type WeaponEffectKind =
   | { kind: "retreat" }
   | { kind: "none" };
 
-/** The red laser's volley: its 7 snaps, 150 ms apart, then the last bolt fading. */
-const LASER_VOLLEY_MS = 7 * 150 + 300;
-const PLASMA_BURST_MS = 2700; // plasma-flame.wav
-const MINING_DRILL_MS = 1400; // mining-drill.wav
-const FLAK_MS = 1800; // flak.wav
-const EMP_MS = 1300; // emp.wav
-const LIGHTNING_MS = 2400; // lightning-field.wav
-const DRONE_CYCLE_MS = 3200; // Repair / Attack drones' flight
-const REPAIR_DRONES_MS = DRONE_CYCLE_MS + 360; // the last of 3 launches 360 ms in
-const ATTACK_DRONES_MS = DRONE_CYCLE_MS + 450; // the last of 4 launches 450 ms in
-const RAM_MS = 2400; // RamAnimation's cycle
-const RETREAT_MS = 2700; // warp-collapse.wav (the flee is FLEE_GLOW_BUILD_MS + FLEE_ZOOM_DURATION_MS)
+/** The red laser's volley: 7 needles 150 ms apart (1,300 ms with the last scorch), rounded up to the 1,350 ms it has always had. */
+const LASER_VOLLEY_MS = Math.max(1350, (LASER_BEAM_COUNT - 1) * LASER_FIRE_INTERVAL_MS + LASER_SCORCH_MS);
 
 /** One firing's length in ms. `distanceCells` (straight-line) times the projectiles. */
 export function weaponOnceMs(effect: WeaponEffectKind, distanceCells: number): number {
@@ -49,9 +51,9 @@ export function weaponOnceMs(effect: WeaponEffectKind, distanceCells: number): n
     case "main": {
       if (effect.mainWeapon === 0) return effect.variant === 2 ? LASER_TRACE_PERIOD_MS : LASER_VOLLEY_MS;
       if (effect.mainWeapon === 1) {
-        // Railgun 8 cells/s, Linear Accelerator 3.5; then its impact.
-        const flightMs = (d / (effect.variant === 2 ? 3.5 : 8)) * 1000;
-        return Math.round(flightMs + RAILGUN_IMPACT_DURATION_MS + 150);
+        // The charge, the flight (Railgun 8 cells/s, Linear Accelerator 3.5), then its impact.
+        const flightMs = (d / railgunSpeedCellsPerSec(effect.variant)) * 1000;
+        return Math.round(railgunChargeMs(effect.variant) + flightMs + RAILGUN_IMPACT_DURATION_MS + 150);
       }
       if (effect.mainWeapon === 2) {
         // Missiles drift 0.5 s, then fly at 4 cells/s (torpedoes slower); the
@@ -69,7 +71,7 @@ export function weaponOnceMs(effect: WeaponEffectKind, distanceCells: number): n
     case "emp":
       return EMP_MS;
     case "lightning":
-      return LIGHTNING_MS;
+      return LIGHTNING_FIELD_MS;
     case "repair":
       return REPAIR_DRONES_MS;
     case "attackDrones":
@@ -77,7 +79,7 @@ export function weaponOnceMs(effect: WeaponEffectKind, distanceCells: number): n
     case "ram":
       return RAM_MS;
     case "retreat":
-      return Math.max(RETREAT_MS, FLEE_GLOW_BUILD_MS + FLEE_ZOOM_DURATION_MS);
+      return RETREAT_MS;
     case "none":
       return 0;
   }

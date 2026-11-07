@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { destroyedShipImage, unconstructedShipImage } from "../utils/shipRenderer/stateArt";
-import { useGridShipRenderer } from "../hooks/useGridShipRenderer";
+import { renderGridShipImageSync, useGridShipRenderer } from "../hooks/useGridShipRenderer";
+import { hasDroneArt, withoutSpecialArt } from "./weapon-animations/droneArt";
 import { GridShip } from "../types/gridDisplay";
 import { calculateShipRank } from "../utils/shipLevel";
 import { SHIP_IMAGE_RANK_STAR_BOX, SHIP_IMAGE_RANK_STAR_BOX_LARGE } from "./ShipImage";
@@ -17,6 +18,12 @@ interface GridShipImageProps {
   style?: React.CSSProperties;
   rankStarsSize?: "default" | "large";
   hideRankStars?: boolean;
+  /**
+   * Draw it without its drones (they're out flying, drawn by the drone
+   * effect: droneArt.ts). Passed (true or false) by the places that can hide
+   * them, which keeps the drone-less image ready so the swap never flashes.
+   */
+  hideSpecialArt?: boolean;
 }
 
 export function GridShipImage({
@@ -26,8 +33,19 @@ export function GridShipImage({
   style,
   rankStarsSize = "default",
   hideRankStars = false,
+  hideSpecialArt,
 }: GridShipImageProps) {
-  const { dataUrl, isLoading, error } = useGridShipRenderer(ship);
+  const { dataUrl: fullUrl, isLoading, error } = useGridShipRenderer(ship);
+  // The ship without its drones, rendered ahead (and decoded) wherever they can be hidden.
+  const canHide = hideSpecialArt !== undefined && hasDroneArt(ship);
+  const plainUrl = useMemo(() => (canHide ? renderGridShipImageSync(withoutSpecialArt(ship)) : null), [canHide, ship]);
+  useEffect(() => {
+    if (!plainUrl) return;
+    const img = new Image();
+    img.src = plainUrl;
+    void img.decode?.().catch(() => {});
+  }, [plainUrl]);
+  const dataUrl = hideSpecialArt && plainUrl ? plainUrl : fullUrl;
 
   const rankStarBox =
     rankStarsSize === "large"

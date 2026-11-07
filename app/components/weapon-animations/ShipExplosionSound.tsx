@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { playSoundEffect } from "../../hooks/useSoundEffects";
 import { takeFirstPlay } from "./playOnce";
 import { useWeaponSoundsMuted } from "./weaponSounds";
-import { MISSILE_SECOND_FIRE_DELAY_MS, TORPEDO_SPEED_SCALE } from "../../constants/animationTiming";
+import { MISSILE_SECOND_FIRE_DELAY_MS, RAM_HIT_MS, TORPEDO_SPEED_SCALE, railgunChargeMs, railgunSpeedCellsPerSec } from "../../constants/animationTiming";
 
 // A destroyed ship's explosion (ship-explosion.wav, 3.3 s: subsystems
 // popping, then the reactor going up). GameGridOverlays renders this when the
@@ -30,13 +30,14 @@ export type KillingBlow =
 export function shipExplosionDelayMs(blow: KillingBlow): number {
   let hitS = 0.3;
   if (blow.kind === "ram") {
-    hitS = 0.67; // RamAnimation: first impact ~28% into its 2.4 s cycle
+    hitS = RAM_HIT_MS / 1000; // RamAnimation's hit
   } else if (blow.kind === "weapon") {
     const d = Math.max(0, blow.distanceCells);
     if (blow.mainWeapon === 0) {
       hitS = 0.15; // Laser / Mining Laser: beams land at once
     } else if (blow.mainWeapon === 1) {
-      hitS = d / (blow.variant === 2 ? 3.5 : 8); // Railgun 8 cells/s; Linear Accelerator 3.5
+      // The rails' charge, then the flight (Railgun 8 cells/s; Linear Accelerator 3.5).
+      hitS = railgunChargeMs(blow.variant) / 1000 + d / railgunSpeedCellsPerSec(blow.variant);
     } else if (blow.mainWeapon === 2) {
       // Missiles drift 0.5 s, then fly at 4 cells/s (torpedoes slower); the
       // kill comes with the last missile, MISSILE_SECOND_FIRE_DELAY_MS behind.

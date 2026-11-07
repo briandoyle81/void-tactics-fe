@@ -61,7 +61,8 @@ export function moveContentKey(m: RawMove): string {
 /**
  * A raw move as a playback move. A Ram (variant 1's faction ability) records
  * the tile before the ram, but the rammer ends on its victim's tile, so it
- * slides there (`targetPosition`: the victim's tile on the board before the move).
+ * charges there (`targetPosition`: the victim's tile on the board before the
+ * move) from the recorded tile (`ramFrom`), after sliding to it.
  */
 export function boardMoveFromRaw(
   key: string,
@@ -87,6 +88,7 @@ export function boardMoveFromRaw(
           : { row: m.newRow, col: m.newCol },
     actionType: m.actionType,
     targetShipId: m.targetShipId,
+    ...(isRam && m.newRow >= 0 && m.newCol >= 0 ? { ramFrom: { row: m.newRow, col: m.newCol } } : {}),
     killsTarget: ctx.killsTarget,
     targetAfter: ctx.targetAfter,
   };

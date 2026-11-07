@@ -57,7 +57,7 @@ const isUniqueViolation = (e: unknown) =>
   e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
 
 export async function POST(req: NextRequest) {
-  // Off while Dynamic sponsors embedded-wallet gas (GAS_FAUCET_ENABLED).
+  // Off while Dynamic sponsors embedded-wallet gas (GAS_FAUCET_ENABLED, GAS_SPONSORSHIP_ENABLED).
   if (!GAS_FAUCET_ENABLED || !FAUCET_KEY) return json({ status: "ineligible", reason: "faucet-disabled" });
 
   let claims;

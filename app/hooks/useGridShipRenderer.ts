@@ -54,6 +54,24 @@ function cacheRenderedImage(ship: GridShip, dataUrl: string): void {
   renderedImageAccessOrder.push(key);
 }
 
+/**
+ * The ship's image now, from the cache or rendered on the spot (no loading
+ * state): for a variant drawn for a moment, such as a ship whose drones are
+ * out (GridShipImage's hideSpecialArt), so it never flashes a placeholder.
+ */
+export function renderGridShipImageSync(ship: GridShip): string | null {
+  const cached = getCachedRenderedImage(ship);
+  if (cached) return cached;
+  try {
+    const dataUrl = renderShip(ship);
+    if (!dataUrl || typeof dataUrl !== "string") return null;
+    cacheRenderedImage(ship, dataUrl);
+    return dataUrl;
+  } catch {
+    return null;
+  }
+}
+
 interface ShipImageState {
   dataUrl: string | null;
   isLoading: boolean;

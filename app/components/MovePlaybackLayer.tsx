@@ -19,8 +19,7 @@ import { LightningFieldAnimation } from "./weapon-animations/LightningFieldAnima
 import { RepairDroneAnimation } from "./weapon-animations/RepairDroneAnimation";
 import { AttackDroneAnimation } from "./weapon-animations/AttackDroneAnimation";
 import { RamAnimation } from "./weapon-animations/RamAnimation";
-import { FleeAnimation } from "./weapon-animations/FleeAnimation";
-import { WarpFieldCollapseAnimation } from "./weapon-animations/WarpFieldCollapseAnimation";
+import { RetreatAnimation } from "./weapon-animations/RetreatAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs, type KillingBlow } from "./weapon-animations/ShipExplosionSound";
 import {
   CinematicHostContext,
@@ -28,8 +27,8 @@ import {
   cinematicCovers,
   cinematicDurationMs,
 } from "./weapon-animations/CombatCinematic";
-import { cellsInManhattanRange, flakArrayRange, lightningFieldRange } from "./GameGridOverlays";
-import { useCombatView } from "../hooks/useCombatView";
+import { cellsInManhattanRange, flakArrayRange, lightningFieldRange, shipCellsInRange } from "./GameGridOverlays";
+import { useCombatView, type CombatView } from "../hooks/useCombatView";
 
 // Draws the move that's playing back (useMovePlayback): while "moving", the
 // route arrow and the ship sliding along it; while "firing", the arrow and
@@ -47,8 +46,21 @@ type Position = { row: number; col: number };
 
 const sameTile = (a: Position, b: Position) => a.row === b.row && a.col === b.col;
 
-/** The ships GameGrid's cells hide while a move plays: the one sliding or fleeing, and a rammed victim. */
-export function playbackHiddenShipIds(active: ActivePlayback | null, shipMap: Map<number, GridShip>): Set<number> {
+/** Whether a ram plays in the cinematic's panels (as MovePlaybackLayer decides) rather than on the board. */
+function ramInCinematic(move: ActivePlayback["move"], shipMap: Map<number, GridShip>, combatView: CombatView): boolean {
+  return combatView === "cinematic" && !!move.targetShipId && move.targetShipId !== move.shipId && shipMap.has(move.targetShipId);
+}
+
+/**
+ * The ships GameGrid's cells hide while a move plays: the one sliding or
+ * fleeing, a rammed victim, and a rammer while its ram plays on the board
+ * (RamAnimation draws both ships meanwhile).
+ */
+export function playbackHiddenShipIds(
+  active: ActivePlayback | null,
+  shipMap: Map<number, GridShip>,
+  combatView: CombatView,
+): Set<number> {
   const ids = new Set<number>();
   if (!active) return ids;
   const { move, phase } = active;
@@ -56,7 +68,10 @@ export function playbackHiddenShipIds(active: ActivePlayback | null, shipMap: Ma
   const effect = ship ? effectOf(move.actionType, ship) : null;
   if (phase === "moving" && !sameTile(move.from, move.to)) ids.add(move.shipId);
   if (phase === "firing" && effect?.kind === "retreat") ids.add(move.shipId);
-  if (phase === "firing" && effect?.kind === "ram" && move.targetShipId) ids.add(move.targetShipId);
+  if (phase === "firing" && effect?.kind === "ram" && move.targetShipId) {
+    ids.add(move.targetShipId);
+    if (!ramInCinematic(move, shipMap, combatView)) ids.add(move.shipId);
+  }
   return ids;
 }
 
@@ -116,21 +131,6 @@ export function MovePlaybackLayer({
       true)
     : true;
 
-  // The route, computed once per move from the board as it was when the move started.
-  const path = useMemo(() => {
-    if (!move) return [];
-    return routeForShip({
-      shipId: move.shipId,
-      from: move.from,
-      to: move.to,
-      shipPositions: allShipPositions,
-      impassableGrid,
-      isDisabled: (id) => getShipAttributes(id)?.hullPoints === 0,
-    });
-    // The board changes as the move lands; the route is the one it set out on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [move?.key]);
-
   // A Ram ends on its victim's tile (boardMoveFromRaw), which leaves the
   // board as the rammer lands there (landShipPositions).
   const targetPos = move?.targetShipId
@@ -147,14 +147,38 @@ export function MovePlaybackLayer({
     !!targetShip &&
     !!targetPos &&
     move?.targetShipId !== move?.shipId;
-  // A cinematic ram charges in its panels instead of sliding on the board:
-  // the board puts the rammer on the victim's tile when the cinematic starts.
+  // An on-board ram slides to the tile it rams from (`ramFrom`), then
+  // charges its victim (RamAnimation). A cinematic ram charges in its panels
+  // instead of sliding on the board: the board puts the rammer on the
+  // victim's tile when the cinematic starts.
+  const ramOnBoard = effect.kind === "ram" && !cinematic;
+
+  // The route, computed once per move from the board as it was when the move started.
+  const path = useMemo(() => {
+    if (!move) return [];
+    const routeTo = (to: Position) =>
+      routeForShip({
+        shipId: move.shipId,
+        from: move.from,
+        to,
+        shipPositions: allShipPositions,
+        impassableGrid,
+        isDisabled: (id) => getShipAttributes(id)?.hullPoints === 0,
+      });
+    if (!ramOnBoard) return routeTo(move.to);
+    // A move without its ram tile: the last step before the victim.
+    return move.ramFrom ? routeTo(move.ramFrom) : routeTo(move.to).slice(0, -1);
+    // The board changes as the move lands; the route is the one it set out on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [move?.key, ramOnBoard]);
+  const ramFrom: Position | null = move && ramOnBoard ? (path[path.length - 1] ?? move.from) : null;
+
   const slides =
     !!move &&
     !!ship &&
     effect.kind !== "retreat" &&
     !(cinematic && effect.kind === "ram") &&
-    !sameTile(move.from, move.to);
+    !sameTile(move.from, ramFrom ?? move.to);
   const fireMs = cinematic ? cinematicDurationMs(effect) : weaponOnceMs(effect, distanceCells);
 
   // Skip a phase with nothing to draw (a hold doesn't slide; Pass fires nothing).
@@ -239,16 +263,22 @@ export function MovePlaybackLayer({
         targetCol: targetPos.col,
         facingRight: isCreator,
       };
-      if (effect.mainWeapon === 0) weapon = <LaserShootingAnimation {...aim} variant={effect.variant} />;
-      else if (effect.mainWeapon === 1) weapon = <RailgunShootingAnimation {...aim} variant={effect.variant} />;
-      else if (effect.mainWeapon === 2) weapon = <MissileShootingAnimation {...aim} variant={effect.variant} />;
+      if (effect.mainWeapon === 0) weapon = <LaserShootingAnimation {...aim} variant={effect.variant} once />;
+      else if (effect.mainWeapon === 1) weapon = <RailgunShootingAnimation {...aim} variant={effect.variant} once />;
+      else if (effect.mainWeapon === 2) weapon = <MissileShootingAnimation {...aim} variant={effect.variant} once />;
       else if (effect.mainWeapon === 3)
-        weapon = effect.variant === 2 ? <MiningDrillAnimation {...aim} /> : <PlasmaShootingAnimation {...aim} />;
+        weapon = effect.variant === 2 ? <MiningDrillAnimation {...aim} once /> : <PlasmaShootingAnimation {...aim} once />;
       break;
     }
     case "flak":
       weapon = (
-        <FlakExplosionAnimation {...common} targetCells={cellsInManhattanRange(attacker, flakArrayRange(ship), grid)} />
+        <FlakExplosionAnimation
+          {...common}
+          targetCells={cellsInManhattanRange(attacker, flakArrayRange(ship), grid)}
+          attacker={attacker}
+          facingRight={isCreator}
+          once
+        />
       );
       break;
     case "lightning":
@@ -258,6 +288,8 @@ export function MovePlaybackLayer({
           originRow={attacker.row}
           originCol={attacker.col}
           range={lightningFieldRange(ship)}
+          strikeCells={shipCellsInRange(attacker, lightningFieldRange(ship), grid, move.shipId)}
+          once
         />
       );
       break;
@@ -274,11 +306,11 @@ export function MovePlaybackLayer({
       };
       weapon =
         effect.kind === "emp" ? (
-          <EmpWaveAnimation {...aim} />
+          <EmpWaveAnimation {...aim} once />
         ) : effect.kind === "repair" ? (
-          <RepairDroneAnimation {...aim} />
+          <RepairDroneAnimation {...aim} facingRight={isCreator} ship={ship} once />
         ) : (
-          <AttackDroneAnimation {...aim} once />
+          <AttackDroneAnimation {...aim} facingRight={isCreator} ship={ship} once />
         );
       break;
     }
@@ -286,10 +318,12 @@ export function MovePlaybackLayer({
       weapon = (
         <RamAnimation
           gridContainerRef={gridContainerRef}
-          fromRow={move.from.row}
-          fromCol={move.from.col}
+          fromRow={(ramFrom ?? move.from).row}
+          fromCol={(ramFrom ?? move.from).col}
           toRow={move.to.row}
           toCol={move.to.col}
+          rammer={ship}
+          rammerIsCreator={isCreator}
           victim={move.targetShipId ? (shipMap.get(move.targetShipId) ?? null) : null}
           victimIsCreator={!isCreator}
           playKey={soundOnceKey}
@@ -298,16 +332,14 @@ export function MovePlaybackLayer({
       break;
     case "retreat":
       weapon = (
-        <>
-          <WarpFieldCollapseAnimation {...common} row={move.from.row} col={move.from.col} />
-          <FleeAnimation
-            gridContainerRef={gridContainerRef}
-            fromRow={move.from.row}
-            fromCol={move.from.col}
-            ship={ship}
-            isCreator={isCreator}
-          />
-        </>
+        <RetreatAnimation
+          gridContainerRef={gridContainerRef}
+          row={move.from.row}
+          col={move.from.col}
+          ship={ship}
+          isCreator={isCreator}
+          soundOnceKey={soundOnceKey}
+        />
       );
       break;
     case "none":

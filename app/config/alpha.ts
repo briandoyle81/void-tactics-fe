@@ -34,9 +34,16 @@ export const WEB2_SIGN_IN_ENABLED = false;
 
 /**
  * The test-ETH gas faucet (/api/faucet/gas, GasGrantClaimer) for Dynamic
- * embedded wallets. Off: Dynamic sponsors the embedded wallet's gas now
- * (useSponsoredWriteContract), and the faucet only ever served embedded
- * wallets. The client stops asking and the route refuses. Flip to true to
- * bring it back.
+ * embedded wallets: on while gas sponsorship is off, so embedded wallets
+ * can pay their own gas. Off, the client stops asking and the route refuses.
  */
-export const GAS_FAUCET_ENABLED = false;
+export const GAS_FAUCET_ENABLED = true;
+
+/**
+ * Dynamic's EVM gas sponsorship for the embedded wallet
+ * (useSponsoredWriteContract). Off for now: every write goes through wagmi's
+ * writeContract and the player pays gas (the embedded wallet's from the gas
+ * faucet), even when sponsorship is on in Dynamic's dashboard. Flip to true
+ * (and GAS_FAUCET_ENABLED to false) to bring it back.
+ */
+export const GAS_SPONSORSHIP_ENABLED = false;

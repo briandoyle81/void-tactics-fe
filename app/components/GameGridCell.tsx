@@ -7,9 +7,11 @@ import { Attributes } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { useMovePlaybackContext } from "./MovePlaybackContext";
 import { GridShipImage } from "./GridShipImage";
+import { useDroneArtHidden } from "./weapon-animations/droneArt";
 import { calculateShipRank } from "../utils/shipLevel";
 import { setMirroredDragImage } from "../utils/dragShipImage";
 import { RetreatPrepAnimation } from "./weapon-animations/RetreatPrepAnimation";
+import { sosDriftDelay, useSosEntry } from "./sosState";
 import { SosHullFires } from "./SosHullFires";
 import { TutorialTargetFrame } from "./TutorialTarget";
 import type { TutorialHighlightLook } from "@/app/hooks/useGridCellSets";
@@ -214,6 +216,8 @@ export const GameGridCell = React.memo(function GameGridCell({
 }: GameGridCellProps) {
                 const { hiddenShipIds: playbackHiddenShipIds } = useMovePlaybackContext();
                 const ship = cell ? shipMap.get(cell.shipId) : null;
+                // Its drones are out (a drone special is playing): drawn without them.
+                const droneArtHidden = useDroneArtHidden(cell?.shipId, rowIndex, colIndex);
                 const cellStatus = cell?.status ?? 0;
                 const isCellDestroyed = cellStatus === 1;
                 const isCellFled = cellStatus === 2;
@@ -268,6 +272,15 @@ export const GameGridCell = React.memo(function GameGridCell({
                   !isHoldHologramPulse &&
                   (isProposedMoveToHologram || isSosPreviewHologram);
                 const showMovedGrayscale = !!hasShipMoved;
+                // A disabled (0 HP) ship: its underglow, drift and tag (sosState.ts).
+                const sosAttributes = cell ? getShipAttributes(cell.shipId) : null;
+                const isLiveSos = !!sosAttributes && sosAttributes.hullPoints === 0 && cellStatus !== 1;
+                const isSosCell = !!cell && cellStatus !== 1 && (isLiveSos || isOptimisticSos || isSosPreviewHologram);
+                // Disabled while you watch: it rolls into its tilt (not for a staged attack's preview).
+                const sosEntering = useSosEntry(cell?.shipId, isLiveSos || isOptimisticSos);
+                // Every disabled ship sways on one clock, from when its drift starts.
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+                const sosDriftDelayMs = React.useMemo(() => sosDriftDelay(), [isSosCell]);
 
                 // Check if this cell contains a valid target
                 // When dragging, use dragValidTargets; otherwise use validTargets
@@ -1038,16 +1051,13 @@ export const GameGridCell = React.memo(function GameGridCell({
                       </>
                     )}
 
-                    {/* Critical hull glow effect for 0 HP ships */}
-                    {cell &&
-                      (() => {
-                        const attributes = getShipAttributes(cell.shipId);
-                        const isLiveSos =
-                          !!attributes && attributes.hullPoints === 0;
-                        return isLiveSos || isOptimisticSos || isSosPreviewHologram;
-                      })() && (
-                        <div className="absolute inset-0 z-[5] border-2 border-warning-red bg-warning-red/10 pointer-events-none animate-pulse" />
-                      )}
+                    {/* A disabled (0 HP) ship's red underglow, pulsing S-O-S (sosState.ts). */}
+                    {isSosCell && (
+                      <div className="pointer-events-none absolute inset-0 z-[5]" aria-hidden>
+                        <div className={sosEntering ? "sos-underglow sos-underglow-entering" : "sos-underglow"} />
+                        {sosEntering && <div className="sos-blast" />}
+                      </div>
+                    )}
 
                     {cell &&
                       (() => {
@@ -1174,13 +1184,11 @@ export const GameGridCell = React.memo(function GameGridCell({
                           if (!isLiveSos && !isOptimisticSos && !isSosPreviewHologram) return null;
                           // Destroyed ships (status 1) use destroyed art only, not the SOS label
                           if ((cell.status ?? 0) === 1) return null;
+                          // Sized to the cell: its box is a size container.
                           return (
-                            <div
-                              className="absolute top-0 left-1/2 -translate-x-1/2 mt-0.5 z-20 flex items-center justify-center pointer-events-none"
-                              title="Disabled (0 HP)"
-                            >
-                              <div className="px-1 py-0.5 flex items-center justify-center bg-warning-red/60 border border-warning-red">
-                                <span className="text-xs leading-none font-mono text-white">[SOS]</span>
+                            <div className="absolute inset-0 z-20 pointer-events-none [container-type:size]">
+                              <div className={sosEntering ? "sos-tag sos-tag-entering" : "sos-tag"} title="Disabled (0 HP)">
+                                [SOS]
                               </div>
                             </div>
                           );
@@ -1192,6 +1200,7 @@ export const GameGridCell = React.memo(function GameGridCell({
                             <RetreatPrepAnimation
                               ship={ship}
                               isCreator={retreatPrepIsCreator}
+                              disabled={getShipAttributes(cell.shipId)?.hullPoints === 0 && (cell.status ?? 0) !== 1}
                               selectionOutlineClassName={
                                 canMoveShip
                                   ? "ring-2 ring-inset ring-blue-400"
@@ -1232,9 +1241,11 @@ export const GameGridCell = React.memo(function GameGridCell({
                           return (
                             <div
                               className={`relative h-full w-full origin-center ${
-                                isSosArt ? "sos-art-tilt rotate-[15deg]" : ""
+                                isSosArt ? "sos-art-tilt sos-drift" : ""
                               }`}
+                              style={isSosArt ? { animationDelay: sosDriftDelayMs } : undefined}
                             >
+                            <div className={`relative h-full w-full origin-center ${isSosArt && sosEntering ? "sos-entering" : ""}`}>
                             <div
                               className={`relative h-full w-full ${
                                 isSosArt && cell.isCreator ? "scale-x-[-1]" : ""
@@ -1249,9 +1260,11 @@ export const GameGridCell = React.memo(function GameGridCell({
                               } ${showMovedGrayscale ? "grayscale" : ""}`}
                               showLoadingState={true}
                               hideRankStars
+                              hideSpecialArt={droneArtHidden}
                             />
-                            {isSosArt && !shouldHideShipArt && (
-                              <SosHullFires shipId={cell.shipId} />
+                            {/* The retreat preview draws its own (it turns the ship). */}
+                            {isSosArt && !shouldHideShipArt && retreatPrepShipId !== cell.shipId && (
+                              <SosHullFires shipId={cell.shipId} failing />
                             )}
                             {isHoldHologramPulse && !shouldHideShipArt && (
                               <div
@@ -1264,9 +1277,11 @@ export const GameGridCell = React.memo(function GameGridCell({
                                   className={imageClassName}
                                   showLoadingState={false}
                                   hideRankStars
+                                  hideSpecialArt={droneArtHidden}
                                 />
                               </div>
                             )}
+                            </div>
                             </div>
                             </div>
                           );

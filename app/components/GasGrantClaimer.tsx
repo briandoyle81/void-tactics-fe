@@ -14,7 +14,7 @@ import { GAS_FAUCET_ENABLED } from "../config/alpha";
 // enforces once-per-wallet; this only avoids asking again). Remembered per
 // address in localStorage once the server says sent or already claimed. Testnet
 // only, until an onramp replaces it. Mounted once in providers.tsx.
-// Off (GAS_FAUCET_ENABLED) while Dynamic sponsors embedded-wallet gas.
+// Off (GAS_FAUCET_ENABLED) while Dynamic sponsors embedded-wallet gas (GAS_SPONSORSHIP_ENABLED).
 
 const DONE_KEY = "vt-gas-grant-v1";
 

@@ -89,6 +89,19 @@ export function cellsInManhattanRange(
   return cells;
 }
 
+/** The other ships within `range` of `origin` (Manhattan), leaving out `casterId`: where a Lightning Field's strikes land. */
+export function shipCellsInRange(
+  origin: Position,
+  range: number,
+  grid: (GridShipPosition | null)[][],
+  casterId: number,
+): Position[] {
+  return cellsInManhattanRange(origin, range, grid).filter((c) => {
+    const ship = grid[c.row]?.[c.col];
+    return ship != null && ship.shipId !== casterId;
+  });
+}
+
 
 function resolveDirectedAttackerPos(params: {
   previewPosition: Position | null;
@@ -518,15 +531,32 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
             {selectedShipId &&
               selectedWeaponType === "special" &&
               specialType === 3 &&
-                hologramWeaponFire(
+              (() => {
+                // The flak fires from where the ship will be (or is): its arrays sit on that cell.
+                const attackerPos = resolveSelectedAttackerPos({
+                  previewPosition,
+                  draggedShipId,
+                  dragOverCell,
+                  selectedShipId,
+                  findShipPositionById,
+                });
+                if (!attackerPos) return null;
+                const attackerIsCreator =
+                  selectedShipCreatorSide ??
+                  grid[attackerPos.row]?.[attackerPos.col]?.isCreator ??
+                  false;
+                return hologramWeaponFire(
                   hologramFire,
                   <FlakExplosionAnimation
                     gridContainerRef={gridContainerRef}
                     targetCells={flakEffectCells}
+                    attacker={attackerPos}
+                    facingRight={attackerIsCreator}
                   />,
-                )}
+                );
+              })()}
 
-            {/* Lightening Field: blue jagged sparks across every tile in range */}
+            {/* Lightening Field: an electric storm over every tile in range, striking the ships in it */}
             {selectedShipId &&
               selectedWeaponType === "special" &&
               specialType === 1 &&
@@ -546,6 +576,7 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     originRow={origin.row}
                     originCol={origin.col}
                     range={range}
+                    strikeCells={shipCellsInRange(origin, range, grid, selectedShipId)}
                   />,
                 );
               })()}
@@ -628,6 +659,12 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                   return null;
                 }
 
+                const attackerShip = shipMap.get(selectedShipId);
+                // Creator ships face right, joiner ships face left.
+                const attackerIsCreator =
+                  selectedShipCreatorSide ??
+                  grid[attackerRow]?.[attackerCol]?.isCreator ??
+                  false;
                 return hologramWeaponFire(
                   hologramFire,
                   <RepairDroneAnimation
@@ -636,6 +673,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     attackerCol={attackerCol}
                     targetRow={targetPosition.row}
                     targetCol={targetPosition.col}
+                    facingRight={attackerIsCreator}
+                    ship={attackerShip}
                   />,
                 );
               })()}
@@ -660,6 +699,11 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                 const targetPosition = findShipPositionById(targetShipId);
                 if (!attackerPos || !targetPosition) return null;
                 const { row: attackerRow, col: attackerCol } = attackerPos;
+                // Creator ships face right, joiner ships face left.
+                const attackerIsCreator =
+                  selectedShipCreatorSide ??
+                  grid[attackerRow]?.[attackerCol]?.isCreator ??
+                  false;
 
                 return hologramWeaponFire(
                   hologramFire,
@@ -669,6 +713,8 @@ export const GameGridOverlays = React.memo(function GameGridOverlays({
                     attackerCol={attackerCol}
                     targetRow={targetPosition.row}
                     targetCol={targetPosition.col}
+                    facingRight={attackerIsCreator}
+                    ship={shipMap.get(selectedShipId)}
                   />,
                 );
               })()}

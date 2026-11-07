@@ -4,20 +4,37 @@ import React, { useEffect, useRef } from "react";
 import { RETREAT_GLOW_BUILD_MS } from "../../constants/animationTiming";
 import { GridShip } from "../../types/gridDisplay";
 import { GridShipImage } from "../GridShipImage";
+import { SosHullFires } from "../SosHullFires";
 
 interface RetreatPrepAnimationProps {
   ship: GridShip;
   /** True if ship belongs to creator, false if joiner. Retreat flip: creator = native (no flip), joiner = opposite of native (flip). */
   isCreator: boolean;
+  /** A disabled ship (0 HP, the only kind that retreats): drawn tilted with its hull fires, as its cell draws it. */
+  disabled?: boolean;
   /** Same outline as selected ship: ring-2 ring-blue-400 (current player) or ring-2 ring-purple-400 (opponent). */
   selectionOutlineClassName?: string;
 }
 
+// The engine plume off the stern (the art faces left, its engines at 92%
+// across, 48% down), as RetreatAnimation draws it: a soft cyan streak with a
+// white-hot core and a glow at the nozzle. Sizes are fractions of the cell.
+const PLUME_LAYERS: Array<{ height: string; color: string }> = [
+  { height: "20%", color: "rgba(130, 215, 255, 0.3)" },
+  { height: "8%", color: "rgba(130, 215, 255, 0.75)" },
+  { height: "3%", color: "rgba(255, 250, 240, 0.9)" },
+];
 
-/** Shown in-cell when player selects Retreat: the ship flips to face its starting side and engine glow powers up. */
+/**
+ * Shown in-cell when the player selects Retreat: the ship turns to face its
+ * starting side and its engine plume powers up and pulses. Solid, not a
+ * hologram: the retreat plays as the ship itself turning and powering up,
+ * through to RetreatAnimation's jump.
+ */
 export const RetreatPrepAnimation = React.memo(function RetreatPrepAnimation({
   ship,
   isCreator,
+  disabled = false,
   selectionOutlineClassName = "ring-2 ring-blue-400",
 }: RetreatPrepAnimationProps) {
   // Opacity ramps through the DOM, not React state: a per-frame setState
@@ -49,52 +66,48 @@ export const RetreatPrepAnimation = React.memo(function RetreatPrepAnimation({
   // In game: creator ships have scale-x-[-1], joiner have no flip. When retreating we want opposite of in-game.
   // Creator retreating = native NFT position = no flip. Joiner retreating = opposite of native = flip.
   const shipFlipForRetreat = isCreator ? "scaleX(1)" : "scaleX(-1)";
-  const engineOnRightSide = isCreator; // creator flees left so engine glow on ship's right
 
   return (
     <div
       className={`absolute inset-0 flex items-center justify-center pointer-events-none z-20 rounded-sm ${selectionOutlineClassName}`}
     >
-      {/* When ship faces left: glow left edge 10% from right edge. When ship faces right: glow right edge 10% from left. Wide so it extends into the cell behind. */}
-      <div
-        ref={glowRef}
-        className="absolute pointer-events-none animate-thrust-pulse"
-        style={{
-          left: engineOnRightSide ? "90%" : "auto",
-          right: engineOnRightSide ? "auto" : "90%",
-          top: "55%",
-          width: "55%",
-          height: "25%",
-          marginTop: "-12.5%",
-          marginLeft: engineOnRightSide ? 0 : undefined,
-          transformOrigin: engineOnRightSide ? "left center" : "right center",
-          // Thrust shape: bright at nozzle (ship side), fading backward like exhaust
-          background:
-            engineOnRightSide
-              ? "linear-gradient(90deg, rgba(180, 230, 255, 0.95) 0%, rgba(120, 200, 255, 0.7) 25%, rgba(80, 170, 255, 0.4) 50%, transparent 85%)"
-              : "linear-gradient(270deg, rgba(180, 230, 255, 0.95) 0%, rgba(120, 200, 255, 0.7) 25%, rgba(80, 170, 255, 0.4) 50%, transparent 85%)",
-          opacity: 0,
-          filter: "blur(3px)",
-          transition: "opacity 0.05s linear",
-          clipPath: engineOnRightSide
-            ? "ellipse(100% 50% at 0% 50%)"
-            : "ellipse(100% 50% at 100% 50%)",
-        }}
-      />
-      {/* Ship art - opposite of in-game: creator = native (no flip), joiner = flip.
-          Solid, not a hologram: the retreat plays as the ship itself turning
-          and powering up, through to FleeAnimation's zoom off the board. */}
-      <div
-        className="relative w-full h-full flex items-center justify-center"
-        style={{
-          transform: shipFlipForRetreat,
-        }}
-      >
-        <GridShipImage
-          ship={ship}
-          className="w-full h-full object-contain"
-          showLoadingState={false}
-        />
+      <div className="relative h-full w-full" style={{ transform: disabled ? "rotate(15deg)" : undefined }}>
+        {/* Ship art, its plume and its fires, mirrored together: creator = native (no flip), joiner = flip. */}
+        <div className="relative h-full w-full" style={{ transform: shipFlipForRetreat }}>
+          <div
+            ref={glowRef}
+            className="absolute pointer-events-none animate-thrust-pulse"
+            style={{ left: "92%", top: "48%", width: "60%", height: "100%", marginTop: "-50%", opacity: 0, transformOrigin: "0 50%" }}
+          >
+            {PLUME_LAYERS.map((layer) => (
+              <div
+                key={layer.height}
+                className="absolute left-0 rounded-full"
+                style={{
+                  top: "50%",
+                  width: "100%",
+                  height: layer.height,
+                  transform: "translateY(-50%)",
+                  background: `linear-gradient(90deg, ${layer.color}, transparent)`,
+                }}
+              />
+            ))}
+            <div
+              className="absolute rounded-full"
+              style={{
+                left: 0,
+                top: "50%",
+                width: "40%",
+                height: "24%",
+                transform: "translate(-50%, -50%)",
+                background:
+                  "radial-gradient(closest-side, rgba(255, 250, 240, 0.8), rgba(130, 215, 255, 0.5) 40%, transparent)",
+              }}
+            />
+          </div>
+          <GridShipImage ship={ship} className="relative w-full h-full object-contain" showLoadingState={false} />
+          {disabled && <SosHullFires shipId={ship.id} failing />}
+        </div>
       </div>
     </div>
   );

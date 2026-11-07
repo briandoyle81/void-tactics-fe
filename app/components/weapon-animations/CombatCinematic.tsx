@@ -5,6 +5,7 @@ import { GRID_DIMENSIONS, getMainWeaponName, getSpecialName } from "../../types/
 import type { GridShip } from "../../types/gridDisplay";
 import { weaponOnceMs, type WeaponEffectKind } from "../../utils/weaponPlayback";
 import { GridShipImage } from "../GridShipImage";
+import { DroneArtContext, DroneArtStore, useDroneArtHiddenIn } from "./droneArt";
 import { SosHullFires } from "../SosHullFires";
 import { LaserShootingAnimation } from "./LaserShootingAnimation";
 import { RailgunShootingAnimation } from "./RailgunShootingAnimation";
@@ -16,7 +17,9 @@ import { AttackDroneAnimation } from "./AttackDroneAnimation";
 import { RepairDroneAnimation } from "./RepairDroneAnimation";
 import { ShipExplosionSound, shipExplosionDelayMs } from "./ShipExplosionSound";
 import { WeaponSoundsMuted, useWeaponSoundsMuted } from "./weaponSounds";
-import { playRamCrash } from "./RamAnimation";
+import { paintRamLight, playRamCrash, rammerAt, type RamLayout, type RamTiming } from "./RamAnimation";
+import { attachOverlayCanvas, FX_CANVAS_STYLE, prefersReducedMotion } from "./canvasFx";
+import { startCancelledRaf } from "./overlayPaint";
 import type { TargetStatusAfter } from "../../hooks/useMovePlayback";
 import { terrainFullArt } from "../../utils/terrainEdges";
 
@@ -169,11 +172,17 @@ function weaponName(effect: WeaponEffectKind, ship: GridShip): string {
   return "";
 }
 
+/** The cinematic's charge: the board's back-off and shove, with a longer charge across the panels. */
+const CINEMATIC_RAM_TIMING: RamTiming = { windupMs: RAM_WINDUP_MS, chargeMs: RAM_CHARGE_MS, followMs: 360 };
+
 /**
- * The rammer on a panel's staged board: at its cell until `charging`, then a
- * short back-up and a charge to the victim's cell, where it stays. Drawn in
+ * The rammer on a panel's staged board: at its cell until `charging`, then
+ * the ram's back-off, its charge across to the victim and its shove onto the
+ * victim's cell, where it stays (RamAnimation's motion), with the ram's light
+ * (plume, ram field, the hit) on a canvas over the staged board. Drawn in
  * both panels from the same moment, so it leaves the rammer's panel through
- * its frame and arrives in the victim's.
+ * its frame and arrives in the victim's. The victim's panel knocks its own
+ * ship out of frame.
  */
 function ChargingShip({
   ship,
@@ -181,68 +190,53 @@ function ChargingShip({
   to,
   facesRight,
   charging,
+  boardRef,
 }: {
   ship: GridShip;
   from: Cell;
   to: Cell;
   facesRight: boolean;
   charging: boolean;
+  boardRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const shipRef = useRef<HTMLDivElement | null>(null);
-  const trailRef = useRef<HTMLDivElement | null>(null);
-  const dx = (to.col - from.col) * CELL;
-  const dy = (to.row - from.row) * CELL;
-  const dist = Math.hypot(dx, dy) || 1;
-  const back = { x: (-dx / dist) * CELL * 0.35, y: (-dy / dist) * CELL * 0.35 };
-  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-  const total = RAM_WINDUP_MS + RAM_CHARGE_MS;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!charging) return;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const windup = RAM_WINDUP_MS / total;
-    shipRef.current?.animate(
-      reduced
-        ? [{ transform: "translate(0,0)" }, { transform: `translate(${dx}px, ${dy}px)` }]
-        : [
-            { transform: "translate(0,0)", easing: "ease-out" },
-            { transform: `translate(${back.x}px, ${back.y}px)`, offset: windup, easing: "cubic-bezier(.5,0,1,.6)" },
-            { transform: `translate(${dx}px, ${dy}px)` },
-          ],
-      { duration: total, fill: "forwards" },
-    );
-    trailRef.current?.animate(
-      [
-        { opacity: 0, transform: `rotate(${angle}deg) scaleX(0)` },
-        { opacity: 0, transform: `rotate(${angle}deg) scaleX(0)`, offset: RAM_WINDUP_MS / total },
-        { opacity: 1, transform: `rotate(${angle}deg) scaleX(1)`, offset: 0.97 },
-        { opacity: 0, transform: `rotate(${angle}deg) scaleX(1)` },
-      ],
-      { duration: total + 260, fill: "forwards" },
-    );
+    const board = boardRef.current;
+    const canvas = canvasRef.current;
+    if (!board || !canvas) return;
+    const surface = attachOverlayCanvas(board, canvas, "add");
+    const reduced = prefersReducedMotion();
+    const seed = Math.floor(Math.random() * 1000);
+    const layout: RamLayout = {
+      from: { x: (from.col + 0.5) * CELL, y: (from.row + 0.5) * CELL },
+      to: { x: (to.col + 0.5) * CELL, y: (to.row + 0.5) * CELL },
+      cell: CELL,
+      facingRight: facesRight,
+      // The victim is its panel's own ship; the charge's light doesn't draw it.
+      victimTilt: (15 * Math.PI) / 180,
+      victimBob: 0,
+    };
+    const startedAt = performance.now();
+    const paint = (now: number) => {
+      const f = now - startedAt;
+      const r = rammerAt(f, layout, CINEMATIC_RAM_TIMING, reduced);
+      if (shipRef.current) {
+        shipRef.current.style.transform = `translate(${r.x - layout.from.x}px, ${r.y - layout.from.y}px)`;
+      }
+      const ctx = surface.begin();
+      if (ctx) paintRamLight(ctx, f, layout, CINEMATIC_RAM_TIMING, seed, reduced, false);
+    };
+    paint(startedAt);
+    return startCancelledRaf(paint);
     // One run per charge.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charging]);
 
-  const thickness = CELL * 0.14;
   return (
     <>
-      {/* The charge's streak, from where the rammer set out to the impact. */}
-      <div
-        ref={trailRef}
-        className="pointer-events-none absolute"
-        style={{
-          left: (from.col + 0.5) * CELL,
-          top: (from.row + 0.5) * CELL - thickness / 2,
-          width: dist,
-          height: thickness,
-          opacity: 0,
-          transformOrigin: "0 50%",
-          background:
-            "linear-gradient(90deg, transparent 0%, rgba(100, 200, 255, 0.35) 35%, rgba(200, 240, 255, 0.9) 85%, #ffffff 100%)",
-          filter: "blur(2px)",
-        }}
-      />
       <div
         ref={shipRef}
         className="pointer-events-none absolute"
@@ -255,6 +249,7 @@ function ChargingShip({
           showLoadingState={false}
         />
       </div>
+      <canvas ref={canvasRef} style={{ ...FX_CANVAS_STYLE, zIndex: 6 }} />
     </>
   );
 }
@@ -286,14 +281,20 @@ function StagedWeapon({
   attacker,
   defender,
   facingRight,
+  ship,
   soundOnceKey,
+  attackerShown = true,
 }: {
   effect: WeaponEffectKind;
   boardRef: React.RefObject<HTMLDivElement | null>;
   attacker: Cell;
   defender: Cell;
   facingRight: boolean;
+  /** The attacking ship (the drone specials' drones are cut out of its art). */
+  ship: GridShip;
   soundOnceKey: string;
+  /** Whether this panel draws the attacker (the defender's panel doesn't): its drones then leave its art. */
+  attackerShown?: boolean;
 }) {
   const aim = {
     gridContainerRef: boardRef,
@@ -303,17 +304,17 @@ function StagedWeapon({
     targetCol: defender.col,
     soundOnceKey,
   };
-  if (effect.kind === "emp") return <EmpWaveAnimation {...aim} />;
-  if (effect.kind === "attackDrones") return <AttackDroneAnimation {...aim} once />;
-  if (effect.kind === "repair") return <RepairDroneAnimation {...aim} />;
+  if (effect.kind === "emp") return <EmpWaveAnimation {...aim} once />;
+  if (effect.kind === "attackDrones") return <AttackDroneAnimation {...aim} facingRight={facingRight} ship={ship} hideShipArt={attackerShown} once />;
+  if (effect.kind === "repair") return <RepairDroneAnimation {...aim} facingRight={facingRight} ship={ship} hideShipArt={attackerShown} once />;
   if (effect.kind !== "main") return null;
-  if (effect.mainWeapon === 0) return <LaserShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} />;
-  if (effect.mainWeapon === 1) return <RailgunShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} />;
-  if (effect.mainWeapon === 2) return <MissileShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} />;
+  if (effect.mainWeapon === 0) return <LaserShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} once />;
+  if (effect.mainWeapon === 1) return <RailgunShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} once />;
+  if (effect.mainWeapon === 2) return <MissileShootingAnimation {...aim} facingRight={facingRight} variant={effect.variant} once />;
   return effect.variant === 2 ? (
-    <MiningDrillAnimation {...aim} facingRight={facingRight} />
+    <MiningDrillAnimation {...aim} facingRight={facingRight} once />
   ) : (
-    <PlasmaShootingAnimation {...aim} facingRight={facingRight} />
+    <PlasmaShootingAnimation {...aim} facingRight={facingRight} once />
   );
 }
 
@@ -382,6 +383,9 @@ function CinematicPanel({
   children?: React.ReactNode;
   boardRef: React.RefObject<HTMLDivElement | null>;
 }) {
+  // The drone specials take the drones off this panel's ship while they're out (droneArt.ts).
+  const [droneArt] = useState(() => new DroneArtStore());
+  const droneArtHidden = useDroneArtHiddenIn(droneArt, ship.id, focus.row, focus.col);
   // Shake and flash without remounting: the weapon inside keeps running.
   const shakeRef = useRef<HTMLDivElement | null>(null);
   const flashRef = useRef<HTMLDivElement | null>(null);
@@ -497,8 +501,9 @@ function CinematicPanel({
                     className={`h-full w-full ${!shipDisabled && shipFacesRight ? "[&_img]:scale-x-[-1]" : ""}`}
                     hideRankStars
                     showLoadingState={false}
+                    hideSpecialArt={droneArtHidden}
                   />
-                  {shipDisabled && <SosHullFires shipId={ship.id} />}
+                  {shipDisabled && <SosHullFires shipId={ship.id} failing />}
                 </div>
               </div>
               {shipStatus && (
@@ -511,7 +516,7 @@ function CinematicPanel({
               )}
             </div>
             </div>
-            {children}
+            <DroneArtContext.Provider value={droneArt}>{children}</DroneArtContext.Provider>
           </div>
           <div
             className="pointer-events-none absolute inset-0 opacity-50 mix-blend-overlay"
@@ -770,20 +775,23 @@ export const CombatCinematic = React.memo(function CombatCinematic({
   const ramDist = Math.hypot(ramDx, ramDy) || 1;
   const knockOff: Pt | null =
     isRam && hit > 0 ? { x: (ramDx / ramDist) * CELL * 4, y: (ramDy / ramDist) * CELL * 4 + CELL * 0.8 } : null;
-  const rammer = isRam ? (
-    <ChargingShip
-      ship={attacker}
-      from={stagedAttacker}
-      to={stagedDefender}
-      facesRight={attackerIsCreator}
-      charging={firing || hit > 0}
-    />
-  ) : null;
+  const rammer = (boardRef: React.RefObject<HTMLDivElement | null>) =>
+    isRam ? (
+      <ChargingShip
+        ship={attacker}
+        from={stagedAttacker}
+        to={stagedDefender}
+        facesRight={attackerIsCreator}
+        charging={firing || hit > 0}
+        boardRef={boardRef}
+      />
+    ) : null;
   const weaponProps = {
     effect,
     attacker: stagedAttacker,
     defender: stagedDefender,
     facingRight: attackerIsCreator,
+    ship: attacker,
   };
 
   return (
@@ -823,7 +831,7 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             captionSide={attackerIsCreator ? "left" : "right"}
             boardRef={boardA}
           >
-            {rammer}
+            {rammer(boardA)}
             {firing && !isRam && (
               <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
                 <StagedWeapon {...weaponProps} boardRef={boardA} soundOnceKey={soundOnceKey} />
@@ -872,11 +880,11 @@ export const CombatCinematic = React.memo(function CombatCinematic({
             boardRef={boardB}
           >
             {/* The same shot, from the same moment; its sounds are A's. */}
-            {rammer}
+            {rammer(boardB)}
             <WeaponSoundsMuted value={true}>
               {firing && !isRam && (
                 <div className="weapon-once pointer-events-none absolute inset-0" style={WEAPON_LAYER_STYLE}>
-                  <StagedWeapon {...weaponProps} boardRef={boardB} soundOnceKey={`${soundOnceKey}:defender`} />
+                  <StagedWeapon {...weaponProps} boardRef={boardB} soundOnceKey={`${soundOnceKey}:defender`} attackerShown={false} />
                 </div>
               )}
             </WeaponSoundsMuted>

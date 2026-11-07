@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Attributes } from "../types/types";
 import { GridShip, GridShipPosition } from "../types/gridDisplay";
 import { useGridCellSets } from "../hooks/useGridCellSets";
@@ -30,6 +30,8 @@ import {
 import { GameGridDestHoverRange } from "./GameGridDestHoverRange";
 import { MovePlaybackContext, useMovePlaybackContext, type MovePlaybackValue } from "./MovePlaybackContext";
 import { MovePlaybackLayer, playbackHiddenShipIds } from "./MovePlaybackLayer";
+import { useCombatView } from "../hooks/useCombatView";
+import { DroneArtContext, DroneArtStore } from "./weapon-animations/droneArt";
 import type { ActivePlayback, PlaybackPhase } from "../hooks/useMovePlayback";
 import { WeaponSoundsMuted } from "./weapon-animations/weaponSounds";
 import { useCinematicPlaying } from "./weapon-animations/CombatCinematic";
@@ -1367,6 +1369,7 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
     [isSubmitting, selectedShipId, previewPosition, targetShipId, retreatPrepShipId, movementRange],
   );
   const playbackActive = props.playback?.active ?? null;
+  const combatView = useCombatView();
   const playbackOnPhaseDone = props.playback?.onPhaseDone;
   const playbackBackground = React.useMemo(
     () => mapBackgroundFor(props.blockedGrid, props.scoringGrid, props.onlyOnceGrid, props.impassableGrid),
@@ -1376,14 +1379,17 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
     () => ({
       active: playbackActive,
       onPhaseDone: playbackOnPhaseDone ?? NOOP_PHASE_DONE,
-      hiddenShipIds: playbackHiddenShipIds(playbackActive, props.shipMap),
+      hiddenShipIds: playbackHiddenShipIds(playbackActive, props.shipMap, combatView),
       background: playbackBackground,
       blockedGrid: props.blockedGrid,
     }),
-    [playbackActive, playbackOnPhaseDone, props.shipMap, playbackBackground, props.blockedGrid],
+    [playbackActive, playbackOnPhaseDone, props.shipMap, combatView, playbackBackground, props.blockedGrid],
   );
+  // The ship cells whose drones are out flying (droneArt.ts), for this board.
+  const [droneArt] = useState(() => new DroneArtStore());
   return (
     <MovePlaybackContext.Provider value={playbackValue}>
+    <DroneArtContext.Provider value={droneArt}>
     <DestHoverProvider>
       {submittedProposal ? (
         <GameGridBoard
@@ -1406,6 +1412,7 @@ export const GameGrid = React.memo(function GameGrid(props: GameGridProps) {
         <GameGridBoard {...props} />
       )}
     </DestHoverProvider>
+    </DroneArtContext.Provider>
     </MovePlaybackContext.Provider>
   );
 });
