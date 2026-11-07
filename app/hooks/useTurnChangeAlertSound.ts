@@ -1,11 +1,11 @@
 import { useEffect, useRef, type MutableRefObject } from "react";
 import { playSoundEffect } from "./useSoundEffects";
 
-/** Shared by every "it's your turn" cue — the transition-based hook below,
- * and GameDisplay.tsx/GameDisplayWeb2.tsx's own "still my turn after my
- * submitted move was confirmed" trigger (a same-turn multi-move sequence
- * never dips isMyTurn false->true, so that case can't rely on the hook's
- * transition detection and calls this directly instead). */
+/** The "it's your turn" sound, as the transition-based hook below plays it.
+ * GameDisplay.tsx and GameDisplayWeb2.tsx feed that hook the server/chain
+ * turn once nothing is playing back and no move is pending, so a same-turn
+ * multi-move sequence dips false while its move is pending and plays back,
+ * and the hook's own false->true detection covers it. */
 export function playTurnAlertSound() {
   playSoundEffect("/sound/alert.mp3");
 }

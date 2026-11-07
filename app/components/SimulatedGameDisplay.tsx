@@ -1,4 +1,7 @@
 "use client";
+import { useTurnChangeAlertSound } from "../hooks/useTurnChangeAlertSound";
+import { useHoldFireConfirm } from "./HoldFireConfirm";
+import { useHoldFireWarningSetting } from "../hooks/useHoldFireWarning";
 import { useOpenWalletSignIn } from "../hooks/useOpenWalletSignIn";
 import React, {
   useState,
@@ -757,6 +760,7 @@ export function SimulatedGameDisplay({
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
   const combatView = useCombatViewSetting();
+  const holdFireWarning = useHoldFireWarningSetting();
   // The tutorial mission has its own music (app/config/music.ts).
   useMusicTrack(TUTORIAL_MUSIC);
   // The tutorial's speaker, on the phone tutorial tab (TutorialGridTaskPanel has its own).
@@ -833,6 +837,15 @@ export function SimulatedGameDisplay({
   const isMyTurn =
     gameState.turnState.currentTurn.toLowerCase() ===
     TUTORIAL_PLAYER_ADDRESS.toLowerCase();
+  // The "your turn" sound, as in the live games (GameDisplay.tsx): by the
+  // tutorial's live turn, once no move of the player's is confirming and
+  // nothing is playing back. So it sounds at the start of each of the
+  // player's turns, including each of several moves in a row.
+  const isMyTurnForCue =
+    liveTutorialState.turnState.currentTurn.toLowerCase() === TUTORIAL_PLAYER_ADDRESS.toLowerCase() &&
+    !isConfirmingMove &&
+    !isMovePlaybackBusy;
+  useTurnChangeAlertSound(isMyTurnForCue, TUTORIAL_PLAYER_ADDRESS, false);
 
   const resetSelection = React.useCallback(() => {
     setSelectedShipId(null);
@@ -2293,7 +2306,7 @@ export function SimulatedGameDisplay({
   // Submit handler for staged move (selected ship + preview position). This mirrors
   // the live game flow where the player first stages a move on the grid, then
   // confirms it via the action panel, which may trigger a (simulated) transaction.
-  const handleSubmitMove = useCallback(() => {
+  const submitMoveNow = useCallback(() => {
     if (!selectedShipId || isConfirmingMove) {
       return;
     }
@@ -2484,6 +2497,29 @@ export function SimulatedGameDisplay({
     actionOverride,
     isConfirmingMove,
   ]);
+
+  // Holding fire with a target in range asks first (HoldFireConfirm), as in
+  // the live games. Only on a step that lets this ship shoot or use its
+  // special: elsewhere the script has the ship hold, so there is nothing to
+  // confirm.
+  const { confirmHoldFire, holdFireModal } = useHoldFireConfirm();
+  const holdFireTargetCount = (() => {
+    const shipKey = selectedShipId?.toString();
+    const allowed = currentStep?.allowedActions;
+    const mayFire = !!shipKey && (allowed?.shoot?.shipId === shipKey || allowed?.useSpecial?.shipId === shipKey);
+    return mayFire ? validTargets.length : 0;
+  })();
+  const handleSubmitMove = useCallback(async () => {
+    if (!selectedShipId || isConfirmingMove) return;
+    if (
+      computedActionType === ActionType.Pass &&
+      actionOverride !== ActionType.Retreat &&
+      !(await confirmHoldFire(holdFireTargetCount))
+    ) {
+      return;
+    }
+    submitMoveNow();
+  }, [selectedShipId, isConfirmingMove, computedActionType, actionOverride, confirmHoldFire, holdFireTargetCount, submitMoveNow]);
 
   const tutorialGridPanelConfig = useMemo(() => {
     if (!currentStep?.id) return null;
@@ -3332,6 +3368,7 @@ export function SimulatedGameDisplay({
                 menuItems={[
                   { label: "Audio", onClick: openAudioSettings },
                   { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
+                  { label: `Hold fire warning: ${holdFireWarning.enabled ? "On" : "Off"}`, onClick: holdFireWarning.toggle },
                   { label: "Reset tutorial", onClick: () => resetTutorial(), tone: "warn" },
                   ...(onBack ? [{ label: exitLabel, onClick: onBack }] : []),
                 ]}
@@ -3917,6 +3954,8 @@ export function SimulatedGameDisplay({
           </div>
         ) : null}
         {roundReportModal}
+      {holdFireModal}
+        {holdFireModal}
       </div>
       </GridHoverProvider>
     );

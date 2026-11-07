@@ -1,5 +1,7 @@
 "use client";
 
+import { useHoldFireConfirm } from "./HoldFireConfirm";
+import { useHoldFireWarningSetting } from "../hooks/useHoldFireWarning";
 import { RESOLVER_ERRORS } from "../config/resolverErrors";
 import React, { useState } from "react";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
@@ -121,7 +123,7 @@ import {
 import { useGameplayInteraction } from "../hooks/useGameplayInteraction";
 import { useDamageCalculation } from "../hooks/useDamageCalculation";
 import { useGamePolling } from "../hooks/useGamePolling";
-import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
+import { useTurnChangeAlertSound, useTurnTitleCue } from "../hooks/useTurnChangeAlertSound";
 import { setHiddenTurnWatch } from "../utils/contractEventRouting";
 import { STYLE_LABEL, STYLE_MONO } from "../styles/fontStyles";
 import { useLandscapeMode } from "../hooks/useLandscapeMode";
@@ -236,6 +238,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
   const combatView = useCombatViewSetting();
+  const holdFireWarning = useHoldFireWarningSetting();
   const [isMobileFleetModalOpen, setIsMobileFleetModalOpen] = React.useState(false);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = React.useState(false);
   const [mobileLeftPanelTab, setMobileLeftPanelTab] = React.useState<
@@ -1359,6 +1362,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       // Still our turn: isMyTurnEffective dipped while submitting and flips
       // back now, which isn't a turn change, so no "your turn" cue.
       prevTurnRef.current = true;
+      turnCueRef.current = true;
 
       const errorMessage =
         (error as Error)?.message || String(error) || "Unknown error";
@@ -1439,21 +1443,20 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // right below, which stamps this ref itself to suppress the hook's own
   // transition detection from double-firing the same cue a render later.
   const prevTurnRef = React.useRef<boolean | null>(null);
+  // The "your turn" cue's own transition state (useTurnChangeAlertSound).
+  const turnCueRef = React.useRef<boolean | null>(null);
 
   // A sent move landed in chain data (usePendingMove resolved it): drop the
-  // leftover proposal UI. A same-turn multi-move sequence (still my turn
-  // after this move) plays the cue here rather than via
-  // useTurnChangeAlertSound's false->true detection: isMyTurnEffective dipped
-  // false while the move was pending and is about to flip back true, which
-  // would ALSO fire a render later and double the sound. Stamping the ref
-  // marks that transition as handled.
+  // leftover proposal UI. Still my turn after it (a same-turn multi-move
+  // sequence): stamp the ref so the clear-on-turn effect below doesn't treat
+  // the pending dip as a turn change. The cue itself comes from
+  // isMyTurnForCue, once this move has played back.
   onPendingMoveResolvedRef.current = () => {
     setProposalLocked(false);
     interaction.handleCancelMove();
     clearOptimisticSos();
     clearOptimisticDestroy();
     if (!readOnly && chainGame.turnState.currentTurn === address) {
-      playTurnAlertSound();
       prevTurnRef.current = true;
     }
   };
@@ -1590,8 +1593,21 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     />
   ) : null;
 
+  // Whose turn the board shows (`game`) lags the chain while moves play
+  // back: it's held at the board from before each move. So the shown turn
+  // flips to "mine" while my own move plays back, though the chain has passed
+  // the turn on (the AI's turn, against the AI). The cue (sound, tab title)
+  // goes by the chain's turn instead, once nothing is playing back and no
+  // move of mine is pending: it sounds when my turn actually arrives.
+  const isMyTurnForCue =
+    chainGame.turnState.currentTurn === address && !awaitingTurnSyncAfterSubmit && !playbackActive;
+  // The shown turn, for the clear-on-turn effect below (which reads it
+  // before this render's value lands, as the sound hook used to leave it).
+  React.useEffect(() => {
+    prevTurnRef.current = isMyTurnEffective;
+  }, [isMyTurnEffective]);
   // Play alert sound when it becomes the player's turn
-  useTurnChangeAlertSound(isMyTurnEffective, address, readOnly, prevTurnRef);
+  useTurnChangeAlertSound(isMyTurnForCue, address, readOnly, turnCueRef);
 
   // Waiting on a human opponent: keep a slow event poll running even if the
   // tab is hidden, so the turn cue (sound + title) still arrives.
@@ -1602,7 +1618,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     setHiddenTurnWatch("pvp-match", waitingOnOpponent);
     return () => setHiddenTurnWatch("pvp-match", false);
   }, [waitingOnOpponent]);
-  useTurnTitleCue(isMyTurnEffective, isMatchLive);
+  useTurnTitleCue(isMyTurnForCue, isMatchLive);
 
   // Clear any pending transaction state when turn changes
   React.useEffect(() => {
@@ -1875,6 +1891,14 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     refetch,
   ]);
 
+  // Holding fire with a target in range asks first (HoldFireConfirm).
+  const { confirmHoldFire, holdFireModal } = useHoldFireConfirm();
+  const validTargetCount = interaction.validTargets.length;
+  const confirmHoldFireIfInRange = React.useCallback(
+    () => (computedActionType === ActionType.Pass ? confirmHoldFire(validTargetCount) : true),
+    [computedActionType, confirmHoldFire, validTargetCount],
+  );
+
   const confirmMoveButton = React.useMemo(() => {
     if (!showConfirmWidget) return undefined;
     const computedRow = computedMoveCoords.row;
@@ -1931,6 +1955,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           if (interaction.ramActionError) return interaction.ramActionError;
           return true;
         }}
+        confirmBeforeSend={confirmHoldFireIfInRange}
         onBeforeSend={captureMoveForSubmit}
         onTransactionSent={handleMoveTxSent}
         onError={handleMoveSubmitError}
@@ -1942,6 +1967,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     );
   }, [
     moveShipAbi,
+    confirmHoldFireIfInRange,
     showConfirmWidget,
     selectedShipId,
     game.metadata.gameId,
@@ -2021,6 +2047,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   loadingText="[...]"
                   disabled={isProposalLocked}
                   errorText="[ERR]"
+                  confirmBeforeSend={confirmHoldFireIfInRange}
                   onBeforeSend={captureMoveForSubmit}
                   onTransactionSent={(hash) => {
                     // Read before handleMoveTxSent clears the selection.
@@ -2911,6 +2938,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
+      {holdFireModal}
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <FullscreenPrompt />
@@ -2936,6 +2964,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                 { label: "Sync", onClick: () => refetchGame() },
                 { label: "Audio", onClick: openAudioSettings },
                   { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
+                  { label: `Hold fire warning: ${holdFireWarning.enabled ? "On" : "Off"}`, onClick: holdFireWarning.toggle },
               ]}
             />
 
@@ -3305,6 +3334,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   return (
     <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
+      {holdFireModal}
     <GridHoverProvider>
     <div
       ref={gameViewRootRef}

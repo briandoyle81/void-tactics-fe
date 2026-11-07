@@ -1,5 +1,7 @@
 "use client";
 
+import { useHoldFireConfirm } from "./HoldFireConfirm";
+import { useHoldFireWarningSetting } from "../hooks/useHoldFireWarning";
 import React, { useState, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-hot-toast";
@@ -24,7 +26,7 @@ import { MapLoadingOverlay } from "./MapLoadingOverlay";
 import { mapTileArtFor } from "../utils/mapTileArt";
 import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
 import { useDamageCalculation } from "../hooks/useDamageCalculation";
-import { useTurnChangeAlertSound, useTurnTitleCue, playTurnAlertSound } from "../hooks/useTurnChangeAlertSound";
+import { useTurnChangeAlertSound, useTurnTitleCue } from "../hooks/useTurnChangeAlertSound";
 import { usePendingMove } from "../hooks/usePendingMove";
 import { applyPendingMoveToGame, boardMoveFromPending, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
 import { RoundStartModal } from "./RoundStartModal";
@@ -178,6 +180,7 @@ function GameDisplayWeb2({
   const { isLandscapeMobile, requiresLandscapeMode, isPortraitTablet } = useLandscapeMode();
   const { openAudioSettings } = useAudioSettings();
   const combatView = useCombatViewSetting();
+  const holdFireWarning = useHoldFireWarningSetting();
   const useSideLayout = chromeOnSide && !isLandscapeMobile;
   const sideChrome = gameViewSideChrome(isPortraitTablet);
   const [isMobileFleeOpen, setIsMobileFleeOpen] = useState(false);
@@ -645,10 +648,17 @@ function GameDisplayWeb2({
   // stamp it directly (see that effect's "still my turn" comment for why).
   const prevTurnRef = React.useRef<boolean | null>(null);
 
+  // The cue (sound, tab title) goes by the server's turn, once nothing is
+  // playing back and no move of mine is pending (as GameDisplay.tsx): the
+  // board (`game`) is held at its pre-move state while moves play back, so
+  // its turn reads "mine" while my own move plays, after the turn has passed
+  // on (the AI's turn, against the AI).
+  const isMyTurnForCue =
+    !readOnly && chainGame.turnState.currentTurn === userId && !pendingMove.isAwaitingSync && !playbackActive;
   // Play alert sound when it becomes the player's turn (turn changes from
   // opponent to player only).
-  useTurnChangeAlertSound(isCurrentPlayerTurn, userId, readOnly, prevTurnRef);
-  useTurnTitleCue(isCurrentPlayerTurn, !readOnly && !!userId && !isGameOver);
+  useTurnChangeAlertSound(isMyTurnForCue, userId, readOnly, prevTurnRef);
+  useTurnTitleCue(isMyTurnForCue, !readOnly && !!userId && !isGameOver);
 
 
   const [isGameResultDismissed, setIsGameResultDismissed] = useState(false);
@@ -946,6 +956,8 @@ function GameDisplayWeb2({
   });
   recordPlayerMoveRef.current = recordPlayerMove;
 
+  const { confirmHoldFire, holdFireModal } = useHoldFireConfirm();
+
   const handleSubmitMove = useCallback(async () => {
     if (submitLockRef.current) return;
     const payload = buildActionPayload();
@@ -954,6 +966,8 @@ function GameDisplayWeb2({
       toast.error(interaction.ramActionError);
       return;
     }
+    // Holding fire with a target in range asks first (HoldFireConfirm).
+    if (payload.actionType === ActionType.Pass && !(await confirmHoldFire(interaction.validTargets.length))) return;
     const current = aliveShipPositions.find((p) => p.shipId === payload.shipId)?.position;
     if (!current) return;
     const targetPosition =
@@ -1097,6 +1111,8 @@ function GameDisplayWeb2({
     playback,
     analyticsGameMode,
     interaction.ramActionError,
+    interaction.validTargets.length,
+    confirmHoldFire,
     buildActionPayload,
     aliveShipPositions,
     selectedShipFactionAbility,
@@ -1121,19 +1137,13 @@ function GameDisplayWeb2({
   ]);
 
   // Optimistic last-move: mirrors GameDisplay.tsx's own local
-  // A sent move landed in server data (usePendingMove resolved it). Still my
-  // turn after it (a same-turn multi-move sequence): play the cue directly,
-  // since isCurrentPlayerTurn's false->true flip as the pending move clears
-  // would otherwise be the hook's only signal. Stamping the ref marks this as
-  // handled so it isn't a double cue.
+  // A sent move landed in server data (usePendingMove resolved it). A
+  // same-turn multi-move sequence (still my turn after it) gets its cue from
+  // isMyTurnForCue once this move has played back.
   onPendingMoveResolvedRef.current = () => {
     clearProposal();
     clearOptimisticSos();
     clearOptimisticDestroy();
-    if (!readOnly && chainGame.turnState.currentTurn === userId) {
-      playTurnAlertSound();
-      prevTurnRef.current = true;
-    }
   };
 
   // A submitted-but-unconfirmed move is already folded into `game`.
@@ -1811,6 +1821,7 @@ function GameDisplayWeb2({
     return (
       <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
+      {holdFireModal}
       <GridHoverProvider>
       <div className="mx-auto h-full w-full overflow-hidden" style={{ height: "100dvh" }}>
         <FullscreenPrompt />
@@ -1832,6 +1843,7 @@ function GameDisplayWeb2({
                   { label: "Sync", onClick: () => refetchGame() },
                   { label: "Audio", onClick: openAudioSettings },
                   { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
+                  { label: `Hold fire warning: ${holdFireWarning.enabled ? "On" : "Off"}`, onClick: holdFireWarning.toggle },
                 ]}
               />
 
@@ -1903,6 +1915,7 @@ function GameDisplayWeb2({
   return (
     <TurnCountdownProvider turnTimeSec={turnTimeSec} turnStartTimeMs={turnStartTimeMs}>
       {isWaitingForMap && <MapLoadingOverlay onBack={handleBack} />}
+      {holdFireModal}
     <GridHoverProvider>
     <div
       ref={gameViewRootRef}

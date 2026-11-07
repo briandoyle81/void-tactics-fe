@@ -30,6 +30,7 @@ import { HudIconButton } from "./HudIconButton";
 import { AudioControl, useAudioSettings } from "./AudioControl";
 import { useDebugModeSetting } from "../hooks/useDebugMode";
 import { COMBAT_VIEW_LABEL, useCombatViewSetting } from "../hooks/useCombatView";
+import { useHoldFireWarningSetting } from "../hooks/useHoldFireWarning";
 import { formatDec } from "../utils/formatDec";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useUserBalanceWeb2 } from "../hooks/useUserBalanceWeb2";
@@ -969,6 +970,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
   const { music, soundEffects } = useAudioSettings();
   const debugMode = useDebugModeSetting();
   const combatView = useCombatViewSetting();
+  const holdFireWarning = useHoldFireWarningSetting();
   const isSignedIn = showWeb2Panel || showWeb3Panel;
   const callsign = showWeb2Panel
     ? (web2Username ?? web2Email ?? "Commander")
@@ -1295,6 +1297,19 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                     >
                       Combat view
                       <span className="text-phosphor-green">{COMBAT_VIEW_LABEL[combatView.view]}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={holdFireWarning.enabled}
+                      onClick={holdFireWarning.toggle}
+                      className={`${menuItemClass} justify-between text-cyan`}
+                      style={{ fontFamily: MONO_FONT }}
+                    >
+                      Hold fire warning
+                      <span className={holdFireWarning.enabled ? "text-phosphor-green" : "text-text-muted"}>
+                        {holdFireWarning.enabled ? "On" : "Off"}
+                      </span>
                     </button>
 
                     <SettingsHeading>Audio</SettingsHeading>
