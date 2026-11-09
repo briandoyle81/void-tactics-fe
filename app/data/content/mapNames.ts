@@ -75,5 +75,6 @@ export const MAP_NAMES: Record<number, string> = {
   65: "Trench Run — Open Contract",
   66: "Exemplar Contract — Open Field",
   67: "Reactor Core — Sole Contract",
-  68: "New Map",
+  68: "Spiral Eye",
+  69: "Demolished Mining Outpost",
 };

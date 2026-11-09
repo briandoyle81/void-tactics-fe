@@ -44,6 +44,20 @@ export const MAP_TILE_ART: MapTileArtContent = {
         impassable: true,
       },
     ],
+    // Demolished Mining Outpost (no mission is fought on it yet: when one
+    // is, add its node -> 69 below)
+    69: [
+      {
+        src: "/img/broken-mining-station.svg",
+        alt: "Broken mining station",
+        row: 4,
+        col: 12,
+        rows: 3,
+        cols: 3,
+        blocked: true,
+        impassable: true,
+      },
+    ],
   },
   campaignNodes: {},
   roguelikeNodes: {
