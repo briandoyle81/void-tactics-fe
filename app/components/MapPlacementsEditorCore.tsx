@@ -11,7 +11,9 @@ import { isDeploymentTile, type ZoneTile } from "../utils/deploymentZone";
 // move, Remove/Reset/Save. Shared by MapPlacementsEditor (web3: contract
 // reads and setMapPlacements) and MapPlacementsEditorWeb2 (API), which supply
 // the saved placements, the save call, the roster cards and the map. Number
-// ids.
+// ids. Each AI ship config goes on the board at most once: a config already
+// placed is dimmed in the roster and can't be placed again, and a saved
+// fleet that has one twice can't be saved until the extra is removed.
 
 export interface PlacementRosterEntry {
   /** The AI ship config id. */
@@ -26,8 +28,8 @@ export interface PlacementRosterEntry {
 export interface WorkingPlacement {
   /**
    * Synthetic, rendering-only id (never saved: only row/col/configId are) so
-   * the map can key and select each placed ship even when the same config is
-   * placed more than once.
+   * the map can key and select each placed ship, including a config a fleet
+   * saved before the one-per-config rule has twice.
    */
   shipId: number;
   configId: number;
@@ -112,8 +114,21 @@ export function MapPlacementsEditorCore({
   const [saving, setSaving] = useState(false);
 
   const rosterById = useMemo(() => new Map(roster.map((r) => [r.id, r])), [roster]);
+  const placedConfigIds = useMemo(() => new Set(placements.map((p) => p.configId)), [placements]);
+  const rejectDuplicate = () => toast.error("That ship is already on the board.");
 
   const handleMove = (shipId: number, row: number, col: number) => {
+    // A new ship (not one already on the board being moved) whose config is placed.
+    if (!placements.some((p) => p.shipId === shipId)) {
+      const configId = pendingConfigForIdRef.current.get(shipId) ?? draggedConfigId;
+      if (configId != null && placedConfigIds.has(configId)) {
+        pendingConfigForIdRef.current.delete(shipId);
+        setPendingPlacementShipId(null);
+        setArmedConfigId(null);
+        rejectDuplicate();
+        return;
+      }
+    }
     setPlacements((prev) => {
       const occupiedIdx = prev.findIndex((p) => p.row === row && p.col === col && p.shipId !== shipId);
       const next = occupiedIdx === -1 ? prev : prev.filter((_, i) => i !== occupiedIdx);
@@ -138,6 +153,10 @@ export function MapPlacementsEditorCore({
   };
 
   const armRosterForTapToPlace = (configId: number) => {
+    if (placedConfigIds.has(configId)) {
+      rejectDuplicate();
+      return;
+    }
     const id = freshShipId();
     pendingConfigForIdRef.current.set(id, configId);
     setPendingPlacementShipId(id);
@@ -201,6 +220,9 @@ export function MapPlacementsEditorCore({
     [placements, joinerZone],
   );
 
+  // Extra copies of a config in a fleet saved before the one-per-config rule.
+  const duplicateCount = placements.length - placedConfigIds.size;
+
   const totalThreat = useMemo(
     () => placements.reduce((sum, p) => sum + (rosterById.get(p.configId)?.cost ?? 0), 0),
     [placements, rosterById],
@@ -247,21 +269,40 @@ export function MapPlacementsEditorCore({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [confirmingLeave, saving]);
-  const canSave = isDirty && !saving && outOfZoneCount === 0;
+  const canSave = isDirty && !saving && outOfZoneCount === 0 && duplicateCount === 0;
+  const saveBlockedReason =
+    outOfZoneCount > 0
+      ? "Move or remove the ships outside the joiner zone first"
+      : duplicateCount > 0
+        ? "Remove the ships placed twice first"
+        : undefined;
   // A variant filter keeps the roster (both factions' configs) scannable
   // when placing a fleet for one faction.
   const [rosterVariantFilter, setRosterVariantFilter] = useState<"all" | number>("all");
   const rosterItems: FleetShipListItemData[] = roster
     .filter((r) => rosterVariantFilter === "all" || r.variant === rosterVariantFilter)
-    .map((r) => ({
-      key: String(r.id),
-      canSelect: true,
-      isPending: armedConfigId === r.id,
-      isTouchDevice: false,
-      onDragStart: () => setDraggedConfigId(r.id),
-      onDragEnd: () => setDraggedConfigId(null),
-      card: r.renderCard(() => armRosterForTapToPlace(r.id)),
-    }));
+    .map((r) => {
+      const placed = placedConfigIds.has(r.id);
+      const card = r.renderCard(() => armRosterForTapToPlace(r.id));
+      return {
+        key: String(r.id),
+        canSelect: !placed,
+        isPending: armedConfigId === r.id,
+        isTouchDevice: false,
+        onDragStart: () => setDraggedConfigId(r.id),
+        onDragEnd: () => setDraggedConfigId(null),
+        card: placed ? (
+          <div className="relative opacity-40" title="Already on the board">
+            {card}
+            <span className="pointer-events-none absolute right-1 top-1 border border-steel bg-black/80 px-1 font-mono text-[10px] font-bold text-text-secondary">
+              PLACED
+            </span>
+          </div>
+        ) : (
+          card
+        ),
+      };
+    });
 
   return (
     <>
@@ -319,7 +360,7 @@ export function MapPlacementsEditorCore({
                 <button
                   type="button"
                   disabled={!canSave}
-                  title={outOfZoneCount > 0 ? "Move or remove the ships outside the joiner zone first" : undefined}
+                  title={saveBlockedReason}
                   onClick={() => void handleSave()}
                   className="w-full px-4 py-2 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold text-sm tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto md:whitespace-nowrap"
                 >
@@ -347,6 +388,13 @@ export function MapPlacementsEditorCore({
                 {outOfZoneCount === 1 ? "1 ship is" : `${outOfZoneCount} ships are`} outside this map&apos;s joiner
                 zone, probably because the zone was edited after the fleet was saved. This mission won&apos;t start
                 until you move or remove {outOfZoneCount === 1 ? "it" : "them"} and save.
+              </p>
+            )}
+
+            {duplicateCount > 0 && (
+              <p className="mb-4 border border-warning-red/60 bg-warning-red/10 px-3 py-2 text-xs text-warning-red">
+                This fleet has the same ship on the board more than once. Remove{" "}
+                {duplicateCount === 1 ? "the extra copy" : `the ${duplicateCount} extra copies`} to save.
               </p>
             )}
 
@@ -404,10 +452,8 @@ export function MapPlacementsEditorCore({
                 <p className="mt-3 text-sm text-text-secondary">
                   Your enemy placement changes on map #{mapId} aren&apos;t saved. Leaving drops them.
                 </p>
-                {outOfZoneCount > 0 && (
-                  <p className="mt-2 text-xs text-amber">
-                    Saving is blocked until the ships outside the joiner zone are moved or removed.
-                  </p>
+                {saveBlockedReason && (
+                  <p className="mt-2 text-xs text-amber">Saving is blocked: {saveBlockedReason.toLowerCase()}.</p>
                 )}
                 <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <button
