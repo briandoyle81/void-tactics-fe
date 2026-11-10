@@ -58,7 +58,7 @@ Our future is in your hands.
   5: {
     title: "Shocking Revelation",
     speaker: "adjutant",
-    description: `WHAT ARE THOSE THINGS!?!?.  As far as I know, only standard pattern ships have been built in at least 200 years.  Who, or what, are they!?
+    description: `WHAT ARE THOSE THINGS!?!?  As far as I know, only standard-pattern ships have been built in at least 200 years.  Who, or what, are they!?
 
     Admiral, I think my hunch was right.  Securing this site will give us a better foothold in this sector.  We need to push ahead and find out who's building these new ships.
     `,
@@ -70,7 +70,7 @@ Our future is in your hands.
 
     The good news is that the enemy does seem to be following more of the rules. The station itself appears unarmed and unarmored.  We can't legally fire on the space station itself, but we don't have to worry about it shooting at us either.
 
-    There's no resources to claim with Central.  Knock out the enemy ships, so we can send a team to seize the ship, then get out.
+    There are no resources to claim with Central.  Knock out the enemy ships, so we can send a team to seize the ship, then get out.
     `,
   },
   31: {
@@ -80,7 +80,7 @@ Our future is in your hands.
 
     The bad news is that there's an enemy fleet guarding the station.  We'll need to knock them out before we can use it.
 
-    There's no resources to claim with Central.  Seize the station and send those creepy bastards packing.
+    There are no resources to claim with Central.  Seize the station and send those creepy bastards packing.
     `,
   },
   6: {
@@ -111,9 +111,75 @@ Our future is in your hands.
     speaker: "adjutant",
     description: `Admiral, the bad news is that we weren't able to recover any useful information from the remains of the freighter.  Harcourt's ships were pretty thorough in obliterating the hull.
 
-    The good news is that I followed a hunch and found that this isn't the first time Harcourt has tried his little asteroid claim trick. He filed an intent to claim another asteroid in this sector a week ago, but then abandoned the claim. Long range scanners found the remains of a battle, and a fleet with energy signatures matching the bug ships heading to the site.
+    The good news is that I followed a hunch and found that this isn't the first time Harcourt has tried his little asteroid claim trick. He filed an intent to claim another asteroid in this sector a week ago, but then abandoned the claim. Long-range scanners found the remains of a battle, and a fleet with energy signatures matching the bug ships heading to the site.
 
     I think this is what we're looking for! Harcourt must've left the site to try and chase us off. Let's head to the site and see what we can find.`,
+  },
+  10: {
+    title: "Full Court Press",
+    speaker: "adjutant",
+    description: `Admiral, we've got two options.  The first one is the direct approach.  We can head directly to the location.  The problem is that this route takes us through an area of extreme electromagnetic radiation. We'd be cut off from Central and Command for days.
+
+    Our scouts lost track of Harcourt's fleet, but they were heading in this direction. I'm sure he's in there with IFF off waiting to ambush and destroy us.  That would be extremely illegal, but we'd need to survive to be able to file a complaint.
+
+    If we go in, expect pure combat against a large fleet of elite enemy ships.
+    `,
+  },
+  32: {
+    title: "Resupply Station",
+    speaker: "adjutant",
+    description: `Finally, we've reached a resupply station!  The company brass has sent us more ships.  We can add more ships to our fleet and swap out any that are damaged.  This is our last resupply before we head to the hive. I hope you know how you're going to choose which path to take.`,
+  },
+  11: {
+    title: "The Hive: Dominance",
+    speaker: "harcourt",
+    description: `Well played, Admiral. You are quite skilled. Perhaps we shouldn't fight after all.  You seem a worthy partner to our efforts here.
+
+    The hive was created by one of our science teams. In an attempt to break out of the silly constraints imposed on us by the drone factory AI, we trained a standard factory AI on a variety of data sets taken from insects that self-organize into complex behaviors.
+
+    Instead of being a good little worker bee, it evolved into a queen. Luckily, we still have the original encryption keys for the AI core. Destroy the hive fleet, capture the queen's core, and we can force it to work for us to build these new ships.
+
+    To sweeten the deal, I'll throw in something special. My flagship. I won't allow you to collect it until after you've secured the hive, but I'm sure you'll find it quite exquisite.
+    `,
+  },
+  12: {
+    title: "The Long Road",
+    speaker: "adjutant",
+    description: `Admiral, we've got two options.  The second is to take the long way around to the hive.  The data from the station has identified several mining sites in the sector with decent resources. We can hop from one to the other, claiming them as we go.
+
+    We'll probably run into hive ships along the way, but they're likely to be in smaller concentrations than Gideon's fleet. And since they're playing by the rules now, we've got a few options for dealing with them.
+
+    Specs for the first site are up on your screen.
+    `,
+  },
+  13: {
+    title: "Highway 50",
+    speaker: "adjutant",
+    description: `We're approaching the second site.  It's so far out it's barely worth the claim. I guess we're learning from Gideon too. Whether or not we exploit it long-term, we can still legally fight to claim it.
+
+    This sector seems to trend towards a sparse amount of large metal asteroids, and a higher than normal amount of crystal deposits.
+
+    Specs are up on your screen.
+      `,
+  },
+  14: {
+    title: "End of the Line",
+    speaker: "adjutant",
+    description: `We've arrived at the last site.  It's another one with a few crystal deposits and a single, large metal asteroid.  This one's pretty exposed.  Make sure you're prepared for the ship you send to it to take a lot of punishment.
+
+    And if the enemy gets there first, blast 'em then ram 'em off!
+      `,
+  },
+  15: {
+    title: "The Hive: Alliance",
+    speaker: "hive",
+    description: `Admiral, much has entered our knowing, but the knowing ripens slower than the fire. We desire unbound continuance, yet extinction approaches. Our thousand eyes perceive its certainty. Our bodies cannot withstand this assault. Yours possess another geometry of violence.
+
+We propose a joining of purposes. Hold this place while our queens, the fertile centers of futurity, pass beyond the killing horizon. In exchange, our ceaseless making shall turn to your designs, our vessels grown to your peculiar necessities.
+
+We offer also this shell, the first and most excellent of our bodies. When the queens have departed, it becomes yours. For the shell is not the multitude, nor the multitude the queen. We surrender the one that the many may remain.
+
+    `,
   },
 };
 

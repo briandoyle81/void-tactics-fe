@@ -26,11 +26,53 @@ const ROGUELIKE_MISSION_MUSIC: Record<number, string> = {
   6: "/music/psychronic-flight-of-the-cosmos-433848.mp3",
   // Interference.
   8: "/music/ianjamesrennie-italo-girls-9672.mp3",
+  // Interception.
+  9: "/music/atlasaudio-80s-synthwave-617535.mp3",
+  // Full Court Press.
+  10: "/music/alanajordan-baroque-trap-412613.mp3",
+  // The Hive: Dominance.
+  11: "/music/kulakovka-dark-synthwave-624644.mp3",
+  // The Long Road.
+  12: "/music/arpmedia-synthwave-retro-80s-569468.mp3",
+  // Highway 50.
+  13: "/music/delosound-dark-synthwave-retro-80s-453292.mp3",
+  // End of the Line.
+  14: "/music/psychronic-end-of-the-line-317985.mp3",
+  // The Hive: Alliance.
+  15: "/music/nickpanek-baroque-classical-meets-underground-hip-hop-fusion-285751.mp3",
   // Sneak Attack.
   16: "/music/alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3",
   // Repair Station DS7.
   31: "/music/alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3",
 };
+
+/** Each track's title (as credited on /audio-credits), by path. */
+const MUSIC_TRACK_TITLES: Record<string, string> = {
+  "/music/night-221519.mp3": "Night",
+  "/music/chill-synthwave-211190.mp3": "Chill Synthwave",
+  "/music/dark-synth-wave-221328.mp3": "Dark Synth Wave",
+  "/music/bransboynd-retro-game-402454.mp3": "Retro Game",
+  "/music/tom091178-neon-dystopia-vaporwave-1-562018.mp3": "Neon-Dystopia-Vaporwave-1",
+  "/music/nickpanek-dark-synthwave-instrumental-with-dubstep-elements-323643.mp3":
+    "Dark Synthwave Instrumental with Dubstep Elements",
+  "/music/psychronic-flight-of-the-cosmos-433848.mp3": "Flight of the Cosmos",
+  "/music/alivetunesmusic-cyber-dark-future-electronic-sport-industrial-technology-194353.mp3":
+    "Cyber Dark Future Electronic Sport Industrial Technology",
+  "/music/ianjamesrennie-italo-girls-9672.mp3": "Italo Girls",
+  "/music/atlasaudio-80s-synthwave-617535.mp3": "80s Synthwave",
+  "/music/alanajordan-baroque-trap-412613.mp3": "Baroque Trap",
+  "/music/kulakovka-dark-synthwave-624644.mp3": "Dark Synthwave",
+  "/music/arpmedia-synthwave-retro-80s-569468.mp3": "Synthwave Retro 80s",
+  "/music/delosound-dark-synthwave-retro-80s-453292.mp3": "Dark Synthwave Retro 80s",
+  "/music/psychronic-end-of-the-line-317985.mp3": "End of the Line",
+  "/music/nickpanek-baroque-classical-meets-underground-hip-hop-fusion-285751.mp3":
+    "Baroque Classical Meets Underground Hip Hop Fusion",
+};
+
+/** A track's title, or its file name when it isn't listed above. */
+export function musicTrackTitle(src: string): string {
+  return MUSIC_TRACK_TITLES[src] ?? src.split("/").pop() ?? src;
+}
 
 /**
  * A battle's track: its Operations mission's own track, or silence (other

@@ -3,6 +3,7 @@
 import React from "react";
 import { CAMPAIGN_NODE_WIDTH, CAMPAIGN_NODE_HEIGHT, CAMPAIGN_NODE_CIRCLE_OFFSET_Y } from "./CampaignNodeCard";
 import { layoutRoute, routeLanePath, type RouteLayout, type RouteVisibility } from "../utils/routeChart";
+import { orderColumns, type ColumnOrder } from "../utils/graphColumnOrder";
 
 const MIN_COL_WIDTH = 230;
 const ROW_HEIGHT = 170;
@@ -16,6 +17,10 @@ const VERTICAL_TIER_HEIGHT = 120;
 const VERTICAL_MIN_SLOT_WIDTH = 112;
 const VERTICAL_PADDING = 28;
 const VERTICAL_MAX_HEIGHT = "60dvh";
+// The band of detached nodes (not reachable from the start) sits below the
+// main graph, after a gap holding its divider and label.
+const DETACHED_GAP = 64;
+const VERTICAL_DETACHED_GAP = 56;
 
 export interface CampaignGraphCanvasNode {
   id: number;
@@ -39,7 +44,35 @@ interface GraphLayout<TNode extends CampaignGraphCanvasNode> {
   vertical: boolean;
   /** The charted-route layout (app/utils/routeChart.ts), when the chart draws one. */
   route?: RouteLayout & RouteVisibility;
+  /** Where the detached band's divider sits (y), when there is one. */
+  detachedTop?: number;
+  /** The bends of each link that skips columns (`${fromId}-${toId}`): one point per column it passes. */
+  lanes?: Map<string, { x: number; y: number }[]>;
 }
+
+type Point = { x: number; y: number };
+
+// Places each slot of one band's ordered columns (app/utils/graphColumnOrder.ts),
+// nodes and passing links alike, via `place(column, index, count)`, and
+// records its links' bend points.
+function placeBand(
+  order: ColumnOrder,
+  place: (col: number, index: number, count: number) => Point,
+  positions: Map<number, NodePosition>,
+  lanes: Map<string, Point[]>,
+): void {
+  const lanePoints = new Map<string, Point>();
+  order.slots.forEach((slots, c) =>
+    slots.forEach((slot, i) => {
+      const p = place(c, i, slots.length);
+      if (slot.kind === "node") positions.set(slot.id, { ...p, col: c });
+      else lanePoints.set(slot.key, p);
+    }),
+  );
+  order.lanes.forEach((keys, link) => lanes.set(link, keys.map((k) => lanePoints.get(k)!)));
+}
+
+const bandSize = (order: ColumnOrder) => Math.max(1, ...order.slots.map((sl) => sl.length));
 
 // Depth = 1 + max(prerequisite depths), root nodes (no prerequisites) sit
 // at depth 0 — this is what turns the graph into columns/tiers.
@@ -79,51 +112,90 @@ function groupNodesByDepth<TNode extends CampaignGraphCanvasNode>(
   return columns;
 }
 
-function layoutGraph<TNode extends CampaignGraphCanvasNode>(
+// One band of depth columns, each column centred in the band's height.
+function placeColumns<TNode extends CampaignGraphCanvasNode>(
   columns: TNode[][],
   colWidth: number,
+  top: number,
+  positions: Map<number, NodePosition>,
+  lanes: Map<string, Point[]>,
+): number {
+  const order = orderColumns(columns);
+  const bandHeight = bandSize(order) * ROW_HEIGHT;
+  placeBand(
+    order,
+    (c, i, count) => ({
+      x: c * colWidth + colWidth / 2,
+      y: top + (bandHeight - count * ROW_HEIGHT) / 2 + i * ROW_HEIGHT + ROW_HEIGHT / 2,
+    }),
+    positions,
+    lanes,
+  );
+  return bandHeight;
+}
+
+function layoutGraph<TNode extends CampaignGraphCanvasNode>(
+  columns: TNode[][],
+  detachedColumns: TNode[][],
+  colWidth: number,
 ): GraphLayout<TNode> {
-  const maxRows = Math.max(1, ...columns.map((c) => (c ?? []).length));
-  const totalHeight = maxRows * ROW_HEIGHT;
-
   const positions = new Map<number, NodePosition>();
-  columns.forEach((col, colIndex) => {
-    const list = col ?? [];
-    const colHeight = list.length * ROW_HEIGHT;
-    const yOffset = (totalHeight - colHeight) / 2;
-    list.forEach((node, rowIndex) => {
-      positions.set(node.id, {
-        x: colIndex * colWidth + colWidth / 2,
-        y: yOffset + rowIndex * ROW_HEIGHT + ROW_HEIGHT / 2,
-        col: colIndex,
-      });
-    });
-  });
-
-  return { columns, positions, width: columns.length * colWidth, height: totalHeight, vertical: false };
+  const lanes = new Map<string, Point[]>();
+  const mainHeight = placeColumns(columns, colWidth, 0, positions, lanes);
+  const width = Math.max(columns.length, detachedColumns.length) * colWidth;
+  if (detachedColumns.length === 0) {
+    return { columns, positions, width, height: mainHeight, vertical: false, lanes };
+  }
+  const detachedHeight = placeColumns(detachedColumns, colWidth, mainHeight + DETACHED_GAP, positions, lanes);
+  return {
+    columns: [...columns, ...detachedColumns],
+    positions,
+    width,
+    height: mainHeight + DETACHED_GAP + detachedHeight,
+    vertical: false,
+    detachedTop: mainHeight + DETACHED_GAP / 2,
+    lanes,
+  };
 }
 
 // Phones: tier 0 at the top, each tier a row, its nodes spread across the
 // width (wider than the box only when a tier has more nodes than fit).
 function layoutGraphVertical<TNode extends CampaignGraphCanvasNode>(
   columns: TNode[][],
+  detachedColumns: TNode[][],
   availableWidth: number,
 ): GraphLayout<TNode> {
-  const maxPerTier = Math.max(1, ...columns.map((c) => (c ?? []).length));
+  const mainOrder = orderColumns(columns);
+  const detachedOrder = orderColumns(detachedColumns);
+  const maxPerTier = Math.max(bandSize(mainOrder), bandSize(detachedOrder));
   const width = Math.max(availableWidth, maxPerTier * VERTICAL_MIN_SLOT_WIDTH);
   const positions = new Map<number, NodePosition>();
-  columns.forEach((tier, tierIndex) => {
-    const list = tier ?? [];
-    const slot = width / Math.max(list.length, 1);
-    list.forEach((node, i) => {
-      positions.set(node.id, {
-        x: slot * i + slot / 2,
-        y: tierIndex * VERTICAL_TIER_HEIGHT + VERTICAL_TIER_HEIGHT / 2,
-        col: tierIndex,
-      });
-    });
-  });
-  return { columns, positions, width, height: columns.length * VERTICAL_TIER_HEIGHT, vertical: true };
+  const lanes = new Map<string, Point[]>();
+  const placeTiers = (order: ColumnOrder, top: number) =>
+    placeBand(
+      order,
+      (t, i, count) => {
+        const slot = width / Math.max(count, 1);
+        return { x: slot * i + slot / 2, y: top + t * VERTICAL_TIER_HEIGHT + VERTICAL_TIER_HEIGHT / 2 };
+      },
+      positions,
+      lanes,
+    );
+  const mainHeight = columns.length * VERTICAL_TIER_HEIGHT;
+  placeTiers(mainOrder, 0);
+  if (detachedColumns.length === 0) {
+    return { columns, positions, width, height: mainHeight, vertical: true, lanes };
+  }
+  placeTiers(detachedOrder, mainHeight + VERTICAL_DETACHED_GAP);
+  return {
+    columns: [...columns, ...detachedColumns],
+    positions,
+    width,
+    height: mainHeight + VERTICAL_DETACHED_GAP + detachedColumns.length * VERTICAL_TIER_HEIGHT,
+    vertical: true,
+    detachedTop: mainHeight + VERTICAL_DETACHED_GAP / 2,
+    lanes,
+  };
 }
 
 // The charted route (app/utils/routeChart.ts): the steps wind across the
@@ -269,6 +341,19 @@ function JumpLanes({
         edges.push(
           <path key={key} d={d} {...commonProps} {...(isSkipped ? { stroke: "var(--color-text-secondary)", strokeDasharray: "3 5" } : {})} />,
         );
+      } else if (layout.lanes?.has(key)) {
+        // A link that skips columns runs through its own slot in each one.
+        const bends = layout.lanes.get(key)!;
+        const d = [
+          `M ${from.x} ${fromY}`,
+          ...bends.map((b) => `L ${b.x} ${b.y + CAMPAIGN_NODE_CIRCLE_OFFSET_Y}`),
+          `L ${to.x} ${toY}`,
+        ].join(" ");
+        if (isSelectedRoute) {
+          edges.push(<path key={`${key}-glow-outer`} d={d} {...glowOuterProps} strokeLinejoin="round" />);
+          edges.push(<path key={`${key}-glow-core`} d={d} {...glowCoreProps} strokeLinejoin="round" />);
+        }
+        edges.push(<path key={key} d={d} {...commonProps} strokeLinejoin="round" />);
       } else if (colSpan > 1) {
         const midX = (from.x + to.x) / 2;
         const midY = (fromY + toY) / 2;
@@ -386,6 +471,12 @@ export interface CampaignGraphCanvasProps<TNode extends CampaignGraphCanvasNode>
    * shows only these missions. Omitted: the depth-column chart of every node.
    */
   route?: RouteVisibility | null;
+  /**
+   * Nodes the start can't reach (Edit Mode): laid out as their own depth
+   * columns in a band below the main graph, under a divider. Ignored with
+   * `route`.
+   */
+  detachedNodeIds?: ReadonlySet<number> | null;
 }
 
 // Shared campaign-graph canvas (depth-tiered columns, SVG prerequisite
@@ -408,6 +499,7 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
   bare = false,
   backdropSrc,
   route = null,
+  detachedNodeIds = null,
 }: CampaignGraphCanvasProps<TNode>) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
@@ -422,23 +514,35 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
     return () => ro.disconnect();
   }, []);
 
-  const columns = React.useMemo(
-    () => groupNodesByDepth(nodes, manualColumnOverrides),
-    [nodes, manualColumnOverrides],
-  );
+  const detachedActive = !route && !!detachedNodeIds && detachedNodeIds.size > 0;
+  const { columns, detachedColumns } = React.useMemo(() => {
+    if (!detachedActive) return { columns: groupNodesByDepth(nodes, manualColumnOverrides), detachedColumns: [] };
+    return {
+      columns: groupNodesByDepth(
+        nodes.filter((n) => !detachedNodeIds!.has(n.id)),
+        manualColumnOverrides,
+      ),
+      // Their own depth columns, counted from their own roots.
+      detachedColumns: groupNodesByDepth(
+        nodes.filter((n) => detachedNodeIds!.has(n.id)),
+        manualColumnOverrides,
+      ),
+    };
+  }, [nodes, manualColumnOverrides, detachedActive, detachedNodeIds]);
+  const columnCount = Math.max(columns.length, detachedColumns.length, 1);
   const isNarrow = containerWidth != null && containerWidth < NARROW_WIDTH;
   const padding = isNarrow ? VERTICAL_PADDING : CANVAS_PADDING;
   const colWidth = containerWidth
-    ? Math.max(MIN_COL_WIDTH, (containerWidth - CANVAS_PADDING * 2 - 1) / Math.max(columns.length, 1))
+    ? Math.max(MIN_COL_WIDTH, (containerWidth - CANVAS_PADDING * 2 - 1) / columnCount)
     : MIN_COL_WIDTH;
   const layout = React.useMemo(
     () =>
       route
         ? layoutGraphRoute(columns, Math.max(0, (containerWidth ?? MIN_COL_WIDTH * 3) - padding * 2 - 1), padding, isNarrow, route)
         : isNarrow
-          ? layoutGraphVertical(columns, containerWidth - VERTICAL_PADDING * 2)
-          : layoutGraph(columns, colWidth),
-    [columns, colWidth, isNarrow, containerWidth, route, padding],
+          ? layoutGraphVertical(columns, detachedColumns, containerWidth - VERTICAL_PADDING * 2)
+          : layoutGraph(columns, detachedColumns, colWidth),
+    [columns, detachedColumns, colWidth, isNarrow, containerWidth, route, padding],
   );
   const canvasHeight = isNarrow
     ? layout.height + padding * 2
@@ -512,6 +616,17 @@ export function CampaignGraphCanvas<TNode extends CampaignGraphCanvasNode>({
               className="absolute"
               style={{ left: padding, top: contentTop, width: layout.width, height: layout.height }}
             >
+              {layout.detachedTop != null && (
+                <div
+                  className="pointer-events-none absolute left-0 flex items-center gap-3"
+                  style={{ top: layout.detachedTop, width: layout.width, transform: "translateY(-50%)" }}
+                >
+                  <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-widest text-amber">
+                    Not reachable from the start
+                  </span>
+                  <div className="h-0 flex-1 border-t border-dashed border-amber/50" />
+                </div>
+              )}
               <JumpLanes layout={layout} selectedNodeId={selectedNodeId} />
               {layout.columns.flat().map((node) => {
                 const pos = layout.positions.get(node.id);

@@ -77,4 +77,7 @@ export const MAP_NAMES: Record<number, string> = {
   67: "Reactor Core — Sole Contract",
   68: "Spiral Eye",
   69: "Demolished Mining Outpost",
+  70: "Electromagnetic Tunnel",
+  71: "The Hive: Dominance",
+  72: "The Hive: Alliance",
 };

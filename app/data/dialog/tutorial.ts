@@ -89,7 +89,7 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
   "score-points": {
     title: "Scoring zones",
     brief: [
-      "At round end, each scoring zone we {amber|controlled} by a functioning ship (not disabled) counts toward points.",
+      "At round end, each scoring zone we {amber|control} with a functioning ship (not disabled) earns us points.",
       "The enemy destroyer moved to capture a resource. Respond by moving the {cyan|Resolute} to claim one for us.",
     ],
   },

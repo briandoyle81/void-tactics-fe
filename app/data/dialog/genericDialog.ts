@@ -84,7 +84,7 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     variants: [
       "We've lost a ship. Tighten up.",
       "Hull breach confirmed. That one's gone.",
-      "First casualty. I hope you know what you're doing, admiral.",
+      "First casualty. I hope you know what you're doing, Admiral.",
     ],
   },
   {
@@ -230,7 +230,7 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     canHide: true,
     variants: [
       "EMERGENCY! One of our ships is nearing reactor critical! Get it off the field now, it's about to pop!",
-      "REACTOR WARNING! One of our ships is nearing critical! Move it before we lost it forever!",
+      "REACTOR WARNING! One of our ships is nearing critical! Move it before we lose it forever!",
     ],
   },
   {

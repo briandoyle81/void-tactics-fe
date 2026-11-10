@@ -151,6 +151,9 @@ export function RunMap({
   const [isRetreating, setIsRetreating] = React.useState(false);
   const [connectMode, setConnectMode] = React.useState<{ sourceNodeId: number } | null>(null);
   const [showSettings, setShowSettings] = React.useState(false);
+  // Edit Mode's chart: the editor's depth columns, or the whole campaign
+  // laid out on the player's winding route (every mission shown).
+  const [playerView, setPlayerView] = React.useState(false);
   // Edit Mode opens the selected node in a full-screen editor instead.
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [showRetreatConfirm, setShowRetreatConfirm] = React.useState(false);
@@ -246,9 +249,41 @@ export function RunMap({
   // cleared once played or skipped. Not in Edit Mode (the real graph only).
   const showTutorialPrelude = isBrowseMode && !editMode && !!tutorial;
   const showClearedPrelude = !editMode && !showTutorialPrelude && tutorialDone;
+  // The nodes a run can't reach from the root (orphans, or a branch not
+  // linked in yet). Edit Mode's editor view charts them in their own band
+  // below the main graph ("+ ADD NODE" stays with the main graph); its
+  // player view leaves them out, as a run never shows them.
+  const unreachableNodeIds = React.useMemo(() => {
+    if (!editMode || rootNodeId == null) return null;
+    const childrenById = new Map(nodes.map((n) => [n.id, n.childIds]));
+    const reachable = new Set<number>([rootNodeId]);
+    const queue = [rootNodeId];
+    while (queue.length > 0) {
+      for (const childId of childrenById.get(queue.pop()!) ?? []) {
+        if (reachable.has(childId)) continue;
+        reachable.add(childId);
+        queue.push(childId);
+      }
+    }
+    const unreachable = new Set(nodes.filter((n) => !reachable.has(n.id)).map((n) => n.id));
+    return unreachable.size > 0 ? unreachable : null;
+  }, [editMode, rootNodeId, nodes]);
+  const editorPlayerView = editMode && playerView;
+  const detachedNodeIds = editorPlayerView ? null : unreachableNodeIds;
   const mapNodes: RunMapCanvasNode[] = React.useMemo(
     () =>
-      editMode
+      editorPlayerView
+        ? // As the player sees them: only what a run can reach, with no
+          // "+ ADD NODE" and no edit marks; a node opens its briefing.
+          // Links in from unreachable nodes go too.
+          canvasNodes
+            .filter((n) => !unreachableNodeIds?.has(n.id))
+            .map((n) => ({
+              ...n,
+              editMode: false,
+              prerequisites: n.prerequisites.filter((id) => !unreachableNodeIds?.has(id)),
+            }))
+        : editMode
         ? [
             ...canvasNodes,
             {
@@ -270,14 +305,20 @@ export function RunMap({
               done: showClearedPrelude,
             })
           : canvasNodes,
-    [editMode, canvasNodes, connectMode, showTutorialPrelude, showClearedPrelude, rootNodeId],
+    [editorPlayerView, unreachableNodeIds, editMode, canvasNodes, connectMode, showTutorialPrelude, showClearedPrelude, rootNodeId],
   );
   // Play mode charts only the route reached so far (app/utils/routeChart.ts):
   // cleared missions, where the run is and what comes next, plus the
-  // branches it didn't take, dimmed. Edit Mode charts every node.
+  // branches it didn't take, dimmed. Edit Mode charts every node: in depth
+  // columns, or in its player view on the same route, all of it shown.
   const routeVisibility = React.useMemo(
-    () => (editMode ? null : computeRouteVisibility(mapNodes)),
-    [editMode, mapNodes],
+    () =>
+      editorPlayerView
+        ? { visibleIds: new Set(mapNodes.map((n) => n.id)), skippedIds: new Set<number>() }
+        : editMode
+          ? null
+          : computeRouteVisibility(mapNodes),
+    [editorPlayerView, editMode, mapNodes],
   );
   const chartNodes: RunMapCanvasNode[] = React.useMemo(
     () =>
@@ -435,7 +476,8 @@ export function RunMap({
       return;
     }
     setSelectedNodeId(id);
-    setEditorOpen(true);
+    // Edit Mode's player view opens the node's briefing, as a run does.
+    setEditorOpen(!editorPlayerView);
     if (isBrowseMode && editMode) localStorage.setItem(selectedNodeStorageKey, String(id));
   };
 
@@ -495,7 +537,10 @@ export function RunMap({
   const isSelectedConnectSource = !!selectedNode && connectMode?.sourceNodeId === selectedNode.id;
   const backToSnapTarget = () => setSelectedNodeId(isBrowseMode ? rootNodeId : run!.currentNodeId);
 
-  const drawer = editMode ? null : isTutorialPreludeSelected ? (
+  // Edit Mode has no briefing panel (the node editor opens instead), except
+  // in its player view.
+  const showBriefing = !editMode || editorPlayerView;
+  const drawer = !showBriefing ? null : isTutorialPreludeSelected ? (
     <TutorialPreludeDrawer completed={showClearedPrelude} />
   ) : selectedNode ? (
     renderDrawer(selectedNode, {
@@ -504,7 +549,7 @@ export function RunMap({
     })
   ) : null;
 
-  const missionPeek: MissionPeek | null = editMode
+  const missionPeek: MissionPeek | null = !showBriefing
     ? null
     : isTutorialPreludeSelected
       ? TUTORIAL_PRELUDE_PEEK
@@ -530,6 +575,30 @@ export function RunMap({
                   className={`${OPS_TOOLBAR_BUTTON} border-amber text-amber hover:bg-amber/10`}
                 >
                   Campaign settings
+                </button>
+              )}
+              {editMode && (
+                <button
+                  type="button"
+                  aria-pressed={playerView}
+                  onClick={() => {
+                    // Player view shows the briefing, not the editor, and
+                    // starts on the root if the selection isn't charted.
+                    if (!playerView) {
+                      setEditorOpen(false);
+                      setConnectMode(null);
+                      if (
+                        selectedNodeId == null ||
+                        selectedNodeId === ADD_NODE_SENTINEL_ID ||
+                        unreachableNodeIds?.has(selectedNodeId)
+                      )
+                        setSelectedNodeId(rootNodeId);
+                    }
+                    setPlayerView((v) => !v);
+                  }}
+                  className={`${OPS_TOOLBAR_BUTTON} border-cyan text-cyan hover:bg-cyan/10 ${playerView ? "bg-cyan/10" : ""}`}
+                >
+                  {playerView ? "Editor view" : "Player view"}
                 </button>
               )}
               {!isBrowseMode && (
@@ -565,6 +634,7 @@ export function RunMap({
             backdropSrc={ART_SLOTS.runMapBackdrop.src}
             nodes={chartNodes}
             route={routeVisibility}
+            detachedNodeIds={detachedNodeIds}
             selectedNodeId={selectedNodeId}
             onSelectNode={handleSelectNode}
             renderNode={(node, isSelected, onSelect) => (

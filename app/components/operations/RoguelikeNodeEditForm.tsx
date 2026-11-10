@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { RoguelikeNodeKind } from "../../types/roguelike";
 import { MapPickerModal, type MapPickerMap } from "../MapPickerModal";
 import { MapPreviewCard } from "../MapPreviewCard";
+import { NodeMusicPreview } from "./NodeMusicPreview";
 
 // Edit Mode's node panel on the Operations map: kind, map, max score and
 // first player for a combat node, cost cap override for a resupply node, the
@@ -201,6 +202,8 @@ export function RoguelikeNodeEditForm({
         </label>
 
         {contentSection}
+
+        {mode === "edit" && node && <NodeMusicPreview nodeId={node.id} />}
 
         {isCombat ? (
           <>

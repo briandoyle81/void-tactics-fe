@@ -41,7 +41,7 @@ export default function AudioCreditsPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: November 3, 2026
+          Last updated: November 10, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -299,6 +299,62 @@ export default function AudioCreditsPage() {
             artist="Ian Rennie"
             artistHref="https://pixabay.com/users/ianjamesrennie-22521783/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=9672"
             href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=9672"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Interception"
+            file="atlasaudio-80s-synthwave-617535.mp3"
+            title="80s Synthwave"
+            artist="AtlasAudio"
+            artistHref="https://pixabay.com/users/atlasaudio-54514918/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617535"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=617535"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Full Court Press"
+            file="alanajordan-baroque-trap-412613.mp3"
+            title="Baroque Trap"
+            artist="Alana Jordan"
+            artistHref="https://pixabay.com/users/alanajordan-25247407/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=412613"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=412613"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: The Hive: Dominance"
+            file="kulakovka-dark-synthwave-624644.mp3"
+            title="Dark Synthwave"
+            artist="Alex Shulgin"
+            artistHref="https://pixabay.com/users/kulakovka-47183261/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=624644"
+            href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=624644"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: The Long Road"
+            file="arpmedia-synthwave-retro-80s-569468.mp3"
+            title="Synthwave Retro 80s"
+            artist="ARPMedia"
+            artistHref="https://pixabay.com/users/arpmedia-56546950/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=569468"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=569468"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: Highway 50"
+            file="delosound-dark-synthwave-retro-80s-453292.mp3"
+            title="Dark Synthwave Retro 80s"
+            artist="DELOSound"
+            artistHref="https://pixabay.com/users/delosound-46524562/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=453292"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=453292"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: End of the Line"
+            file="psychronic-end-of-the-line-317985.mp3"
+            title="End of the Line"
+            artist="Douglas Gustafson"
+            artistHref="https://pixabay.com/users/psychronic-13092015/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=317985"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=317985"
+          />
+          <PixabayMusicCredit
+            heading="Mission Music: The Hive: Alliance"
+            file="nickpanek-baroque-classical-meets-underground-hip-hop-fusion-285751.mp3"
+            title="Baroque Classical Meets Underground Hip Hop Fusion"
+            artist="Nicholas Panek"
+            artistHref="https://pixabay.com/users/nickpanek-38266323/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=285751"
+            href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=285751"
           />
 
           <section className="space-y-3">

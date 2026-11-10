@@ -104,6 +104,21 @@ function gridFromPositions(positions: MapPosition[] | undefined): boolean[][] {
   return grid;
 }
 
+// A downloaded map file's deployment zones, or null when it has none.
+function readFileZones(mapData: unknown): { creator: MapPosition[]; joiner: MapPosition[] } | null {
+  const data = mapData as { creatorZonePositions?: unknown; joinerZonePositions?: unknown };
+  const read = (value: unknown): MapPosition[] | null =>
+    Array.isArray(value)
+      ? value
+          .filter((p): p is { row: unknown; col: unknown } => typeof p === "object" && p !== null)
+          .map((p) => ({ row: Number(p.row), col: Number(p.col) }))
+          .filter((p) => Number.isInteger(p.row) && Number.isInteger(p.col))
+      : null;
+  const creator = read(data.creatorZonePositions);
+  const joiner = read(data.joinerZonePositions);
+  return creator || joiner ? { creator: creator ?? [], joiner: joiner ?? [] } : null;
+}
+
 function positionsFromGrid(grid: boolean[][]): MapPosition[] {
   const positions: MapPosition[] = [];
   grid.forEach((cells, row) => cells.forEach((on, col) => on && positions.push({ row, col })));
@@ -694,6 +709,14 @@ export function MapEditor({
       impassableTiles: editorState.impassableTiles,
       scoringTiles: editorState.scoringTiles,
       onlyOnceTiles: editorState.onlyOnceTiles,
+      // Deployment zones, when this map has its own (empty = the side uses
+      // the default column band). Uploading the file loads them back.
+      ...(canEditZones
+        ? {
+            creatorZonePositions: positionsFromGrid(zones.creatorZone),
+            joinerZonePositions: positionsFromGrid(zones.joinerZone),
+          }
+        : {}),
       metadata: {
         name: displayName,
         createdAt: new Date().toISOString(),
@@ -713,7 +736,7 @@ export function MapEditor({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }, [editorState, isEditing, mapId, mapName]);
+  }, [editorState, isEditing, mapId, mapName, canEditZones, zones]);
 
   // Upload map from JSON file
   const uploadMap = useCallback(
@@ -762,7 +785,21 @@ export function MapEditor({
                 scoringTiles: mapData.scoringTiles,
                 onlyOnceTiles: mapData.onlyOnceTiles,
               }));
-              alert("Map loaded successfully!");
+              // Deployment zones (files from before they were saved have none).
+              const fileZones = readFileZones(mapData);
+              if (fileZones && canEditZones) {
+                setZones({
+                  creatorZone: gridFromPositions(fileZones.creator),
+                  joinerZone: gridFromPositions(fileZones.joiner),
+                });
+                alert("Map loaded successfully, with its deployment zones!");
+              } else if (fileZones) {
+                alert(
+                  "Map loaded. This file also has deployment zones: save the map first, then upload the file again to load them.",
+                );
+              } else {
+                alert("Map loaded successfully!");
+              }
             } else {
               alert(
                 "Map dimensions don't match the current grid size (60x40)."
@@ -783,7 +820,7 @@ export function MapEditor({
       // Reset the input so the same file can be selected again
       event.target.value = "";
     },
-    []
+    [canEditZones]
   );
 
   // Get tile class based on state

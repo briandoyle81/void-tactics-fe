@@ -58,11 +58,40 @@ export const MAP_TILE_ART: MapTileArtContent = {
         impassable: true,
       },
     ],
+    // The Hive: Domination (5x5, top right)
+    71: [
+      {
+        src: "/img/hive.svg",
+        alt: "The Hive",
+        row: 0,
+        col: 12,
+        rows: 5,
+        cols: 5,
+        blocked: true,
+        impassable: true,
+      },
+    ],
+    // The Hive: Domination, flipped left to right (5x5, top left). 72 is
+    // the id it gets as the next map created after 71: check it on save.
+    72: [
+      {
+        src: "/img/hive-flipped.svg",
+        alt: "The Hive",
+        row: 0,
+        col: 0,
+        rows: 5,
+        cols: 5,
+        blocked: true,
+        impassable: true,
+      },
+    ],
   },
   campaignNodes: {},
   roguelikeNodes: {
     // d01 Sneak Attack
     16: 61,
+    // The Hive: Dominance
+    11: 71,
     // r01 Repair Station DS7
     31: 62,
   },
