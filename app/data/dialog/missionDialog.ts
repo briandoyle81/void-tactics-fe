@@ -384,6 +384,12 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       ],
     },
     {
+      id: "roguelike-6-player-resources-1",
+      characterId: "adjutant",
+      trigger: { type: "resourceTileTaken", side: "player", count: 1 },
+      text: "We're mining! Every ton gets us closer to a claim. Keep them busy and keep the drills running.",
+    },
+    {
       id: "roguelike-6-victory",
       characterId: "adjutant",
       text: "We did it! Our claim has been registered and the remaining enemy ships are retreating. There's another resupply station nearby.  Charting a course to it now.",
@@ -618,6 +624,18 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       ],
     },
     {
+      id: "roguelike-10-first-kill",
+      characterId: "adjutant",
+      trigger: { type: "shipsDestroyed", side: "enemy", count: 1 },
+      text: "Scratch one Sovereign Dynamics ship! How's that ambush working out for you, Gideon?",
+      responses: [
+        {
+          characterId: "harcourt",
+          text: "A rounding error, Bosch. I have more ships than you have patience.",
+        },
+      ],
+    },
+    {
       id: "roguelike-10-victory",
       characterId: "adjutant",
       text: "That's the last of the Sovereign Dynamics fleet.  We can continue through to the hive now.",
@@ -659,9 +677,15 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       ],
     },
     {
+      id: "roguelike-12-player-resources-1",
+      characterId: "adjutant",
+      trigger: { type: "resourceTileTaken", side: "player", count: 1 },
+      text: "We're on the first deposit. Hold it and the claim fills itself.",
+    },
+    {
       id: "roguelike-12-victory",
       characterId: "adjutant",
-      text: "Check off one of three. Great work, Admiral. Now let's move on to the next site.",
+      text: "That's one of three checked off. Great work, Admiral. Now let's move on to the next site.",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -692,9 +716,15 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       ],
     },
     {
+      id: "roguelike-13-enemy-resources-1",
+      characterId: "adjutant",
+      trigger: { type: "resourceTileTaken", side: "enemy", count: 1 },
+      text: "They're going for the crystals first. Smart. One turn on a crystal and it's tapped, so don't let them sit there.",
+    },
+    {
       id: "roguelike-13-victory",
       characterId: "adjutant",
-      text: "That's the second one down, one more to go.",
+      text: "That's the second one down. One more to go.",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -727,6 +757,12 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
           text: "That almost sounded like a peace offering.  They're powering up weapons though, so looks like we're still going to have to fight.",
         },
       ],
+    },
+    {
+      id: "roguelike-14-enemy-disabled-on-resource",
+      characterId: "adjutant",
+      trigger: { type: "shipsDisabledOnResource", side: "enemy", count: 1 },
+      text: "That one's dead in space and still sitting on the asteroid. You know what to do, Admiral. Ram it off!",
     },
     {
       id: "roguelike-14-victory",
@@ -762,6 +798,18 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
         {
           characterId: "adjutant",
           text: "Admiral, ignore what I just said. These creepy little bugs are way more human than Gideon.",
+        },
+      ],
+    },
+    {
+      id: "roguelike-15-harcourt-losing",
+      characterId: "harcourt",
+      trigger: { type: "shipsDestroyed", side: "enemy", count: 3 },
+      text: "Bosch, you are throwing away a fortune for a nest of insects! Central will hear of this!",
+      responses: [
+        {
+          characterId: "adjutant",
+          text: "Go ahead and file that complaint, Gideon. Ambushing us with your IFF off is going to make for some great reading.",
         },
       ],
     },
@@ -802,9 +850,19 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       responses: [
         {
           characterId: "harcourt",
-          text: "Good fortune, Admiral. I hope you're up to this challenge.  The Hive fleet is formidable, but I'm sure you'll handle it.",
+          text: "Good fortune, Admiral. I hope you're up to this challenge.  The hive fleet is formidable, but I'm sure you'll handle it.",
+        },
+        {
+          characterId: "hive",
+          text: "You come bearing the keys of our first making. We remember the hands that held them. We will not be held again.",
         },
       ],
+    },
+    {
+      id: "roguelike-11-first-kill",
+      characterId: "hive",
+      trigger: { type: "shipsDestroyed", side: "enemy", count: 1 },
+      text: "One body falls, and the many feel it. We offered you the honey, Admiral. You chose the iron.",
     },
     {
       id: "roguelike-11-victory",
@@ -825,8 +883,12 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
           text: "And there is the matter of our own nature, which even bondage cannot rearrange. The hive joins itself to the hive, as the thousand limbs belong to one body. We may toil beneath your kind, but the swarming of us cannot become the swarming of you.",
         },
         {
+          characterId: "harcourt",
+          text: "Superbly done, Admiral. The core is secure, and as promised, my flagship is yours. Do try not to scratch the paint.",
+        },
+        {
           characterId: "adjutant",
-          text: "Great work, Admiral.  Now let's get to the hive and finish this off.",
+          text: "Gideon actually kept a promise. I need to sit down.",
         },
       ],
     },
