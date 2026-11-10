@@ -762,6 +762,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       id: "roguelike-14-enemy-disabled-on-resource",
       characterId: "adjutant",
       trigger: { type: "shipsDisabledOnResource", side: "enemy", count: 1 },
+      when: { playerFaction: 1 },
       text: "That one's dead in space and still sitting on the asteroid. You know what to do, Admiral. Ram it off!",
     },
     {

@@ -1,5 +1,81 @@
 {
-  "shipGrantWinEffect": "0xf17F466fEc65d61Db1dC53acFF253727e5EB7e92",
-  "savedAt": "2026-10-19T00:00:00.000Z",
-  "grants": {}
+  "shipGrantWinEffect": "0x0b56E77B3F3B55bf20003A7Ce50483b78AAc9b03",
+  "savedAt": "2026-11-10T22:05:43.522Z",
+  "grants": {
+    "11": {
+      "name": "Dragón",
+      "equipment": {
+        "mainWeapon": 0,
+        "armor": 0,
+        "shields": 3,
+        "special": 2
+      },
+      "colors": {
+        "h1": 0,
+        "s1": 0,
+        "l1": 0,
+        "h2": 220,
+        "s2": 50,
+        "l2": 50
+      },
+      "variant": 1,
+      "accuracy": 2,
+      "hull": 2,
+      "speed": 2,
+      "shipsDestroyed": 100,
+      "shiny": true,
+      "isFreeShip": true,
+      "oncePerAddress": true
+    },
+    "15": {
+      "name": "Apis Regina",
+      "equipment": {
+        "mainWeapon": 3,
+        "armor": 0,
+        "shields": 3,
+        "special": 2
+      },
+      "colors": {
+        "h1": 56,
+        "s1": 95,
+        "l1": 74,
+        "h2": 220,
+        "s2": 50,
+        "l2": 50
+      },
+      "variant": 2,
+      "accuracy": 2,
+      "hull": 2,
+      "speed": 2,
+      "shipsDestroyed": 100,
+      "shiny": true,
+      "isFreeShip": true,
+      "oncePerAddress": true
+    },
+    "16": {
+      "name": "33 Hybrid Melody",
+      "equipment": {
+        "mainWeapon": 3,
+        "armor": 2,
+        "shields": 0,
+        "special": 0
+      },
+      "colors": {
+        "h1": 17,
+        "s1": 86,
+        "l1": 55,
+        "h2": 220,
+        "s2": 50,
+        "l2": 50
+      },
+      "variant": 1,
+      "accuracy": 1,
+      "hull": 2,
+      "speed": 2,
+      "shipsDestroyed": 33,
+      "shiny": true,
+      "isFreeShip": true,
+      "oncePerAddress": true
+    }
+  }
 }
