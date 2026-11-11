@@ -396,12 +396,20 @@ export function SimulatedGameDisplay({
     const moverOnBoard = heldTutorialPositionsRef.current.find(
       (p) => Number(p.shipId) === Number(tutorialLastMove.shipId),
     );
-    if (
-      !moverOnBoard ||
-      moverOnBoard.position.row !== tutorialLastMove.oldRow ||
-      moverOnBoard.position.col !== tutorialLastMove.oldCol
-    )
-      return;
+    if (!moverOnBoard) return;
+    const atFrom =
+      moverOnBoard.position.row === tutorialLastMove.oldRow &&
+      moverOnBoard.position.col === tutorialLastMove.oldCol;
+    // A shot that follows a move already applied (the shoot step moves at
+    // Submit and fires when it confirms): its lastMove keeps the move's From
+    // tile, but the ship is already on its To tile. It fires from there.
+    const atTo =
+      moverOnBoard.position.row === tutorialLastMove.newRow &&
+      moverOnBoard.position.col === tutorialLastMove.newCol;
+    if (!atFrom && !atTo) return;
+    const from = atFrom
+      ? { row: tutorialLastMove.oldRow, col: tutorialLastMove.oldCol }
+      : { row: tutorialLastMove.newRow, col: tutorialLastMove.newCol };
     tutorialMoveCountRef.current += 1;
     const targetId = tutorialLastMove.targetShipId ? Number(tutorialLastMove.targetShipId) : 0;
     const target = targetId
@@ -424,8 +432,8 @@ export function SimulatedGameDisplay({
         `tutorial:${tutorialMoveCountRef.current}:${tutorialLastMoveKey}`,
         {
           shipId: Number(tutorialLastMove.shipId),
-          oldRow: tutorialLastMove.oldRow,
-          oldCol: tutorialLastMove.oldCol,
+          oldRow: from.row,
+          oldCol: from.col,
           newRow: tutorialLastMove.newRow,
           newCol: tutorialLastMove.newCol,
           actionType: Number(tutorialLastMove.actionType),
@@ -2072,6 +2080,24 @@ export function SimulatedGameDisplay({
       // Select a ship is for inspecting: the range shows, but no move yet
       // (the board click hint says what to do).
       if (currentStep?.id === "select-ship") return;
+
+      // EMP: the Resolute fires from where it is. A staged move could take
+      // the Anvil out of EMP range, and then it can't be targeted (Submit
+      // only fires the special, so the move would be dropped anyway).
+      if (currentStep?.id === "special-emp") {
+        const currentPos = selectedShipId
+          ? gameState.shipPositions.find(
+              (p) => p.shipId === selectedShipId.toString(),
+            )?.position
+          : undefined;
+        if (
+          currentPos &&
+          (position.row !== currentPos.row || position.col !== currentPos.col)
+        ) {
+          toast.error("Resolute fires its EMP from where it is. It can't move in this step.");
+          return;
+        }
+      }
 
       // Hard choice (rescue): Vigilant is shoot-only and cannot stage moves to a new square.
       // Clicking a target still sets preview to the Vigilant's current cell first (stay-in-place + fire);

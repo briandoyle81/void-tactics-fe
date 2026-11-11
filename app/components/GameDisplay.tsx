@@ -1121,6 +1121,16 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     !isGameOver &&
     (!livePlayback.hold || roundStartShownRef.current === roundStartInfo.round);
   if (showRoundStart) roundStartShownRef.current = roundStartInfo.round;
+  // And the other way round: a move that arrives while the report is up
+  // (an opponent's first move of the round) waits for it to be acknowledged,
+  // so its cinematic plays where the player can see it, not under the report.
+  const shownBoardPlayback = React.useMemo(
+    () =>
+      showRoundStart && !isReplaying
+        ? { active: null, onPhaseDone: boardPlayback.onPhaseDone }
+        : boardPlayback,
+    [showRoundStart, isReplaying, boardPlayback],
+  );
 
   // The AI waits for the round report to be acknowledged, so its moves
   // play where the player can see them, not under the report.
@@ -3095,7 +3105,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                 >
                   <div className="absolute inset-0 min-h-0 overflow-hidden">
                     <GameGrid
-                      playback={boardPlayback}
+                      playback={shownBoardPlayback}
                       grid={gridForDisplay}
                       allShipPositions={allShipPositionsForDisplay}
                       shipMap={shipMapForDisplay}
@@ -3666,7 +3676,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           >
             <div className="absolute inset-0 min-h-0 overflow-hidden">
         <GameGrid
-          playback={boardPlayback}
+          playback={shownBoardPlayback}
           grid={gridForDisplay}
                 allShipPositions={allShipPositionsForDisplay}
           shipMap={shipMapForDisplay}

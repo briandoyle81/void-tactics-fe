@@ -595,6 +595,16 @@ function GameDisplayWeb2({
     !isGameOver &&
     (!livePlayback.hold || roundStartShownRef.current === roundStartInfo.round);
   if (showRoundStart) roundStartShownRef.current = roundStartInfo.round;
+  // And the other way round: a move that arrives while the report is up
+  // (an opponent's first move of the round) waits for it to be acknowledged,
+  // so its cinematic plays where the player can see it, not under the report.
+  const shownBoardPlayback = React.useMemo(
+    () =>
+      showRoundStart && !isReplaying
+        ? { active: null, onPhaseDone: boardPlayback.onPhaseDone }
+        : boardPlayback,
+    [showRoundStart, isReplaying, boardPlayback],
+  );
 
   // Mirrors GameDisplay.tsx: the AI waits for the round report to be acknowledged.
   const roundReportUp = roundStartInfo != null && !isGameOver;
@@ -1401,7 +1411,7 @@ function GameDisplayWeb2({
   // (side rail vs. narrow tabbed column) differs.
   const gameGridNode = (
     <GameGrid
-      playback={boardPlayback}
+      playback={shownBoardPlayback}
       grid={displayGrid}
       allShipPositions={game.shipPositions}
       shipMap={shipMap}
