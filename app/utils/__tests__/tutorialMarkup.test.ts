@@ -27,7 +27,12 @@ describe("parseTutorialMarkup", () => {
 
   it("uses only known tones and leaves no stray markup in the tutorial text", () => {
     const all = [
-      ...Object.values(TUTORIAL_PANELS).flatMap((p) => [...p.brief, ...(p.tasks ?? [])]),
+      ...Object.values(TUTORIAL_PANELS).flatMap((p) => [
+        ...p.brief,
+        ...(p.briefWithoutFleetStatus ?? []),
+        ...(p.tasks ?? []),
+        ...(p.roundReport ?? []),
+      ]),
       TUTORIAL_COMPLETION_CARD.winSupporting,
       TUTORIAL_COMPLETION_CARD.lossSupporting,
       TUTORIAL_COMPLETION_CARD.continueSupporting,

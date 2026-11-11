@@ -31,6 +31,8 @@ interface HoverShipCardTooltipProps {
   hoverDelayMs?: number;
   /** Builds the tooltip's ship-card content, or `null` to keep it hidden (e.g. ship not found). Mode/context-specific `ShipCardData` building is left to the caller. */
   renderCard: () => React.ReactNode | null;
+  /** The card's size in px, for placement (default: the full ShipCard, 384 wide). */
+  size?: { width: number; height: number };
 }
 
 // Positioning + hover-delay logic shared by every "hover a ship, show its
@@ -48,6 +50,7 @@ export function HoverShipCardTooltip({
   disableTooltips = false,
   hoverDelayMs = SHIP_TOOLTIP_HOVER_DELAY_MS,
   renderCard,
+  size,
 }: HoverShipCardTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   // The hover that was on while tooltips were off: it needs a new hover to
@@ -93,8 +96,8 @@ export function HoverShipCardTooltip({
   const box = containerEl.getBoundingClientRect();
   const cr = { width: window.innerWidth, height: window.innerHeight };
 
-  const tooltipWidth = 384;
-  const tooltipHeight = 400;
+  const tooltipWidth = size?.width ?? 384;
+  const tooltipHeight = size?.height ?? 400;
   const offset = 15;
   const leftPlacementOffset = 28;
 
@@ -173,7 +176,9 @@ export function HoverShipCardTooltip({
       className={`fixed ${TOOLTIP_Z_CLASS} pointer-events-none opacity-100`}
       style={{ left: `${tooltipLeft}px`, top: `${tooltipTop}px` }}
     >
-      <div className="min-w-[22rem] w-[24rem] opacity-100">{cardContent}</div>
+      <div className={`opacity-100 ${size ? "" : "min-w-[22rem] w-[24rem]"}`} style={size ? { width: size.width } : undefined}>
+        {cardContent}
+      </div>
     </div>,
     document.body,
   );

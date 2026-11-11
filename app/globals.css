@@ -1637,3 +1637,16 @@ select:focus {
   }
 }
 
+
+/* Reactor overload one point from destruction (GameTooltipShipCard): the lit
+   dots blink hard on/off like an alarm light, with a red glow while lit. */
+@keyframes reactor-alarm-blink {
+  0%, 49% { opacity: 1; box-shadow: 0 0 6px 1px var(--color-warning-red); }
+  50%, 100% { opacity: 0.15; box-shadow: none; }
+}
+.reactor-alarm-blink {
+  animation: reactor-alarm-blink 0.8s steps(1, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reactor-alarm-blink { animation: none; box-shadow: 0 0 6px 1px var(--color-warning-red); }
+}

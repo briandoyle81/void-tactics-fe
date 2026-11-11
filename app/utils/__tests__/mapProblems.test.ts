@@ -33,7 +33,7 @@ describe("mapProblems", () => {
   it("flags tile art that doesn't fit the map's tiles", () => {
     // Map 61's space dock needs rows 4–6, cols 12–14 blocked and impassable.
     expect(mapProblems([map(61, MapMode.PvE, [])]).get(61)).toEqual([
-      "Space dock art (rows 4–6, cols 12–14) needs blocked and impassable tiles, 9 differ",
+      "Space dock art (x 12–14, y 4–6) needs blocked and impassable tiles, 9 differ",
     ]);
   });
 

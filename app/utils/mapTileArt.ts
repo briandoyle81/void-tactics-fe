@@ -62,7 +62,8 @@ export function nodeTileArtFor(
 }
 
 const describe = (a: MapTileArt) =>
-  `rows ${a.row}–${a.row + a.rows - 1}, cols ${a.col}–${a.col + a.cols - 1}`;
+  // Shown on the map's admin card, so in X, Y like every position people see.
+  `x ${a.col}–${a.col + a.cols - 1}, y ${a.row}–${a.row + a.rows - 1}`;
 
 function coveredTiles(a: MapTileArt): { row: number; col: number }[] {
   const out: { row: number; col: number }[] = [];

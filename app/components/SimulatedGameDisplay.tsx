@@ -89,6 +89,7 @@ import {
 } from "../data/tutorialScriptedStates";
 import { FleeSafetySwitch } from "./FleeSafetySwitch";
 import ShipCard from "./ShipCard";
+import { GameTooltipShipCard } from "./GameTooltipShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
 import { GameFleetStatusCard } from "./GameFleetStatusCard";
@@ -101,7 +102,7 @@ import {
   useGameViewChromeLayout,
   gameViewSideChrome,
 } from "../hooks/useGameViewChromeLayout";
-import { useSpecialRange } from "../hooks/useSpecialRange";
+import { getSpecialConfigWeb2 } from "../utils/specialConfigWeb2";
 import {
   useSpecialData,
 } from "../hooks/useShipAttributesContract";
@@ -182,6 +183,11 @@ interface SimulatedGameDisplayProps {
   continueToFleetSelection?: boolean;
   /** The exit button's label: "Quit", or "Sign in" for a signed-out player. */
   exitLabel?: string;
+  /**
+   * Show the exit button only once the tutorial is complete (a signed-out
+   * player: "Sign in" isn't offered mid-battle).
+   */
+  exitOnlyAfterCompletion?: boolean;
 }
 
 function toMobileTouchCopy(text: string): string {
@@ -300,6 +306,7 @@ export function SimulatedGameDisplay({
   onBack,
   continueToFleetSelection = false,
   exitLabel = "Quit",
+  exitOnlyAfterCompletion = false,
 }: SimulatedGameDisplayProps) {
   // Web2 has no tutorial reward claim (that's TutorialClaim, web3), so from
   // the Operations map its completion button just continues.
@@ -498,6 +505,8 @@ export function SimulatedGameDisplay({
   const isTutorialCompletionStep =
     currentStep?.id === "completion-retreat" ||
     currentStep?.id === "completion-sniper";
+  // Signed out, the exit button is "Sign in": only offered after the battle.
+  const exitAvailable = !!onBack && (!exitOnlyAfterCompletion || isTutorialCompletionStep);
 
   const handleClearTutorialRewardCache = useCallback(() => {
     if (!address) {
@@ -1138,7 +1147,11 @@ export function SimulatedGameDisplay({
   const specialType = selectedShip
     ? canonicalSpecialSlot(selectedShipVariant, selectedShip.equipment.special)
     : 0;
-  const { specialRange } = useSpecialRange(specialType, selectedShipVariant);
+  // The tutorial is a local simulation, so its special ranges come from the
+  // game's fixed table, not a chain read: when that read failed or hadn't
+  // come back, the EMP had no range, so it had no targets (switching to it
+  // dropped the Anvil, and a click on the Anvil fell through to Hold fire).
+  const specialRange = getSpecialConfigWeb2(selectedShipVariant, specialType)?.range;
   const { data: specialData } = useSpecialData(specialType, selectedShipVariant);
 
   // Check if a ship belongs to the tutorial player. GameGrid passes bigint IDs,
@@ -1791,8 +1804,6 @@ export function SimulatedGameDisplay({
   // Get valid targets
   // Show full range for viewing, but filter by tutorial constraints if step requires specific targets
   // The shared targeting rules, narrowed to what the current step allows.
-  // In the shoot step the allowed target always counts (out of range or
-  // not), so clicking it targets it rather than selecting it.
   const validTargets = useMemo(() => {
     if (!selectedShipId) return [];
     const shipKey = selectedShipId.toString();
@@ -1825,7 +1836,9 @@ export function SimulatedGameDisplay({
       .filter((t) => !allowedSet || allowedSet.has(String(t.shipId)))
       .map((t) => ({ shipId: String(t.shipId) as TutorialShipId, position: t.position }));
 
-    if (currentStep?.id === "shoot" && allowedSet && !isRammingMovePreview) {
+    // In the shoot and EMP steps the allowed target always counts (out of
+    // range or not), so clicking it targets it rather than selecting it.
+    if ((currentStep?.id === "shoot" || currentStep?.id === "special-emp") && allowedSet && !isRammingMovePreview) {
       const from =
         previewPosition ??
         rangeAlivePositions.find((p) => p.shipId === Number(selectedShipId))?.position;
@@ -2213,7 +2226,7 @@ export function SimulatedGameDisplay({
               previewPosition.col !== 3
             ) {
               toast.error(
-                "Move the Vigilant to (1, 3) before firing on the enemy.",
+                "Move the Vigilant to (3, 1) before firing on the enemy.",
               );
               return;
             }
@@ -2225,7 +2238,7 @@ export function SimulatedGameDisplay({
               previewPosition.col !== 8
             ) {
               toast.error(
-                "Move the Sentinel to (5, 8) before firing on the enemy.",
+                "Move the Sentinel to (8, 5) before firing on the enemy.",
               );
               return;
             }
@@ -2413,11 +2426,11 @@ export function SimulatedGameDisplay({
     // Sniper branch step: submit move-to-center, optionally with a shot target.
     if (currentStep?.id === "rescue-outcome-sniper") {
       if (!previewPosition) {
-        toast.error("Move the Sentinel to (5, 8) before submitting.");
+        toast.error("Move the Sentinel to (8, 5) before submitting.");
         return;
       }
       if (previewPosition.row !== 5 || previewPosition.col !== 8) {
-        toast.error("Move the Sentinel to (5, 8) before submitting.");
+        toast.error("Move the Sentinel to (8, 5) before submitting.");
         return;
       }
 
@@ -2565,7 +2578,8 @@ export function SimulatedGameDisplay({
 
   const tutorialGridPanelConfig = useMemo(() => {
     if (!currentStep?.id) return null;
-    const base = getTutorialGridPanelConfig(currentStep.id);
+    // The Fleet Status panel is only beside the board in the side layout.
+    const base = getTutorialGridPanelConfig(currentStep.id, { fleetStatusShown: chromeOnSide });
     if (!base) return null;
     // A report-only step (End of round) is just its round report: no panel.
     if (isReportOnlyStep(currentStep.id)) return null;
@@ -2652,6 +2666,7 @@ export function SimulatedGameDisplay({
     openSelfieCheckWidget,
     pendingTutorialClaimPath,
     runTutorialClaimTx,
+    chromeOnSide,
   ]);
 
   // The round report: a step's own (stepReportInfo, with Bosch's note) or
@@ -2826,7 +2841,7 @@ export function SimulatedGameDisplay({
         onNext={() => nextStep()}
         onPrevious={() => previousStep()}
         onReset={() => resetTutorial()}
-        onQuit={onBack}
+        onQuit={exitAvailable ? onBack : undefined}
         quitLabel={exitLabel}
         tutorialRewardCacheDebug={
           isTutorialCompletionStep
@@ -2928,25 +2943,15 @@ export function SimulatedGameDisplay({
       if (!ship) return null;
       const attributes = getShipAttributes(BigInt(cell.shipId));
       return (
-        <ShipCard
+        // Same hover card as the live games (GameTooltipShipCard).
+        <GameTooltipShipCard
           ship={toShipCardData(ship)}
           shipImage={<ShipImage ship={ship} className="h-full w-full" />}
-          isStarred={false}
-          onToggleStar={() => {}}
-          isSelected={false}
-          onToggleSelection={() => {}}
-          onRecycleClick={() => {}}
-          showInGameProperties={true}
-          inGameAttributes={attributes || undefined}
-          attributesLoading={!attributes}
-          hideRecycle={true}
-          hideCheckbox={true}
-          tooltipMode={true}
+          attributes={attributes || undefined}
           isCurrentPlayerShip={isShipOwnedByCurrentPlayer(BigInt(cell.shipId))}
           flipShip={cell.isCreator}
           hasMoved={gridMovedShipIdsSet.has(BigInt(cell.shipId))}
-          gameViewMode={true}
-          tooltipGridPosition={{ row: cell.row, col: cell.col }}
+          gridPosition={{ row: cell.row, col: cell.col }}
         />
       );
     },
@@ -3412,7 +3417,7 @@ export function SimulatedGameDisplay({
                   { label: `Combat: ${COMBAT_VIEW_LABEL[combatView.view]}`, onClick: combatView.toggle },
                   { label: `Hold fire warning: ${holdFireWarning.enabled ? "On" : "Off"}`, onClick: holdFireWarning.toggle },
                   { label: "Reset tutorial", onClick: () => resetTutorial(), tone: "warn" },
-                  ...(onBack ? [{ label: exitLabel, onClick: onBack }] : []),
+                  ...(exitAvailable && onBack ? [{ label: exitLabel, onClick: onBack }] : []),
                 ]}
               />
 

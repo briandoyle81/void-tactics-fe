@@ -1,5 +1,6 @@
 "use client";
 
+import { formatGridPosition } from "../utils/gridPosition";
 import React from "react";
 import { SHIP_IMAGE_RANK_STAR_BOX } from "./ShipImage";
 import {
@@ -14,6 +15,7 @@ import { Attributes } from "../types/types";
 import type { ShipCardData } from "../types/shipCardData";
 import { SosHullFires } from "./SosHullFires";
 import { tooltipPanelStyle } from "./tooltipPanel";
+import { ThreatValue, hullBarColor } from "./ThreatIcon";
 
 interface ShipCardProps {
   ship: ShipCardData;
@@ -59,6 +61,31 @@ interface ShipCardProps {
   hideRankLabel?: boolean;
   /** Render card content without outer border/padding frame. */
   hideOuterFrame?: boolean;
+}
+
+/** One stat tile on the card (design pass A): a label, a large number, a note. */
+function StatTile({
+  label,
+  value,
+  note,
+  noteAccent = false,
+  compact = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  note?: string;
+  noteAccent?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`flex min-w-0 flex-col bg-near-black ${compact ? "gap-0 px-2 py-1.5" : "gap-0.5 px-2.5 py-2"}`}>
+      <span className="text-[10px] tracking-wider text-text-secondary">{label}</span>
+      <span className={`font-bold leading-tight ${compact ? "text-base" : "text-xl"}`}>{value}</span>
+      {note && (
+        <span className={`truncate text-[11px] ${noteAccent ? "text-cyan" : "text-text-secondary"}`}>{note}</span>
+      )}
+    </div>
+  );
 }
 
 const ShipCard: React.FC<ShipCardProps> = ({
@@ -232,6 +259,25 @@ const ShipCard: React.FC<ShipCardProps> = ({
           `Kills: ${data.rankShipsDestroyed}`,
           `Next rank (R${data.rankNextRank}) in ${data.rankKillsToNextRank} kill${data.rankKillsToNextRank === 1 ? "" : "s"}`,
         ];
+  // The status chip on the art (design pass A).
+  const statusLabel = data.isDestroyed
+    ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
+    : hasMoved
+      ? "MOVED"
+      : gameViewMode || tooltipMode
+        ? "READY"
+        : data.inFleet
+          ? "IN FLEET"
+          : "READY";
+  const statusColor = data.isDestroyed
+    ? "var(--color-warning-red)"
+    : hasMoved
+      ? "var(--color-amber)"
+      : gameViewMode || tooltipMode
+        ? "var(--color-cyan)"
+        : data.inFleet
+          ? "var(--color-amber)"
+          : "var(--color-phosphor-green)";
   const rankTooltipAccent =
     data.rank <= 2
       ? "var(--color-phosphor-green)"
@@ -322,38 +368,6 @@ const ShipCard: React.FC<ShipCardProps> = ({
           </div>
         )}
 
-        {inGameAttributes &&
-          inGameAttributes.hullPoints < inGameAttributes.maxHullPoints && (
-            <div className="absolute -top-2 left-0 right-0 z-10" dir="ltr">
-              <div
-                className="relative h-1 w-full overflow-hidden transition-all duration-300"
-                style={{
-                  backgroundColor: "var(--color-gunmetal)",
-                  borderRadius: 0,
-                }}
-              >
-                <div
-                  className="absolute left-0 top-0 h-full transition-all duration-300"
-                  style={{
-                    backgroundColor:
-                      (inGameAttributes.hullPoints /
-                        inGameAttributes.maxHullPoints) *
-                        100 <=
-                      25
-                        ? "var(--color-warning-red)"
-                        : "var(--color-phosphor-green)",
-                    borderRadius: 0,
-                    width: `${
-                      (inGameAttributes.hullPoints /
-                        inGameAttributes.maxHullPoints) *
-                      100
-                    }%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
         {/* Game view indicators for tooltip */}
         {(tooltipMode || gameViewMode) && inGameAttributes && (
           <>
@@ -411,6 +425,84 @@ const ShipCard: React.FC<ShipCardProps> = ({
               )
             )}
           </>
+        )}
+
+        {/* Design pass A: status, rarity, rank and position sit on the art,
+            out of the stat grid. Badges go on the side away from the
+            reactor marks (which follow the ship's facing). */}
+        {data.isConstructed && !isSosArt && (
+          <span
+            className="pointer-events-none absolute left-1.5 top-1.5 z-10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+            style={{
+              fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
+              backgroundColor: statusColor,
+              color: "var(--color-near-black)",
+            }}
+          >
+            {statusLabel}
+          </span>
+        )}
+        {(!hideRarityLabel || (data.isConstructed && !hideRankLabel)) && (
+          <div className={`absolute bottom-1.5 z-10 flex items-center gap-1.5 ${flipShip ? "right-1.5" : "left-1.5"}`}>
+            {!hideRarityLabel && (
+              <span
+                className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap border border-solid px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+                style={{
+                  fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
+                  backgroundColor: "var(--color-near-black)",
+                  color: data.isShiny ? "var(--color-amber)" : "var(--color-text-secondary)",
+                  borderColor: data.isShiny ? "var(--color-amber)" : "var(--color-gunmetal)",
+                  borderRadius: 0,
+                }}
+              >
+                {data.isShiny ? "SHINY ★" : "COMMON"}
+              </span>
+            )}
+            {data.isConstructed && !hideRankLabel && (
+              <div className="relative group">
+                {/* Focusable so a tap shows the rank tooltip (hover-only before).
+                    The tap still reaches the card, so it selects it too. */}
+                <span
+                  tabIndex={0}
+                  className={`cursor-default border border-solid bg-near-black px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider outline-none focus-visible:ring-1 focus-visible:ring-cyan ${getRankColor(
+                    data.rank,
+                  )}`}
+                  style={{
+                    fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
+                    borderRadius: 0,
+                  }}
+                >
+                  R{data.rank}
+                </span>
+                <div
+                  className={`pointer-events-none absolute bottom-full mb-1 hidden min-w-max border border-solid px-2 py-1 text-xs group-hover:block group-focus-within:block z-20 ${
+                    flipShip ? "right-0" : "left-0"
+                  }`}
+                  style={{
+                    fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
+                    backgroundColor: "var(--color-slate)",
+                    color: "var(--color-text-primary)",
+                    borderColor: rankTooltipAccent,
+                    borderTopColor: rankTooltipAccent,
+                    borderLeftColor: rankTooltipAccent,
+                    borderRadius: 0,
+                    boxShadow: `0 0 12px color-mix(in srgb, ${rankTooltipAccent} 25%, transparent)`,
+                  }}
+                >
+                  <div style={{ color: rankTooltipAccent }}>{rankTooltipLines[0]}</div>
+                  <div className="opacity-80">{rankTooltipLines[1]}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {tooltipMode && tooltipGridPosition != null && (
+          <span
+            className={`pointer-events-none absolute top-1.5 z-10 bg-near-black px-1.5 py-0.5 text-[10px] text-text-secondary ${flipShip ? "left-1.5" : "right-1.5"}`}
+            style={{ fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace" }}
+          >
+            {formatGridPosition(tooltipGridPosition)}
+          </span>
         )}
       </div>
 
@@ -559,249 +651,99 @@ const ShipCard: React.FC<ShipCardProps> = ({
               }}
             />
           )}
-          {!hideRarityLabel && (
-            <span
-              className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-xs px-2 py-1 border border-solid uppercase font-semibold tracking-wider"
-              style={{
-                fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
-                backgroundColor: data.isShiny
-                  ? "var(--color-near-black)"
-                  : "var(--color-near-black)",
-                color: data.isShiny
-                  ? "var(--color-amber)"
-                  : "var(--color-text-secondary)",
-                borderColor: data.isShiny
-                  ? "var(--color-amber)"
-                  : "var(--color-gunmetal)",
-                borderTopColor: data.isShiny
-                  ? "var(--color-amber)"
-                  : "var(--color-steel)",
-                borderLeftColor: data.isShiny
-                  ? "var(--color-amber)"
-                  : "var(--color-steel)",
-                borderRadius: 0, // Square corners
-              }}
-            >
-              {data.isShiny ? "SHINY ★" : "COMMON"}
-            </span>
-          )}
-          {/* Rank */}
-          {data.isConstructed && !hideRankLabel && (
-            <div className="relative group">
-              {/* Focusable so a tap shows the rank tooltip (hover-only before).
-                  The tap still reaches the card, so it selects it too. */}
-              <span
-                tabIndex={0}
-                className={`text-xs px-2 py-1 border border-solid uppercase font-semibold tracking-wider cursor-default outline-none focus-visible:ring-1 focus-visible:ring-cyan ${getRankColor(
-                  data.rank,
-                )}`}
-                style={{
-                  fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
-                  borderRadius: 0, // Square corners
-                }}
-              >
-                R{data.rank}
-              </span>
-              <div
-                className="pointer-events-none absolute right-0 top-full mt-1 hidden min-w-max border border-solid px-2 py-1 text-xs group-hover:block group-focus-within:block z-20"
-                style={{
-                  fontFamily: "var(--font-jetbrains-mono), 'Courier New', monospace",
-                  backgroundColor: "var(--color-slate)",
-                  color: "var(--color-text-primary)",
-                  borderColor: rankTooltipAccent,
-                  borderTopColor: rankTooltipAccent,
-                  borderLeftColor: rankTooltipAccent,
-                  borderRadius: 0,
-                  boxShadow: `0 0 12px color-mix(in srgb, ${rankTooltipAccent} 25%, transparent)`,
-                }}
-              >
-                <div style={{ color: rankTooltipAccent }}>{rankTooltipLines[0]}</div>
-                <div className="opacity-80">{rankTooltipLines[1]}</div>
-              </div>
-            </div>
+          {data.isConstructed && (
+            <ThreatValue
+              value={data.cost}
+              iconSize={useCompactStatGrid ? 16 : 20}
+              className={useCompactStatGrid ? "text-xl" : "text-3xl"}
+            />
           )}
         </div>
       </div>
 
-      {/* Compact Stats or Construction Message */}
-      <div className="space-y-2 text-sm">
+      {/* Stats (design pass A): hull as a bar, the combat numbers as tiles,
+          then the loadout. Status and Threat are on the art and in the header. */}
+      <div className="text-sm">
         {data.isConstructed ? (
-          <div
-            className={`grid gap-y-1 text-xs relative ${
-              useCompactStatGrid
-                ? "grid-cols-2 gap-x-2"
-                : "grid-cols-3 gap-x-4"
-            }`}
-          >
-            {showInGameProperties ? (
-              // In-Game Properties
-              (() => {
-                if (!inGameAttributes) {
-                  return (
-                    <div className="col-span-3 text-center text-text-muted text-xs">
-                      {attributesLoading
-                        ? "Loading attributes…"
-                        : "Attributes not available"}
-                    </div>
-                  );
-                }
-                return (
-                  <>
-                    {tooltipMode && tooltipGridPosition != null && (
-                      <div className="flex justify-between col-span-3 border-b border-gunmetal/80 pb-1 mb-0.5">
-                        <span className="opacity-60">Position:</span>
-                        <span className="ml-2 text-right font-mono">
-                          ({tooltipGridPosition.row},{" "}
-                          {tooltipGridPosition.col})
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Weapon:</span>
-                      <span className="ml-2 text-right">
-                        {getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Range:</span>
-                      <span className="ml-2 text-right">{inGameAttributes.range}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Damage:</span>
-                      <span className="ml-2 text-right">{inGameAttributes.gunDamage}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Hull:</span>
-                      <span className="ml-2 text-right">
-                        {inGameAttributes.hullPoints}/
-                        {inGameAttributes.maxHullPoints}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Move:</span>
-                      <span className="ml-2 text-right">{inGameAttributes.movement}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">
-                        {data.equipment.shields > 0
-                          ? "Shields:"
-                          : "Armor:"}
-                      </span>
-                      <span className="ml-2 text-right">
-                        {inGameAttributes.damageReduction}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Special:</span>
-                      <span className="ml-2 text-right">
-                        {getSpecialName(data.equipment.special, data.traits.variant)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Status:</span>
-                      <span
-                        className={`ml-2 text-right ${
-                          data.isDestroyed
-                            ? "text-warning-red"
-                            : hasMoved
-                            ? "text-amber"
-                            : gameViewMode || tooltipMode
-                            ? "text-cyan" // Unmoved in game view
-                            : data.inFleet
-                            ? "text-amber"
-                            : "text-phosphor-green"
-                        }`}
-                      >
-                        {data.isDestroyed
-                          ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
-                          : hasMoved
-                          ? "MOVED"
-                          : gameViewMode || tooltipMode
-                          ? "READY" // Unmoved in game view
-                          : data.inFleet
-                          ? "IN FLEET"
-                          : "READY"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="opacity-60">Threat:</span>
-                      <span className="ml-2 text-right font-bold">
-                        {data.cost}
-                      </span>
-                    </div>
-                  </>
-                );
-              })()
+          showInGameProperties ? (
+            !inGameAttributes ? (
+              <div className="text-center text-xs text-text-secondary">
+                {attributesLoading ? "Loading attributes…" : "Attributes not available"}
+              </div>
             ) : (
-              // NFT Properties (original)
-              <>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Acc:</span>
-                  <span className="ml-2 text-right">{data.traits.accuracy}</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-baseline justify-between text-[10px] tracking-wider">
+                    <span className="text-text-secondary">HULL</span>
+                    <span>
+                      <b
+                        className="text-sm"
+                        style={{ color: hullBarColor(inGameAttributes.hullPoints, inGameAttributes.maxHullPoints) }}
+                      >
+                        {inGameAttributes.hullPoints}
+                      </b>
+                      <span className="text-text-secondary"> / {inGameAttributes.maxHullPoints}</span>
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-steel">
+                    <div
+                      className="h-full transition-all duration-300"
+                      style={{
+                        width: `${inGameAttributes.maxHullPoints > 0 ? (inGameAttributes.hullPoints / inGameAttributes.maxHullPoints) * 100 : 0}%`,
+                        backgroundColor: hullBarColor(inGameAttributes.hullPoints, inGameAttributes.maxHullPoints),
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Hull:</span>
-                  <span className="ml-2 text-right">{data.traits.hull}</span>
+                <div className="grid grid-cols-2 gap-px bg-steel">
+                  <StatTile
+                    label="DAMAGE"
+                    value={inGameAttributes.gunDamage}
+                    note={getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
+                    noteAccent
+                    compact={useCompactStatGrid}
+                  />
+                  <StatTile label="RANGE" value={inGameAttributes.range} note="tiles" compact={useCompactStatGrid} />
+                  <StatTile label="MOVE" value={inGameAttributes.movement} note="tiles" compact={useCompactStatGrid} />
+                  <StatTile
+                    label={data.equipment.shields > 0 ? "SHIELDS" : "ARMOR"}
+                    value={`${inGameAttributes.damageReduction}%`}
+                    note="less damage taken"
+                    compact={useCompactStatGrid}
+                  />
                 </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Speed:</span>
-                  <span className="ml-2 text-right">{data.traits.speed}</span>
+                <div className="flex justify-between gap-2 text-xs">
+                  <span className="text-text-secondary">Special</span>
+                  <span className="text-right">{getSpecialName(data.equipment.special, data.traits.variant)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Wpn:</span>
-                  <span className="ml-2 text-right">
-                    {getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
+              </div>
+            )
+          ) : (
+            // The ship's build (traits and equipment), outside a battle.
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-px bg-steel">
+                <StatTile label="ACCURACY" value={data.traits.accuracy} compact />
+                <StatTile label="HULL" value={data.traits.hull} compact />
+                <StatTile label="SPEED" value={data.traits.speed} compact />
+              </div>
+              <div className="flex flex-col gap-1 text-xs">
+                <div className="flex justify-between gap-2">
+                  <span className="text-text-secondary">Weapon</span>
+                  <span className="text-right text-cyan">{getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-text-secondary">{data.equipment.shields > 0 ? "Shields" : "Armor"}</span>
+                  <span className="text-right">
+                    {data.equipment.shields > 0 ? getShieldName(data.equipment.shields) : getArmorName(data.equipment.armor)}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">
-                    {data.equipment.shields > 0 ? "Shd:" : "Arm:"}
-                  </span>
-                  <span className="ml-2 text-right">
-                    {data.equipment.shields > 0
-                      ? getShieldName(data.equipment.shields)
-                      : getArmorName(data.equipment.armor)}
-                  </span>
+                <div className="flex justify-between gap-2">
+                  <span className="text-text-secondary">Special</span>
+                  <span className="text-right">{getSpecialName(data.equipment.special, data.traits.variant)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Spc:</span>
-                  <span className="ml-2 text-right">
-                    {getSpecialName(data.equipment.special, data.traits.variant)}
-                  </span>
-                </div>
-                <div className="flex justify-between col-span-2">
-                  <span className="opacity-60">Status:</span>
-                  <span
-                    className={`ml-2 text-right ${
-                      data.isDestroyed
-                        ? "text-warning-red"
-                        : hasMoved
-                        ? "text-amber"
-                        : gameViewMode || tooltipMode
-                        ? "text-cyan" // Unmoved in game view
-                        : data.inFleet
-                        ? "text-amber"
-                        : "text-phosphor-green"
-                    }`}
-                  >
-                    {data.isDestroyed
-                      ? `DESTROYED ${formatDestroyedDate(data.timestampDestroyedSeconds)}`
-                      : hasMoved
-                      ? "MOVED"
-                      : gameViewMode || tooltipMode
-                      ? "READY" // Unmoved in game view
-                      : data.inFleet
-                      ? "IN FLEET"
-                      : "READY"}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="opacity-60">Threat:</span>
-                  <span className="ml-2 text-right font-bold">{data.cost}</span>
-                </div>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )
         ) : (
           <div className="text-center py-4 px-2">
             <div className="text-text-muted text-sm font-mono font-bold">

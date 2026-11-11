@@ -21,7 +21,7 @@ async function outOfZoneError(mapId: number, tiles: { row: number; col: number }
   const bad = tiles.find((t) => !isDeploymentTile(t.row, t.col, false, zone));
   return bad
     ? NextResponse.json(
-        { error: `Tile (${bad.row}, ${bad.col}) is outside this map's joiner zone` },
+        { error: `Tile (${bad.col}, ${bad.row}) is outside this map's joiner zone` },
         { status: 400 },
       )
     : null;

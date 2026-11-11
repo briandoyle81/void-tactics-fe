@@ -41,7 +41,7 @@ describe("map tile art", () => {
     const notImpassable = square.filter(([r, c]) => !(r === 5 && c === 13));
     expect(buildTileArtGrid([DOCK], grid(square), grid(notImpassable))).toBeNull();
     expect(tileArtProblem(DOCK, () => true, (r, c) => !(r === 5 && c === 13))).toBe(
-      "Dock art (rows 4–6, cols 12–14) needs blocked and impassable tiles, 1 differ",
+      "Dock art (x 12–14, y 4–6) needs blocked and impassable tiles, 1 differ",
     );
   });
 

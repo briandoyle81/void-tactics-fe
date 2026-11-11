@@ -1495,10 +1495,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     );
 
     if (!targetPos) {
-      return "[target shipPositions row,col: missing]";
+      return "[target position (x, y): missing]";
     }
 
-    return `[target shipPositions row,col: ${targetPos.position.row},${targetPos.position.col}]`;
+    return `[target position (x, y): ${targetPos.position.col}, ${targetPos.position.row}]`;
   }, [debugMode, displayedLastMove, game.shipPositions]);
 
 

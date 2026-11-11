@@ -125,16 +125,24 @@ function panelLayout(stepId: string): Partial<TutorialGridPanelConfig> {
   }
 }
 
-export function getTutorialGridPanelConfig(stepId: string): TutorialGridPanelConfig | null {
+/**
+ * `fleetStatusShown`: the Fleet Status panel is beside the board. Without it
+ * (phones, narrow windows) a step's `briefWithoutFleetStatus` is used.
+ */
+export function getTutorialGridPanelConfig(
+  stepId: string,
+  { fleetStatusShown = true }: { fleetStatusShown?: boolean } = {},
+): TutorialGridPanelConfig | null {
   if (!Object.hasOwn(TUTORIAL_PANELS, stepId)) return null;
   const text = TUTORIAL_PANELS[stepId];
+  const brief = !fleetStatusShown && text.briefWithoutFleetStatus ? text.briefWithoutFleetStatus : text.brief;
   return {
     title: text.title,
-    brief: renderTutorialParagraphs(text.brief),
+    brief: renderTutorialParagraphs(brief),
     ...(text.tasks ? { tasks: text.tasks.map(renderTutorialText) } : {}),
     // No words on the panel (e.g. End of round, whose briefing is in the
     // round report): shrink to the header and buttons.
-    ...(text.brief.length === 0 && !text.tasks?.length ? { panelFitToContent: true } : {}),
+    ...(brief.length === 0 && !text.tasks?.length ? { panelFitToContent: true } : {}),
     ...panelLayout(stepId),
   };
 }

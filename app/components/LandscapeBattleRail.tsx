@@ -1,5 +1,6 @@
 "use client";
 
+import { formatGridPosition } from "../utils/gridPosition";
 import React from "react";
 import { TurnCountdownBar, TurnCountdownText } from "./TurnCountdown";
 import { formatScore } from "../utils/roundScoreProjection";
@@ -385,7 +386,7 @@ export function LandscapeStagedMove({
     <div className="flex flex-col gap-2 border border-gunmetal bg-near-black p-2">
       <p className="font-mono text-xs text-text-secondary">
         <span className="uppercase tracking-wide text-text-muted">Move · </span>
-        {retreating ? "Retreat off the map" : holds ? "Hold position" : `To (${to.row}, ${to.col})`}
+        {retreating ? "Retreat off the map" : holds ? "Hold position" : `To ${formatGridPosition(to)}`}
       </p>
       {!retreating && targets.length > 0 && (
         <div className="flex flex-col gap-1">

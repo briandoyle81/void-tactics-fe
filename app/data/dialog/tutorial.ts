@@ -21,6 +21,11 @@ export interface TutorialPanelText {
   title: string;
   /** Paragraphs, in order. */
   brief: string[];
+  /**
+   * The brief where there's no Fleet Status panel beside the board (phones
+   * and narrow windows), for a step whose brief points at that panel.
+   */
+  briefWithoutFleetStatus?: string[];
   /** The numbered orders under the brief. */
   tasks?: string[];
   /**
@@ -70,6 +75,10 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
       "The {red|enemy} holds the {dust|right side} of the map. Our sensors can show us each ship's {amber|stats and abilities}.",
       "Find the {red|Tongs} and click it. Enemy ships are listed in {red|red} under {cyan|Fleet Status}; hover over one there to see where it is on the board.",
     ],
+    briefWithoutFleetStatus: [
+      "The {red|enemy} holds the {dust|right side} of the map. Our sensors can show us each ship's {amber|stats and abilities}.",
+      "Find the {red|Tongs} and tap it. The {red|enemy} ships are marked on the board; tap one to see its name and stats.",
+    ],
   },
   "move-ship": {
     title: "Move your ship",
@@ -90,7 +99,7 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
     title: "Scoring zones",
     brief: [
       "At round end, each {amber|scoring zone} we control with a functioning ship (not disabled) earns us {amber|points}.",
-      "The {red|Tongs} moved onto a {amber|resource}. Answer by {green|moving} the {cyan|Resolute} onto one of ours.",
+      "The {red|Tongs} moved onto a {amber|resource}. Answer by {green|moving} the {cyan|Resolute} onto the center resource.",
     ],
   },
   shoot: {

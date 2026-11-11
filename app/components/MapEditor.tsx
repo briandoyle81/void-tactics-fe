@@ -1138,7 +1138,7 @@ export function MapEditor({
                     onContextMenu={(e) => handleTileRightClick(e, row, col)}
                     onDragStart={(e) => e.preventDefault()}
                     style={{ userSelect: "none" }}
-                    title={`Row: ${row}, Col: ${col}${
+                    title={`X: ${col}, Y: ${row}${
                       editorState.blockedTiles[row][col] ? ", Blocked (LOS)" : ""
                     }${
                       editorState.impassableTiles[row][col] ? ", Impassable (movement)" : ""

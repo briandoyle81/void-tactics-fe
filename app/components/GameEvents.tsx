@@ -1,5 +1,6 @@
 "use client";
 
+import { formatGridPosition } from "../utils/gridPosition";
 import React from "react";
 import { ActionType } from "../types/types";
 
@@ -50,12 +51,12 @@ function formatLastMoveDescription(
 
   // Retreat is never a move: only "retreated from" position
   if (lastMove.actionType === ActionType.Retreat) {
-    description = `${shipName} retreated from Row ${lastMove.oldRow}, Col ${lastMove.oldCol}`;
+    description = `${shipName} retreated from ${formatGridPosition({ row: lastMove.oldRow, col: lastMove.oldCol })}`;
     return description;
   }
 
   if (moved) {
-    description = `${shipName} moved to Row: ${lastMove.newRow}, Col: ${lastMove.newCol}`;
+    description = `${shipName} moved to ${formatGridPosition({ row: lastMove.newRow, col: lastMove.newCol })}`;
   }
 
   if (lastMove.actionType === ActionType.Shoot) {

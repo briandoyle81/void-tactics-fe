@@ -1,5 +1,6 @@
 "use client";
 
+import { GAME_TOOLTIP_SHIP_CARD_SIZE } from "./GameTooltipShipCard";
 import React from "react";
 import { measureGridCellViewportBounds } from "./GameGrid";
 import { HoverShipCardTooltip, type HoverAnchorRect } from "./HoverShipCardTooltip";
@@ -83,6 +84,7 @@ export const GameGridTooltip = React.memo(function GameGridTooltip({
       containerRef={gridContainerRef}
       disableTooltips={disableTooltips || !!draggedShipId}
       renderCard={() => (hoveredCell ? renderShipCard(hoveredCell) : null)}
+      size={GAME_TOOLTIP_SHIP_CARD_SIZE}
     />
   );
 });

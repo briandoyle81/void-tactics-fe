@@ -100,6 +100,7 @@ export function OnboardingTutorial({
               onBack={handleSkip}
               continueToFleetSelection={fromOperations}
               exitLabel={isSignedIn ? "Quit" : "Sign in"}
+              exitOnlyAfterCompletion={!isSignedIn}
             />
           </>
         )}
