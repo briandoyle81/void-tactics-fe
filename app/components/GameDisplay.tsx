@@ -91,6 +91,7 @@ import {
   useSpecialRangeAt,
   useSpecialStrengthAt,
 } from "../hooks/useShipAttributesContract";
+import { refreshGameRuleReads } from "../hooks/useGameRuleRead";
 import { useFactionAbilityConfig } from "../hooks/useFactionAbilityConfig";
 import { usePendingMove } from "../hooks/usePendingMove";
 import { applyPendingMoveToGame, boardMoveFromPending, lastMoveKey, predictAoeEffect, type PendingMoveEffect } from "../utils/pendingMove";
@@ -1377,6 +1378,18 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       const errorMessage =
         (error as Error)?.message || String(error) || "Unknown error";
 
+      // A move the chain refused may have been aimed with out-of-date rules
+      // (special or faction ability range/strength are saved across sessions,
+      // see useGameRuleRead.ts), so read them again. Declining in the wallet
+      // or lacking gas says nothing about the rules.
+      if (
+        !errorMessage.includes("User rejected") &&
+        !errorMessage.includes("User denied") &&
+        !errorMessage.includes("insufficient funds")
+      ) {
+        refreshGameRuleReads(queryClient);
+      }
+
       if (
         errorMessage.includes("User rejected") ||
         errorMessage.includes("User denied")
@@ -1417,7 +1430,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         toast.error(`Transaction failed: ${errorMessage}`);
       }
     },
-    [failPendingMove, playback, setProposalLocked, clearProposal, clearOptimisticSos, clearOptimisticDestroy],
+    [failPendingMove, playback, setProposalLocked, clearProposal, clearOptimisticSos, clearOptimisticDestroy, queryClient],
   );
 
   // Check if a ship belongs to the current player

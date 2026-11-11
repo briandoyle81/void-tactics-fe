@@ -4,6 +4,7 @@ import type { Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import { getVariantForChainId } from "../config/networks";
 import { useSelectedChainId } from "./useSelectedChainId";
+import { useGameRuleRead } from "./useGameRuleRead";
 
 // Types based on the contract
 export interface GunData {
@@ -104,6 +105,24 @@ export function useShipAttributesRead(
       notifyOnChangeProps: ["data", "error"],
     },
     args,
+  });
+}
+
+// A ShipAttributes read used by live battles, saved across sessions and
+// refreshed after a failed move (see useGameRuleRead.ts).
+function useShipAttributesRuleRead(
+  functionName: ShipAttributesReadFunction,
+  args: readonly unknown[],
+  enabled: boolean,
+) {
+  const chainId = useSelectedChainId();
+  return useGameRuleRead({
+    address: getContractAddresses(chainId).SHIP_ATTRIBUTES as `0x${string}`,
+    abi: CONTRACT_ABIS.SHIP_ATTRIBUTES as Abi,
+    chainId,
+    functionName,
+    args,
+    enabled,
   });
 }
 
@@ -212,8 +231,9 @@ export function useSpecialRangeAt(
   );
   // version 0 is never a real pinned version (InvalidAttributesVersion
   // onchain) — guard it here so callers can pass a not-yet-loaded ship's
-  // version without tripping a doomed read.
-  return useShipAttributesRead("getSpecialRangeAt", args, undefined, enabled && version > 0);
+  // version without tripping a doomed read. Saved across sessions
+  // (useGameRuleRead): a pinned version's values never change.
+  return useShipAttributesRuleRead("getSpecialRangeAt", args, enabled && version > 0);
 }
 
 export function useSpecialStrengthAt(
@@ -226,5 +246,5 @@ export function useSpecialStrengthAt(
     () => [variant, version, special] as const,
     [variant, version, special],
   );
-  return useShipAttributesRead("getSpecialStrengthAt", args, undefined, enabled && version > 0);
+  return useShipAttributesRuleRead("getSpecialStrengthAt", args, enabled && version > 0);
 }

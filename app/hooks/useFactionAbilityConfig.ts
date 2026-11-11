@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useReadContract } from "wagmi";
 import type { Abi } from "viem";
 import { CONTRACT_ABIS, getContractAddresses, ZERO_ADDRESS } from "../config/contracts";
 import { useSelectedChainId } from "./useSelectedChainId";
+import { useGameRuleRead } from "./useGameRuleRead";
 
 // Every ship's innate faction ability — variant 1's Ram, variant 2's Repair
 // — is dispatched via ActionType.FactionAbility and resolved by a
@@ -21,18 +21,12 @@ export function useRamResolverConfig() {
   const chainId = useSelectedChainId();
   const address = getContractAddresses(chainId).RAM_RESOLVER as `0x${string}`;
   const isSupported = address.toLowerCase() !== ZERO_ADDRESS;
-  const { data } = useReadContract({
+  const { data } = useGameRuleRead({
     address,
     abi: CONTRACT_ABIS.RAM_RESOLVER as Abi,
     chainId,
     functionName: "range",
-    query: {
-      enabled: isSupported,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      staleTime: Infinity,
-      notifyOnChangeProps: ["data", "error"],
-    },
+    enabled: isSupported,
   });
   return { range: data as number | undefined, isSupported };
 }
@@ -42,31 +36,19 @@ export function useRepairResolverConfig() {
   const chainId = useSelectedChainId();
   const address = getContractAddresses(chainId).REPAIR_RESOLVER as `0x${string}`;
   const isSupported = address.toLowerCase() !== ZERO_ADDRESS;
-  const { data: range } = useReadContract({
+  const { data: range } = useGameRuleRead({
     address,
     abi: CONTRACT_ABIS.REPAIR_RESOLVER as Abi,
     chainId,
     functionName: "range",
-    query: {
-      enabled: isSupported,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      staleTime: Infinity,
-      notifyOnChangeProps: ["data", "error"],
-    },
+    enabled: isSupported,
   });
-  const { data: strength } = useReadContract({
+  const { data: strength } = useGameRuleRead({
     address,
     abi: CONTRACT_ABIS.REPAIR_RESOLVER as Abi,
     chainId,
     functionName: "strength",
-    query: {
-      enabled: isSupported,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      staleTime: Infinity,
-      notifyOnChangeProps: ["data", "error"],
-    },
+    enabled: isSupported,
   });
   return { range: range as number | undefined, strength: strength as number | undefined, isSupported };
 }
