@@ -9,7 +9,7 @@ import {
   getArmorName,
   getShieldName,
 } from "../types/types";
-import { getRankColor } from "../utils/shipLevel";
+import { getRankColor, getRankColorVar } from "../utils/shipLevel";
 import { formatDestroyedDate } from "../utils/dateUtils";
 import { Attributes } from "../types/types";
 import type { ShipCardData } from "../types/shipCardData";
@@ -67,30 +67,49 @@ interface ShipCardProps {
 const CARD_BUTTON =
   "border border-solid px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors duration-150 pointer-coarse:py-2";
 
-/** One number in the card's stat row (design pass D): a small label over a large number. */
-function StatCell({
+/** Cut corners for the card frame and its inner panel (design pass G). */
+const CARD_CHAMFER =
+  "polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px)";
+const BADGE_CHAMFER =
+  "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)";
+/** The frame's foil in a rank color: light, dark, and back, so it catches the light. */
+function rankFrameFill(color: string): string {
+  return `linear-gradient(150deg, color-mix(in srgb, ${color} 70%, white), color-mix(in srgb, ${color} 55%, black) 50%, ${color})`;
+}
+/** The art bay: a few stars, scanlines and a glow in the rarity color. */
+const BAY_STARS =
+  "radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,0.55), transparent 60%)," +
+  "radial-gradient(1px 1px at 78% 14%, rgba(255,255,255,0.45), transparent 60%)," +
+  "radial-gradient(1px 1px at 64% 72%, rgba(255,255,255,0.35), transparent 60%)," +
+  "radial-gradient(1.5px 1.5px at 30% 80%, rgba(255,255,255,0.4), transparent 60%)," +
+  "radial-gradient(1px 1px at 90% 58%, rgba(255,255,255,0.5), transparent 60%)," +
+  "radial-gradient(1px 1px at 45% 10%, rgba(255,255,255,0.35), transparent 60%)";
+const HULL_SEGMENTS = 12;
+
+/** One stat on a small plate (design pass G): a label over a large number. */
+function StatPlate({
   label,
   value,
-  first = false,
   muted = false,
   compact = false,
   title,
 }: {
   label: string;
   value: React.ReactNode;
-  first?: boolean;
   muted?: boolean;
   compact?: boolean;
   title?: string;
 }) {
   return (
     <div
-      className={`flex min-w-0 flex-col gap-0.5 ${first ? "pr-2" : "border-l border-solid border-gunmetal px-2"}`}
+      className={`flex min-w-0 flex-col gap-0.5 border-t-2 border-solid bg-steel/55 ${
+        compact ? "px-1.5 py-1" : "px-[7px] pb-[7px] pt-1.5"
+      } ${muted ? "border-text-muted" : "border-cyan"}`}
       title={title}
     >
-      <span className="font-mono text-[9px] tracking-[0.12em] text-text-muted">{label}</span>
+      <span className="truncate font-mono text-[9px] tracking-[0.12em] text-text-muted">{label}</span>
       <span
-        className={`font-sans font-bold leading-none ${compact ? "text-lg" : "text-2xl"} ${
+        className={`font-sans font-bold leading-none ${compact ? "text-lg" : "text-[22px]"} ${
           muted ? "text-text-secondary" : "text-text-primary"
         }`}
       >
@@ -100,16 +119,65 @@ function StatCell({
   );
 }
 
-/** The weapon (cyan) and the special, on one line under the numbers. */
-function WeaponAndSpecial({ data, muted }: { data: ShipCardData; muted: boolean }) {
-  const special = getSpecialName(data.equipment.special, data.traits.variant);
+/** Hull as a row of segments. */
+function HullSegments({ hull, maxHull, destroyed }: { hull: number; maxHull: number; destroyed: boolean }) {
+  const filled = destroyed || maxHull <= 0 ? 0 : Math.round((HULL_SEGMENTS * hull) / maxHull);
+  // A ship with any hull left shows at least one lit segment.
+  const lit = !destroyed && hull > 0 ? Math.max(filled, 1) : filled;
+  const color = hullBarColor(hull, maxHull);
   return (
-    <div className="flex justify-between gap-2 font-mono text-[11px]">
-      <span className={`min-w-0 truncate ${muted ? "text-text-muted" : "text-cyan"}`}>
-        {getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
+    <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider">
+      <span className="text-text-muted">HULL</span>
+      <div
+        className="flex flex-1 gap-0.5"
+        role="img"
+        aria-label={destroyed ? "Hull: destroyed" : `Hull ${hull} of ${maxHull}`}
+      >
+        {Array.from({ length: HULL_SEGMENTS }, (_, i) => (
+          <span
+            key={i}
+            className="h-[7px] flex-1"
+            style={
+              i < lit
+                ? { backgroundColor: color, boxShadow: `0 0 6px color-mix(in srgb, ${color} 40%, transparent)` }
+                : { backgroundColor: "var(--color-steel)" }
+            }
+          />
+        ))}
+      </div>
+      {destroyed ? (
+        <span className="text-[11px] text-warning-red">DESTROYED</span>
+      ) : (
+        <span className="text-[11px]">
+          <b className="text-text-primary">{hull}</b>
+          <span className="text-text-muted">/{maxHull}</span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The weapon and the special as two tags. */
+function LoadoutTags({ data, muted }: { data: ShipCardData; muted: boolean }) {
+  const special = getSpecialName(data.equipment.special, data.traits.variant);
+  const noSpecial = special === "None";
+  return (
+    <div className="flex gap-1.5 font-mono text-[10px] tracking-wide">
+      <span
+        className={`min-w-0 flex-1 truncate border border-solid px-1.5 py-1 ${
+          muted ? "border-text-muted/40 text-text-muted" : "border-cyan/40 text-cyan"
+        }`}
+        title="Weapon"
+      >
+        ⌁ {getMainWeaponName(data.equipment.mainWeapon, data.traits.variant)}
       </span>
-      <span className={`min-w-0 truncate text-right ${special === "None" ? "text-text-muted" : "text-text-primary"}`}>
-        {special === "None" ? "No special" : special}
+      <span
+        className={`min-w-0 flex-1 truncate border border-solid border-gunmetal px-1.5 py-1 ${
+          noSpecial ? "text-text-muted" : "text-text-primary"
+        }`}
+        title="Special"
+      >
+        ✦ {noSpecial ? "No special" : special}
       </span>
     </div>
   );
@@ -301,165 +369,66 @@ const ShipCard: React.FC<ShipCardProps> = ({
         : data.inFleet
           ? "var(--color-amber)"
           : "var(--color-phosphor-green)";
-  const rankTooltipAccent =
-    data.rank <= 2
-      ? "var(--color-phosphor-green)"
-      : data.rank <= 4
-        ? "var(--color-cyan)"
-        : data.rank === 5
-          ? "var(--color-amber)"
-          : "var(--color-warning-red)";
+  // The ship's rank color: the store's tier colors (R1 gray, R2 green, R3
+  // cyan, R4 purple, R5 amber, then red), see getRankColorVar.
+  const rankColor = getRankColorVar(data.rank);
+  const rankTooltipAccent = rankColor;
 
-  // Design pass D (hangar tile): built from the Command Deck and Loadouts
-  // tiles. Header (star, name, rank and rarity, Threat), then the art with
-  // only the status chip, then hull, the four combat numbers, weapon and
-  // special, and a footer with the card's tools.
+  // Design pass G (foil frame): a trading card. A frame with cut corners in
+  // the ship's rank color (the store's tier colors), a sheen across a shiny
+  // ship's art, the ship
+  // large in a starfield bay with Threat and status on it, the name plate
+  // over the bottom of the art, then hull, the stats, and the loadout. The
+  // tools sit under the card, outside the frame.
   const isGameCard = tooltipMode || gameViewMode;
-  const pad = hideOuterFrame ? "" : "px-3";
   const showRankLine = data.isConstructed && !hideRankLabel;
   const showRarityLine = !hideRarityLabel;
   const showCustomize = !!onCustomizeClick && data.isConstructed && !data.isDestroyed;
-  const showFooter = !hideCheckbox || !hideRecycle || showCustomize;
+  const showTools = !hideCheckbox || !hideRecycle || showCustomize;
   const statsMuted = data.isDestroyed;
+  const showSheen = data.isShiny && !data.isDestroyed && !isSosArt;
+  // State frames (selected, destroyed, stale, team colors in a battle) are
+  // solid; a plain Fleet card shows its rank color.
+  const frameIsRank =
+    !isGameCard &&
+    data.isConstructed &&
+    !data.isDestroyed &&
+    !isSelected &&
+    !(costsVersionStale && !data.inFleet);
+  const frameFill = frameIsRank ? rankFrameFill(rankColor) : borderStyle.borderColor;
+  const bayGlow = data.isDestroyed
+    ? "rgba(255,77,77,0.16)"
+    : data.isShiny
+      ? "rgba(255,184,77,0.34)"
+      : `color-mix(in srgb, ${rankColor} 24%, transparent)`;
+  const artFilter = [
+    // A destroyed ship's wreck stays in color; a ship that moved this round
+    // is grey.
+    hasMoved ? "grayscale(1)" : `drop-shadow(0 0 14px ${bayGlow})`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const panelBackground = tooltipMode ? "var(--color-slate)" : "var(--color-near-black)";
+  const frameVars = { "--ship-card-frame": frameFill } as React.CSSProperties;
 
-  return (
-    // A size container, so the card can rearrange when it is itself narrow
-    // (a phone's two-column list, the battle ship panel) whatever the screen
-    // width.
-    <div
-      className={`@container flex h-full flex-col ${
-        hideOuterFrame ? "" : "border-2 border-solid"
-      } ${
-        selectionMode && canSelect
-          ? "cursor-pointer transition-colors duration-150"
-          : ""
-      }`}
-      {...(layoutShipId ? { "data-ship-id": layoutShipId } : {})}
-      style={{
-        ...(hideOuterFrame ? {} : borderStyle),
-        borderRadius: 0, // Square corners
-      }}
-      onClick={handleCardClick}
-      onMouseEnter={(e) => {
-        if (selectionMode && canSelect && !isSelected) {
-          e.currentTarget.style.borderColor = "var(--color-cyan)";
-          e.currentTarget.style.borderTopColor = "var(--color-cyan)";
-          e.currentTarget.style.borderLeftColor = "var(--color-cyan)";
-          e.currentTarget.style.backgroundColor = "var(--color-steel)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (selectionMode && canSelect && !isSelected) {
-          e.currentTarget.style.borderColor = borderStyle.borderColor;
-          e.currentTarget.style.borderTopColor = borderStyle.borderTopColor;
-          e.currentTarget.style.borderLeftColor = borderStyle.borderLeftColor;
-          e.currentTarget.style.backgroundColor = borderStyle.backgroundColor;
-        }
-      }}
-    >
-      {/* Header: star, name with rank and rarity under it, Threat. */}
-      <div className={`flex items-start gap-2 ${pad} ${useCompactStatGrid ? "pb-1.5 pt-1" : "pb-2 pt-2.5"}`}>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleStar();
-          }}
-          className="mt-0.5 shrink-0 rounded-none p-0.5 transition-colors duration-150 hover:bg-amber/10"
-          aria-label={isStarred ? "Unstar ship" : "Star ship"}
-          aria-pressed={isStarred}
-        >
-          <svg
-            className="h-4 w-4 text-amber"
-            fill={isStarred ? "currentColor" : "none"}
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-            />
-          </svg>
-        </button>
-        <div
-          className="flex min-w-0 flex-1 flex-col gap-1"
-          {...(layoutShipId ? { "data-ship-name-block": "" } : {})}
-          style={
-            nameBlockMinHeightPx && nameBlockMinHeightPx > 0
-              ? { minHeight: nameBlockMinHeightPx }
-              : undefined
-          }
-        >
-          <h5
-            className={`line-clamp-2 break-words font-sans font-bold uppercase leading-[1.05] tracking-[0.06em] ${
-              data.isShiny ? "text-amber" : "text-text-primary"
-            } ${useCompactStatGrid ? "text-base" : "text-[19px]"}`}
-          >
-            {data.name || `Ship #${data.id}`}
-          </h5>
-          {(showRankLine || showRarityLine) && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-text-secondary">
-              {showRankLine && (
-                <div className="group relative">
-                  {/* Focusable so a tap shows the rank tooltip. The tap still
-                      reaches the card, so it selects it too. */}
-                  <span
-                    tabIndex={0}
-                    className="flex cursor-default items-center gap-1.5 outline-none focus-visible:ring-1 focus-visible:ring-cyan"
-                    aria-label={`Rank ${data.rank}`}
-                  >
-                    {data.rank > 0 && (
-                      <span className={`flex items-center gap-1 ${getRankColor(data.rank)}`} aria-hidden="true">
-                        {Array.from({ length: data.rank }, (_, i) => (
-                          <span key={i} className="inline-block h-[7px] w-[7px] rotate-45 bg-current" />
-                        ))}
-                      </span>
-                    )}
-                    R{data.rank}
-                  </span>
-                  <div
-                    className="pointer-events-none absolute bottom-full left-0 z-20 mb-1 hidden min-w-max border border-solid px-2 py-1 text-xs normal-case tracking-normal group-hover:block group-focus-within:block"
-                    style={{
-                      backgroundColor: "var(--color-slate)",
-                      color: "var(--color-text-primary)",
-                      borderColor: rankTooltipAccent,
-                      borderRadius: 0,
-                      boxShadow: `0 0 12px color-mix(in srgb, ${rankTooltipAccent} 25%, transparent)`,
-                    }}
-                  >
-                    <div style={{ color: rankTooltipAccent }}>{rankTooltipLines[0]}</div>
-                    <div className="opacity-80">{rankTooltipLines[1]}</div>
-                  </div>
-                </div>
-              )}
-              {showRankLine && showRarityLine && <span className="text-text-muted">·</span>}
-              {showRarityLine && (
-                <span className={data.isShiny ? "text-amber" : undefined}>{data.isShiny ? "Shiny ★" : "Common"}</span>
-              )}
-            </div>
-          )}
-        </div>
-        {data.isConstructed && (
-          <ThreatValue
-            value={data.cost}
-            iconSize={useCompactStatGrid ? 16 : 18}
-            className={`font-sans ${useCompactStatGrid ? "text-xl" : "text-[26px]"}`}
-          />
-        )}
-      </div>
-
-      {/* Art. Flip only descendant <img> hull art so the overlays stay
+  const card = (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Art bay. Flip only descendant <img> hull art so the overlays stay
           upright for creator-side cards. */}
       <div
-        className={`relative w-full min-h-0 shrink-0 border-solid bg-near-black [container-type:size] ${
-          hideOuterFrame ? "border" : "border-y"
-        } ${isGameCard ? "h-40" : "h-32"}`}
-        style={{ borderColor: shipArtBorderColor }}
+        className={`relative w-full min-h-0 shrink-0 overflow-hidden [container-type:size] ${
+          useCompactStatGrid ? "h-36" : isGameCard ? "h-44" : "h-48"
+        } ${hideOuterFrame ? "border border-solid" : ""}`}
+        style={{
+          borderColor: shipArtBorderColor,
+          background: `${BAY_STARS}, radial-gradient(ellipse 70% 60% at 50% 55%, ${bayGlow}, transparent 70%), linear-gradient(180deg, #111a24, var(--color-near-black))`,
+        }}
       >
-        <div className={`h-full w-full ${isSosArt ? "overflow-visible" : "overflow-hidden"}`}>
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px)" }}
+        />
+        <div className={`h-full w-full ${isSosArt ? "overflow-visible" : ""}`}>
           <div
             className={`relative h-full w-full origin-center ${
               isSosArt ? "sos-art-tilt rotate-[15deg]" : ""
@@ -474,10 +443,11 @@ const ShipCard: React.FC<ShipCardProps> = ({
                     : ""
               }`}
             >
+              {/* The art is drawn larger than its square so the hull fills
+                  the bay's width (the square's top and bottom are empty). */}
               <div
-                className={`h-full w-full ${hasMoved ? "grayscale" : ""} ${
-                  data.isDestroyed ? "brightness-75 grayscale" : ""
-                }`}
+                className="h-full w-full scale-[1.3] [&_img]:[image-rendering:pixelated]"
+                style={artFilter ? { filter: artFilter } : undefined}
               >
                 {shipImage}
               </div>
@@ -485,6 +455,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
             </div>
           </div>
         </div>
+        {showSheen && <div className="ship-card-sheen pointer-events-none absolute inset-0" aria-hidden="true" />}
         {isSosArt && data.rank > 0 && (
           <div
             className={`ship-rank-stars pointer-events-none absolute right-[2.5%] top-[5%] z-10 leading-none text-amber ${
@@ -504,7 +475,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
             {/* Reactor critical marks */}
             {inGameAttributes.reactorCriticalTimer > 0 && (
               <div
-                className={`absolute ${
+                className={`absolute z-10 ${
                   flipShip ? "bottom-0 left-0" : "bottom-0 right-0"
                 } m-1 flex items-center gap-0.5`}
               >
@@ -536,49 +507,153 @@ const ShipCard: React.FC<ShipCardProps> = ({
 
             {/* Zero HP indicator */}
             {inGameAttributes.hullPoints === 0 && (
-              tooltipMode ? (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 mt-1 z-20 pointer-events-none">
-                  <div className="w-5 h-5 flex items-center justify-center animate-pulse">
-                    <span className="text-xs font-mono">[SOS]</span>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className={`absolute w-5 h-5 flex items-center justify-center animate-pulse ${
-                    gameViewMode
-                      ? "top-0 left-1/2 -translate-x-1/2 mt-1"
-                      : "top-0 right-0 m-1"
-                  }`}
-                >
-                  <span className="text-xs font-mono">[SOS]</span>
-                </div>
-              )
+              <div className="pointer-events-none absolute left-1/2 top-0 z-20 mt-1 flex h-5 w-5 -translate-x-1/2 animate-pulse items-center justify-center">
+                <span className="text-xs font-mono">[SOS]</span>
+              </div>
             )}
           </>
         )}
 
-        {/* The only chip on the art: the ship's status. */}
+        {/* Status top left, Threat top right (mirrored for a flipped ship). */}
         {data.isConstructed && !isSosArt && (
           <span
-            className={`pointer-events-none absolute top-2 z-10 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-snug tracking-wider ${
-              flipShip ? "right-2" : "left-2"
+            className={`pointer-events-none absolute top-2.5 z-10 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-snug tracking-wider ${
+              flipShip ? "right-2.5" : "left-2.5"
             }`}
             style={{ backgroundColor: statusColor, color: "var(--color-near-black)" }}
           >
             {statusLabel}
           </span>
         )}
+        {data.isConstructed && (
+          <span
+            className={`absolute top-2 z-10 border border-solid border-amber/55 bg-near-black/90 py-1 pl-2.5 pr-3 ${
+              flipShip ? "left-2" : "right-2"
+            }`}
+            style={{ clipPath: BADGE_CHAMFER }}
+          >
+            <ThreatValue
+              value={data.cost}
+              iconSize={useCompactStatGrid ? 13 : 16}
+              className={`font-sans ${useCompactStatGrid ? "text-lg" : "text-[22px]"}`}
+            />
+          </span>
+        )}
         {tooltipMode && tooltipGridPosition != null && (
           <span
-            className={`pointer-events-none absolute top-2 z-10 bg-near-black px-1.5 py-0.5 font-mono text-[10px] text-text-secondary ${flipShip ? "left-2" : "right-2"}`}
+            className={`pointer-events-none absolute bottom-2 z-10 bg-near-black/90 px-1.5 py-0.5 font-mono text-[10px] text-text-secondary ${flipShip ? "right-2" : "left-2"}`}
           >
             {formatGridPosition(tooltipGridPosition)}
           </span>
         )}
       </div>
 
-      {/* Stats: hull, the four combat numbers in one row, weapon and special. */}
-      <div className={`flex flex-col gap-2.5 text-sm ${pad} ${useCompactStatGrid ? "pt-1.5" : "py-2.5"}`}>
+      {/* Name plate, over the bottom of the art. */}
+      <div
+        className={`relative -mt-7 flex flex-col gap-1.5 pb-2.5 pt-2.5 ${hideOuterFrame ? "" : "px-3"}`}
+        style={{ background: `linear-gradient(180deg, transparent, ${panelBackground} 26px)` }}
+      >
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar();
+            }}
+            className="mt-0.5 shrink-0 rounded-none p-0.5 transition-colors duration-150 hover:bg-amber/10"
+            aria-label={isStarred ? "Unstar ship" : "Star ship"}
+            aria-pressed={isStarred}
+          >
+            <svg
+              className="h-4 w-4 text-amber"
+              fill={isStarred ? "currentColor" : "none"}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+              />
+            </svg>
+          </button>
+          <div
+            className="flex min-w-0 flex-1 flex-col gap-1.5"
+            {...(layoutShipId ? { "data-ship-name-block": "" } : {})}
+            style={
+              nameBlockMinHeightPx && nameBlockMinHeightPx > 0
+                ? { minHeight: nameBlockMinHeightPx }
+                : undefined
+            }
+          >
+            <h5
+              className={`line-clamp-2 break-words font-sans font-bold uppercase leading-[1.05] tracking-[0.06em] [text-shadow:0_1px_6px_rgba(0,0,0,0.8)] ${
+                data.isShiny ? "text-amber" : "text-text-primary"
+              } ${useCompactStatGrid ? "text-base" : "text-xl"}`}
+            >
+              {data.name || `Ship #${data.id}`}
+            </h5>
+            {(showRankLine || showRarityLine) && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
+                {showRankLine && (
+                  <div className="group relative">
+                    {/* Focusable so a tap shows the rank tooltip. The tap
+                        still reaches the card, so it selects it too. */}
+                    <span
+                      tabIndex={0}
+                      className="flex cursor-default items-center gap-1.5 outline-none focus-visible:ring-1 focus-visible:ring-cyan"
+                      aria-label={`Rank ${data.rank}`}
+                    >
+                      {data.rank > 0 && (
+                        <span className={`flex items-center gap-1 ${getRankColor(data.rank)}`} aria-hidden="true">
+                          {Array.from({ length: data.rank }, (_, i) => (
+                            <span
+                              key={i}
+                              className="inline-block h-[7px] w-[7px] rotate-45 bg-current shadow-[0_0_5px_currentColor]"
+                            />
+                          ))}
+                        </span>
+                      )}
+                      R{data.rank}
+                    </span>
+                    <div
+                      className="pointer-events-none absolute bottom-full left-0 z-20 mb-1 hidden min-w-max border border-solid px-2 py-1 text-xs normal-case tracking-normal group-hover:block group-focus-within:block"
+                      style={{
+                        backgroundColor: "var(--color-slate)",
+                        color: "var(--color-text-primary)",
+                        borderColor: rankTooltipAccent,
+                        borderRadius: 0,
+                        boxShadow: `0 0 12px color-mix(in srgb, ${rankTooltipAccent} 25%, transparent)`,
+                      }}
+                    >
+                      <div style={{ color: rankTooltipAccent }}>{rankTooltipLines[0]}</div>
+                      <div className="opacity-80">{rankTooltipLines[1]}</div>
+                    </div>
+                  </div>
+                )}
+                {showRankLine && showRarityLine && <span className="text-text-muted">·</span>}
+                {showRarityLine && (
+                  <span className={data.isShiny ? "text-amber" : undefined}>{data.isShiny ? "Shiny ★" : "Common"}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={`h-px ${hideOuterFrame ? "" : "mx-3"}`}
+        style={{ background: "linear-gradient(90deg, transparent, var(--color-gunmetal), transparent)" }}
+      />
+
+      {/* Hull, the stats on plates, and the loadout tags. */}
+      <div
+        className={`flex flex-1 flex-col gap-2.5 text-sm ${hideOuterFrame ? "" : "px-3"} ${
+          useCompactStatGrid ? "pt-2" : "pb-3.5 pt-2.5"
+        }`}
+      >
         {data.isConstructed ? (
           showInGameProperties ? (
             !inGameAttributes ? (
@@ -587,35 +662,16 @@ const ShipCard: React.FC<ShipCardProps> = ({
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider">
-                  <span className="text-text-muted">HULL</span>
-                  <div className="h-1.5 flex-1 bg-steel">
-                    <div
-                      className="h-full transition-all duration-300"
-                      style={{
-                        width: `${
-                          data.isDestroyed || inGameAttributes.maxHullPoints <= 0
-                            ? 0
-                            : (inGameAttributes.hullPoints / inGameAttributes.maxHullPoints) * 100
-                        }%`,
-                        backgroundColor: hullBarColor(inGameAttributes.hullPoints, inGameAttributes.maxHullPoints),
-                      }}
-                    />
-                  </div>
-                  {data.isDestroyed ? (
-                    <span className="text-[11px] text-warning-red">DESTROYED</span>
-                  ) : (
-                    <span className="text-[11px]">
-                      <b className="text-text-primary">{inGameAttributes.hullPoints}</b>
-                      <span className="text-text-muted">/{inGameAttributes.maxHullPoints}</span>
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-[1fr_1fr_1fr_1.2fr] @max-[14rem]:grid-cols-2 @max-[14rem]:gap-y-2">
-                  <StatCell label="DMG" value={inGameAttributes.gunDamage} first muted={statsMuted} compact={useCompactStatGrid} />
-                  <StatCell label="RANGE" value={inGameAttributes.range} muted={statsMuted} compact={useCompactStatGrid} />
-                  <StatCell label="MOVE" value={inGameAttributes.movement} muted={statsMuted} compact={useCompactStatGrid} />
-                  <StatCell
+                <HullSegments
+                  hull={inGameAttributes.hullPoints}
+                  maxHull={inGameAttributes.maxHullPoints}
+                  destroyed={data.isDestroyed}
+                />
+                <div className="grid grid-cols-[1fr_1fr_1fr_1.25fr] gap-1 @max-[14rem]:grid-cols-2">
+                  <StatPlate label="DMG" value={inGameAttributes.gunDamage} muted={statsMuted} compact={useCompactStatGrid} />
+                  <StatPlate label="RANGE" value={inGameAttributes.range} muted={statsMuted} compact={useCompactStatGrid} />
+                  <StatPlate label="MOVE" value={inGameAttributes.movement} muted={statsMuted} compact={useCompactStatGrid} />
+                  <StatPlate
                     label={data.equipment.shields > 0 ? "SHIELDS" : "ARMOR"}
                     value={`${inGameAttributes.damageReduction}%`}
                     title="Damage reduction"
@@ -623,16 +679,16 @@ const ShipCard: React.FC<ShipCardProps> = ({
                     compact={useCompactStatGrid}
                   />
                 </div>
-                <WeaponAndSpecial data={data} muted={statsMuted} />
+                <LoadoutTags data={data} muted={statsMuted} />
               </>
             )
           ) : (
             // The ship's build (traits and equipment), outside a battle.
             <>
-              <div className="grid grid-cols-3">
-                <StatCell label="ACCURACY" value={data.traits.accuracy} first muted={statsMuted} />
-                <StatCell label="HULL" value={data.traits.hull} muted={statsMuted} />
-                <StatCell label="SPEED" value={data.traits.speed} muted={statsMuted} />
+              <div className="grid grid-cols-3 gap-1">
+                <StatPlate label="ACCURACY" value={data.traits.accuracy} muted={statsMuted} />
+                <StatPlate label="HULL" value={data.traits.hull} muted={statsMuted} />
+                <StatPlate label="SPEED" value={data.traits.speed} muted={statsMuted} />
               </div>
               <div className="flex justify-between gap-2 font-mono text-[11px]">
                 <span className="text-text-muted">{data.equipment.shields > 0 ? "Shields" : "Armor"}</span>
@@ -640,7 +696,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                   {data.equipment.shields > 0 ? getShieldName(data.equipment.shields) : getArmorName(data.equipment.armor)}
                 </span>
               </div>
-              <WeaponAndSpecial data={data} muted={statsMuted} />
+              <LoadoutTags data={data} muted={statsMuted} />
             </>
           )
         ) : (
@@ -648,30 +704,53 @@ const ShipCard: React.FC<ShipCardProps> = ({
             <div className="font-mono text-sm font-bold text-text-muted">[CONSTRUCT SHIP]</div>
           </div>
         )}
-        {fleetCompositionControls != null && (
-          <div onClick={(e) => e.stopPropagation()} role="presentation">
-            {fleetCompositionControls}
-          </div>
-        )}
         {selectionMode && isSelected && (
           <div className="text-center">
             <span className="text-sm font-bold text-phosphor-green">✓ SELECTED</span>
           </div>
         )}
-        {costsVersionStale && costVersionSyncButton && (
-          <div className="w-full" onClick={(e) => e.stopPropagation()} role="presentation">
-            {costVersionSyncButton}
-          </div>
-        )}
       </div>
+    </div>
+  );
 
-      {/* Footer: the card's tools, with words on them. */}
-      {showFooter && (
+  return (
+    // A size container, so the card can rearrange when it is itself narrow
+    // (a phone's two-column list, the battle ship panel) whatever the screen
+    // width.
+    <div
+      className={`@container flex h-full flex-col ${
+        selectionMode && canSelect ? "cursor-pointer" : ""
+      } ${selectionMode && !canSelect ? "opacity-50" : ""}`}
+      {...(layoutShipId ? { "data-ship-id": layoutShipId } : {})}
+      style={frameVars}
+      onClick={handleCardClick}
+      onMouseEnter={(e) => {
+        if (selectionMode && canSelect && !isSelected) {
+          e.currentTarget.style.setProperty("--ship-card-frame", "var(--color-cyan)");
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (selectionMode && canSelect && !isSelected) {
+          e.currentTarget.style.setProperty("--ship-card-frame", frameFill);
+        }
+      }}
+    >
+      {hideOuterFrame ? (
+        card
+      ) : (
         <div
-          className={`mt-auto flex flex-wrap items-center gap-1.5 border-t border-solid border-gunmetal ${
-            hideOuterFrame ? "pt-2" : "px-3 py-2"
-          }`}
+          className="flex min-h-0 flex-1 flex-col p-0.5 transition-[background] duration-150"
+          style={{ background: "var(--ship-card-frame)", clipPath: CARD_CHAMFER }}
         >
+          <div className="flex min-h-0 flex-1 flex-col" style={{ clipPath: CARD_CHAMFER, backgroundColor: panelBackground }}>
+            {card}
+          </div>
+        </div>
+      )}
+
+      {/* Under the card: its tools and the Manage Navy extras. */}
+      {showTools && (
+        <div className="flex flex-wrap items-center gap-1.5 px-0.5 pt-2">
           {!hideCheckbox && (
             <button
               type="button"
@@ -726,6 +805,16 @@ const ShipCard: React.FC<ShipCardProps> = ({
               Recycle
             </button>
           )}
+        </div>
+      )}
+      {fleetCompositionControls != null && (
+        <div className="pt-2" onClick={(e) => e.stopPropagation()} role="presentation">
+          {fleetCompositionControls}
+        </div>
+      )}
+      {costsVersionStale && costVersionSyncButton && (
+        <div className="w-full pt-2" onClick={(e) => e.stopPropagation()} role="presentation">
+          {costVersionSyncButton}
         </div>
       )}
     </div>

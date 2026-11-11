@@ -1650,3 +1650,25 @@ select:focus {
 @media (prefers-reduced-motion: reduce) {
   .reactor-alarm-blink { animation: none; box-shadow: 0 0 6px 1px var(--color-warning-red); }
 }
+
+/* Ship card (design pass G): a sheen that sweeps across a shiny ship's art. */
+.ship-card-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 236, 190, 0.22) 45%,
+    rgba(255, 255, 255, 0.32) 50%,
+    rgba(255, 236, 190, 0.22) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  mix-blend-mode: screen;
+  animation: ship-card-sheen 3.6s ease-in-out infinite;
+}
+@keyframes ship-card-sheen {
+  0% { background-position: 130% 0; }
+  60%, 100% { background-position: -130% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ship-card-sheen { animation: none; opacity: 0.5; background-position: 50% 0; }
+}
