@@ -79,7 +79,7 @@ export function RoguelikeSettingsModal({
         },
       }}
       repairCostLabel="Repair cost per HP (wei)"
-      decBonusLabel="DEC Bonus — amount minted per win"
+      decBonusLabel="DCC bonus: the amount minted per win"
       onWithdraw={(to) => admin.withdrawResupplyFees(to as Address)}
       onSetEditor={async (address, allowed) => {
         await admin.setNodeEditor(address as Address, allowed);

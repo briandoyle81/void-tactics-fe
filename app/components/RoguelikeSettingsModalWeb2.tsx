@@ -54,7 +54,7 @@ export function RoguelikeSettingsModalWeb2({
         decBonusAmount: (v) => winEffectsAdmin.update({ decBonusAmount: Math.max(0, Number(v) || 0) }),
       }}
       repairCostLabel="Repair cost per HP"
-      decBonusLabel="DEC Bonus — amount credited per win"
+      decBonusLabel="DCC bonus: the amount credited per win"
       onClose={onClose}
       onSaved={onSaved}
     />

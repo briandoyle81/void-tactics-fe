@@ -115,7 +115,7 @@ export function FreeShipClaimButton({
         borderRadius: 0,
       }}
     >
-      {isPending || followUpPending ? "[CLAIMING...]" : children}
+      {isPending || followUpPending ? "[CLAIMING…]" : children}
     </button>
   );
 }

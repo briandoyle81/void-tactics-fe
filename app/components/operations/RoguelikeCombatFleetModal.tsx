@@ -98,7 +98,7 @@ export function RoguelikeCombatFleetModal<Id, S extends { traits: { variant: num
       onGoToGames={onLaunched}
       createButtonState={{
         isBusy: isSubmitting,
-        busyLabel: isWarping ? "WARPING..." : "LAUNCHING...",
+        busyLabel: isWarping ? "WARPING…" : "LAUNCHING…",
         selectedCount: fleet.selectedShips.length,
         maxShips: rosterSize,
         isOverLimit: false,

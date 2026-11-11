@@ -51,7 +51,7 @@ export function LobbyAcceptButton({
       args={[lobbyId]}
       className={className}
       disabled={disabled}
-      loadingText="[ACCEPTING...]"
+      loadingText="[ACCEPTING…]"
       errorText="[ERROR ACCEPTING]"
       onSuccess={async () => {
         posthog.capture("game_accepted", { lobby_id: lobbyId.toString() });

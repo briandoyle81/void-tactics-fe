@@ -204,7 +204,7 @@ export function GameResultModal({
           {isMission && (
             <p className="mt-4 text-center text-xs text-text-secondary">
               {isVictory
-                ? "The node's completion is recorded — any nodes it unlocks are now available."
+                ? "Mission complete. Any missions it opens up are on the star chart now."
                 : "This mission is not marked complete. You can try again any time."}
             </p>
           )}

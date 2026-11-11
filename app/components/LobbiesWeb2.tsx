@@ -573,8 +573,8 @@ const LobbiesWeb2: React.FC = () => {
       resetFleetSelectionModalState();
       toast.success(
         result.gameId
-          ? `Fleet submitted — game #${result.gameId} started`
-          : "Fleet submitted — waiting on opponent",
+          ? `Fleet submitted. Game #${result.gameId} started.`
+          : "Fleet submitted. Waiting for your opponent.",
       );
     });
 
@@ -684,7 +684,7 @@ const LobbiesWeb2: React.FC = () => {
                       checked={opponentMode === "ai"}
                       onCheck={(c) => setOpponentMode(c ? "ai" : "pvp")}
                       label="AI"
-                      caption="AI opponent — same fees/flow as a reserved match"
+                      caption="AI opponent: the same fees and flow as a reserved match"
                     />
                   </div>
                 </div>
@@ -730,7 +730,7 @@ const LobbiesWeb2: React.FC = () => {
                   <>
                     <div>
                       <label className="block text-sm text-text-muted mb-1">
-                        Reserve for Player (Optional — enter their email)
+                        Reserve for a player (optional: enter their email)
                       </label>
                       <input
                         type="text"
@@ -1100,7 +1100,7 @@ const LobbiesWeb2: React.FC = () => {
               }}
               createButtonState={{
                 isBusy: busy,
-                busyLabel: "CREATING FLEET...",
+                busyLabel: "CREATING FLEET…",
                 selectedCount: selectedShipIds.size,
                 maxShips: MAX_SHIPS_PER_FLEET,
                 isOverLimit: fleet.isOverLimit,

@@ -58,7 +58,7 @@ export function WinEffectsPickerWeb2({ currentEffects, onSave, saveLabel = "[SAV
         onClick={() => void handleSave()}
         className="self-start px-4 py-2 border-2 border-cyan text-cyan hover:bg-cyan/10 font-mono font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {saving ? "[SAVING...]" : saveLabel}
+        {saving ? "[SAVING…]" : saveLabel}
       </button>
     </div>
   );

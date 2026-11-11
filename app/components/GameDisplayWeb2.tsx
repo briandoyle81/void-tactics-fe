@@ -631,7 +631,7 @@ function GameDisplayWeb2({
       toast.loading(
         `AI is taking its turn${
           aiTurnLoop.moveCount > 0 ? ` (move ${aiTurnLoop.moveCount})` : ""
-        }...`,
+        }…`,
         { id: aiTurnToastId },
       );
     } else {
@@ -1463,7 +1463,7 @@ function GameDisplayWeb2({
       setDraggedShipId={setDraggedShipIdForInput}
       setDragOverCell={setDragOverCell}
       showConfirmWidget={showConfirmWidget}
-      confirmWidgetLabel={isSubmitting ? "[...]" : confirmWidgetLabel}
+      confirmWidgetLabel={isSubmitting ? "[…]" : confirmWidgetLabel}
       onConfirmMove={handleSubmitMove}
       onCancelMove={handleCancelMove}
       renderShipCard={renderShipCard}
@@ -1714,7 +1714,7 @@ function GameDisplayWeb2({
             disabled={isClaimingTimeout}
             className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
           >
-            {isClaimingTimeout ? "Claiming..." : "Claim win (timeout)"}
+            {isClaimingTimeout ? "Claiming…" : "Claim win (timeout)"}
           </button>
         }
       />
@@ -1786,7 +1786,7 @@ function GameDisplayWeb2({
                   borderRadius: 0,
                 }}
               >
-                {isSubmitting ? "[...]" : confirmWidgetLabel}
+                {isSubmitting ? "[…]" : confirmWidgetLabel}
               </button>
             </div>
           ) : null
@@ -2025,7 +2025,7 @@ function GameDisplayWeb2({
                       className="flex-1 px-3 py-1.5 text-xs uppercase font-bold tracking-wider border-2 border-solid"
                       style={{ ...STYLE_LABEL, borderColor: "var(--color-warning-red)", color: "var(--color-warning-red)", backgroundColor: "color-mix(in srgb, var(--color-warning-red) 10%, transparent)", borderRadius: 0 }}
                     >
-                      {isSubmitting ? "[...]" : "Confirm Retreat"}
+                      {isSubmitting ? "[…]" : "Confirm Retreat"}
                     </button>
                     <button
                       type="button"

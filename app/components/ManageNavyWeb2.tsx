@@ -616,7 +616,7 @@ const ManageNavyWeb2: React.FC = () => {
 
       {!isLoading && ships.length === 0 && (
         <div className="font-mono text-sm text-text-muted">
-          No ships yet — claim your free ships or purchase a pack above.
+          No ships yet. Claim your free ships or buy a pack above.
         </div>
       )}
 

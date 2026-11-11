@@ -35,7 +35,7 @@ export async function POST() {
     });
   } catch (e) {
     if (e instanceof InsufficientBalanceError) {
-      return NextResponse.json({ error: "Insufficient DEC balance", required: cost }, { status: 402 });
+      return NextResponse.json({ error: "Insufficient DCC balance", required: cost }, { status: 402 });
     }
     throw e;
   }

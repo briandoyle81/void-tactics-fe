@@ -1380,7 +1380,7 @@ const ManageNavy: React.FC = () => {
         canRecycle={canRecycle}
         purchasedCount={amountPurchased ? Number(amountPurchased) : 0}
         threshold={10}
-        rewardLabel={recycleReward ? formatEther(recycleReward as bigint) : "..."}
+        rewardLabel={recycleReward ? formatEther(recycleReward as bigint) : "…"}
         onCancel={handleRecycleCancel}
         confirmButton={
           shipToRecycle && (

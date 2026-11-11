@@ -95,8 +95,8 @@ const UTCPurchasePanelWeb2: React.FC = () => {
       }
       chooseAmountDescription={
         <>
-          Prices match the ship-pack tiers. Larger options are for convenience only, not a
-          different product.
+          Prices match the ship-pack tiers. The larger options are the same UTC in bigger
+          amounts.
         </>
       }
       extraOverlay={

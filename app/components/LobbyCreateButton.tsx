@@ -171,7 +171,7 @@ export function LobbyCreateButton({
               owner: address,
               spender: contractAddresses.LOBBIES as `0x${string}`,
               amount: totalUtcRequired,
-              loadingText: `[APPROVING ${formatEther(totalUtcRequired)} UTC...]`,
+              loadingText: `[APPROVING ${formatEther(totalUtcRequired)} UTC…]`,
             }),
           ]
         : undefined,
@@ -196,7 +196,7 @@ export function LobbyCreateButton({
       approvals={utcApprovals}
       className={className}
       disabled={disabled}
-      loadingText="[CREATING...]"
+      loadingText="[CREATING…]"
       errorText="[ERROR CREATING]"
       onSuccess={async () => {
         posthog.capture("lobby_created", {

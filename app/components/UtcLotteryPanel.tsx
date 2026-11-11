@@ -217,10 +217,10 @@ export function UtcLotteryPanel() {
         spender: PERMIT2_ADDRESS,
         amount: amountInWei,
         approveAmount: MAX_UINT256,
-        loadingText: "[APPROVING UTC...]",
+        loadingText: "[APPROVING UTC…]",
       }),
       {
-        loadingText: "[APPROVING ROUTER...]",
+        loadingText: "[APPROVING ROUTER…]",
         isNeeded: async (client) => {
           const [amount, expiration] = (await client.readContract({
             address: PERMIT2_ADDRESS,
@@ -312,10 +312,10 @@ export function UtcLotteryPanel() {
 
         <div className="mb-5 p-4 bg-amber/10 border border-amber/40 rounded-none">
           <p className="text-amber/85 text-xs font-mono leading-relaxed">
-            Selling UTC on the hooked pool earns entry-weight into the current
-            draw, capped per address. A draw can end with no winner if real
-            participation is thin. That&apos;s expected, not a bug. Prize ships
-            go straight to the winner&apos;s fleet.
+            Every UTC you sell on the lottery pool adds to your chance in the
+            current draw, up to a cap per wallet. If too few people enter, a
+            draw can end with no winner. Prize ships go straight to the
+            winner&apos;s fleet.
           </p>
         </div>
 
@@ -398,7 +398,7 @@ export function UtcLotteryPanel() {
                   functionName="resolveDraw"
                   args={[pendingDrawId]}
                   className="w-full px-4 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  loadingText="[PICKING...]"
+                  loadingText="[PICKING…]"
                   errorText="[ERROR PICKING]"
                   onReceipt={(receipt) => handleResolveReceipt(receipt, pendingDrawId)}
                   onSuccess={async () => {
@@ -500,13 +500,13 @@ export function UtcLotteryPanel() {
                       }
                       className="w-full px-4 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       disabled={!readyToSwap || insufficientBalance}
-                      loadingText="[SELLING...]"
+                      loadingText="[SELLING…]"
                       errorText="[ERROR SELLING]"
                       onSuccess={async () => {
                         setSellAmount("");
                         await refetchSellSwapState();
                         await refetchDrawState();
-                        toast.success("UTC sold — check recent sells below for your entry.");
+                        toast.success("UTC sold. Your entry is in the recent sells below.");
                       }}
                       onError={(error) => {
                         console.error("Failed to sell UTC:", error);

@@ -173,7 +173,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
               owner: address,
               spender: ROGUELIKE_RESUPPLY_ADDRESS,
               amount: repairCost,
-              loadingText: `[APPROVING ${formatUtcWei(repairCost)} UTC...]`,
+              loadingText: `[APPROVING ${formatUtcWei(repairCost)} UTC…]`,
             }),
           ]
         : undefined,
@@ -267,7 +267,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
               style={{ borderRadius: 0 }}
             >
               {isSaving
-                ? "[UPDATING...]"
+                ? "[UPDATING…]"
                 : blockedUnderMin
                   ? `[NEED ${minRosterCost}+ (${fleet.totalCost}/${costLimit})]`
                   : `[CONFIRM FLEET (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
@@ -320,7 +320,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
             approvals={repairApprovals}
             validateBeforeTransaction={() => (canAffordRepair ? true : "Insufficient UTC balance")}
             className="h-11 w-full border-2 border-phosphor-green bg-phosphor-green/10 px-4 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/20 disabled:cursor-not-allowed disabled:opacity-50"
-            loadingText="[REPAIRING...]"
+            loadingText="[REPAIRING…]"
             errorText="[ERROR REPAIRING]"
             onSuccess={async () => {
               setIsRepairConfirmOpen(false);

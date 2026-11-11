@@ -39,7 +39,7 @@ export default function PrivacyPolicyPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: April 22, 2026
+          Last updated: November 11, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -90,8 +90,8 @@ export default function PrivacyPolicyPage() {
             <p style={{ color: "var(--color-text-secondary)" }}>
               The app may store preferences, tutorial progress, and similar data in
               your browser (for example localStorage or sessionStorage) so the
-              experience can work offline of a dedicated account system. You can
-              clear this data through your browser settings.
+              app works without a separate account system. You can clear this
+              data through your browser settings.
             </p>
           </section>
 
@@ -152,6 +152,18 @@ export default function PrivacyPolicyPage() {
               technical data such as IP address, device type, and request metadata
               according to their own policies. We encourage you to review the
               privacy terms of your wallet and network providers.
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              Signing in with an email code, Google, or a passkey goes through
+              Dynamic, which creates and secures your embedded wallet. Dynamic
+              receives the email address or Google account you sign in with and
+              technical data about your device, as described in its own privacy
+              policy.
+            </p>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              If you play without a wallet (Web2), we store your Google account
+              ID, email address, username, game progress, and in-game balances in
+              our own database so your account works across sessions.
             </p>
           </section>
 

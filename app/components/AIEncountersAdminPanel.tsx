@@ -172,7 +172,7 @@ export function AIEncountersAdminPanel({ mapIds }: Props) {
             type="text"
             value={editorAddress}
             onChange={(e) => setEditorAddress(e.target.value)}
-            placeholder="0x0000..."
+            placeholder="0x0000…"
             className={`${inputClass} sm:flex-1`}
             style={inputStyle}
           />

@@ -177,7 +177,7 @@ export function ShipPurchaseButton({
       }
     } else {
       if (utcBalancePending) {
-        return "Loading UTC balance...";
+        return "Loading UTC balance…";
       }
       if (utcBalance === undefined || (utcBalance as bigint) < price) {
         return "Insufficient UTC balance";
@@ -223,7 +223,7 @@ export function ShipPurchaseButton({
               owner: address,
               spender: contractAddresses.SHIP_PURCHASER as `0x${string}`,
               amount: price,
-              loadingText: `[APPROVING ${formatEther(price)} UTC...]`,
+              loadingText: `[APPROVING ${formatEther(price)} UTC…]`,
             }),
           ]
         : undefined,
@@ -251,7 +251,7 @@ export function ShipPurchaseButton({
           !address ||
           (!utcBalancePending && (utcBalance === undefined || (utcBalance as bigint) < price))
         }
-        loadingText="[PURCHASING...]"
+        loadingText="[PURCHASING…]"
         errorText="[ERROR PURCHASING]"
         onReceipt={handleMintReceipt}
         onSuccess={handleSuccess}
@@ -284,7 +284,7 @@ export function ShipPurchaseButton({
       value={price}
       className={className}
       disabled={disabled}
-      loadingText="[PURCHASING...]"
+      loadingText="[PURCHASING…]"
       errorText="[ERROR PURCHASING]"
       onReceipt={handleMintReceipt}
       onSuccess={handleSuccess}

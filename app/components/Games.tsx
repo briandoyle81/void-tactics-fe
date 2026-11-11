@@ -303,7 +303,7 @@ const Games: React.FC = () => {
             backgroundColor: "var(--color-near-black)",
           }}
         >
-          {isResettingCache ? "[RESETTING CACHE...]" : "[DEBUG: RESET CACHE]"}
+          {isResettingCache ? "[RESETTING CACHE…]" : "[DEBUG: RESET CACHE]"}
         </button>
         )
       }

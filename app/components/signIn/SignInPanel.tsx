@@ -144,7 +144,7 @@ function BrowserWalletNotice({ onUseEmbedded, onContinue }: { onUseEmbedded: () 
             className="text-[28px] font-bold uppercase leading-[1.05] tracking-wider text-cyan"
             style={DISPLAY_FONT}
           >
-            For the best experience, use the embedded wallet
+            Use the embedded wallet: you won&apos;t have to approve every move.
           </h2>
           <p className="text-[17px] leading-snug text-text-bright" style={DISPLAY_FONT}>
             If you use a browser wallet, you&apos;ll need to approve{" "}
@@ -437,7 +437,7 @@ export function SignInPanel({
           body={
             showPasskeyFirst
               ? "Welcome back. Use your passkey, or the email you signed up with."
-              : "New or returning, use the same email. Your ships are yours onchain."
+              : "Use the same email every time. Your ships are stored onchain under it."
           }
         />
         {showPasskeyFirst && (

@@ -35,17 +35,17 @@ You have one shot at this. Retreat, and someone else gets there first. Take your
   2: {
     title: "Digging Deeper",
     speaker: "adjutant",
-    description: `Admiral, we found some leads at a mining site near where we encountered those strange ships.  It’s really weird.  At a glance, it looks like someone was setting up a normal mining facility, but nothing was right.  The equipment layout didn’t make sense, we couldn’t find any sign of a union overseer, and the excavators appeared to be digging at random.
+    description: `Admiral, we found some leads at a mining site near where we encountered those strange ships.  It's really weird.  At a glance, it looks like someone was setting up a normal mining facility, but nothing was right.  The equipment layout didn't make sense, we couldn't find any sign of a union overseer, and the excavators appeared to be digging at random.
 
-We also found survey data indicating more operations at a nearby location.  This site is quite a bit denser than the first one, so it’s worth securing either way.  I recommend we go in carefully.
+We also found survey data indicating more operations at a nearby location.  This site is quite a bit denser than the first one, so it's worth securing either way.  I recommend we go in carefully.
 `,
   },
   3: {
     title: "Collision Course",
     speaker: "adjutant",
-    description: `Things have come to a head, Admiral.  Our fleet is banged up and this time we’re facing a fair contest over a pretty significant resource deposit. The enemy fleet is going to be a tough fight, but I don’t see any tricks we can use.
+    description: `Things have come to a head, Admiral.  Our fleet is banged up and this time we're facing a fair contest over a pretty significant resource deposit. The enemy fleet is going to be a tough fight, but I don't see any tricks we can use.
 
-We could retreat, but something tells me a mystery this strange has to lead to an advantage for our Corporation.  Let’s see if we can grab this zone.  If we pull it off, we’ll have a chance to repair and add ships to our fleet at a nearby staging point.  You might decide it’s worth sacrificing a ship or two to secure victory.
+We could retreat, but something tells me a mystery this strange has to lead to an advantage for our Corporation.  Let's see if we can grab this zone.  If we pull it off, we'll have a chance to repair and add ships to our fleet at a nearby staging point.  You might decide it's worth sacrificing a ship or two to secure victory.
 
 Our future is in your hands.
 `,
@@ -128,12 +128,12 @@ Our future is in your hands.
   32: {
     title: "Resupply Station",
     speaker: "adjutant",
-    description: `Finally, we've reached a resupply station!  The company brass has sent us more ships.  We can add more ships to our fleet and swap out any that are damaged.  This is our last resupply before we head to the hive. I hope you know how you're going to choose which path to take.`,
+    description: `Last resupply before the hive.  The brass sent more ships, so swap out anything damaged. I hope you know how you're going to choose which path to take.`,
   },
   11: {
     title: "The Hive: Dominance",
     speaker: "harcourt",
-    description: `Well played, Admiral. You are quite skilled. Perhaps we shouldn't fight after all.  You seem a worthy partner to our efforts here.
+    description: `Well played, Admiral. Perhaps we shouldn't be fighting at all.  You seem a worthy partner to our efforts here.
 
     The hive was created by one of our science teams. In an attempt to break out of the silly constraints imposed on us by the drone factory AI, we trained a standard factory AI on a variety of data sets taken from insects that self-organize into complex behaviors.
 
@@ -155,7 +155,7 @@ Our future is in your hands.
   13: {
     title: "Highway 50",
     speaker: "adjutant",
-    description: `We're approaching the second site.  It's so far out it's barely worth the claim. I guess we're learning from Gideon too. Whether or not we exploit it long-term, we can still legally fight to claim it.
+    description: `We're approaching the second site.  It's so far out it's barely worth the claim. I guess we're learning from Gideon too. Whether or not we actually send an extraction crew, we can still fight to claim it.
 
     This sector seems to trend towards a sparse amount of large metal asteroids, and a higher than normal amount of crystal deposits.
 

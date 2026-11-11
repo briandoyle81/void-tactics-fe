@@ -82,7 +82,7 @@ export function UTCPurchaseButton({
       value={flowCost}
       className={className}
       disabled={disabled}
-      loadingText="[PURCHASING UTC...]"
+      loadingText="[PURCHASING UTC…]"
       errorText="[ERROR PURCHASING]"
       onSuccess={handleSuccess}
       onError={onError}

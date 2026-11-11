@@ -250,7 +250,7 @@ const ShipConstructorWeb2: React.FC<ShipConstructorWeb2Props> = ({
                   <div className="space-y-2">
                     <div className="font-bold text-cyan mb-3 text-center">SHIP MODIFICATION</div>
                     <p className="font-bold text-amber">COST:</p>
-                    <p>Cost doubles per total modification (equipment/trait changes stack; toggling shiny costs 3 at once) — same formula as web3&apos;s DroneYard.</p>
+                    <p>Cost doubles with each modification. Equipment and trait changes stack, and toggling shiny counts as 3.</p>
                     <p className="mt-3 font-bold text-amber">RESTRICTIONS:</p>
                     <ul className="list-disc list-inside ml-2 space-y-0.5 mt-1 text-xs">
                       <li>Ship must be constructed</li>
@@ -315,7 +315,7 @@ const ShipConstructorWeb2: React.FC<ShipConstructorWeb2Props> = ({
                   disabled={isSubmitting || changes.length === 0}
                   className="w-full px-6 py-3 rounded-none border-2 border-amber text-amber hover:border-amber hover:text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "[CUSTOMIZING SHIP...]" : "[CUSTOMIZE SHIP]"}
+                  {isSubmitting ? "[CUSTOMIZING SHIP…]" : "[CUSTOMIZE SHIP]"}
                 </button>
                 {error && <p className="mt-2 text-xs text-warning-red font-mono break-words">{error}</p>}
               </div>

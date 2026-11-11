@@ -19,7 +19,7 @@ import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contrac
 const CHAIN_ID = baseSepolia.id;
 
 export const WIN_EFFECT_CATALOG = [
-  { key: "DEC_BONUS_WIN_EFFECT", label: "DEC Bonus" },
+  { key: "DEC_BONUS_WIN_EFFECT", label: "DCC Bonus" },
   { key: "HEAL_ABOVE_FLOOR_WIN_EFFECT", label: "Heal Above Floor" },
   { key: "SHIP_GRANT_WIN_EFFECT", label: "Grant Ship" },
 ] as const;

@@ -46,58 +46,58 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
     brief: [],
     // In the round 1 report instead of a panel.
     roundReport: [
-      "{cyan!|Admiral}, welcome aboard. You're arriving mid-fight. We're {amber|behind on the board}, but with {cyan!|you on station} we can turn this around.",
+      "You're arriving mid-fight, {cyan!|Admiral}. We're {amber|behind on the board}, but with {cyan!|you on station} we can turn this around.",
       "We're fighting in the {dust|outer dust belts} over {amber|sparse resources}. Under {amber|Space Law}, whoever exploits a site first keeps it. Out here, that's the rule that matters.",
     ],
   },
   goals: {
     title: "How we win",
     brief: [
-      "Each round, ships mine resources they control. {cyan|Central} has set the claim minimum at {amber!|100} tons to claim this {dust|resource cluster}.",
-      "Current tally: {cyan|60} tons us, {red|70} tons them. We're {amber|in the hole}, but {cyan!|the fight is still yours to take}.",
+      "Each round, ships mine the {amber|resources} they control. {cyan|Central} has set the {amber|claim minimum} at {amber!|100} tons to claim this {dust|resource cluster}.",
+      "Current tally: {cyan|60} tons us, {red|70} tons them. We're behind, but only by {amber!|10}.",
     ],
   },
   "select-ship": {
-    title: "Select a Ship",
+    title: "Select a ship",
     brief: [
-      "{amber|What's left of} our {cyan|fleet} is ready for your {amber|inspection}.",
-      "Click to see a ship's move and threat range, hover for details.",
+      "What's left of our {cyan|fleet} is ready for your {amber|inspection}.",
+      "Click a ship to see its {green|move range} and {red|threat range}. Hover over it for details.",
     ],
   },
   "view-enemy": {
-    title: "Inspect Enemy Ships",
+    title: "Find the Tongs",
     brief: [
-      "The {red|enemy} holds the {dust|right side} of the map. Our sensors can show us their stats and abilities.",
-      "Enemy ships appear in {red|red} in the {cyan|FLEET STATUS} panel — use it to quickly locate them on the grid.",
+      "The {red|enemy} holds the {dust|right side} of the map. Our sensors can show us each ship's {amber|stats and abilities}.",
+      "Find the {red|Tongs} and click it. Enemy ships are listed in {red|red} under {cyan|Fleet Status}; hover over one there to see where it is on the board.",
     ],
   },
   "move-ship": {
-    title: "Move Your Ship",
+    title: "Move your ship",
     brief: [
-      "The {cyan|Sentinel} is damaged. You can protect it by moving it into a {purple|nebula}.",
-      "Nebula tiles block line of sight. Inside a nebula, ships can only shoot or be shot by ships exactly {amber|1 tile} away.",
+      "The {cyan|Sentinel} is {amber|damaged}. You can protect it by {green|moving} it into a {purple|nebula}.",
+      "{purple|Nebula} tiles block {amber|line of sight}. Inside a nebula, ships can only shoot or be shot by ships exactly {amber|1 tile} away.",
     ],
   },
   "wait-for-opponent": {
-    title: "Taking Turns",
+    title: "Taking turns",
     brief: [
-      "After you move a single ship, it's the other admiral's turn to move one of their ships.",
-      "You'll take turns moving one ship at a time and each ship can move exactly once per round.",
-      "Watch the {red|Tongs} to see it move. You can also click the {cyan|Last Move} button to see a reminder of the last move.",
+      "After you move a single ship, it's the {red|other admiral's} turn to move one of theirs.",
+      "You'll take turns moving {amber|one ship at a time}, and each ship can move {amber|exactly once per round}.",
+      "Watch the {red|Tongs} move. You can also click {cyan|Last Move} to see it again.",
     ],
   },
   "score-points": {
     title: "Scoring zones",
     brief: [
-      "At round end, each scoring zone we {amber|control} with a functioning ship (not disabled) earns us points.",
-      "The enemy destroyer moved to capture a resource. Respond by moving the {cyan|Resolute} to claim one for us.",
+      "At round end, each {amber|scoring zone} we control with a functioning ship (not disabled) earns us {amber|points}.",
+      "The {red|Tongs} moved onto a {amber|resource}. Answer by {green|moving} the {cyan|Resolute} onto one of ours.",
     ],
   },
   shoot: {
-    title: "Move and Return Fire",
+    title: "Move and return fire",
     brief: [
-      "The {red|Hammer} just hit the {cyan|Resolute} with a plasma shot!",
-      "Answer with the {cyan|Vigilant}. It has a long range railgun, so you can move to secure a resource and still shoot back.",
+      "The {red|Hammer} just hit the {cyan|Resolute} with a {plasma|plasma shot}!",
+      "Answer with the {cyan|Vigilant}. It has a {plasma|long-range railgun}, so it can {green|move} onto a {amber|resource} and still shoot back.",
     ],
   },
   "end-of-round": {
@@ -106,28 +106,28 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
     // Shown in the round report (the game's between-rounds modal) instead
     // of the panel.
     roundReport: [
-      "When {amber|both sides} have moved all their ships, the round ends, and points are awarded for resources held. Movement markers clear and the {cyan|first player} swaps: whoever went second last round leads this one.",
+      "When {amber|both sides} have moved all their ships, the {amber|round ends}, and points are awarded for {amber|resources held}. Movement markers clear and the {cyan|first player} swaps: whoever went second last round leads this one.",
     ],
   },
   "special-emp": {
     title: "EMP",
     brief: [
       "The {red|Anvil} just blasted the {cyan|Resolute}!",
-      "We have a powerful gun, but we still can't knock it out in one hit. Luckily, the {red|Anvil} has {purple|reactor damage} ({icon|reactor}) from earlier in the fight. We can bypass its defenses and kill it instantly with an {cyan|EMP}!",
+      "We have a powerful gun, but we still can't knock it out in one hit. Luckily, the {red|Anvil} has {purple|reactor damage} ({icon|reactor}) from earlier in the fight. We can bypass its defenses and kill it instantly with an {cyan|EMP}.",
     ],
   },
   "ship-destruction": {
     title: "Aftermath",
     brief: [
-      "Resolute's EMP pushed the {red|Anvil}'s reactor past {amber|three overload points}. The stack detonates in a blinding flash and the ship is destroyed!",
-      "No ship survives once its reactor reaches three overload points ({icon|reactor}).",
+      "The {cyan|Resolute}'s {cyan|EMP} pushed the {red|Anvil}'s reactor past {amber|three overload points}. The stack detonates in a blinding flash and the ship is destroyed!",
+      "No ship survives once its reactor reaches {amber!|three overload points} ({icon|reactor}).",
     ],
   },
   rescue: {
     title: "Hard choice",
     brief: [
-      "The {red|enemy} retaliated by disabling the {cyan|Resolute}. It also has {purple|reactor damage} ({icon|reactor}), so one more hit and it's gone! Even worse, your repair ship is too far away to reach it in time.",
-      "We're at the end: Whoever holds the center wins. What matters the most to you?",
+      "The {red|enemy} retaliated by {amber|disabling} the {cyan|Resolute}. It also has {purple|reactor damage} ({icon|reactor}), so one more hit and it's gone. Even worse, your {cyan|repair ship} is too far away to reach it in time.",
+      "This is the last turn: whoever holds the {amber|center} wins. Save the {cyan|Resolute}, or permanently sacrifice it for the win?",
     ],
     tasks: [
       "{cyan|Save your ship:} select the Resolute and {green|submit} Retreat to leave the map.",
@@ -135,46 +135,45 @@ export const TUTORIAL_PANELS: Record<string, TutorialPanelText> = {
     ],
   },
   "rescue-outcome-sniper": {
-    title: "Accepting a Sacrifice",
+    title: "Accepting a sacrifice",
     brief: [
       "As expected, the {red|Hammer} destroyed the {cyan|Resolute}.",
-      "You traded that ship for the ability to retake the center resource. The resource point is open now. Take it with the {cyan|Sentinel}.",
+      "You traded that ship for the chance to retake the {amber|center resource}. It's open now. Take it with the {cyan|Sentinel}.",
     ],
   },
   "rescue-outcome-retreat": {
-    title: "The Resolute is Safe",
+    title: "The Resolute is safe",
     brief: [
       "The {cyan|Resolute} is safely off the map!",
-      "You saved the hull, but the middle resource tile is undefended. The {red|Hammer} can step in and secure it. That puts them over the threshold and {cyan|Central} will award them control of this region.",
+      "You saved the hull, but the middle {amber|resource} tile is undefended. The {red|Hammer} can step in and secure it. That puts them over the {amber|claim minimum}, and {cyan|Central} will award them control of this region.",
     ],
   },
   "completion-sniper": {
-    title: "Victory Achieved!",
+    title: "Victory achieved!",
     brief: [
-      "{green|Victory}! You secured the center resource and guaranteed the win!",
-      "You gave up the {cyan|Resolute} to earn that opening. In the outer dust clouds, victory comes at a cost.",
+      "You hold the {amber|center} and the {amber|claim} is ours. It cost us the {cyan|Resolute}.",
     ],
   },
   "completion-retreat": {
-    title: "Planning Ahead",
+    title: "Planning ahead",
     brief: [
-      "{amber|Live to fight again.} The {red|Hammer} claimed the center resource, which puts the {red|enemy} over the threshold.",
-      "You {amber|lost} this engagement, but you kept your most {cyan|powerful ship}. Sometimes you must accept the loss of a battle to win the war.",
+      "The {red|Hammer} took the {amber|center}, which puts the {red|enemy} over the {amber|claim minimum}.",
+      "We {amber|lost} this fight, but the {cyan|Resolute}, our strongest ship, is safe.",
     ],
   },
 };
 
 /** The toast when the player tries something the current step doesn't allow. */
 export const TUTORIAL_NOT_ALLOWED = {
-  select: "Selection Not Allowed Now",
-  move: "Move Not Allowed Now",
+  select: "Select the highlighted ship.",
+  move: "That ship can't move in this step.",
   /** A move step, but not to one of the marked tiles. */
-  moveToMarked: "Move to Marked Spot",
-  shoot: "Shot Not Allowed Now",
-  special: "Special Not Allowed Now",
-  assist: "Assist Not Allowed Now",
-  claim: "Claim Not Allowed Now",
-  other: "Action Not Allowed Now",
+  moveToMarked: "Move to a marked tile.",
+  shoot: "You can't fire at that ship in this step.",
+  special: "You can't use that special in this step.",
+  assist: "You can't assist that ship in this step.",
+  claim: "You can't claim that in this step.",
+  other: "That isn't part of this step.",
 };
 
 /**
@@ -185,7 +184,7 @@ export const TUTORIAL_NOT_ALLOWED = {
 export const TUTORIAL_BOARD_HINTS = {
   next: "Click Next to continue",
   selectShip: "Click one of your ships",
-  selectEnemy: "Click an enemy ship",
+  selectEnemy: "Find the Tongs and click it",
 };
 
 /**
@@ -212,19 +211,19 @@ export const TUTORIAL_COMPLETION_CARD = {
   /** Opened from the Operations map in web2 (no reward claim). */
   continueHeadline: "On to the operation",
   winSupporting:
-    "You held the line in the battle. Claim {amber|2 free ships}, put this win on your record, and join the fight against other admirals.",
+    "You held the line in the battle. Claim {amber|2 free ships} and record this win. Then you can continue the campaign or take on other admirals.",
   lossSupporting:
-    "You banked power when it mattered. {cyan|Log in} to claim {amber|3 free ships}, fight, log this loss on your record, and join the fight against other admirals.",
+    "You kept your strongest ship. {cyan|Sign in} to claim {amber|3 free ships} and record this battle. Then you can continue the campaign or take on other admirals.",
   continueSupporting:
     "Headquarters has seen what you can do. Next, pick the {amber|ships} you'll take into the operation.",
   buttons: {
-    claimWin: "Claim 2 ships + win",
-    claimLoss: "Claim 3 ships + loss record",
-    claiming: "Claiming...",
+    claimWin: "Claim 2 ships",
+    claimLoss: "Claim 3 ships",
+    claiming: "Claiming…",
     signIn: "Sign in to claim your ships",
     verify: "Verify with Selfie Check to claim",
     verifying: "Verifying…",
-    rewardClaimed: "Reward Claimed / View Ships",
+    rewardClaimed: "Ships claimed. View them",
     continueToFleet: "Continue to fleet selection",
   },
 };

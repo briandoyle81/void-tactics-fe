@@ -640,7 +640,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
                   return (
                     <div className="col-span-3 text-center text-text-muted text-xs">
                       {attributesLoading
-                        ? "Loading attributes..."
+                        ? "Loading attributes…"
                         : "Attributes not available"}
                     </div>
                   );

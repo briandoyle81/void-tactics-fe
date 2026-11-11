@@ -61,7 +61,7 @@ export function ClaimFreeButtonWeb2({
       disabled={isClaiming}
       className={className}
     >
-      {isClaiming ? "[CLAIMING...]" : "[CLAIM FREE SHIPS]"}
+      {isClaiming ? "[CLAIMING…]" : "[CLAIM FREE SHIPS]"}
     </button>
   );
 }

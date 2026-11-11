@@ -51,7 +51,7 @@ export function roguelikeCombatDossierRows(
     rows.push({ label: "On victory", value: `Hulls patched to at least ${healFloor}%`, tone: "good" });
   }
   if (f.victoryEffects.decBonus != null && f.victoryEffects.decBonus > 0) {
-    rows.push({ label: "Reward", value: `+${formatDec(f.victoryEffects.decBonus)} DEC`, tone: "good" });
+    rows.push({ label: "Reward", value: `+${formatDec(f.victoryEffects.decBonus)} DCC`, tone: "good" });
   }
   if (f.victoryEffects.shipGrant) {
     const { grant, claimed } = f.victoryEffects.shipGrant;

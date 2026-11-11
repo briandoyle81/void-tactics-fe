@@ -262,7 +262,7 @@ export function RoguelikeNodeEditForm({
           className="self-start border-2 border-phosphor-green px-4 py-2 text-sm font-bold uppercase tracking-wider text-phosphor-green hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
           style={{ borderRadius: 0 }}
         >
-          {isSaving ? "[SAVING...]" : mode === "create" ? "[CREATE NODE]" : "[SAVE DETAILS]"}
+          {isSaving ? "[SAVING…]" : mode === "create" ? "[CREATE NODE]" : "[SAVE DETAILS]"}
         </button>
 
         {isCombat && (

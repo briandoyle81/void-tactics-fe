@@ -54,7 +54,7 @@ export function LobbyJoinButton({
       args={[lobbyId]}
       className={className}
       disabled={disabled}
-      loadingText="[JOINING...]"
+      loadingText="[JOINING…]"
       errorText="[ERROR JOINING]"
       onSuccess={async () => {
         posthog.capture("lobby_joined", { lobby_id: lobbyId.toString() });

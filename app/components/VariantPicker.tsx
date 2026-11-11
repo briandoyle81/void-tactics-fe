@@ -13,8 +13,8 @@ interface VariantPickerProps {
 }
 
 const FACTIONS: { variant: number; label: string; description: string }[] = [
-  { variant: 1, label: getFactionName(1), description: "Ram — evicts a downed enemy ship." },
-  { variant: 2, label: getFactionName(2), description: "Repair — heals a nearby friendly ship." },
+  { variant: 1, label: getFactionName(1), description: "Ram: evicts a downed enemy ship." },
+  { variant: 2, label: getFactionName(2), description: "Repair: heals a nearby friendly ship." },
 ];
 
 /**

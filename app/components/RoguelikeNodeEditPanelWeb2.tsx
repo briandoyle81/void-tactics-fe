@@ -227,7 +227,7 @@ export function RoguelikeNodeEditPanelWeb2({
         isWeb2Admin ? <MapPlacementsEditorWeb2 mapId={mapId} configs={configs ?? []} startOpen onClose={close} /> : null
       }
       fleetEditorBlockedReason={() => {
-        if (isUserLoading) return "Checking admin permission...";
+        if (isUserLoading) return "Checking admin permission…";
         if (!isLoggedIn || !email) return "Log in as an admin to edit the enemy fleet.";
         if (!isWeb2Admin) return "This account is not an admin. Log in with an admin email to edit the enemy fleet.";
         return null;

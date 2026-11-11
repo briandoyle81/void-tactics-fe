@@ -257,7 +257,7 @@ function ComingSoon({
           }`}
           style={DISPLAY_FONT}
         >
-          Coming Soon
+          Coming soon
         </span>
       </div>
     </div>
@@ -357,7 +357,7 @@ function PhoneDeck({ operations, yourTurnCount, openTournamentCount, featuredPac
       <FreeShipsCard />
 
       <div className="flex flex-col border-2 border-solid border-gunmetal bg-black/40">
-        <DeckListRow label="Skirmish - PvP" onClick={() => onOpen("skirmish")} />
+        <DeckListRow label="Skirmish (PvP)" onClick={() => onOpen("skirmish")} />
         <DeckListRow
           label="Store"
           labelClass="text-amber"
@@ -407,7 +407,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
         <ArtSlot slot="skirmish" className="min-h-28 flex-1 max-md:hidden" />
         <div className="flex flex-wrap items-center justify-between gap-3 p-3">
           <span className="text-xl font-bold uppercase tracking-wider md:text-3xl" style={DISPLAY_FONT}>
-            Skirmish - PvP
+            Skirmish (PvP)
           </span>
           <DeckButton onClick={() => onOpen("skirmish")}>Play</DeckButton>
         </div>
@@ -417,7 +417,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
         {featuredPack ? (
           <>
             <div className="px-3 pt-3 text-lg font-bold uppercase tracking-wider text-amber" style={DISPLAY_FONT}>
-              Featured Pack
+              Featured pack
             </div>
             <FeaturedPackPreview pack={featuredPack} />
           </>
@@ -494,7 +494,7 @@ function LayoutA({ operations, yourTurnCount, openTournamentCount, featuredPack,
 function LayoutB({ operations, yourTurnCount, openTournamentCount, onOpen }: Omit<CommandDeckProps, "layout">) {
   const rail: { id: CommandDeckDestination; label: string; chip?: string; chipColor?: string }[] = [
     { id: "operations", label: "Operations" },
-    { id: "skirmish", label: "Skirmish - PvP" },
+    { id: "skirmish", label: "Skirmish (PvP)" },
     {
       id: "tournaments",
       label: "Tournaments",

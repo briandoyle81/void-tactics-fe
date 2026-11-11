@@ -273,7 +273,7 @@ export function useShipImageCache(ship: Ship) {
           error.name === "QuotaExceededError"
         ) {
           console.warn(
-            `⚠️ Quota exceeded for ship ${ship.id.toString()}, clearing cache and retrying...`
+            `⚠️ Quota exceeded for ship ${ship.id.toString()}, clearing cache and retrying…`
           );
           // Clear all cache and try again
           clearAllShipImageCache();
@@ -514,7 +514,7 @@ export function useShipImageCache(ship: Ship) {
 
     const cached = getCachedImage();
     if (cached) {
-      debugLog(`📦 Found cached image for ship ${shipId}, testing validity...`);
+      debugLog(`📦 Found cached image for ship ${shipId}, testing validity…`);
       // Test if the cached image is valid by creating an Image object
       const testImg = new Image();
       testImg.onload = () => {
@@ -530,7 +530,7 @@ export function useShipImageCache(ship: Ship) {
         debugLog(`🔄 Updated state for cached ship ${shipId}`);
       };
       testImg.onerror = () => {
-        debugLog(`❌ Cached image for ship ${shipId} is broken, refetching...`);
+        debugLog(`❌ Cached image for ship ${shipId} is broken, refetching…`);
         // Remove broken cache entry
         localStorage.removeItem(cacheKey);
         // Reset retry count and add to queue to refetch
@@ -728,7 +728,7 @@ const checkAndCleanupCache = () => {
       keys.filter((k) => k.startsWith(imageCachePrefix())).length >
         MAX_CACHE_SIZE
     ) {
-      debugLog(`🧹 Cache cleanup needed, removing oldest entries...`);
+      debugLog(`🧹 Cache cleanup needed, removing oldest entries…`);
 
       const cacheEntries = keys
         .filter((key) => key.startsWith(imageCachePrefix()))
@@ -840,7 +840,7 @@ if (typeof window !== "undefined") {
 
 // Utility function to manually restart queue processing
 export function restartQueueProcessing() {
-  debugLog("🔄 Manually restarting queue processing...");
+  debugLog("🔄 Manually restarting queue processing…");
   isProcessingQueue = false;
   activeRequests = 0;
   processQueue();

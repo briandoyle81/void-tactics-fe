@@ -78,7 +78,7 @@ function SiteHeader() {
         <PlayLink
           surface="header"
           href={`${PLAY_PATH}?signin=1`}
-          label="[SIGN UP/LOGIN]"
+          label="[SIGN IN]"
           className="h-8 whitespace-nowrap px-3 text-sm sm:px-4"
         />
       </div>

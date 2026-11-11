@@ -38,7 +38,7 @@ describe("getRunMapAction", () => {
       type: "tutorial",
       label: "Begin First Contact",
       disabled: false,
-      secondary: { label: "Skip Tutorial" },
+      secondary: { label: "Skip tutorial" },
     });
     // Start run waits until the tutorial is done or skipped.
     expect(getRunMapAction({ ...browse, isTutorialPrelude: false }).type).toBe("none");
@@ -67,7 +67,7 @@ describe("getRunMapAction", () => {
   it("offers the resupply panel at the resupply stop the run is at", () => {
     expect(getRunMapAction({ ...base, selectedKind: "resupply", isCurrentNode: true, isReachableChild: false })).toEqual({
       type: "resupply",
-      label: "Resupply Fleet",
+      label: "Resupply fleet",
       disabled: false,
     });
   });

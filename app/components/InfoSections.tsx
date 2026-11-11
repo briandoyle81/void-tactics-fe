@@ -83,8 +83,8 @@ export function InfoHero({ actions }: { actions: React.ReactNode }) {
           className="max-w-md text-lg font-medium leading-snug text-text-secondary md:text-xl"
           style={BODY_FONT}
         >
-          Command a fleet of starships in turn-based space battles, where
-          positioning, range control and target priority decide every fight.
+          Command a fleet in turn-based space battles. Where you park each
+          ship, and what it shoots first, wins the fight.
         </p>
         {actions}
       </div>
@@ -110,7 +110,7 @@ const BATTLE_CARDS = [
   {
     title: "Engage",
     color: "var(--color-cyan)",
-    body: "Guns, EMPs, rams and repair drones. Damaged reactors go critical, and destroyed ships stay destroyed.",
+    body: "Ships carry guns and special equipment. Damaged reactors go critical, and destroyed ships stay destroyed.",
   },
   {
     title: "Hold the sites",
@@ -130,7 +130,7 @@ const ONCHAIN_POINTS = [
   },
   {
     title: "Ships with history",
-    body: "Damage, rank and kills stay with a ship from battle to battle.",
+    body: "Damage, rank, and kills stay with a ship from battle to battle.",
   },
   {
     title: "Open to builders",
@@ -304,15 +304,14 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
                 style={BODY_FONT}
               >
                 It starts with an odd dispatch: unidentified ships at a mining
-                claim, running dark. No answer to your hails. No IFF, which means
-                no legal claim to the site, which means no point in fighting.
+                claim, running dark. They don&apos;t answer your hails and they
+                broadcast no IFF, so they have no legal claim to the site.
               </p>
               <p
                 className="text-lg font-medium leading-relaxed text-text-secondary md:text-xl"
                 style={BODY_FONT}
               >
                 Every encounter, they seem to learn a little more about you.
-                Follow the trail and find out who, or what, is on the other side.
               </p>
             </div>
           </div>
@@ -408,7 +407,7 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
           </p>
           <ol className="max-w-lg border-b border-white/10">
             {[
-              "Set the terms: the map, the fleet threat limit, turn pace and match length.",
+              "Set the terms: the map, the fleet threat limit, turn pace, and match length.",
               "Take on anyone, or reserve the lobby for a rival.",
               "Every kill ranks up the ship that made it.",
             ].map((line, i) => (
@@ -445,15 +444,14 @@ export function InfoFeatureSections({ cta }: { cta: React.ReactNode }) {
               className={`${SECTION_HEADING} text-5xl md:text-7xl`}
               style={DISPLAY_FONT}
             >
-              Built to outlive us
+              Built to run without us
             </h2>
             <p
               className="text-xl font-medium leading-snug text-text-secondary md:text-2xl"
               style={BODY_FONT}
             >
-              The rules, the ships and every match live onchain. If we
-              disappeared tomorrow, the game would keep running, and your fleet
-              would still be yours.
+              The rules, the ships, and every match are onchain, so the game
+              doesn&apos;t depend on our servers.
             </p>
           </div>
           <dl className="grid grid-cols-1 gap-x-12 sm:grid-cols-2 md:col-span-7">

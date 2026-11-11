@@ -212,7 +212,7 @@ export function ShipActionButton({
       args={args}
       className={className}
       disabled={disabled}
-      loadingText={`[${action.toUpperCase()}...]`}
+      loadingText={`[${action.toUpperCase()}…]`}
       errorText={`[ERROR ${action.toUpperCase()}]`}
       onSuccess={async () => {
         posthog.capture("ships_recycled", { ship_count: shipIds?.length ?? 0 });
@@ -315,7 +315,7 @@ function ConstructButton({
       className={`${cleanedClassName} ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
       style={{ borderRadius: 0 }}
     >
-      {isRunning ? "[CONSTRUCTING...]" : children}
+      {isRunning ? "[CONSTRUCTING…]" : children}
     </button>
   );
 }

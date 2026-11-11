@@ -325,7 +325,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
               owner: address,
               spender: CONTRACT_ADDRESSES.DRONE_YARD as `0x${string}`,
               amount: modificationCost as bigint,
-              loadingText: `[APPROVING ${formatEther(modificationCost as bigint)} UTC...]`,
+              loadingText: `[APPROVING ${formatEther(modificationCost as bigint)} UTC…]`,
             }),
           ]
         : undefined,
@@ -762,7 +762,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                     args={[selectedShipId, buildDroneYardShipStruct]}
                     approvals={modifyApprovals}
                     className="w-full px-6 py-3 rounded-none border-2 border-amber text-amber hover:border-amber hover:text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    loadingText="[CUSTOMIZING SHIP...]"
+                    loadingText="[CUSTOMIZING SHIP…]"
                     errorText="[ERROR CUSTOMIZING]"
                     disabled={
                       !modificationCost ||

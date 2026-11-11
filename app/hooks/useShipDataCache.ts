@@ -183,7 +183,7 @@ export function cacheShipData(ship: Ship): void {
     const entrySize = JSON.stringify(cachedData).length;
 
     if (currentSize + entrySize > MAX_CACHE_SIZE_BYTES) {
-      debugLog(`⚠️ Cache size limit reached, cleaning up old entries...`);
+      debugLog(`⚠️ Cache size limit reached, cleaning up old entries…`);
       cleanupOldCacheEntries();
     }
 
@@ -194,7 +194,7 @@ export function cacheShipData(ship: Ship): void {
       error instanceof DOMException &&
       error.name === "QuotaExceededError"
     ) {
-      debugLog(`⚠️ Quota exceeded, cleaning up cache...`);
+      debugLog(`⚠️ Quota exceeded, cleaning up cache…`);
       cleanupOldCacheEntries();
       // Try again after cleanup
       try {

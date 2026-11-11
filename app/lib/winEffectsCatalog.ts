@@ -12,7 +12,7 @@ export const WIN_EFFECT_KEYS = [
 export type WinEffectKey = (typeof WIN_EFFECT_KEYS)[number];
 
 export const WIN_EFFECT_LABELS: Record<WinEffectKey, string> = {
-  DEC_BONUS_WIN_EFFECT: "DEC Bonus",
+  DEC_BONUS_WIN_EFFECT: "DCC Bonus",
   HEAL_ABOVE_FLOOR_WIN_EFFECT: "Heal Above Floor",
   SHIP_GRANT_WIN_EFFECT: "Grant Ship",
 };

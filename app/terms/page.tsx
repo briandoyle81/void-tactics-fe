@@ -192,7 +192,7 @@ export default function TermsOfServicePage() {
               Smart contracts and software risk
             </h2>
             <p style={{ color: "var(--color-text-secondary)" }}>
-              Smart contracts, front-end software, and other code associated with
+              Smart contracts, frontend software, and other code associated with
               the Service may contain bugs, errors, or vulnerabilities. Exploits or
               failures could result in loss of assets, loss of access, or loss of
               functionality. You accept these risks when you use the Service.

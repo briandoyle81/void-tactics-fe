@@ -33,7 +33,7 @@ export function RecycleConfirmButtonWeb2({ shipId, onSuccess }: RecycleConfirmBu
       disabled={isRecycling}
       className="px-6 py-2 border border-warning-red text-warning-red hover:bg-warning-red/10 rounded-none font-mono font-bold transition-all duration-200"
     >
-      {isRecycling ? "DESTROYING..." : "DESTROY SHIP"}
+      {isRecycling ? "DESTROYING…" : "DESTROY SHIP"}
     </button>
   );
 }

@@ -184,7 +184,7 @@ function RecoveryCodesModal({
 
         <p className="text-sm text-text-secondary leading-relaxed">{INTRO[reason]}</p>
 
-        {isBusy && <p className="mt-4 text-sm text-text-muted">[LOADING...]</p>}
+        {isBusy && <p className="mt-4 text-sm text-text-muted">[LOADING…]</p>}
         {error && <p className="mt-4 text-sm text-amber">{error}</p>}
 
         {codes && !isBusy && (

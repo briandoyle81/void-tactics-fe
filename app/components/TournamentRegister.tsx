@@ -36,7 +36,7 @@ function extractProofFields(result: IDKitResult): {
 const REVERT_MESSAGES: Record<string, string> = {
   AlreadyRegistered: "You're already registered for this tournament.",
   NullifierUsed: "This World ID has already registered for this tournament.",
-  WrongEntryFee: "Incorrect entry fee — please try again.",
+  WrongEntryFee: "Incorrect entry fee. Please try again.",
   RegistrationFull: "Tournament is full.",
   RegistrationClosed: "Registration has closed.",
 };

@@ -1170,7 +1170,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       toast.loading(
         `AI is taking its turn${
           aiTurnLoop.moveCount > 0 ? ` (move ${aiTurnLoop.moveCount})` : ""
-        }...`,
+        }…`,
         { id: aiTurnToastId },
       );
     } else {
@@ -1405,7 +1405,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         errorMessage.includes("InvalidRamTarget")
       ) {
         toast.error(
-          "That target is no longer in the game — select a new target",
+          "That ship has left the battle. Pick another target.",
         );
       } else if (errorMessage.includes("execution reverted")) {
         toast.error(
@@ -1937,7 +1937,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           borderRadius: 0,
           letterSpacing: "0.14em",
         }}
-        loadingText="[...]"
+        loadingText="[…]"
         errorText="[ERR]"
         validateBeforeTransaction={() => {
           if (!selectedShipId) {
@@ -1972,7 +1972,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         disabled={isProposalLocked}
       >
         {/* Pending until the receipt, not just until the wallet returns. */}
-        {isProposalLocked ? "[...]" : confirmWidgetLabel}
+        {isProposalLocked ? "[…]" : confirmWidgetLabel}
       </TransactionButton>
     );
   }, [
@@ -2054,7 +2054,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   className={`${buttonSize} uppercase font-semibold transition-colors duration-150 ${
                     isRail ? "min-w-0 flex-[2] h-full w-full" : ""
                   } ${isRail ? "order-2" : "order-2"}`}
-                  loadingText="[...]"
+                  loadingText="[…]"
                   disabled={isProposalLocked}
                   errorText="[ERR]"
                   confirmBeforeSend={confirmHoldFireIfInRange}
@@ -2121,7 +2121,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                   }}
                 >
                   {isProposalLocked
-                    ? "[...]"
+                    ? "[…]"
                     : isSelectedShipDisabled
                       ? "RETREAT"
                       : confirmWidgetLabel}
@@ -2927,7 +2927,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             functionName="endGameOnTimeout"
             args={[game.metadata.gameId]}
             className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
-            loadingText="Claiming..."
+            loadingText="Claiming…"
             errorText="Failed"
             onSuccess={async () => {
               toast.success(

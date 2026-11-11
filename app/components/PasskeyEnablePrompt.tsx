@@ -161,7 +161,7 @@ export function PasskeyEnablePrompt() {
       // that anything actually failed.
       console.error("Failed to refresh user after registering passkey:", refreshError);
     }
-    toast.success("Passkey added — you can use it to sign in next time.");
+    toast.success("Passkey added. You can use it to sign in next time.");
     if (dontShowAgain && user?.userId) {
       persistPasskeyPromptPermanentlyDismissed(user.userId);
     }
@@ -178,7 +178,7 @@ export function PasskeyEnablePrompt() {
       const isCancelledReauth =
         error instanceof Error && error.message === "Reauthentication flow closed";
       const message = isCancelledReauth
-        ? "Verification was cancelled — passkey wasn't set up."
+        ? "Verification was cancelled, so the passkey wasn't set up."
         : error instanceof NoWebAuthNSupportError
           ? "This browser or device doesn't support passkeys."
           : "Couldn't set up a passkey. You can try again anytime from My Account.";
@@ -319,7 +319,7 @@ export function PasskeyEnablePrompt() {
           <p className="text-sm text-text-secondary leading-relaxed">
             {hasPasskeyElsewhere
               ? "Your passkey is on another device. Add one here to sign in on this device with Face ID, a fingerprint, or your device PIN."
-              : "Set up a passkey to sign in next time with Face ID, a fingerprint, or your device PIN — no code to type or wait for."}
+              : "Next time, sign in with Face ID, a fingerprint, or your device PIN instead of an email code."}
           </p>
         )}
 
@@ -360,7 +360,7 @@ export function PasskeyEnablePrompt() {
                 className={buttonClass}
                 style={primaryStyle}
               >
-                {isRegistering ? "[FOLLOW THE PROMPT...]" : "[USE CODE]"}
+                {isRegistering ? "[FOLLOW THE PROMPT…]" : "[USE CODE]"}
               </button>
             </>
           ) : (
@@ -371,7 +371,7 @@ export function PasskeyEnablePrompt() {
               className={buttonClass}
               style={primaryStyle}
             >
-              {isRegistering ? "[FOLLOW THE PROMPT...]" : "[ENABLE PASSKEY]"}
+              {isRegistering ? "[FOLLOW THE PROMPT…]" : "[ENABLE PASSKEY]"}
             </button>
           )}
         </div>

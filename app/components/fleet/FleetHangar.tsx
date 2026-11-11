@@ -45,12 +45,12 @@ export function FleetHangar({
         (isWeb2 ? <LoadoutsWeb2 onOpenShips={openShips} /> : <LoadoutsWeb3 onOpenShips={openShips} />)}
       {section === "progression" && (
         <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-          <section aria-label="Drone Core ladder">
+          <section aria-label="DCC ladder">
             <h3
               className="mb-3 text-xl font-bold uppercase tracking-wider text-cyan"
               style={{ fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif" }}
             >
-              Drone Core ladder
+              DCC ladder
             </h3>
             {isWeb2 ? <DroneStorefrontWeb2 /> : <DroneStorefront />}
           </section>

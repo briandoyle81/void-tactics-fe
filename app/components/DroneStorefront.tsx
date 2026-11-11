@@ -10,7 +10,7 @@ import { CONTRACT_ABIS } from "../config/contracts";
 import { useDroneStorefront } from "../hooks/useDroneStorefront";
 
 /**
- * DroneStorefront (docs/faction-2.md §3): turn in DEC for a permanent,
+ * DroneStorefront (docs/faction-2.md §3): turn in DCC for a permanent,
  * cumulative bonus to the number of free ships granted per 28-day claim.
  * Tier ladder, not a flat exchange rate — must read `tierCoreCost` for the
  * exact next-tier cost rather than guessing.
@@ -47,7 +47,7 @@ const DroneStorefront: React.FC = () => {
     decBalance !== undefined &&
     decBalance < nextTierCost;
 
-  // DEC has 0 decimals: amounts are plain counts of cores.
+  // DCC has 0 decimals: amounts are plain counts of cores.
   const nextTierCostFormatted =
     nextTierCost !== undefined ? formatDec(Number(nextTierCost), "up") : null;
   const decBalanceFormatted =
@@ -58,15 +58,15 @@ const DroneStorefront: React.FC = () => {
 
         <div className="mb-5 p-4 bg-cyan/10 border border-cyan/40 rounded-none">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-cyan/80 text-sm font-mono">Drone Energy Cores</p>
+            <p className="text-cyan/80 text-sm font-mono">Drone Computation Cores</p>
             <p className="text-cyan text-sm font-mono font-bold">
-              {decBalanceFormatted} DEC
+              {decBalanceFormatted} DCC
             </p>
           </div>
           <p className="text-cyan/85 text-xs font-mono leading-relaxed">
-            DEC comes from destroying AI-owned ships. Turn it in here for a
-            permanent, cumulative bonus to how many free ships you get from
-            each 28-day claim — the bonus never resets once earned.
+            DCC comes from destroying AI ships. Turn it in here to raise how
+            many free ships each 28-day claim gives you. The bonus is
+            permanent.
           </p>
         </div>
 
@@ -97,7 +97,7 @@ const DroneStorefront: React.FC = () => {
 
             {maxTierReached ? (
               <p className="text-center text-phosphor-green font-mono py-6">
-                Max tier reached — no further tiers configured.
+                You&apos;re at the top tier.
               </p>
             ) : isLoadingNextTierCost ? (
               <p className="text-center text-text-muted font-mono py-6">
@@ -119,7 +119,7 @@ const DroneStorefront: React.FC = () => {
                       Cost
                     </div>
                     <div className="font-bold text-cyan font-mono">
-                      {nextTierCostFormatted} DEC
+                      {nextTierCostFormatted} DCC
                     </div>
                   </div>
                   <div className="border border-solid border-cyan/30 bg-black/20 px-2 py-1.5">
@@ -127,7 +127,7 @@ const DroneStorefront: React.FC = () => {
                       Your balance
                     </div>
                     <div className="font-bold text-cyan font-mono">
-                      {decBalanceFormatted} DEC
+                      {decBalanceFormatted} DCC
                     </div>
                   </div>
                 </div>
@@ -141,23 +141,23 @@ const DroneStorefront: React.FC = () => {
                     args={[droneStorefrontAddress as `0x${string}`, nextTierCost]}
                     className="w-full px-4 py-3 rounded-none border-2 border-cyan text-cyan hover:text-cyan hover:bg-cyan/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={insufficientBalance}
-                    loadingText={`[APPROVING ${nextTierCostFormatted} DEC...]`}
+                    loadingText={`[APPROVING ${nextTierCostFormatted} DCC…]`}
                     errorText="[ERROR APPROVING]"
                     onSuccess={async () => {
                       await refetchAll();
-                      toast.success("DEC approved successfully!");
+                      toast.success("DCC approved.");
                     }}
                     onError={(error) => {
-                      console.error("Failed to approve DEC:", error);
-                      toast.error("Failed to approve DEC transfer");
+                      console.error("Failed to approve DCC:", error);
+                      toast.error("Failed to approve DCC transfer");
                     }}
                     validateBeforeTransaction={() => {
                       if (!address) return "Please connect your wallet";
-                      if (insufficientBalance) return "Insufficient DEC balance";
+                      if (insufficientBalance) return "Insufficient DCC balance";
                       return true;
                     }}
                   >
-                    [APPROVE {nextTierCostFormatted} DEC]
+                    [APPROVE {nextTierCostFormatted} DCC]
                   </TransactionButton>
                 ) : (
                   <TransactionButton
@@ -168,23 +168,23 @@ const DroneStorefront: React.FC = () => {
                     args={[nextTierCost]}
                     className="w-full px-4 py-3 rounded-none border-2 border-cyan text-cyan hover:text-cyan hover:bg-cyan/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={insufficientBalance}
-                    loadingText="[TURNING IN...]"
+                    loadingText="[TURNING IN…]"
                     errorText="[ERROR TURNING IN]"
                     onSuccess={async () => {
                       await refetchAll();
                       toast.success(`Tier ${nextTier} unlocked!`);
                     }}
                     onError={(error) => {
-                      console.error("Failed to turn in DEC:", error);
-                      toast.error("Failed to turn in DEC");
+                      console.error("Failed to turn in DCC:", error);
+                      toast.error("Failed to turn in DCC");
                     }}
                     validateBeforeTransaction={() => {
                       if (!address) return "Please connect your wallet";
-                      if (insufficientBalance) return "Insufficient DEC balance";
+                      if (insufficientBalance) return "Insufficient DCC balance";
                       return true;
                     }}
                   >
-                    [TURN IN {nextTierCostFormatted} DEC]
+                    [TURN IN {nextTierCostFormatted} DCC]
                   </TransactionButton>
                 )}
               </div>

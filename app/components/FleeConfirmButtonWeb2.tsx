@@ -34,7 +34,7 @@ export function FleeConfirmButtonWeb2({ gameId, onSuccess }: FleeConfirmButtonWe
       disabled={isFleeing}
       className="flex-1 px-4 py-2 bg-warning-red/20 hover:bg-warning-red/30 text-white font-mono font-bold rounded-none border border-warning-red transition-colors tracking-wider"
     >
-      {isFleeing ? "DISENGAGING..." : "CONFIRM"}
+      {isFleeing ? "DISENGAGING…" : "CONFIRM"}
     </button>
   );
 }

@@ -268,7 +268,7 @@ function AuthModeChooser({
                   Onchain
                 </p>
                 <ul className="text-base text-text-secondary space-y-2 list-disc list-inside">
-                  <li>True onchain ownership — every ship is really yours</li>
+                  <li>True onchain ownership: every ship is really yours</li>
                   <li>Safe and permissionless modding and data access</li>
                   <li>Permanent, provably fair battle history</li>
                 </ul>
@@ -293,7 +293,7 @@ function AuthModeChooser({
                 <ul className="text-base text-text-secondary space-y-2 list-disc list-inside">
                   <li>Playing your first battle in under a minute</li>
                   <li>Zero cost to start</li>
-                  <li>Just your Google account — nothing else to set up</li>
+                  <li>Just your Google account: nothing else to set up</li>
                 </ul>
               </div>
             </div>
@@ -321,8 +321,8 @@ function HeaderModeSwitchBadge({
     setAppMode(otherMode);
     toast(
       otherMode === "web2"
-        ? "Switched to Web2. Your onchain fleet stays put — switch back to see it."
-        : "Switched to Web3. Your Web2 fleet stays put — switch back to see it.",
+        ? "Switched to Web2. Your onchain fleet is still there; switch back to see it."
+        : "Switched to Web3. Your Web2 fleet is still there; switch back to see it.",
       { icon: "⚠️", duration: 5000 },
     );
   };
@@ -1082,22 +1082,22 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                   value={formatBalance(utcValue, UTC_DISPLAY_DECIMALS)}
                   compactValue={formatBalanceCompact(utcValue)}
                   color="var(--color-amber)"
-                  title="Universal Credits"
+                  title="Universal Time Credits"
                   plus={{
                     title: "Buy UTC",
                     onClick: () => openStore("credits"),
                   }}
                 />
                 <ResourcePill
-                  label="DEC"
+                  label="DCC"
                   value={showWeb3Panel && !isDroneEnergyCoresDeployed ? "N/A" : formatDec(decValue)}
                   compactValue={
                     showWeb3Panel && !isDroneEnergyCoresDeployed ? "N/A" : formatBalanceCompact(Math.floor(decValue))
                   }
                   color="var(--color-purple)"
-                  title="Drone Energy Cores"
+                  title="Drone Computation Cores"
                   plus={{
-                    title: "Drone Core storefront",
+                    title: "Turn in DCC",
                     disabled: showWeb3Panel && !isDroneEnergyCoresDeployed,
                     onClick: () => openStore("cores"),
                   }}

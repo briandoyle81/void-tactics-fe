@@ -349,7 +349,7 @@ export function AIShipConfigEditor({
               initial={editing?.values}
               pending={pending}
               submitLabel={editing ? "Save Changes" : "Create Ship Config"}
-              pendingLabel={editing ? "Saving..." : "Creating..."}
+              pendingLabel={editing ? "Saving…" : "Creating…"}
               onSubmit={(values) =>
                 void save(() => (editing ? onUpdate(editing.id, values) : onCreate(values)))
               }

@@ -54,7 +54,7 @@ export function LobbyPruneButton({
       args={[lobbyId]}
       className={className}
       disabled={disabled}
-      loadingText="[PRUNING...]"
+      loadingText="[PRUNING…]"
       errorText="[ERROR PRUNING]"
       onSuccess={async () => {
         posthog.capture("lobby_pruned", { lobby_id: lobbyId.toString() });

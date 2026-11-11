@@ -648,7 +648,7 @@ const Lobbies: React.FC = () => {
     });
     if (removedCount > 0) {
       toast(
-        `${removedCount} ship${removedCount > 1 ? "s" : ""} removed from your fleet — cost data is out of date. Update them in Manage Navy.`,
+        `${removedCount} ship${removedCount > 1 ? "s" : ""} removed from your fleet because their prices are out of date. Update them in Fleet.`,
         { icon: "⚠️", duration: 6000 },
       );
     }
@@ -1241,7 +1241,7 @@ const Lobbies: React.FC = () => {
 
     if (selectedFleetHasStaleCostsVersion) {
       toast.error(
-        "Remove or update ships that are not on the current cost version (Manage Navy) before creating a fleet.",
+        "Some of these ships use old prices. Update or remove them in Fleet before building this fleet.",
       );
       return;
     }
@@ -1352,7 +1352,7 @@ const Lobbies: React.FC = () => {
 
     if (selectedFleetHasStaleCostsVersion) {
       toast.error(
-        "Remove or update ships that are not on the current cost version (Manage Navy) before creating a fleet.",
+        "Some of these ships use old prices. Update or remove them in Fleet before building this fleet.",
       );
       return;
     }
@@ -1402,7 +1402,7 @@ const Lobbies: React.FC = () => {
         toast.error("Transaction declined by user");
       } else if (errorMessage.includes("MixedVariantFleet")) {
         toast.error(
-          "A fleet can't mix ships from different factions — select ships of one faction only.",
+          "A fleet can't mix factions.",
         );
       } else if (errorMessage.includes("DuplicateShipId")) {
         toast.error(DUPLICATE_SHIP_ID_TOAST);
@@ -1803,7 +1803,7 @@ const Lobbies: React.FC = () => {
         createButtonHint={
           needsPaymentForLobby && additionalLobbyFee ? (
             <p className="text-center text-xs text-amber font-mono">
-              {`// Free games used — lobby fee: ${formatEther(additionalLobbyFee as bigint)} ${getNativeTokenSymbol(chainId)}`}
+              {`// Free games used. Lobby fee: ${formatEther(additionalLobbyFee as bigint)} ${getNativeTokenSymbol(chainId)}`}
             </p>
           ) : null
         }
@@ -1952,7 +1952,7 @@ const Lobbies: React.FC = () => {
                     const errorMessage = error.message || "";
                     if (errorMessage.includes("InsufficientUTC")) {
                       toast.error(
-                        "Insufficient UTC balance — need 1 UTC to reserve this game",
+                        "You need 1 UTC to reserve this game.",
                       );
                     } else if (errorMessage.includes("UTCTransferFailed")) {
                       toast.error("UTC transfer failed, please try again");
@@ -2382,7 +2382,7 @@ const Lobbies: React.FC = () => {
               }
               createButtonState={{
                 isBusy: isCreatingFleet,
-                busyLabel: "CREATING FLEET...",
+                busyLabel: "CREATING FLEET…",
                 selectedCount: selectedShips.length,
                 maxShips: MAX_SHIPS_PER_FLEET,
                 isOverLimit,

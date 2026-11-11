@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Rajdhani, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_DESCRIPTION } from "./config/siteDescription";
 // Ensure BigInt JSON serialization is safe before anything else runs
 import "./utils/bigintJson";
 import AlphaNoticeModal from "./components/AlphaNoticeModal";
@@ -56,9 +57,9 @@ export const metadata: Metadata = {
     default: defaultPageTitle,
     template: "%s | Void Tactics",
   },
-  // Search results show about 155-160 characters.
+  // Search results show about 155-160 characters, so the last sentence may be cut there.
   description:
-    "Void Tactics is a fully onchain, turn-based space tactics game. Lead your fleet through a branching campaign against the Hive, then face other admirals in PvP.",
+    SITE_DESCRIPTION,
   applicationName: "Void Tactics",
   keywords: [
     "Void Tactics",
@@ -78,7 +79,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: defaultPageTitle,
     description:
-      "Fully onchain turn-based fleet tactics. Lead your ships through a branching campaign against the Hive, then take on other admirals in PvP. Your first mission needs no account.",
+      SITE_DESCRIPTION,
     url: siteUrl,
     siteName: "Void Tactics",
     locale: "en_US",
@@ -97,7 +98,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: defaultPageTitle,
     description:
-      "Fully onchain turn-based fleet tactics. Lead your ships through a branching campaign against the Hive, then take on other admirals in PvP. Your first mission needs no account.",
+      SITE_DESCRIPTION,
     creator: "@voidtacticsxyz",
     site: "@voidtacticsxyz",
     images: ["/img/og-image.jpg"],

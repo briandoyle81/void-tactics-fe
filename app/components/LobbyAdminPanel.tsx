@@ -112,7 +112,7 @@ export function LobbyAdminPanel() {
             type="text"
             value={withdrawTo}
             onChange={(e) => setWithdrawTo(e.target.value)}
-            placeholder="0x..."
+            placeholder="0x…"
             className={inputClass}
             style={inputStyle}
           />

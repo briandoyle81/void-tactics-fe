@@ -290,7 +290,7 @@ export function RewardShipsAdminView({
                     onClick={() => void run("attach", () => onAttachEffect(selected.id))}
                     className={`${BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10`}
                   >
-                    {busy === "attach" ? "[ADDING...]" : "[ADD GRANT SHIP EFFECT]"}
+                    {busy === "attach" ? "[ADDING…]" : "[ADD GRANT SHIP EFFECT]"}
                   </button>
                 </div>
               )}
@@ -313,7 +313,7 @@ export function RewardShipsAdminView({
                   onClick={() => void run("save", () => onSave(selected.id, draft))}
                   className={`${BUTTON} border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10`}
                 >
-                  {busy === "save" ? "[SAVING...]" : "[SAVE REWARD]"}
+                  {busy === "save" ? "[SAVING…]" : "[SAVE REWARD]"}
                 </button>
                 <button
                   type="button"
@@ -329,7 +329,7 @@ export function RewardShipsAdminView({
                   onClick={() => void run("clear", () => onClear(selected.id))}
                   className={`${BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10`}
                 >
-                  {busy === "clear" ? "[CLEARING...]" : "[CLEAR REWARD]"}
+                  {busy === "clear" ? "[CLEARING…]" : "[CLEAR REWARD]"}
                 </button>
               </div>
 
@@ -360,7 +360,7 @@ export function RewardShipsAdminView({
                       }
                       className={`${BUTTON} border-amber text-amber hover:bg-amber/10`}
                     >
-                      {busy === "reset" ? "[RESETTING...]" : "[RESET CLAIM]"}
+                      {busy === "reset" ? "[RESETTING…]" : "[RESET CLAIM]"}
                     </button>
                   </div>
                 </div>

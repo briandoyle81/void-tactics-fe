@@ -6,7 +6,7 @@ import { useDroneStorefrontWeb2 } from "../hooks/useDroneStorefrontWeb2";
 import { formatDec } from "../utils/formatDec";
 
 // Web2-mode counterpart to `DroneStorefront.tsx` — same tier ladder/copy,
-// but no wallet/approval step: DEC is a plain per-user balance
+// but no wallet/approval step: DCC is a plain per-user balance
 // (app/lib/droneStorefrontTiers.ts), spent via a single server-side call
 // instead of approve+turnInCores.
 const DroneStorefrontWeb2: React.FC = () => {
@@ -22,7 +22,7 @@ const DroneStorefrontWeb2: React.FC = () => {
       await turnIn();
       toast.success(`Tier ${nextTier} unlocked!`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to turn in DEC");
+      toast.error(e instanceof Error ? e.message : "Failed to turn in DCC");
     } finally {
       setIsTurningIn(false);
     }
@@ -33,13 +33,13 @@ const DroneStorefrontWeb2: React.FC = () => {
 
         <div className="mb-5 p-4 bg-cyan/10 border border-cyan/40 rounded-none">
           <div className="flex justify-between items-center mb-2">
-            <p className="text-cyan/80 text-sm font-mono">Drone Energy Cores</p>
-            <p className="text-cyan text-sm font-mono font-bold">{formatDec(decBalance)} DEC</p>
+            <p className="text-cyan/80 text-sm font-mono">Drone Computation Cores</p>
+            <p className="text-cyan text-sm font-mono font-bold">{formatDec(decBalance)} DCC</p>
           </div>
           <p className="text-cyan/85 text-xs font-mono leading-relaxed">
-            DEC comes from destroying AI-owned ships. Turn it in here for a
-            permanent, cumulative bonus to how many free ships you get from
-            each 28-day claim — the bonus never resets once earned.
+            DCC comes from destroying AI ships. Turn it in here to raise how
+            many free ships each 28-day claim gives you. The bonus is
+            permanent.
           </p>
         </div>
 
@@ -60,7 +60,7 @@ const DroneStorefrontWeb2: React.FC = () => {
 
             {maxTierReached || nextTierCost === null ? (
               <p className="text-center text-phosphor-green font-mono py-6">
-                Max tier reached — no further tiers configured.
+                You&apos;re at the top tier.
               </p>
             ) : (
               <div className="border border-cyan/40 p-4">
@@ -71,13 +71,13 @@ const DroneStorefrontWeb2: React.FC = () => {
                 <div className="grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2 mb-4">
                   <div className="border border-solid border-cyan/30 bg-black/20 px-2 py-1.5">
                     <div className="opacity-75 text-[10px] uppercase tracking-wide text-cyan">Cost</div>
-                    <div className="font-bold text-cyan font-mono">{formatDec(nextTierCost, "up")} DEC</div>
+                    <div className="font-bold text-cyan font-mono">{formatDec(nextTierCost, "up")} DCC</div>
                   </div>
                   <div className="border border-solid border-cyan/30 bg-black/20 px-2 py-1.5">
                     <div className="opacity-75 text-[10px] uppercase tracking-wide text-cyan">
                       Your balance
                     </div>
-                    <div className="font-bold text-cyan font-mono">{formatDec(decBalance)} DEC</div>
+                    <div className="font-bold text-cyan font-mono">{formatDec(decBalance)} DCC</div>
                   </div>
                 </div>
 
@@ -88,10 +88,10 @@ const DroneStorefrontWeb2: React.FC = () => {
                   className="w-full px-4 py-3 rounded-none border-2 border-cyan text-cyan hover:text-cyan hover:bg-cyan/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isTurningIn
-                    ? "[TURNING IN...]"
+                    ? "[TURNING IN…]"
                     : insufficientBalance
-                      ? "[INSUFFICIENT DEC]"
-                      : `[TURN IN ${formatDec(nextTierCost, "up")} DEC]`}
+                      ? "[INSUFFICIENT DCC]"
+                      : `[TURN IN ${formatDec(nextTierCost, "up")} DCC]`}
                 </button>
               </div>
             )}

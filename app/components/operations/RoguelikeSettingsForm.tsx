@@ -191,7 +191,7 @@ export function RoguelikeSettingsForm({
                 type="text"
                 value={withdrawTo}
                 onChange={(e) => setWithdrawTo(e.target.value)}
-                placeholder="0x..."
+                placeholder="0x…"
                 className={INPUT_CLASS}
                 style={INPUT_STYLE}
               />
@@ -212,7 +212,7 @@ export function RoguelikeSettingsForm({
                 type="text"
                 value={editorAddress}
                 onChange={(e) => setEditorAddress(e.target.value)}
-                placeholder="0x..."
+                placeholder="0x…"
                 className="px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan"
                 style={INPUT_STYLE}
               />
@@ -324,7 +324,7 @@ function SaveButton({
       className="px-4 py-2 border-2 border-cyan text-cyan text-xs font-bold uppercase tracking-wider hover:bg-cyan/10 disabled:opacity-50"
       style={{ borderRadius: 0 }}
     >
-      {busy ? "[SAVING...]" : label}
+      {busy ? "[SAVING…]" : label}
     </button>
   );
 }

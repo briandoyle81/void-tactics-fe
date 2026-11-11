@@ -154,7 +154,7 @@ export function RoguelikeGraph({
       const message = error instanceof Error ? error.message : String(error);
       toast.error(
         message.includes("ActiveGameInProgress")
-          ? "A match is still in progress — return to it or let it finish before retreating."
+          ? "A match is still in progress. Return to it or let it finish before retreating."
           : `Failed to retreat: ${message}`,
       );
     }
@@ -171,7 +171,7 @@ export function RoguelikeGraph({
       else if (message.includes("CurrentNodeNotCleared")) toast.error("Finish your current mission first.");
       else if (message.includes("WrongNodeKind")) toast.error("This node isn't a resupply node.");
       else if (message.includes("ActiveGameInProgress")) {
-        toast.error("A match is still in progress — return to it or let it finish before entering resupply.");
+        toast.error("A match is still in progress. Return to it or let it finish before entering resupply.");
       } else toast.error(`Failed to enter resupply node: ${message}`);
     }
   };

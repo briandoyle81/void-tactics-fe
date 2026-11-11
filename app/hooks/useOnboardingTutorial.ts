@@ -334,10 +334,13 @@ export function useOnboardingTutorial() {
       // Otherwise, execute immediately
       applyAction(action);
       setLastAction(action); // Track the last action for step completion checking
+      // A step finished this way stays finished: a later action that doesn't
+      // complete it (e.g. selecting another ship) doesn't lock Next again.
+      if (currentStep?.onStepComplete?.(action)) addCompletedStepId(currentStep.id);
 
       return { success: true };
     },
-    [currentStep, validateAction, applyAction],
+    [currentStep, validateAction, applyAction, addCompletedStepId],
   );
 
   const approveTransaction = useCallback(() => {

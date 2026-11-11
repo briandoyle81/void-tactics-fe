@@ -184,7 +184,7 @@ export function RoguelikeNodeEditPanel({
             className="self-start border-2 border-cyan px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-cyan hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-50"
             style={{ borderRadius: 0 }}
           >
-            {isSavingWinEffects ? "[SAVING...]" : "[SAVE WIN EFFECTS]"}
+            {isSavingWinEffects ? "[SAVING…]" : "[SAVE WIN EFFECTS]"}
           </button>
           {node && (
             <NodeRewardShipSummary
@@ -217,7 +217,7 @@ export function RoguelikeNodeEditPanel({
       }
       fleetEditorBlockedReason={() => {
         if (!address) return "Connect the Enemy Fleet Editor wallet to edit placements.";
-        if (isEncounterEditorLoading) return "Checking Enemy Fleet Editor permission...";
+        if (isEncounterEditorLoading) return "Checking Enemy Fleet Editor permission…";
         if (!isEncounterEditor) return "This wallet is not an Enemy Fleet Editor. Ask an admin to grant isEncounterEditor.";
         return null;
       }}

@@ -93,7 +93,7 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     trigger: { type: "shipsDestroyed", side: "enemy", count: 1 },
     canHide: true,
     variants: [
-      "Target down. There's some sort of advanced computer core in the wreckage.  Sending a shuttle to retrieve it.",
+      "Target down. There's some sort of drone computation core in the wreckage.  Sending a shuttle to retrieve it.",
       "Splash one. I think it dropped something.  We'll grab it and see what it is.",
       "Confirmed kill. Detecting a complex signal in the wreckage.  Bringing it aboard for analysis.",
     ],
@@ -204,7 +204,7 @@ export const GENERIC_DIALOG_LINES: GenericDialogLine<DialogCharacterId>[] = [
     when: { playerFaction: 1 },
     canHide: true,
     variants: [
-      "That enemy ship is dead in space, but it's still sitting on the resource site. Remember, Admiral, we can ram it right off the board and take the site for ourselves.",
+      "That enemy ship is dead in space, but it's still sitting on the resource site. Remember, Admiral, we can ram it out of the site and take it for ourselves.",
     ],
   },
   {

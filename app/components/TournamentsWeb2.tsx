@@ -285,7 +285,7 @@ function CreateTournament({ onBack, onSuccess }: { onBack: () => void; onSuccess
           <input
             type="text"
             inputMode="numeric"
-            placeholder="0 — free entry"
+            placeholder="0 for free entry"
             className={INPUT_CLASS}
             value={form.entryFee}
             onChange={(e) => patch("entryFee", e.target.value.replace(/[^0-9]/g, ""))}

@@ -414,9 +414,9 @@ function MissionSeedExportPanel() {
         className="px-4 py-2 rounded-none font-mono text-sm border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isLoading
-          ? "Reading chain..."
+          ? "Reading chain…"
           : isSaving
-            ? "Saving..."
+            ? "Saving…"
             : seedDir
               ? "[SAVE SEED FILES]"
               : "[DOWNLOAD SEED FILES]"}

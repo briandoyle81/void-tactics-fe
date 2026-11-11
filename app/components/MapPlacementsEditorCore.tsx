@@ -364,7 +364,7 @@ export function MapPlacementsEditorCore({
                   onClick={() => void handleSave()}
                   className="w-full px-4 py-2 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold text-sm tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto md:whitespace-nowrap"
                 >
-                  {saving ? "SAVING..." : "SAVE PLACEMENTS"}
+                  {saving ? "SAVING…" : "SAVE PLACEMENTS"}
                 </button>
               </div>
 
@@ -479,7 +479,7 @@ export function MapPlacementsEditorCore({
                     onClick={() => void saveAndLeave()}
                     className="border-2 border-phosphor-green px-3 py-2 text-xs font-bold uppercase tracking-wider text-phosphor-green hover:bg-phosphor-green/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {saving ? "Saving..." : "Save and leave"}
+                    {saving ? "Saving…" : "Save and leave"}
                   </button>
                 </div>
               </div>

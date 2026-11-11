@@ -102,9 +102,9 @@ const UTCPurchasePanel: React.FC = () => {
       }
       balanceDescription={
         <>
-          Universal Credits (UTC) are the in-game balance token. Buy UTC with
-          TOKENS, then spend UTC when you reserve games or check out ship
-          packs elsewhere. This purchase only adds UTC to your wallet.
+          Universal Time Credits (UTC) are the in-game balance token. Buy UTC
+          with {nativeTokenSymbol}, then spend it to reserve games or buy ship
+          packs. This purchase only adds UTC to your wallet.
         </>
       }
       balanceFooter={
@@ -124,8 +124,8 @@ const UTCPurchasePanel: React.FC = () => {
       chooseAmountDescription={
         <>
           Each option is a fixed {nativeTokenSymbol} payment, minted as UTC
-          1:1 with the {nativeTokenSymbol} paid. Larger options are for
-          convenience only, not a different product.
+          1:1 with the {nativeTokenSymbol} paid. The larger options are the same
+          UTC in bigger amounts.
         </>
       }
     >

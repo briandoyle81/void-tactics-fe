@@ -254,6 +254,9 @@ const TUTORIAL_VIEW_ENEMY_HIGHLIGHT_SHIP_IDS: readonly bigint[] = [
 /** Sentinel (step 5 move-ship) until any ship is selected. */
 const TUTORIAL_MOVE_SHIP_HIGHLIGHT_SHIP_IDS: readonly bigint[] = [1003n];
 
+/** View enemy ships: the ship to find (the Tongs); only it completes the step. */
+const TUTORIAL_FIND_ENEMY_SHIP_ID = "2003";
+
 /** Resolute (step 7 score-points) until selected; allowed-move cells use step config. */
 const TUTORIAL_SCORE_POINTS_HIGHLIGHT_SHIP_IDS: readonly bigint[] = [1001n];
 
@@ -386,6 +389,9 @@ export function SimulatedGameDisplay({
   });
   const heldTutorialPositionsRef = useRef(gameState.shipPositions);
   heldTutorialPositionsRef.current = gameState.shipPositions;
+  /** The moves in the current run (finished, playing, queued). */
+  const playbackRunRef = useRef(playback.run);
+  playbackRunRef.current = playback.run;
   useEffect(() => {
     if (!tutorialMoveArrived || !tutorialLastMove) return;
     setSettledTutorialMoveKey(tutorialLastMoveKey);
@@ -400,16 +406,26 @@ export function SimulatedGameDisplay({
     const atFrom =
       moverOnBoard.position.row === tutorialLastMove.oldRow &&
       moverOnBoard.position.col === tutorialLastMove.oldCol;
-    // A shot that follows a move already applied (the shoot step moves at
-    // Submit and fires when it confirms): its lastMove keeps the move's From
-    // tile, but the ship is already on its To tile. It fires from there.
+    // A shot that follows a move already applied keeps that move's From tile
+    // in its lastMove: it fires from the To tile, with no second slide. The
+    // move has either played (the shoot step moves at Submit and fires when
+    // it confirms: the ship is on its To tile) or is in this run (the sniper
+    // branch's Sentinel move, then Victory's scripted board, whose lastMove
+    // is the same move with a shot).
     const atTo =
       moverOnBoard.position.row === tutorialLastMove.newRow &&
       moverOnBoard.position.col === tutorialLastMove.newCol;
+    const movedThereInRun = playbackRunRef.current.some(
+      (m) =>
+        m.shipId === Number(tutorialLastMove.shipId) &&
+        m.to.row === tutorialLastMove.newRow &&
+        m.to.col === tutorialLastMove.newCol,
+    );
     if (!atFrom && !atTo) return;
-    const from = atFrom
-      ? { row: tutorialLastMove.oldRow, col: tutorialLastMove.oldCol }
-      : { row: tutorialLastMove.newRow, col: tutorialLastMove.newCol };
+    const from =
+      atFrom && !movedThereInRun
+        ? { row: tutorialLastMove.oldRow, col: tutorialLastMove.oldCol }
+        : { row: tutorialLastMove.newRow, col: tutorialLastMove.newCol };
     tutorialMoveCountRef.current += 1;
     const targetId = tutorialLastMove.targetShipId ? Number(tutorialLastMove.targetShipId) : 0;
     const target = targetId
@@ -1430,7 +1446,7 @@ export function SimulatedGameDisplay({
   const confirmWidgetLabel = useMemo(
     () =>
       isConfirmingMove
-        ? "[...]"
+        ? "[…]"
         : computeConfirmWidgetLabel({
             actionType: computedActionType,
             selectedWeaponType,
@@ -1470,7 +1486,8 @@ export function SimulatedGameDisplay({
     if (selectedShipId === null) return;
     const stepId = currentStep?.id;
     const pickedEnemy = isTutorialEnemyFleetShipId(selectedShipId);
-    if ((stepId === "select-ship" && !pickedEnemy) || (stepId === "view-enemy" && pickedEnemy)) {
+    const pickedTongs = selectedShipId.toString() === TUTORIAL_FIND_ENEMY_SHIP_ID;
+    if ((stepId === "select-ship" && !pickedEnemy) || (stepId === "view-enemy" && pickedTongs)) {
       setHighlightDoneStepId(stepId);
     }
   }, [currentStep?.id, selectedShipId]);
@@ -1518,12 +1535,10 @@ export function SimulatedGameDisplay({
     }
 
     if (stepId === "view-enemy") {
-      if (
-        highlightDoneStepId === stepId ||
-        (selectedShipId !== null && isTutorialEnemyFleetShipId(selectedShipId))
-      ) {
-        return undefined;
-      }
+      // Wide layout: the Tongs' Fleet Status card pulses instead (finding it
+      // there is the point). Elsewhere there's no such panel, so the enemy
+      // ships pulse until the Tongs is picked.
+      if (highlightDoneStepId === stepId || chromeOnSide) return undefined;
       return cellsForIds(TUTORIAL_VIEW_ENEMY_HIGHLIGHT_SHIP_IDS);
     }
 
@@ -1741,6 +1756,7 @@ export function SimulatedGameDisplay({
     scoringGrid,
     useSideLayout,
     highlightDoneStepId,
+    chromeOnSide,
   ]);
 
   // Last move object for GameEvents panel (adapt tutorial lastMove to onchain LastMove shape).
@@ -3079,7 +3095,7 @@ export function SimulatedGameDisplay({
                 borderRadius: 0,
               }}
             >
-              {isConfirmingMove ? "[...]" : isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
+              {isConfirmingMove ? "[…]" : isSelectedShipDisabled ? "Submit Retreat" : "Submit"}
             </button>
           </TutorialTarget>
           <button
@@ -3648,7 +3664,7 @@ export function SimulatedGameDisplay({
                               borderRadius: 0,
                             }}
                           >
-                            {isConfirmingMove ? "[...]" : "Submit"}
+                            {isConfirmingMove ? "[…]" : "Submit"}
                           </button>
                         </TutorialTarget>
                       </div>
@@ -3980,7 +3996,6 @@ export function SimulatedGameDisplay({
           </div>
         ) : null}
         {roundReportModal}
-      {holdFireModal}
         {holdFireModal}
       </div>
       </GridHoverProvider>
@@ -4137,7 +4152,7 @@ export function SimulatedGameDisplay({
               const ship = shipMap.get(bigId);
               const attrs = getShipAttributes(shipId);
               const shipPos = gameState.shipPositions.find((sp) => sp.shipId === shipId);
-              return (
+              const card = (
                 <GameFleetStatusCard
                   key={shipId}
                   shipId={numId}
@@ -4162,6 +4177,19 @@ export function SimulatedGameDisplay({
                   }
                 />
               );
+              // Find the Tongs: its card is the one to use.
+              if (currentStep?.id === "view-enemy" && shipId === TUTORIAL_FIND_ENEMY_SHIP_ID) {
+                return (
+                  <TutorialTarget
+                    key={shipId}
+                    active={highlightDoneStepId !== "view-enemy"}
+                    pointer="none"
+                  >
+                    {card}
+                  </TutorialTarget>
+                );
+              }
+              return card;
             };
 
             return (
@@ -4383,6 +4411,7 @@ export function SimulatedGameDisplay({
         );
       })()}
       {roundReportModal}
+      {holdFireModal}
     </div>
     </GridHoverProvider>
   );

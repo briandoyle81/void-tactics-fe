@@ -119,7 +119,7 @@ export const LobbyCardActions: React.FC<LobbyCardActionsProps> = ({
               className="w-full px-4 py-2.5 border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold text-sm tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderRadius: 0 }}
             >
-              {goToGamesBusy ? "[LOADING...]" : "GO TO GAMES"}
+              {goToGamesBusy ? "[LOADING…]" : "GO TO GAMES"}
             </button>
           )}
           {myFleetId === 0 && hasJoiner && (

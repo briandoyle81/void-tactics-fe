@@ -30,7 +30,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "select-ship",
-    title: "Ship Selection",
+    title: "Ship selection",
     description: "Learn to view ship information",
     allowedActions: {
       selectShip: ["1001", "1002", "1003"],
@@ -46,27 +46,23 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "view-enemy",
-    title: "Viewing Enemy Ships",
-    description: "Learn to inspect enemy ships",
+    title: "Find the Tongs",
+    description: "Find an enemy ship with the Fleet Status panel",
+    // Any enemy ship can be inspected, but only the Tongs completes the step
+    // (and it stays complete after picking another ship).
     allowedActions: {
       selectShip: ["2001", "2002", "2003"],
     },
     highlightElements: {
-      ships: ["2001", "2002", "2003"],
+      ships: ["2003"],
     },
     onStepComplete: (actionData) => {
-      return (
-        actionData?.type === "selectShip" &&
-        actionData?.shipId !== undefined &&
-        (actionData.shipId === "2001" ||
-          actionData.shipId === "2002" ||
-          actionData.shipId === "2003")
-      );
+      return actionData?.type === "selectShip" && actionData.shipId === "2003";
     },
   },
   {
     id: "move-ship",
-    title: "Moving Ships",
+    title: "Moving ships",
     description: "Learn to move your ships",
     allowedActions: {
       selectShip: ["1003"],
@@ -86,14 +82,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "wait-for-opponent",
-    title: "Waiting for Your Opponent",
+    title: "Waiting for your opponent",
     description: "Turns alternate one ship at a time; wait for the enemy response",
     allowedActions: {},
     highlightElements: {},
   },
   {
     id: "score-points",
-    title: "Scoring Points",
+    title: "Scoring points",
     description: "End-of-round scoring and zone control",
     allowedActions: {
       selectShip: ["1001"],
@@ -117,7 +113,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "shoot",
-    title: "Firing Weapons",
+    title: "Firing weapons",
     description: "Weapon range and firing on targets",
     allowedActions: {
       selectShip: ["1002"],
@@ -148,14 +144,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "end-of-round",
-    title: "End of Round",
+    title: "End of round",
     description: "Round boundaries, markers, and turn order",
     allowedActions: {},
     highlightElements: {},
   },
   {
     id: "special-emp",
-    title: "Special Ability: EMP",
+    title: "Special ability: EMP",
     description: "EMP special and reactor overload",
     allowedActions: {
       selectShip: ["1001"],
@@ -179,7 +175,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "ship-destruction",
-    title: "Ship Destruction",
+    title: "Ship destruction",
     description: "Reactor overload, hull loss, and recycle payouts",
     allowedActions: {},
     highlightElements: {
@@ -188,7 +184,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "rescue",
-    title: "Making Tough Decisions",
+    title: "Making tough decisions",
     description: "Disabled EMP: flee or trade for the shot",
     allowedActions: {
       selectShip: ["1001", "1002"],
@@ -219,14 +215,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "rescue-outcome-retreat",
-    title: "The Resolute is Safe",
+    title: "The Resolute is safe",
     description: "You saved your EMP, but yielded initiative on the center",
     allowedActions: {},
     highlightElements: {},
   },
   {
     id: "rescue-outcome-sniper",
-    title: "Accepting a Sacrifice",
+    title: "Accepting a sacrifice",
     description: "You lost the EMP but can fight for the center again",
     allowedActions: {
       selectShip: ["1003"],
@@ -259,14 +255,14 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   },
   {
     id: "completion-retreat",
-    title: "Planning Ahead",
+    title: "Planning ahead",
     description:
       "Hammer took the center; you kept your strongest ship for the long run",
     allowedActions: {},
   },
   {
     id: "completion-sniper",
-    title: "Victory Achieved!",
+    title: "Victory achieved!",
     description: "You traded the EMP for the center and closed out the win",
     allowedActions: {},
   },

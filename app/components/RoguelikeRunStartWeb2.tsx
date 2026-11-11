@@ -185,7 +185,7 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
             className={FLEET_HEADER_ACTION_CLASS}
             style={{ borderRadius: 0 }}
           >
-            {isConstructing ? "[CONSTRUCTING...]" : "[CONSTRUCT ALL SHIPS]"}
+            {isConstructing ? "[CONSTRUCTING…]" : "[CONSTRUCT ALL SHIPS]"}
           </button>
         ) : (
           <button
@@ -195,7 +195,7 @@ export function RoguelikeRunStartWeb2({ onRunStarted }: RoguelikeRunStartWeb2Pro
             className={FLEET_HEADER_ACTION_CLASS}
             style={{ borderRadius: 0 }}
           >
-            {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
+            {isStarting ? "[STARTING RUN…]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
           </button>
         )
       }

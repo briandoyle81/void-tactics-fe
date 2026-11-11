@@ -79,7 +79,7 @@ export function TransactionButton({
   className = "",
   disabled = false,
   allowWhenOtherPending = false,
-  loadingText = "[PROCESSING...]",
+  loadingText = "[PROCESSING…]",
   errorText = "[ERR]",
   onSuccess,
   onError,

@@ -82,7 +82,7 @@ export function FreeShipsClaimAction({
   return (
     <button type="button" disabled className={`${className} cursor-not-allowed opacity-50`} style={{ borderRadius: 0 }}>
       {status.isLoading
-        ? "[CHECKING CLAIM...]"
+        ? "[CHECKING CLAIM…]"
         : status.nextClaimInFormatted
           ? `[NEXT CLAIM IN ${status.nextClaimInFormatted.toUpperCase()}]`
           : "[CLAIM UNAVAILABLE]"}

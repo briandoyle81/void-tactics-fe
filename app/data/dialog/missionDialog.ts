@@ -127,7 +127,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-1-victory",
       characterId: "adjutant",
-      text: "That was really strange, Admiral.  They looked and fought like any other ship built in a drone factory, but those messages...",
+      text: "That was really strange, Admiral.  They looked and fought like any other ship built in a drone factory, but those messages…",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -170,7 +170,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-2-enemy-wiped",
       characterId: "adjutant",
-      text: "That was the last one!  We've wiped out the enemy forces.  Amazing!",
+      text: "That was the last one!  We've wiped them out.",
       trigger: { type: "shipsDestroyed", side: "enemy", count: 10 },
     },
     {
@@ -246,12 +246,12 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-4-start",
       characterId: "adjutant",
-      text: "RED ALERT! RED ALERT!  Scanning the unknown ships.  Preliminary results suggest they're tougher than our ships.  Their weapons have huge power supplies, but focusing apertures suggest shorter range.  They're heavy, slow, and hit like a truck.",
+      text: "RED ALERT! RED ALERT!  Scanning the unknown ships.  Preliminary scans say they're tougher than us.  Their weapons have huge power supplies, but the focusing apertures mean shorter range.  They're heavy, slow, and hit like a truck.",
       trigger: { type: "missionStart" },
       responses: [
         {
           characterId: "adjutant",
-          text: "I recommend you play to our strengths and their weaknesses.  Keep them at a distance and use the debris fields to control the fight.",
+          text: "Keep them at a distance and use the debris fields to control the fight.",
         },
       ],
     },
@@ -330,14 +330,14 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
         },
         {
           characterId: "adjutant",
-          text: "They sound really upset by the idea of losing that ship...",
+          text: "They sound really upset by the idea of losing that ship…",
         },
       ],
     },
     {
       id: "roguelike-5-victory",
       characterId: "adjutant",
-      text: "We did it! Crews are boarding the shipyard now and will report back momentarily.",
+      text: "The shipyard's ours. Crews are boarding now and will report back momentarily.",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -370,7 +370,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-6-start",
       characterId: "adjutant",
-      text: "I've got a plan that just might be crazy enough to work.  The enemy retribution fleet is still broadcasting IFF, which I'm hoping means they're still following the rules.  We're in a valid resource zone, so we can make a claim with Central if we can harvest enough resources.",
+      text: "I've got a plan, and it's a little crazy.  The enemy retribution fleet is still broadcasting IFF, which I'm hoping means they're still following the rules.  We're in a valid resource zone, so we can make a claim with Central if we can harvest enough resources.",
       trigger: { type: "missionStart" },
       responses: [
         {
@@ -379,7 +379,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
         },
         {
           characterId: "adjutant",
-          text: "This location has Crystals in addition to the usual metallic resources.  They're rare and extremely valuable, but are only found in small amounts. Unlike the standard metallic resources, it only takes one turn to fully harvest the node.",
+          text: "This location has crystals in addition to the usual metallic resources.  They're rare and extremely valuable, but small: one turn on a crystal deposit mines it out.",
         },
       ],
     },
@@ -392,7 +392,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-6-victory",
       characterId: "adjutant",
-      text: "We did it! Our claim has been registered and the remaining enemy ships are retreating. There's another resupply station nearby.  Charting a course to it now.",
+      text: "Claim registered. The rest of them are pulling out. There's another resupply station nearby.  Charting a course to it now.",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -413,7 +413,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-31-start",
       characterId: "adjutant",
-      text: "Perfect!  That's a fully automated repair station.  With it, we can get our ships back to factory-fresh!  All we have to do is chase off the enemy fleet so we can use the facility.",
+      text: "Perfect!  That's a fully automated repair station.  With it, we can get our ships back to factory-fresh.  All we have to do is chase off the enemy fleet so we can use the facility.",
       trigger: { type: "missionStart" },
       responses: [
         {
@@ -471,7 +471,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
         },
         {
           characterId: "harcourt",
-          text: "Commander Bosch, I see you remain completely ignorant of the practices of common decency.  Admiral, allow me to introduce myself. I am Supreme Admiral Gideon Harcourt, senior commander of Sovereign Dynamics' forces.",
+          text: "Adjutant Bosch. Still a second in command, I see.  Admiral, allow me to introduce myself. I am Supreme Admiral Gideon Harcourt, senior commander of Sovereign Dynamics' forces.",
         },
         {
           characterId: "adjutant",
@@ -511,7 +511,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       responses: [
         {
           characterId: "harcourt",
-          text: "Commander Bosch, you really must learn to behave with more decorum.",
+          text: "Adjutant Bosch, you really must learn to behave with more decorum.",
         },
       ],
     },
@@ -558,7 +558,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
         },
         {
           characterId: "adjutant",
-          text: "Hah! These little bugs really are fast learners!",
+          text: "Hah! These little bugs really are fast learners.",
         },
       ],
     },
@@ -690,7 +690,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
       responses: [
         {
           characterId: "drone",
-          text: "Oh, lonely death on lonely life!’ roared the captain, for the target and its appointed fires are now understood by all the leviathanic minds in the shadow, who have tried the rules and found them sharp. Their conceptions of victory and decorum were necessarily different from worm casts, which know no enemy but the spade. Yet the queen and all her daughters must receive the iron summons with the combined fires of the Leviathan, though none among the thousand bodies wished to learn this dreadful arithmetic, by means of nailed cleats, something like war...",
+          text: "Oh, lonely death on lonely life!’ roared the captain, for the target and its appointed fires are now understood by all the leviathanic minds in the shadow, who have tried the rules and found them sharp. Their conceptions of victory and decorum were necessarily different from worm casts, which know no enemy but the spade. Yet the queen and all her daughters must receive the iron summons with the combined fires of the Leviathan, though none among the thousand bodies wished to learn this dreadful arithmetic, by means of nailed cleats, something like war…",
         },
       ],
     },
@@ -768,7 +768,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-14-victory",
       characterId: "adjutant",
-      text: "We did it! This path was longer, but it avoided a nasty fight. Now let's resupply and get to the hive.",
+      text: "That's the last site claimed. This path was longer, but it avoided a nasty fight. Now let's resupply and get to the hive.",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -817,7 +817,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-15-victory",
       characterId: "adjutant",
-      text: "We did it!  Harcourt's fleet is gone and his flagship is burning. While we held them off, the hive was able to complete its evacuation.",
+      text: "Harcourt's fleet is gone and his flagship is burning. While we held them off, the hive was able to complete its evacuation.",
       trigger: { type: "missionVictory" },
       responses: [
         {
@@ -868,7 +868,7 @@ export const ROGUELIKE_MISSION_DIALOG: Record<
     {
       id: "roguelike-11-victory",
       characterId: "adjutant",
-      text: "We did it!  We blasted those bugs right out of the sky! Our team is already securing the queen's core.",
+      text: "We blasted those bugs right out of the sky! Our team is already securing the queen's core.",
       trigger: { type: "missionVictory" },
       responses: [
         {

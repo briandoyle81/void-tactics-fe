@@ -18,7 +18,7 @@ import { STORE_SECTIONS, type StoreSection } from "./storeSections";
 const SECTION_LABELS: Record<StoreSection, string> = {
   packs: "Ship packs",
   credits: "Credits (UTC)",
-  cores: "Drone Cores",
+  cores: "Cores (DCC)",
   lottery: "Lottery",
 };
 /** Phone labels, so all four tabs fit on one line. */

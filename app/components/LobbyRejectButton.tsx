@@ -50,7 +50,7 @@ export function LobbyRejectButton({
       args={[lobbyId]}
       className={className}
       disabled={disabled}
-      loadingText="[REJECTING...]"
+      loadingText="[REJECTING…]"
       errorText="[ERROR REJECTING]"
       onSuccess={onSuccess}
       onError={onError}

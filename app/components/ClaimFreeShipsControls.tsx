@@ -40,7 +40,7 @@ export function ClaimFreeShipsControls({
           disabled
           className="w-full justify-center px-6 py-3 rounded-none border-2 border-gunmetal text-text-muted font-mono font-bold tracking-wider opacity-50 cursor-not-allowed md:w-auto"
         >
-          [CHECKING ELIGIBILITY...]
+          [CHECKING ELIGIBILITY…]
         </button>
       )}
       {!isLoadingClaimStatus && Boolean(error) && (

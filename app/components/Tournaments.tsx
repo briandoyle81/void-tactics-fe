@@ -166,7 +166,7 @@ function TournamentDetail({
       {summary.state === TournamentState.Cancelled && isRegistered && (
         <div className="mb-4 border border-gunmetal/60 p-4">
           <div className="text-xs text-text-muted mb-2">
-            Tournament cancelled — claim your entry fee refund.
+            Tournament cancelled. Claim your entry fee back.
           </div>
           <button
             disabled={actionPending}
@@ -298,7 +298,7 @@ function CreateTournament({ onBack, onCreated, onSuccess }: { onBack: () => void
           <input
             type="text"
             inputMode="decimal"
-            placeholder="0 — free entry"
+            placeholder="0 for free entry"
             className={INPUT_CLASS}
             value={form.entryFeeEth}
             onChange={(e) => patch("entryFeeEth", e.target.value)}

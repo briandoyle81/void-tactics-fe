@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Website from "./components/Website";
 import { DISCORD_URL, X_URL } from "./config/socialLinks";
+import { SITE_DESCRIPTION } from "./config/siteDescription";
 
 // The website. The game client is at /play (app/(client)/play/GameClient.tsx); see
 // app/config/routes.ts for how the two are split across hosts.
@@ -26,7 +27,7 @@ const STRUCTURED_DATA = {
       url: SITE_URL,
       image: `${SITE_URL}/img/og-image.jpg`,
       description:
-        "A fully onchain, turn-based space tactics game. Lead your fleet through a branching campaign against the Hive, then face other admirals in PvP.",
+        SITE_DESCRIPTION,
       genre: ["Turn-based tactics", "Strategy", "Roguelike"],
       gamePlatform: "Web browser",
       playMode: ["SinglePlayer", "MultiPlayer"],

@@ -216,7 +216,7 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
             className={FLEET_HEADER_ACTION_CLASS}
             style={{ borderRadius: 0 }}
           >
-            {isStarting ? "[STARTING RUN...]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
+            {isStarting ? "[STARTING RUN…]" : `[START RUN (${costLimit > 0 ? `${fleet.totalCost}/${costLimit}` : fleet.totalCost})]`}
           </button>
         )
       }
