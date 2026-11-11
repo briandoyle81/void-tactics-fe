@@ -754,7 +754,7 @@ const ManageNavyWeb2: React.FC = () => {
           <ShipCard
             key={ship.id}
             ship={toShipCardDataWeb2(ship)}
-            shipImage={<ShipImageWeb2 ship={ship} className="h-full w-full" />}
+            shipImage={<ShipImageWeb2 ship={ship} className="h-full w-full" hideRankStars />}
             isStarred={starredShips.has(String(ship.id))}
             onToggleStar={() => toggleStar(String(ship.id))}
             isSelected={selected.has(ship.id)}

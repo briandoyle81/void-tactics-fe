@@ -93,7 +93,7 @@ export function buildFleetShipListItems({
       card: (
         <ShipCard
           ship={toShipCardData(ship)}
-          shipImage={<ShipImage ship={ship} className="h-full w-full" />}
+          shipImage={<ShipImage ship={ship} className="h-full w-full" hideRankStars />}
           isStarred={false}
           onToggleStar={() => {}}
           isSelected={isSelected}

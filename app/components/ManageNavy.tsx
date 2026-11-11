@@ -1301,6 +1301,7 @@ const ManageNavy: React.FC = () => {
                       ship={ship}
                       className="h-full w-full"
                       showLoadingState={true}
+                      hideRankStars
                     />
                   }
                   isStarred={starredShips.has(ship.id.toString())}

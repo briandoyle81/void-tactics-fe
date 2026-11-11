@@ -82,7 +82,7 @@ export function buildFleetShipListItemsWeb2({
       card: (
         <ShipCard
           ship={toShipCardDataWeb2(ship)}
-          shipImage={<ShipImageWeb2 ship={ship} className="h-full w-full" />}
+          shipImage={<ShipImageWeb2 ship={ship} className="h-full w-full" hideRankStars />}
           isStarred={false}
           onToggleStar={() => {}}
           isSelected={isSelected}
