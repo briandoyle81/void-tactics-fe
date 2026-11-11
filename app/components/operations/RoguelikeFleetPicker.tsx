@@ -155,7 +155,7 @@ export function RoguelikeFleetPicker<S extends { traits: { variant: number } }>(
           <FleetShipListPanel
             widthClass="w-full"
             items={buildItems(paginatedShips)}
-            gridColsClassName="grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3"
+            gridColsClassName="grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           />
         )
       }

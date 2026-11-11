@@ -41,7 +41,7 @@ interface FleetShipListPanelProps {
    * the narrow sidebar this panel was built for (Lobbies.tsx/
    * NodeMatchModal.tsx, next to a map). A full-width picker with no map
    * alongside it (e.g. RoguelikeRunStart.tsx) should pass Manage Navy's
-   * responsive columns instead (`grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3`). */
+   * responsive columns instead (`grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`). */
   gridColsClassName?: string;
   /** Optional chrome above the card list, inside this same column (e.g.
    * the fleet modal's faction picker). */

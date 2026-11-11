@@ -322,6 +322,161 @@ const ShipCard: React.FC<ShipCardProps> = ({
         }
       }}
     >
+      <div
+        className={`flex justify-between items-start @max-[18rem]:flex-col @max-[18rem]:gap-1 ${
+          useCompactStatGrid ? "mb-1.5" : "mb-3"
+        }`}
+      >
+        <div
+          className={`flex items-start min-w-0 ${
+            useCompactStatGrid ? "gap-1.5" : "gap-2"
+          }`}
+          {...(layoutShipId ? { "data-ship-name-block": "" } : {})}
+          style={
+            nameBlockMinHeightPx && nameBlockMinHeightPx > 0
+              ? { minHeight: nameBlockMinHeightPx }
+              : undefined
+          }
+        >
+          {/* Star icon where checkbox used to be */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar();
+            }}
+            className={`shrink-0 hover:bg-amber/10 rounded-none transition-all duration-200 ${
+              useCompactStatGrid ? "p-0.5 mt-0" : "p-1 mt-0.5"
+            }`}
+          >
+            <svg
+              className={`w-4 h-4 ${
+                isStarred
+                  ? "text-amber fill-amber"
+                  : "text-amber"
+              }`}
+              fill={isStarred ? "currentColor" : "none"}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+              />
+            </svg>
+          </button>
+          <h5
+            className={`font-bold min-w-0 break-words leading-tight ${
+              useCompactStatGrid ? "text-base" : "text-lg"
+            }`}
+          >
+            {data.name || `Ship #${data.id}`}
+          </h5>
+        </div>
+        {/* On a narrow card the icons and chips go on a second row under the
+            name rather than squeezing it into a narrow column. */}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 @max-[18rem]:justify-start @max-[18rem]:gap-1.5">
+          {onCustomizeClick && data.isConstructed && !data.isDestroyed && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCustomizeClick();
+              }}
+              className="p-1 text-cyan hover:text-cyan hover:bg-cyan/10 rounded-none transition-all duration-200 pointer-coarse:p-2"
+              title="Customize ship"
+              aria-label="Customize ship"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11.42 15.17l-5.38 5.38a2.12 2.12 0 11-3-3l5.38-5.38m3 3l5.38-5.38a4.24 4.24 0 00-3-7.24 4.24 4.24 0 00-3 1.18L8.42 9.17m3 3l-3-3"
+                />
+              </svg>
+            </button>
+          )}
+          {/* Recycle icon */}
+          {!hideRecycle && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRecycleClick();
+              }}
+              disabled={data.inFleet}
+              className="p-1 text-warning-red hover:text-warning-red hover:bg-warning-red/10 rounded-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed pointer-coarse:p-2"
+              title={
+                data.inFleet
+                  ? "Cannot recycle ship in fleet"
+                  : "Recycle ship"
+              }
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+          )}
+          {/* Checkbox for selection */}
+          {!hideCheckbox && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleSelection();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              disabled={data.inFleet}
+              className="w-4 h-4 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                accentColor: "var(--color-cyan)",
+                borderColor: isSelected ? "var(--color-cyan)" : "var(--color-cyan)",
+                backgroundColor: isSelected
+                  ? "var(--color-cyan)"
+                  : "var(--color-near-black)",
+                borderTopColor: isSelected ? "var(--color-cyan)" : "var(--color-cyan)",
+                borderLeftColor: isSelected ? "var(--color-cyan)" : "var(--color-cyan)",
+                borderRadius: 0, // Square checkbox
+                appearance: "none",
+                WebkitAppearance: "none",
+                MozAppearance: "none",
+                width: "16px",
+                height: "16px",
+                border: "2px solid",
+                position: "relative",
+              }}
+            />
+          )}
+          {data.isConstructed && (
+            <ThreatValue
+              value={data.cost}
+              iconSize={useCompactStatGrid ? 16 : 20}
+              className={useCompactStatGrid ? "text-xl" : "text-3xl"}
+            />
+          )}
+        </div>
+      </div>
+
       {/* Ship Image - Bigger. Flip only descendant <img> hull art so rank
           stars and special overlays stay upright for creator-side cards. */}
       <div className="relative mb-3 h-48 w-full min-h-0 [container-type:size]">
@@ -506,161 +661,6 @@ const ShipCard: React.FC<ShipCardProps> = ({
         )}
       </div>
 
-      <div
-        className={`flex justify-between items-start @max-[18rem]:flex-col @max-[18rem]:gap-1 ${
-          useCompactStatGrid ? "mb-1.5" : "mb-3"
-        }`}
-      >
-        <div
-          className={`flex items-start min-w-0 ${
-            useCompactStatGrid ? "gap-1.5" : "gap-2"
-          }`}
-          {...(layoutShipId ? { "data-ship-name-block": "" } : {})}
-          style={
-            nameBlockMinHeightPx && nameBlockMinHeightPx > 0
-              ? { minHeight: nameBlockMinHeightPx }
-              : undefined
-          }
-        >
-          {/* Star icon where checkbox used to be */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleStar();
-            }}
-            className={`shrink-0 hover:bg-amber/10 rounded-none transition-all duration-200 ${
-              useCompactStatGrid ? "p-0.5 mt-0" : "p-1 mt-0.5"
-            }`}
-          >
-            <svg
-              className={`w-4 h-4 ${
-                isStarred
-                  ? "text-amber fill-amber"
-                  : "text-amber"
-              }`}
-              fill={isStarred ? "currentColor" : "none"}
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-              />
-            </svg>
-          </button>
-          <h5
-            className={`font-bold min-w-0 break-words leading-tight ${
-              useCompactStatGrid ? "text-base" : "text-lg"
-            }`}
-          >
-            {data.name || `Ship #${data.id}`}
-          </h5>
-        </div>
-        {/* On a narrow card the icons and chips go on a second row under the
-            name rather than squeezing it into a narrow column. */}
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 @max-[18rem]:justify-start @max-[18rem]:gap-1.5">
-          {onCustomizeClick && data.isConstructed && !data.isDestroyed && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCustomizeClick();
-              }}
-              className="p-1 text-cyan hover:text-cyan hover:bg-cyan/10 rounded-none transition-all duration-200 pointer-coarse:p-2"
-              title="Customize ship"
-              aria-label="Customize ship"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11.42 15.17l-5.38 5.38a2.12 2.12 0 11-3-3l5.38-5.38m3 3l5.38-5.38a4.24 4.24 0 00-3-7.24 4.24 4.24 0 00-3 1.18L8.42 9.17m3 3l-3-3"
-                />
-              </svg>
-            </button>
-          )}
-          {/* Recycle icon */}
-          {!hideRecycle && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRecycleClick();
-              }}
-              disabled={data.inFleet}
-              className="p-1 text-warning-red hover:text-warning-red hover:bg-warning-red/10 rounded-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed pointer-coarse:p-2"
-              title={
-                data.inFleet
-                  ? "Cannot recycle ship in fleet"
-                  : "Recycle ship"
-              }
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          )}
-          {/* Checkbox for selection */}
-          {!hideCheckbox && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleSelection();
-              }}
-              onClick={(e) => e.stopPropagation()}
-              disabled={data.inFleet}
-              className="w-4 h-4 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                accentColor: "var(--color-cyan)",
-                borderColor: isSelected ? "var(--color-cyan)" : "var(--color-cyan)",
-                backgroundColor: isSelected
-                  ? "var(--color-cyan)"
-                  : "var(--color-near-black)",
-                borderTopColor: isSelected ? "var(--color-cyan)" : "var(--color-cyan)",
-                borderLeftColor: isSelected ? "var(--color-cyan)" : "var(--color-cyan)",
-                borderRadius: 0, // Square checkbox
-                appearance: "none",
-                WebkitAppearance: "none",
-                MozAppearance: "none",
-                width: "16px",
-                height: "16px",
-                border: "2px solid",
-                position: "relative",
-              }}
-            />
-          )}
-          {data.isConstructed && (
-            <ThreatValue
-              value={data.cost}
-              iconSize={useCompactStatGrid ? 16 : 20}
-              className={useCompactStatGrid ? "text-xl" : "text-3xl"}
-            />
-          )}
-        </div>
-      </div>
-
       {/* Stats (design pass A): hull as a bar, the combat numbers as tiles,
           then the loadout. Status and Threat are on the art and in the header. */}
       <div className="text-sm">
@@ -703,12 +703,12 @@ const ShipCard: React.FC<ShipCardProps> = ({
                     noteAccent
                     compact={useCompactStatGrid}
                   />
-                  <StatTile label="RANGE" value={inGameAttributes.range} note="tiles" compact={useCompactStatGrid} />
-                  <StatTile label="MOVE" value={inGameAttributes.movement} note="tiles" compact={useCompactStatGrid} />
+                  <StatTile label="RANGE" value={inGameAttributes.range} compact={useCompactStatGrid} />
+                  <StatTile label="MOVE" value={inGameAttributes.movement} compact={useCompactStatGrid} />
                   <StatTile
                     label={data.equipment.shields > 0 ? "SHIELDS" : "ARMOR"}
                     value={`${inGameAttributes.damageReduction}%`}
-                    note="less damage taken"
+                    note="damage reduction"
                     compact={useCompactStatGrid}
                   />
                 </div>
