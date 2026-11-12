@@ -368,6 +368,8 @@ export enum ActionType {
 }
 
 // SinglePlayerMatch / AIEncounters types
+// Same order as Types.sol's Archetype (append only: configs and minted ships
+// store the number).
 export enum Archetype {
   Grunt,
   Aggressor,
@@ -375,6 +377,10 @@ export enum Archetype {
   Support,
   Turtle,
   Rammer,
+  /** Takes free scoring tiles, else goes after enemies holding one (2026-11-03). */
+  Runner,
+  /** Goes after the enemy it can destroy soonest, ignoring tiles (2026-11-03). */
+  Hunter,
 }
 
 // NodeMap.getAllNodes()/.getNode(nodeId) — the campaign graph. No display

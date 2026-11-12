@@ -44,9 +44,8 @@ export const MAP_TILE_ART: MapTileArtContent = {
         impassable: true,
       },
     ],
-    // Demolished Mining Outpost (no mission is fought on it yet: when one
-    // is, add its node -> 69 below)
-    69: [
+    // Demolished Mining Outpost
+    63: [
       {
         src: "/img/broken-mining-station.svg",
         alt: "Broken mining station",
@@ -58,8 +57,8 @@ export const MAP_TILE_ART: MapTileArtContent = {
         impassable: true,
       },
     ],
-    // The Hive: Domination (5x5, top right)
-    71: [
+    // The Hive: Dominance (5x5, top right)
+    65: [
       {
         src: "/img/hive.svg",
         alt: "The Hive",
@@ -71,9 +70,8 @@ export const MAP_TILE_ART: MapTileArtContent = {
         impassable: true,
       },
     ],
-    // The Hive: Domination, flipped left to right (5x5, top left). 72 is
-    // the id it gets as the next map created after 71: check it on save.
-    72: [
+    // The Hive: Alliance, Dominance flipped left to right (5x5, top left)
+    66: [
       {
         src: "/img/hive-flipped.svg",
         alt: "The Hive",
@@ -90,8 +88,12 @@ export const MAP_TILE_ART: MapTileArtContent = {
   roguelikeNodes: {
     // d01 Sneak Attack
     16: 61,
-    // The Hive: Dominance
-    11: 71,
+    // m09 Interception (Demolished Mining Outpost)
+    9: 63,
+    // m11 The Hive: Dominance
+    11: 65,
+    // m15 The Hive: Alliance
+    15: 66,
     // r01 Repair Station DS7
     31: 62,
   },

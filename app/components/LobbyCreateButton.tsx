@@ -4,7 +4,7 @@ import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
 import { erc20Approval } from "../utils/approvalSteps";
 import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useAccount, useBalance, useReadContract } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
 import type { Abi, Address } from "viem";
 import { parseEther, formatEther } from "viem";
 import { useMapExists } from "../hooks/useMapsContract";
@@ -17,7 +17,9 @@ interface LobbyCreateButtonProps {
   creatorGoesFirst: boolean;
   selectedMapId: bigint;
   maxScore: bigint;
-  value: bigint;
+  /** additionalLobbyFee (UTC wei) when this open lobby is past the player's
+   * free ones, else 0. Lobbies.createLobby takes it with transferFrom. */
+  lobbyFeeUtc: bigint;
   reservedJoiner?: Address; // Optional: address to reserve for (undefined or zero address for open lobby)
   /** True when this is the player's first unresolved AI reservation — Lobbies.createLobby waives the
    * usual 1 UTC reservation fee for it. Caller derives this from
@@ -43,9 +45,11 @@ const LOBBY_CREATE_ABI = [
     ],
     name: "createLobby",
     outputs: [],
-    stateMutability: "payable",
+    stateMutability: "nonpayable",
     type: "function",
   },
+  // Listed so viem decodes the revert name (matched by the caller's onError).
+  { type: "error", name: "InsufficientUTC", inputs: [] },
 ] as const;
 
 export function LobbyCreateButton({
@@ -54,7 +58,7 @@ export function LobbyCreateButton({
   creatorGoesFirst,
   selectedMapId,
   maxScore,
-  value,
+  lobbyFeeUtc,
   reservedJoiner,
   skipReservationFee = false,
   children,
@@ -73,9 +77,6 @@ export function LobbyCreateButton({
     reservedJoiner &&
     reservedJoiner !== "0x0000000000000000000000000000000000000000";
   const zeroAddress = "0x0000000000000000000000000000000000000000" as Address;
-
-  // Read native balance
-  const { data: nativeBalance } = useBalance({ address, chainId });
 
   // Read UTC balance
   const { data: utcBalance } = useReadContract({
@@ -97,13 +98,13 @@ export function LobbyCreateButton({
     chainId,
   });
 
-  // UTC is required only for the reservation fee (1 UTC). Additional lobby fee is native.
-  // A player's first unresolved AI reservation is free (Lobbies.createLobby waives the fee) —
-  // skipReservationFee reflects that, read from playerState.activeAILobbiesCount by the caller.
+  // Lobbies.createLobby charges one UTC fee: 1 UTC to reserve the lobby for
+  // a player, otherwise additionalLobbyFee once the free lobbies are used.
+  // skipReservationFee (a waived reservation) is the caller's to set.
   const totalUtcRequired = React.useMemo(() => {
-    if (isReserved && !skipReservationFee) return parseEther("1");
-    return 0n;
-  }, [isReserved, skipReservationFee]);
+    if (isReserved) return skipReservationFee ? 0n : parseEther("1");
+    return lobbyFeeUtc;
+  }, [isReserved, skipReservationFee, lobbyFeeUtc]);
 
   const validateBeforeTransaction = React.useCallback(() => {
     if (!address) {
@@ -124,17 +125,11 @@ export function LobbyCreateButton({
         return "Cannot reserve a lobby for yourself. Please enter a different player's address or leave empty for an open lobby.";
       }
     }
-    // Check UTC requirements (reservation fee only)
+    // The reservation or extra-lobby fee, in UTC.
     if (totalUtcRequired > 0n) {
       const balance = utcBalance as bigint | undefined;
       if (!balance || balance < totalUtcRequired) {
         return `Insufficient UTC balance. Need ${formatEther(totalUtcRequired)} UTC.`;
-      }
-    }
-    // Check native balance for additional lobby fee
-    if (value > 0n) {
-      if (!nativeBalance || nativeBalance.value < value) {
-        return `Insufficient native balance. Need ${formatEther(value)} ${nativeBalance?.symbol ?? "native"} for the lobby fee.`;
       }
     }
     return true;
@@ -148,8 +143,6 @@ export function LobbyCreateButton({
     reservedJoiner,
     totalUtcRequired,
     utcBalance,
-    value,
-    nativeBalance,
   ]);
 
   const transactionId = React.useMemo(
@@ -160,7 +153,7 @@ export function LobbyCreateButton({
     [address, costLimit, turnTime, selectedMapId, maxScore, reservedJoiner]
   );
 
-  // The reservation fee: the Lobbies contract's UTC allowance is approved
+  // The UTC fee: the Lobbies contract's UTC allowance is approved
   // first if it's short, then the lobby is created straight after (one click).
   const utcApprovals = React.useMemo(
     () =>
@@ -192,7 +185,6 @@ export function LobbyCreateButton({
         maxScore,
         reservedJoiner || zeroAddress,
       ]}
-      value={value}
       approvals={utcApprovals}
       className={className}
       disabled={disabled}

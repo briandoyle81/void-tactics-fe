@@ -8,6 +8,8 @@ export const ARCHETYPE_LABEL: Record<Archetype, string> = {
   [Archetype.Support]: "Support",
   [Archetype.Turtle]: "Turtle",
   [Archetype.Rammer]: "Rammer",
+  [Archetype.Runner]: "Runner",
+  [Archetype.Hunter]: "Hunter",
 };
 
 // AI encounters only have an AIShipConfig (archetype template), not a

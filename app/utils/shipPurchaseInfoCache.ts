@@ -1,12 +1,17 @@
 import type { PurchaseInfoNormalized } from "./normalizePurchaseInfo";
+import { getContractAddresses } from "../config/contractAddresses";
 
 /** "shipPurchaserFlow" is ShipPurchaser's getFlowPurchaseInfo (native-token prices). */
 export type ShipPurchaseInfoKind = "ships" | "shipPurchaser" | "shipPurchaserFlow";
 
 const CACHE_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Keyed by the contract's address too, so a redeploy never serves the old
+// deployment's prices (a stale ETH price makes every purchase revert).
 function storageKey(chainId: number, kind: ShipPurchaseInfoKind): string {
-  return `warpflow-purchase-info-v1-${chainId}-${kind}`;
+  const addresses = getContractAddresses(chainId);
+  const address = String(kind === "ships" ? addresses.SHIPS : addresses.SHIP_PURCHASER).toLowerCase();
+  return `warpflow-purchase-info-v2-${chainId}-${address}-${kind}`;
 }
 
 interface CachedPayload {
@@ -79,10 +84,11 @@ export function invalidateShipPurchaseInfoCache(
   localStorage.removeItem(storageKey(chainId, kind));
 }
 
-/** Clears native-tier (Ships) and UTC-tier (ShipPurchaser) cached prices for one chain. */
+/** Clears every cached ship pack price list (Ships, and ShipPurchaser's UTC and native) for one chain. */
 export function invalidateAllShipPurchasePriceCachesForChain(
   chainId: number,
 ): void {
   invalidateShipPurchaseInfoCache(chainId, "ships");
   invalidateShipPurchaseInfoCache(chainId, "shipPurchaser");
+  invalidateShipPurchaseInfoCache(chainId, "shipPurchaserFlow");
 }

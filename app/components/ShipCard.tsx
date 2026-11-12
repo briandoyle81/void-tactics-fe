@@ -766,7 +766,9 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 e.stopPropagation();
                 onCustomizeClick?.();
               }}
-              className={`${CARD_BUTTON} border-cyan text-cyan hover:bg-cyan/10`}
+              disabled={data.inFleet}
+              title={data.inFleet ? "Ships in a fleet can't be customized" : undefined}
+              className={`${CARD_BUTTON} border-cyan text-cyan hover:bg-cyan/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
             >
               Customize
             </button>

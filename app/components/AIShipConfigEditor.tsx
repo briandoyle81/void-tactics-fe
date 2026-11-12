@@ -22,6 +22,8 @@ export const ARCHETYPE_NAMES: Record<Archetype, string> = {
   [Archetype.Support]: "Support",
   [Archetype.Turtle]: "Turtle",
   [Archetype.Rammer]: "Rammer",
+  [Archetype.Runner]: "Runner",
+  [Archetype.Hunter]: "Hunter",
 };
 
 /** The editable properties of an AI ship config. */

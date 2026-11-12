@@ -741,9 +741,21 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
               nameLocked={isEditingExisting}
             />
 
+            {/* DroneYard.modifyShip reverts ShipInFleet for a ship in a
+                fleet, so the button is replaced by a note (as in web2). */}
+            {mode === "customize" && selectedShipId && originalShip?.shipData.inFleet && (
+              <div
+                className="border-2 border-warning-red p-3 text-sm font-mono text-warning-red"
+                style={{ borderRadius: 0 }}
+              >
+                This ship is in a fleet — remove it from any fleet before customizing.
+              </div>
+            )}
+
             {/* Approval and Customize Buttons (only in customize mode with selected ship) */}
             {mode === "customize" &&
               selectedShipId &&
+              !originalShip?.shipData.inFleet &&
               buildDroneYardShipStruct && (
                 <div
                   className="border border-amber/50 bg-steel p-3 md:p-4"

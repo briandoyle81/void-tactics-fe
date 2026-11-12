@@ -1,7 +1,9 @@
 // Web3 map names, by onchain map id. (Web2 keeps its own in Postgres.)
 //
-// On a fresh deploy ids are 1–30 single-player, 31–60 roguelike, 61–66 PvP
-// (seed order from the contracts repo's ignition/data/*StarterContent.json).
+// On a fresh deploy ids follow seed order (the contracts repo's
+// ignition/data/*StarterContent.json): 1–30 single-player, 31–66 roguelike
+// (61 and 62 are the shipyard and repair station), 67–72 PvP. Base Sepolia
+// was redeployed fresh on 2026-11-12.
 // A map with no entry shows without a name (just its id).
 //
 // The map editor doesn't edit names: to rename a map or name a new one,
@@ -70,14 +72,14 @@ export const MAP_NAMES: Record<number, string> = {
   60: "Twin Pillars — Roguelike Finale 6",
   61: "New Scapa Shipyard",
   62: "Repair Facility DS7",
-  63: "Twin Pillars — Open Contract",
-  64: "Debris Ring — Open Contract",
-  65: "Trench Run — Open Contract",
-  66: "Exemplar Contract — Open Field",
-  67: "Reactor Core — Sole Contract",
-  68: "Spiral Eye",
-  69: "Demolished Mining Outpost",
-  70: "Electromagnetic Tunnel",
-  71: "The Hive: Dominance",
-  72: "The Hive: Alliance",
+  63: "Demolished Mining Outpost",
+  64: "Electromagnetic Tunnel",
+  65: "The Hive: Dominance",
+  66: "The Hive: Alliance",
+  67: "Twin Pillars — Open Contract",
+  68: "Debris Ring — Open Contract",
+  69: "Trench Run — Open Contract",
+  70: "Exemplar Contract — Open Field",
+  71: "Reactor Core — Sole Contract",
+  72: "Spiral Eye",
 };

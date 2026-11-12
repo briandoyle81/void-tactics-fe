@@ -60,20 +60,9 @@ export function useLobbies() {
     if (paused) throw new Error("Lobby creation is currently paused");
 
     try {
-      // Check if player needs to pay for additional lobbies
-      // Use passed activeLobbiesCount if available, otherwise fall back to blockchain data
-      const currentActiveLobbies =
-        params.activeLobbiesCount ??
-        (playerState?.activeLobbiesCount
-          ? Number(playerState.activeLobbiesCount)
-          : 0);
-      const needsPayment =
-        currentActiveLobbies >= Number(freeGamesPerAddress || 0n);
-
-      const value: bigint = needsPayment
-        ? (additionalLobbyFee as bigint) || 0n
-        : 0n;
-
+      // createLobby isn't payable: an extra lobby's fee (and a reservation)
+      // is UTC taken with transferFrom, so the caller approves UTC to
+      // Lobbies first (LobbyCreateButton does).
       await switchToSelectedChainIfNeeded();
       await writeContract({
         ...lobbiesRpc,
@@ -90,7 +79,6 @@ export function useLobbies() {
           params.maxScore,
           params.reservedJoiner || "0x0000000000000000000000000000000000000000", // Use zero address if not specified
         ],
-        value,
       });
 
     } catch (error) {

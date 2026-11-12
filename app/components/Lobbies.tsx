@@ -83,7 +83,7 @@ import {
   readFleetCompositionPersisted,
   type FleetComposition,
 } from "../utils/fleetCompositionStorage";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT, getNativeTokenSymbol } from "../config/networks";
+import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
 import {
   IMMEDIATE_GAME_TURN_SECONDS,
   CORRESPONDENCE_GAME_TURN_SECONDS,
@@ -1803,7 +1803,7 @@ const Lobbies: React.FC = () => {
         createButtonHint={
           needsPaymentForLobby && additionalLobbyFee ? (
             <p className="text-center text-xs text-amber font-mono">
-              {`// Free games used. Lobby fee: ${formatEther(additionalLobbyFee as bigint)} ${getNativeTokenSymbol(chainId)}`}
+              {`// Free games used. Lobby fee: ${formatEther(additionalLobbyFee as bigint)} UTC`}
             </p>
           ) : null
         }
@@ -1876,7 +1876,7 @@ const Lobbies: React.FC = () => {
                       <div className="flex justify-between gap-4">
                         <span className="text-text-secondary">Lobby fee (free games exhausted)</span>
                         <span className="text-amber font-bold shrink-0">
-                          {formatEther(additionalLobbyFee as bigint)} {getNativeTokenSymbol(chainId)}
+                          {formatEther(additionalLobbyFee as bigint)} UTC
                         </span>
                       </div>
                     ) : null}
@@ -1901,7 +1901,7 @@ const Lobbies: React.FC = () => {
                   creatorGoesFirst={createForm.creatorGoesFirst}
                   selectedMapId={BigInt(createForm.selectedMapId)}
                   maxScore={BigInt(createFormMaxScore)}
-                  value={
+                  lobbyFeeUtc={
                     needsPaymentForLobby
                       ? (additionalLobbyFee as bigint) || 0n
                       : 0n
@@ -1952,7 +1952,9 @@ const Lobbies: React.FC = () => {
                     const errorMessage = error.message || "";
                     if (errorMessage.includes("InsufficientUTC")) {
                       toast.error(
-                        "You need 1 UTC to reserve this game.",
+                        createForm.reservedJoiner.trim()
+                          ? "You need 1 UTC to reserve this game."
+                          : "You need UTC for the lobby fee.",
                       );
                     } else if (errorMessage.includes("UTCTransferFailed")) {
                       toast.error("UTC transfer failed, please try again");
@@ -2137,6 +2139,11 @@ const Lobbies: React.FC = () => {
                   joinButton={
                     <LobbyJoinButton
                       lobbyId={lobby.basic.id}
+                      lobbyFeeUtc={
+                        !hasReservedJoiner && needsPaymentForLobby
+                          ? (additionalLobbyFee as bigint) || 0n
+                          : 0n
+                      }
                       disabled={hasActiveLobby}
                       className="w-full px-6 py-3 rounded-none border-2 border-phosphor-green text-phosphor-green hover:bg-phosphor-green/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       onSuccess={async () => {
@@ -2157,6 +2164,8 @@ const Lobbies: React.FC = () => {
                           toast.error("This game is reserved for another player");
                         } else if (errorMessage.includes("KickedFromLobby")) {
                           toast.error("You were removed from this lobby and can't rejoin it");
+                        } else if (errorMessage.includes("InsufficientUTC")) {
+                          toast.error("You need UTC for the lobby fee.");
                         } else {
                           toast.error("Failed to join lobby");
                         }
