@@ -11,7 +11,7 @@
 // maps chain items back to their keys:
 // - maps and roguelike nodes: by the deployment's own record of each key's
 //   id (seedDeploymentIds.ts: the Ignition journal plus the sync script's
-//   content-sync.json). Content synced after the deploy gets ids out of
+//   content-sync record, ignition/content-sync/<id>.json). Content synced after the deploy gets ids out of
 //   array order (live Base Sepolia: seed map67 is map 68, and map 67 is an
 //   ignored duplicate). Without that record, ids are 1-indexed array
 //   positions, as a fresh deploy gives them.
@@ -325,7 +325,7 @@ export function buildMissionSeedFiles(
     if (!existing && deploymentIds.fromRecord) {
       warnings.push(
         `Map #${m.id} is new to the seed as "${key}". Record "${key}": "${m.id}" under "maps" in the ` +
-          "deployment's content-sync.json (and remove it from \"ignored\") so the sync script and the web2 import use id " +
+          "contracts repo's ignition/content-sync/chain-84532.json (and remove it from \"ignored\") so the sync script and the web2 import use id " +
           `${m.id}.`,
       );
     }

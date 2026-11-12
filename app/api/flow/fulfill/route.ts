@@ -173,7 +173,8 @@ export async function POST(req: NextRequest) {
     return json({ error: "Payment has no purchase details. Contact support to claim your ships." }, 400);
   }
   // The paid amount must match the tier the payment was created for.
-  if (tx.amount !== FLOW_USD_TIERS[purchase.tier].actualAmount) {
+  // Compared as numbers, so "0.1" and "0.10" match.
+  if (Number(tx.amount) !== Number(FLOW_USD_TIERS[purchase.tier].actualAmount)) {
     return json({ error: "Transaction amount does not match tier" }, 400);
   }
   if (tx.settlementState !== "completed") {

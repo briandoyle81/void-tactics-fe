@@ -8,7 +8,13 @@ import { useIsNodeMapEditor } from "../hooks/useIsNodeMapEditor";
 import { useMissionChainSnapshot } from "../hooks/useMissionChainSnapshot";
 import { SHIP_GRANT_ADDRESS } from "../hooks/useShipGrants";
 import { buildRewardShipSnapshot, REWARD_SHIP_SNAPSHOT_FILE } from "../utils/rewardShipSnapshot";
-import { positionalSeedIds, seedDeploymentIds, type ContentSyncState } from "../utils/seedDeploymentIds";
+import {
+  contentSyncPath,
+  positionalSeedIds,
+  seedDeploymentIds,
+  syncStateFor,
+  type ContentSyncState,
+} from "../utils/seedDeploymentIds";
 import { baseSepolia } from "viem/chains";
 import type { ShipGrantSpec } from "../utils/shipGrant";
 import {
@@ -32,7 +38,8 @@ import {
 // ignition/modules/DeployAndConfig.ts. Where the browser can write files
 // (Chromium's File System Access API), the panel opens the repo's ignition/
 // folder, reads the seeds and the deployment's record of their onchain ids
-// (deployments/chain-<id>/, see seedDeploymentIds.ts) and saves over the
+// (deployments/chain-<id>/ and content-sync/chain-<id>.json, see
+// seedDeploymentIds.ts) and saves over the
 // seed files in place; elsewhere it reads picked files and downloads under
 // the same names, to be dropped over the originals by hand.
 const SEED_FILE_NAMES = {
@@ -45,9 +52,10 @@ type SeedSlot = keyof typeof SEED_FILE_NAMES;
 /** The deployment whose ids the export uses (the live chain the panel reads). */
 const DEPLOYMENT_FOLDER = `chain-${baseSepolia.id}`;
 const JOURNAL_FILE = "journal.jsonl";
-const SYNC_STATE_FILE = "content-sync.json";
+/** The sync script's id record, relative to ignition/ (outside deployments/, which a redeploy deletes). */
+const SYNC_STATE_FILE = contentSyncPath(DEPLOYMENT_FOLDER);
 
-/** The deployment record: Ignition's journal and the sync script's content-sync.json. */
+/** The deployment record: Ignition's journal and the sync script's content-sync record. */
 interface DeploymentRecord {
   journal: string;
   syncState: ContentSyncState | null;
@@ -219,8 +227,15 @@ function MissionSeedExportPanel() {
       const deployDir = await subfolder(await ignitionDir.getDirectoryHandle("deployments"), DEPLOYMENT_FOLDER);
       if (deployDir) {
         const journal = await readText(deployDir, JOURNAL_FILE);
-        const sync = await readText(deployDir, SYNC_STATE_FILE).catch(() => null);
-        record = { journal, syncState: sync ? (JSON.parse(sync) as ContentSyncState) : null };
+        const syncDir = await subfolder(ignitionDir, "content-sync");
+        const sync = syncDir ? await readText(syncDir, `${DEPLOYMENT_FOLDER}.json`).catch(() => null) : null;
+        const addresses = await readText(deployDir, "deployed_addresses.json").catch(() => null);
+        const mapsAddress = addresses ? JSON.parse(addresses)["DeployModule#Maps"] : undefined;
+        const saved = sync ? (JSON.parse(sync) as ContentSyncState) : null;
+        const syncState = syncStateFor(saved, mapsAddress);
+        if (saved && !syncState)
+          problems.push(`${SYNC_STATE_FILE} is for an older deployment (Maps ${saved.mapsAddress}), so it was ignored.`);
+        record = { journal, syncState };
       }
     } catch (e) {
       problems.push(`The deployment record couldn't be read: ${e instanceof Error ? e.message : String(e)}`);
@@ -339,7 +354,7 @@ function MissionSeedExportPanel() {
         files, and saves the app&apos;s reward ship copy (<code>app/data/content/{REWARD_SHIP_SNAPSHOT_FILE}</code>)
         with them. Open the contracts repo&apos;s current <code>ignition/</code> folder first: its{" "}
         <code>data/</code> seed files keep existing keys the same, and{" "}
-        <code>deployments/{DEPLOYMENT_FOLDER}/</code> says which onchain id each key has.{" "}
+        <code>deployments/{DEPLOYMENT_FOLDER}/</code> and <code>{SYNC_STATE_FILE}</code> say which onchain id each key has.{" "}
         {writable
           ? "Saving writes the seed files back into that folder and the reward ship copy into this repo's app/data/content/."
           : `This browser can't save into a folder, so drop the three seed downloads over the originals and ${REWARD_SHIP_SNAPSHOT_FILE} over app/data/content/${REWARD_SHIP_SNAPSHOT_FILE}.`}{" "}
@@ -354,7 +369,7 @@ function MissionSeedExportPanel() {
               <code>app/data/content/</code> folder, and allow editing for both.
             </>
           ) : (
-            `Current seed files (${Object.values(SEED_FILE_NAMES).join(", ")}) and the deployment record (deployments/${DEPLOYMENT_FOLDER}/${JOURNAL_FILE} and ${SYNC_STATE_FILE}). Select them all at once.`
+            `Current seed files (${Object.values(SEED_FILE_NAMES).join(", ")}) and the deployment record (deployments/${DEPLOYMENT_FOLDER}/${JOURNAL_FILE} and ${SYNC_STATE_FILE}, from ignition/). Select them all at once.`
           )}
         </p>
         <button

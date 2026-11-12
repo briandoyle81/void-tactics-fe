@@ -12,7 +12,8 @@ import {
   useUserBalanceWeb2,
 } from "../hooks/useUserBalanceWeb2";
 import { usePurchaseTiersWeb2 } from "../hooks/usePurchaseTiersWeb2";
-import { getGuaranteedRanksDisplay, getTierBadge, getTierCallout } from "../utils/shipPurchaseTierDisplay";
+import { getGuaranteedVeteranRanks, getTierBadge, getTierCallout } from "../utils/shipPurchaseTierDisplay";
+import { formatCreditsUtc } from "../lib/credits";
 
 type Currency = "usd" | "utc";
 
@@ -65,11 +66,13 @@ export default function StoreWeb2() {
           title="Checkout"
           summary={
             <ShipPurchaseTierCard
+              layout="summary"
+              tier={tierConfig.tier}
               tierCallout={getTierCallout(tierConfig.tier)}
               badge={getTierBadge(tierConfig.tier, purchaseTiers.length)}
-              priceLabel={`${usdLabel} USD`}
+              priceLabel={usdLabel}
               shipsCount={tierConfig.shipCount}
-              guaranteedRanksDisplay={getGuaranteedRanksDisplay(tierConfig.tier, tierConfig.shipCount)}
+              veteranRanks={getGuaranteedVeteranRanks(tierConfig.tier, tierConfig.shipCount)}
               previewShipImages={[]}
             />
           }
@@ -81,17 +84,17 @@ export default function StoreWeb2() {
               id: "utc",
               label: "UTC",
               note: "From your balance",
-              priceLabel: `${tierConfig.priceUtc} UTC`,
-              disabledReason: cannotAffordUtc ? `Balance ${creditBalance} UTC` : undefined,
+              priceLabel: `${formatCreditsUtc(tierConfig.priceUtc)} UTC`,
+              disabledReason: cannotAffordUtc ? `Balance ${formatCreditsUtc(creditBalance)} UTC` : undefined,
             },
           ]}
           details={
             currency === "utc" ? (
               <>
-                <CheckoutDetail label="UTC balance" value={`${creditBalance} UTC`} />
+                <CheckoutDetail label="UTC balance" value={`${formatCreditsUtc(creditBalance)} UTC`} />
                 <CheckoutDetail
                   label="After purchase"
-                  value={`${creditBalance - tierConfig.priceUtc} UTC`}
+                  value={`${formatCreditsUtc(creditBalance - tierConfig.priceUtc)} UTC`}
                   tone={cannotAffordUtc ? "warn" : undefined}
                 />
               </>
@@ -106,7 +109,7 @@ export default function StoreWeb2() {
               onClick={() => void purchase(tierConfig.tier, currency)}
               className={CHECKOUT_CONFIRM_CLASS}
             >
-              {busy ? "Purchasing…" : `Buy for ${currency === "utc" ? `${tierConfig.priceUtc} UTC` : usdLabel}`}
+              {busy ? "Purchasing…" : `Buy for ${currency === "utc" ? `${formatCreditsUtc(tierConfig.priceUtc)} UTC` : usdLabel}`}
             </button>
           }
           onCancel={() => setCheckoutTier(null)}

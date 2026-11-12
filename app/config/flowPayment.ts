@@ -3,13 +3,17 @@ export interface FlowTier {
   actualAmount: string; // sent to Fireblocks Flow (1/100th of display)
 }
 
-// Five tiers matching the Ships contract tier structure (0–4).
+// Five tiers matching the Ships contract tier structure (0–4). The display
+// prices are the real price list, the same dollars the deploy converts into
+// each tier's ETH price (TIER_USD_PRICES in the contracts repo's
+// DeployAndConfig.ts) and the same numbers as the packs' UTC prices, so card,
+// ETH, and UTC all cost the same.
 export const FLOW_USD_TIERS: FlowTier[] = [
-  { displayPrice: "1.99", actualAmount: "0.02" },
-  { displayPrice: "3.99", actualAmount: "0.04" },
-  { displayPrice: "7.99", actualAmount: "0.08" },
-  { displayPrice: "14.99", actualAmount: "0.15" },
-  { displayPrice: "24.99", actualAmount: "0.25" },
+  { displayPrice: "4.99", actualAmount: "0.05" },
+  { displayPrice: "9.99", actualAmount: "0.10" },
+  { displayPrice: "19.99", actualAmount: "0.20" },
+  { displayPrice: "34.99", actualAmount: "0.35" },
+  { displayPrice: "49.99", actualAmount: "0.50" },
 ];
 
 /**

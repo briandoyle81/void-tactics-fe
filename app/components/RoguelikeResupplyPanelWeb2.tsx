@@ -31,6 +31,7 @@ import { ResupplyRepairBox } from "./ResupplyRepairBox";
 import { WeakerFleetToggle } from "./WeakerFleetToggle";
 import { useSeedCombatRoster } from "./operations/RoguelikeCombatFleetModal";
 import { RoguelikeFleetPicker } from "./operations/RoguelikeFleetPicker";
+import { creditsToUtc } from "../lib/credits";
 
 /**
  * Web2 counterpart to RoguelikeResupplyPanel: same hangar picker as run
@@ -180,7 +181,7 @@ export function RoguelikeResupplyPanelWeb2({
     try {
       const result = await resupplyRepair(repairKeys);
       setIsRepairConfirmOpen(false);
-      toast.success(`Repaired ${result.repaired.length} ship(s) for ${formatUtc(result.cost)} UTC.`);
+      toast.success(`Repaired ${result.repaired.length} ship(s) for ${formatUtc(creditsToUtc(result.cost))} UTC.`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to repair");
     } finally {
@@ -250,7 +251,7 @@ export function RoguelikeResupplyPanelWeb2({
         extra={
           totalMissingHP > 0 ? (
             <ResupplyRepairBox
-              costLabel={formatUtc(repairCostTotal)}
+              costLabel={formatUtc(creditsToUtc(repairCostTotal))}
               missingHp={totalMissingHP}
               action={
                 <button
@@ -278,7 +279,7 @@ export function RoguelikeResupplyPanelWeb2({
         show={isRepairConfirmOpen}
         ships={repairShips}
         totalHp={totalMissingHP}
-        costLabel={formatUtc(repairCostTotal)}
+        costLabel={formatUtc(creditsToUtc(repairCostTotal))}
         onCancel={() => setIsRepairConfirmOpen(false)}
         confirmButton={
           <button

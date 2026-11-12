@@ -8,6 +8,7 @@ import {
   TournamentRegisteredBadge,
   TournamentRegisterPanel,
 } from "./TournamentRegisterPanel";
+import { formatCreditsUtc } from "../lib/credits";
 
 // Web2-mode counterpart to `TournamentRegister.tsx` — this is the actual
 // World-ID-swap. No proof widget: sybil resistance is "one registration per
@@ -58,7 +59,7 @@ export function TournamentRegisterWeb2({ tournamentId, config, summary, isRegist
         <p className="mb-4 text-xs text-text-muted leading-relaxed">
           Entry fee:{" "}
           <span className="text-phosphor-green font-bold">
-            {config.entryFee > 0 ? `${config.entryFee} credits` : "FREE"}
+            {config.entryFee > 0 ? `${formatCreditsUtc(config.entryFee)} UTC` : "FREE"}
           </span>
         </p>
       }

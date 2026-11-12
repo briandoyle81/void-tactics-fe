@@ -30,6 +30,7 @@ import type {
   GameLengthOption,
 } from "../utils/tournamentCreateFormOptions";
 import { setUrlParams, type SetUrlParamsOptions, useUrlParam } from "../utils/urlState";
+import { formatCreditsUtc, utcToCredits } from "../lib/credits";
 
 // Web2-mode counterpart to `Tournaments.tsx`. Same single-elimination
 // lifecycle (create → register → start/bracket-generate → play each match
@@ -95,9 +96,9 @@ function TournamentDetail({ tournamentId, onBack }: { tournamentId: number; onBa
       />
 
       <TournamentDetailStatsRow
-        prizeLabel={summary.prizePool > 0 ? `${summary.prizePool} credits` : null}
+        prizeLabel={summary.prizePool > 0 ? `${formatCreditsUtc(summary.prizePool)} UTC` : null}
         playersLabel={`${summary.registrantCount}/${config.maxPlayers}`}
-        entryFeeLabel={config.entryFee > 0 ? `${config.entryFee} credits` : null}
+        entryFeeLabel={config.entryFee > 0 ? `${formatCreditsUtc(config.entryFee)} UTC` : null}
         creatorLabel={truncateId(summary.creator)}
       />
 
@@ -176,11 +177,13 @@ function TournamentDetail({ tournamentId, onBack }: { tournamentId: number; onBa
           <div className="mb-4 mt-4 border border-phosphor-green/30 bg-phosphor-green/5 p-4">
             <div className="text-xs text-phosphor-green font-bold">
               You won{" "}
-              {Math.floor(
-                (summary.prizePool * (userId === summary.championId ? CHAMPION_SHARE_PCT : RUNNER_UP_SHARE_PCT)) /
-                  100,
+              {formatCreditsUtc(
+                Math.floor(
+                  (summary.prizePool * (userId === summary.championId ? CHAMPION_SHARE_PCT : RUNNER_UP_SHARE_PCT)) /
+                    100,
+                ),
               )}{" "}
-              credits — already added to your balance.
+              UTC, already added to your balance.
             </div>
           </div>
         )}
@@ -192,7 +195,7 @@ function TournamentDetail({ tournamentId, onBack }: { tournamentId: number; onBa
         <div className="mb-4 mt-4 border border-gunmetal/60 p-4">
           <div className="text-xs text-text-muted">
             Tournament was cancelled.
-            {config.entryFee > 0 && ` Your ${config.entryFee}-credit entry fee was refunded automatically.`}
+            {config.entryFee > 0 && ` Your ${formatCreditsUtc(config.entryFee)} UTC entry fee was refunded automatically.`}
           </div>
         </div>
       )}
@@ -241,7 +244,8 @@ function CreateTournament({ onBack, onSuccess }: { onBack: () => void; onSuccess
       const maxPlayers = parseInt(form.maxPlayers, 10);
       const minPlayers = Math.max(2, Math.floor(maxPlayers / 2));
       const registerBy = Date.now() + Math.round(form.hoursUntilDeadline * 3_600_000);
-      const entryFee = form.entryFee && parseInt(form.entryFee, 10) > 0 ? parseInt(form.entryFee, 10) : 0;
+      // Typed in UTC, stored in credits (0.01 UTC).
+      const entryFee = Math.max(0, utcToCredits(Number(form.entryFee) || 0));
       const costLimit = form.threatScale === "skirmish" ? SKIRMISH_THREAT_LIMIT : BATTLE_THREAT_LIMIT;
       const turnTimeSeconds = form.turnPace === "immediate" ? IMMEDIATE_GAME_TURN_SECONDS : CORRESPONDENCE_GAME_TURN_SECONDS;
       const maxScore = form.gameLength === "short" ? SHORT_MAX_SCORE : form.gameLength === "long" ? LONG_MAX_SCORE : MEDIUM_MAX_SCORE;
@@ -281,14 +285,14 @@ function CreateTournament({ onBack, onSuccess }: { onBack: () => void; onSuccess
       onTurnPaceChange={(v) => patch("turnPace", v)}
       entryFeeSlot={
         <div>
-          <span className={FIELD_LABEL_CLASS}>Entry fee (credits)</span>
+          <span className={FIELD_LABEL_CLASS}>Entry fee (UTC)</span>
           <input
             type="text"
-            inputMode="numeric"
+            inputMode="decimal"
             placeholder="0 for free entry"
             className={INPUT_CLASS}
             value={form.entryFee}
-            onChange={(e) => patch("entryFee", e.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(e) => patch("entryFee", e.target.value.replace(/[^0-9.]/g, ""))}
           />
         </div>
       }

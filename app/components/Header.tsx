@@ -49,6 +49,7 @@ import { PasskeyEnablePrompt } from "./PasskeyEnablePrompt";
 import { CopyAddressButton } from "./CopyAddressButton";
 import { ETH_DISPLAY_DECIMALS, UTC_DISPLAY_DECIMALS, formatBalance, formatBalanceCompact } from "../utils/formatBalance";
 import { openRecoveryCodes, RecoveryCodesHost } from "./RecoveryCodesModal";
+import { creditsToUtc } from "../lib/credits";
 
 function resolveChainIdFromQueryParam(value: string | null): number | null {
   if (!value) return null;
@@ -990,7 +991,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
   const closeSettings = () => setIsSettingsOpen(false);
 
   const utcValue = showWeb2Panel
-    ? creditBalance
+    ? creditsToUtc(creditBalance)
     : utcBalance
       ? Number(formatEther(utcBalance as bigint))
       : 0;

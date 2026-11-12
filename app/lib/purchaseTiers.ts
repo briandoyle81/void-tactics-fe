@@ -6,6 +6,7 @@ export interface PurchaseTier {
   tier: number;
   shipCount: number;
   priceUsdCents: number;
+  /** In credits (0.01 UTC, app/lib/credits.ts): 499 = 4.99 UTC, as onchain. */
   priceUtc: number;
 }
 

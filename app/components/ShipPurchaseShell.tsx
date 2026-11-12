@@ -3,12 +3,17 @@
 import React from "react";
 
 // Shared between ShipPurchaseInterface.tsx (web3) and
-// ShipPurchaseInterfaceWeb2.tsx (web2) — the outer shell (header, tier-grid
-// wrapper + "One mint. Full fleet." aside, footer copy). The tier cards stay
-// caller-built; each opens that mode's checkout (CheckoutSheet), where the
-// payment method is chosen.
+// ShipPurchaseInterfaceWeb2.tsx (web2) — the outer shell (header, store design
+// L's layout, footer copy): the top pack as a featured card, and the others as
+// a price ladder beside it whose rows stretch to the featured card's height.
+// On phones the featured card stacks above the ladder. The cards stay
+// caller-built (ShipPurchaseTierCard); each opens that mode's checkout
+// (CheckoutSheet), where the payment method is chosen.
 interface ShipPurchaseShellProps {
-  tierCards: React.ReactNode[];
+  /** The top pack, drawn with layout "featured". */
+  featured: React.ReactNode;
+  /** The other packs, highest first, drawn with layout "row". */
+  rows: React.ReactNode[];
   footerPaymentNote: string;
   /** Controls at the right of the header — the web3 interface's faction
    * toggle (gated on the Shattered Hive medal). Web2 omits it. */
@@ -18,7 +23,8 @@ interface ShipPurchaseShellProps {
 }
 
 export function ShipPurchaseShell({
-  tierCards,
+  featured,
+  rows,
   footerPaymentNote,
   topContent,
   notice,
@@ -42,7 +48,7 @@ export function ShipPurchaseShell({
                 "var(--font-jetbrains-mono), 'Courier New', monospace",
             }}
           >
-            Bigger packs add guaranteed veterans.
+            One mint, a full fleet. Bigger packs add guaranteed veterans.
           </p>
           {notice && (
             <p
@@ -59,32 +65,15 @@ export function ShipPurchaseShell({
         {topContent && <div className="shrink-0">{topContent}</div>}
       </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {tierCards}
-
-        <aside
-          className="flex min-h-[420px] flex-col justify-center gap-5 border-2 border-solid border-cyan/45 bg-black/25 px-5 py-5 text-left"
-          style={{
-            fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
-          }}
-        >
-          <h4 className="text-2xl font-bold leading-tight tracking-wide text-cyan sm:text-3xl">
-            One mint.{" "}
-            <span className="font-semibold text-amber">Full fleet</span>.
-          </h4>
-          <p className="text-base font-medium leading-snug text-text-primary sm:text-lg">
-            Higher tiers stack more{" "}
-            <span className="font-semibold text-amber">
-              guaranteed veterans
-            </span>{" "}
-            and a bigger fleet in one mint.
-          </p>
-          <p className="text-sm font-medium leading-relaxed text-cyan/90 sm:text-base">
-            <span className="md:hidden">Tap the tier you want</span>
-            <span className="hidden md:inline">Click the tier you want</span>
-            {" and mint the whole roster."}
-          </p>
-        </aside>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="shrink-0 lg:w-[43%] lg:max-w-[40rem]">{featured}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {rows.map((row, i) => (
+            <div key={i} className="lg:min-h-0 lg:flex-1">
+              {row}
+            </div>
+          ))}
+        </div>
       </div>
       <p
         className="mt-4 text-[11px] uppercase tracking-[0.08em] text-text-muted"

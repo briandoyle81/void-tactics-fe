@@ -12,14 +12,16 @@ import { MockPurchaseConfirmModal } from "./MockPurchaseConfirmModal";
 import { UTCPurchasePanelShell } from "./UTCPurchasePanelShell";
 import { UTCPurchaseTierCardContent } from "./UTCPurchaseTierCardContent";
 import { getTierColors } from "../utils/shipPurchaseTierDisplay";
+import { formatCreditsUtc } from "../lib/credits";
 
 // Store › Credits (web2). Web2-mode counterpart to `UTCPurchasePanel.tsx` — same layout/copy
 // structure and tier-card look, but buys UTC directly via
 // `/api/utc/purchase` instead of an onchain token purchase. Tiers/prices
 // come from the same ship-pack tier list (`usePurchaseTiersWeb2`, via
 // `/api/utc/purchase`'s server-side preview) so pricing never drifts from
-// the ship-purchase flow; the UTC payout per tier is what recycling that
-// tier's ships would earn, not the ship-purchase-with-UTC price. Tier
+// the ship-purchase flow; each tier pays out its ship pack's UTC price, so
+// buying UTC and then ships costs the same as buying the ships (as onchain).
+// Amounts are credits (0.01 UTC, app/lib/credits.ts). Tier
 // colors come from `shipPurchaseTierDisplay.ts` (shared with
 // ShipPurchaseInterfaceWeb2.tsx) rather than being ported from
 // UTCPurchasePanel.tsx, so low-to-high tier order matches the ship
@@ -47,7 +49,7 @@ function TierButton({
       className={`relative min-h-0 px-4 py-4 rounded-none border-2 ${colors.border} ${colors.text} ${colors.hoverBorder} ${colors.hoverText} ${colors.hoverBg} font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left`}
     >
       <UTCPurchaseTierCardContent
-        utcAmountLabel={`${tierPreview.utcAmount} UTC`}
+        utcAmountLabel={`${formatCreditsUtc(tierPreview.utcAmount)} UTC`}
         payLabel={priceLabel}
         footerLabel={isPurchasing ? "[Purchasing…]" : "[Click to buy]"}
       />
@@ -73,7 +75,7 @@ const UTCPurchasePanelWeb2: React.FC = () => {
     setPurchasingTier(pendingTier.tier);
     try {
       const result = await purchase(pendingTier.tier);
-      toast.success(`Purchased ${result.utcEarned} UTC`);
+      toast.success(`Purchased ${formatCreditsUtc(result.utcEarned)} UTC`);
       setPendingTier(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Purchase failed");
@@ -84,26 +86,25 @@ const UTCPurchasePanelWeb2: React.FC = () => {
 
   return (
     <UTCPurchasePanelShell
-      balanceValueLabel={`${creditBalance} UTC`}
+      balanceValueLabel={`${formatCreditsUtc(creditBalance)} UTC`}
       balanceDescription={
         <>
-          Universal Credits (UTC) are the in-game balance token. Each pack below is priced the
-          same as the matching ship pack, and pays out the UTC you&apos;d earn from buying that
-          pack&apos;s ships and recycling all of them — but adds UTC straight to your balance
-          with no ships involved.
+          Universal Time Credits (UTC) are the in-game balance token. Spend them to reserve
+          games, repair, refit, or buy ship packs. This purchase only adds UTC to your
+          balance.
         </>
       }
       chooseAmountDescription={
         <>
-          Prices match the ship-pack tiers. The larger options are the same UTC in bigger
-          amounts.
+          Each amount costs the same as the ship pack it buys, so you can buy the UTC now and
+          the ships later at no extra cost.
         </>
       }
       extraOverlay={
         <MockPurchaseConfirmModal
           show={pendingTier !== null}
           title="CONFIRM UTC PURCHASE"
-          lineItems={pendingTier ? [{ label: "UTC pack", value: `${pendingTier.utcAmount} UTC` }] : []}
+          lineItems={pendingTier ? [{ label: "UTC pack", value: `${formatCreditsUtc(pendingTier.utcAmount)} UTC` }] : []}
           totalLabel={pendingTier ? `$${(pendingTier.priceUsdCents / 100).toFixed(2)}` : ""}
           paymentMethod="usd"
           isProcessing={purchasingTier !== null}

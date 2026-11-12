@@ -4,6 +4,7 @@ import type { Web2Tournament } from "../types/web2Tournament";
 import { Web2TournamentState } from "../types/web2Tournament";
 import { formatThreatShort, formatTurnShort, formatScoreShort } from "../utils/lobbyFormattersWeb2";
 import { TournamentCardView, type TournamentCardData, type TournamentCardState } from "./TournamentCardView";
+import { formatCreditsUtc } from "../lib/credits";
 
 // Web2-mode counterpart to `TournamentCard.tsx`. Unlike the web3 card
 // (which self-fetches via `useTournament(tournamentId)` — cheap there since
@@ -31,8 +32,8 @@ export function TournamentCardWeb2({ tournament, isCreatorMe, onClick }: Props) 
   const { config, summary } = tournament;
   const state = STATE_MAP[summary.state] ?? "complete";
 
-  const entryFee = config.entryFee > 0 ? `${config.entryFee} credits` : "FREE";
-  const prize = summary.prizePool > 0 ? `${summary.prizePool} credits` : "—";
+  const entryFee = config.entryFee > 0 ? `${formatCreditsUtc(config.entryFee)} UTC` : "FREE";
+  const prize = summary.prizePool > 0 ? `${formatCreditsUtc(summary.prizePool)} UTC` : "—";
   const players = `${summary.registrantCount}/${config.maxPlayers}`;
 
   const now = Date.now();

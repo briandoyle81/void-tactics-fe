@@ -22,14 +22,17 @@ const UTCPurchasePanel: React.FC = () => {
   const {
     tiers,
     pricesWei,
+    flowPricesWei,
+    shipsPerTier,
     tierCount,
     isLoading: isLoadingTiers,
     purchaserDeployed,
   } = useShipPurchaserPurchaseInfo();
 
-  // purchaseUTCWithFlow now mints UTC 1:1 with the FLOW price paid (see
-  // docs/update/Frontend_Update_Guide.md — ShipPurchaser no longer bases
-  // the mint on tierShips * Ships.recycleReward()).
+  // purchaseUTCWithFlow takes a tier's native-token price (flowTierPrices)
+  // and mints that tier's ship pack UTC price (tierPrices), so buying UTC and
+  // then ships with it costs the same as buying the ships (contracts repo,
+  // 2026-11-12; it used to mint tierShips * recycleReward).
 
   const { data: utcBalance, refetch: refetchUTCBalance } = useReadContract({
     address: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
@@ -102,9 +105,9 @@ const UTCPurchasePanel: React.FC = () => {
       }
       balanceDescription={
         <>
-          Universal Time Credits (UTC) are the in-game balance token. Buy UTC
-          with {nativeTokenSymbol}, then spend it to reserve games or buy ship
-          packs. This purchase only adds UTC to your wallet.
+          Universal Time Credits (UTC) are the in-game balance token. Spend
+          them to reserve games, repair, refit, or buy ship packs. This
+          purchase only adds UTC to your wallet.
         </>
       }
       balanceFooter={
@@ -123,9 +126,8 @@ const UTCPurchasePanel: React.FC = () => {
       }
       chooseAmountDescription={
         <>
-          Each option is a fixed {nativeTokenSymbol} payment, minted as UTC
-          1:1 with the {nativeTokenSymbol} paid. The larger options are the same
-          UTC in bigger amounts.
+          Each amount costs the same as the ship pack it buys, so you can buy
+          the UTC now and the ships later at no extra cost.
         </>
       }
     >
@@ -144,11 +146,13 @@ const UTCPurchasePanel: React.FC = () => {
         ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tiers.map((tier, index) => {
-            const flowCost = pricesWei[index] ?? 0n;
-            const flowCostFormatted = formatEther(flowCost);
+            // Pay the tier's native-token price; receive its ship pack's UTC price.
+            const flowCost = flowPricesWei[index];
+            if (flowCost === undefined) return null;
+            const flowCostFormatted = formatBalance(Number(formatEther(flowCost)), 6);
             const colors = getTierColors(tier);
-            // 1:1 mint with the FLOW price paid — see docs/update/Frontend_Update_Guide.md.
-            const utcDisplay = flowCostFormatted;
+            const utcDisplay = formatEther(pricesWei[index] ?? 0n);
+            const ships = shipsPerTier[index];
 
             return (
               <UTCPurchaseButton
@@ -163,7 +167,7 @@ const UTCPurchasePanel: React.FC = () => {
                 <UTCPurchaseTierCardContent
                   utcAmountLabel={`${utcDisplay} UTC`}
                   payLabel={`${flowCostFormatted} ${nativeTokenSymbol}`}
-                  footerLabel={`[Click to buy with ${nativeTokenSymbol}]`}
+                  footerLabel={ships ? `Buys the ${ships}-ship pack` : `[Click to buy with ${nativeTokenSymbol}]`}
                 />
               </UTCPurchaseButton>
             );

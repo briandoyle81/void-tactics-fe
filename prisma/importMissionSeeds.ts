@@ -1,11 +1,17 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { PrismaClient, type Prisma } from "../app/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as dotenv from "dotenv";
 import { buildMissionImportRows, type MissionImportRows } from "../app/utils/missionSeedImport";
 import type { MissionSeedFiles } from "../app/utils/missionSeedExport";
-import { positionalSeedIds, seedDeploymentIds, type SeedDeploymentIds } from "../app/utils/seedDeploymentIds";
+import {
+  contentSyncPath,
+  positionalSeedIds,
+  seedDeploymentIds,
+  syncStateFor,
+  type SeedDeploymentIds,
+} from "../app/utils/seedDeploymentIds";
 import { MAP_NAMES } from "../app/data/content/mapNames";
 import { CAMPAIGN_NODE_CONTENT, ROGUELIKE_NODE_CONTENT } from "../app/data/dialog/nodeContent";
 
@@ -20,8 +26,8 @@ import { CAMPAIGN_NODE_CONTENT, ROGUELIKE_NODE_CONTENT } from "../app/data/dialo
 //                 ignition/data next to this repo; run from the repo root)
 //   --deployment <path>  the deployment whose ids web2 copies (default:
 //                 ignition/deployments/chain-84532 next to --dir). Its
-//                 journal.jsonl and content-sync.json give each seed key's
-//                 on-chain id (app/utils/seedDeploymentIds.ts).
+//                 journal.jsonl and ignition/content-sync/<folder>.json give
+//                 each seed key's on-chain id (app/utils/seedDeploymentIds.ts).
 //   --fresh       use fresh-deploy ids (seed order) instead of a deployment
 //
 // Writes to DATABASE_URL (.env.local, then .env), in one transaction:
@@ -57,8 +63,14 @@ function deploymentIds(files: MissionSeedFiles): SeedDeploymentIds {
   if (!existsSync(journal)) {
     throw new Error(`No deployment journal at ${journal}. Pass --deployment <dir>, or --fresh for seed-order ids.`);
   }
-  const syncPath = resolve(deploymentDir, "content-sync.json");
-  const syncState = existsSync(syncPath) ? JSON.parse(readFileSync(syncPath, "utf8")) : null;
+  const syncPath = resolve(dir, "..", contentSyncPath(basename(deploymentDir)));
+  const record = existsSync(syncPath) ? JSON.parse(readFileSync(syncPath, "utf8")) : null;
+  const addressesPath = resolve(deploymentDir, "deployed_addresses.json");
+  const mapsAddress = existsSync(addressesPath)
+    ? JSON.parse(readFileSync(addressesPath, "utf8"))["DeployModule#Maps"]
+    : undefined;
+  const syncState = syncStateFor(record, mapsAddress);
+  if (record && !syncState) console.warn(`${syncPath} is for an older deployment (Maps ${record.mapsAddress}); ignoring it.`);
   return seedDeploymentIds(files, readFileSync(journal, "utf8"), syncState);
 }
 

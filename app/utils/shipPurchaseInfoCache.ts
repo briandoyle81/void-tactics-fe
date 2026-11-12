@@ -1,6 +1,7 @@
 import type { PurchaseInfoNormalized } from "./normalizePurchaseInfo";
 
-export type ShipPurchaseInfoKind = "ships" | "shipPurchaser";
+/** "shipPurchaserFlow" is ShipPurchaser's getFlowPurchaseInfo (native-token prices). */
+export type ShipPurchaseInfoKind = "ships" | "shipPurchaser" | "shipPurchaserFlow";
 
 const CACHE_MS = 7 * 24 * 60 * 60 * 1000;
 

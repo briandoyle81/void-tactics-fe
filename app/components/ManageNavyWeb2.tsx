@@ -61,6 +61,7 @@ import {
   persistFreeShipClaimClickedWeb2,
 } from "../utils/freeShipClaimTutorialStorageWeb2";
 import { setUrlParams, useUrlParam } from "../utils/urlState";
+import { formatCreditsUtc } from "../lib/credits";
 
 // Web2's fleet-composition export/import compatibility tag — there's no
 // "chain" concept in web2, so this is a fixed constant (any web2 export can
@@ -405,7 +406,7 @@ const ManageNavyWeb2: React.FC = () => {
         { shipIds: Array.from(selected) },
       );
       toast.success(
-        `Recycled ${result.recycled} ship(s)${result.creditEarned ? ` (+${result.creditEarned} UTC)` : ""}`,
+        `Recycled ${result.recycled} ship(s)${result.creditEarned ? ` (+${formatCreditsUtc(result.creditEarned)} UTC)` : ""}`,
       );
       setSelected(new Set());
       if (result.creditEarned) invalidateBalance();
@@ -720,7 +721,7 @@ const ManageNavyWeb2: React.FC = () => {
         canRecycle={recycleEligibility.canRecycle}
         purchasedCount={recycleEligibility.purchasedShipCount}
         threshold={recycleEligibility.threshold}
-        rewardLabel={String(recycleEligibility.rewardUtc)}
+        rewardLabel={formatCreditsUtc(recycleEligibility.rewardUtc)}
         onCancel={handleRecycleCancel}
         confirmButton={
           shipToRecycle && (

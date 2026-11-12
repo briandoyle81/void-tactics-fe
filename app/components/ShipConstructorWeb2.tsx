@@ -10,6 +10,7 @@ import { apiMutate } from "../lib/apiMutate";
 import { validSpecialsForVariant } from "../types/types";
 import { ShipSpecControls } from "./ship/ShipSpecControls";
 import type { Web2Ship } from "../types/web2Ship";
+import { formatCreditsUtc } from "../lib/credits";
 
 // Web2-mode counterpart to `ShipConstructor.tsx` — but customize-only.
 // Web3's EXPLORE/"create" mode is a local rendering sandbox with no
@@ -358,7 +359,7 @@ const ShipConstructorWeb2: React.FC<ShipConstructorWeb2Props> = ({
                     {costPreview && (
                       <div className="mt-4 pt-3 border-t border-gunmetal">
                         <div className="text-sm font-bold text-amber font-mono">
-                          COST TO MODIFY: {costPreview.cost} UTC
+                          COST TO MODIFY: {formatCreditsUtc(costPreview.cost)} UTC
                         </div>
                       </div>
                     )}

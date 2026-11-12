@@ -299,7 +299,7 @@ const ShipPurchasePricesWeb2: React.FC = () => {
                   }),
               },
               {
-                currencyLabel: "UTC (Tool 2)",
+                currencyLabel: "UTC credits (Tool 2; 100 = 1 UTC)",
                 value: String(t.priceUtc),
                 onChange: (value) =>
                   updateRow(i, { priceUtc: Number(value) || 0 }),
@@ -311,7 +311,7 @@ const ShipPurchasePricesWeb2: React.FC = () => {
 
       <ShipPurchaseTierSectionCard
         title="Tool 3 — UTC packs, priced in tokens (USD)"
-        subtitle="Each row is a direct UTC purchase — independent from the ship-pack tiers above. This is what UTCPurchaseModalWeb2 shows."
+        subtitle="Each row is a direct UTC purchase, in credits (100 = 1 UTC). Keep each row equal to the matching ship pack's UTC price, so buying UTC and then ships costs the same as buying the ships."
         isLoading={isUtcLoading}
         isEmpty={utcDraft.length === 0}
         footer={
@@ -339,7 +339,7 @@ const ShipPurchasePricesWeb2: React.FC = () => {
       >
         <PurchaseTierTable
           editable
-          quantityLabel="UTC / pack"
+          quantityLabel="UTC credits / pack (100 = 1 UTC)"
           rows={utcDraft.map((t, i): PurchaseTierRowData => ({
             tierLabel: String(t.tier),
             shipCount: t.utcAmount,

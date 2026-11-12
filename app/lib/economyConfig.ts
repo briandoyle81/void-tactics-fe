@@ -3,6 +3,8 @@ import { createTtlCache } from "./ttlCache";
 
 export type KillRewardToken = "DEC" | "UTC";
 
+// Every *Utc amount here is in credits, 0.01 UTC (app/lib/credits.ts), so
+// web2 charges and pays what the chain does.
 export type EconomyConfig = {
   recycleRewardUtc: number;
   // Paid per kill when the destroyed ship belongs to a human opponent (PvP)
@@ -23,15 +25,18 @@ export type EconomyConfig = {
 };
 
 export const DEFAULT_ECONOMY_CONFIG: EconomyConfig = {
-  recycleRewardUtc: 1,
-  killRewardUtc: 1,
+  // Ships.recycleReward: 0.1 UTC.
+  recycleRewardUtc: 10,
+  // ShipsRouter pays recycleReward / 4 = 0.025 UTC per PvP kill; credits are
+  // whole hundredths, so web2 pays 0.02.
+  killRewardUtc: 2,
   // Matches today's live FactionRewardTokenRegistry config on Base Sepolia:
   // variant 2 -> DEC, variant 1 (and anything else unregistered) -> no reward.
   killRewardByVariant: {
     2: { token: "DEC", amount: 1 },
   },
-  lobbyCreationCostUtc: 1,
-  reservationFeeUtc: 1,
+  lobbyCreationCostUtc: 100,
+  reservationFeeUtc: 100,
   purchaseThresholdForRewards: 10,
   freeGamesPerAddress: 1,
 };

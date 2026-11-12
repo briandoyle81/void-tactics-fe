@@ -16,6 +16,7 @@ import type { ShipCardData } from "../types/shipCardData";
 import { SosHullFires } from "./SosHullFires";
 import { tooltipPanelStyle } from "./tooltipPanel";
 import { ThreatValue, hullBarColor } from "./ThreatIcon";
+import { BADGE_CHAMFER, BAY_SCANLINES, CARD_CHAMFER, bayBackground, rankFrameFill } from "../utils/cardFrame";
 
 interface ShipCardProps {
   ship: ShipCardData;
@@ -67,9 +68,6 @@ interface ShipCardProps {
 const CARD_BUTTON =
   "border border-solid px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors duration-150 pointer-coarse:py-2";
 
-/** Cut corners for the card frame and its inner panel (design pass G). */
-const CARD_CHAMFER =
-  "polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px)";
 /** A small padlock for free ships (they can't be recycled). */
 function LockGlyph({ size = 10 }: { size?: number }) {
   return (
@@ -79,20 +77,6 @@ function LockGlyph({ size = 10 }: { size?: number }) {
     </svg>
   );
 }
-const BADGE_CHAMFER =
-  "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)";
-/** The frame's foil in a rank color: light, dark, and back, so it catches the light. */
-function rankFrameFill(color: string): string {
-  return `linear-gradient(150deg, color-mix(in srgb, ${color} 70%, white), color-mix(in srgb, ${color} 55%, black) 50%, ${color})`;
-}
-/** The art bay: a few stars, scanlines and a glow in the rarity color. */
-const BAY_STARS =
-  "radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,0.55), transparent 60%)," +
-  "radial-gradient(1px 1px at 78% 14%, rgba(255,255,255,0.45), transparent 60%)," +
-  "radial-gradient(1px 1px at 64% 72%, rgba(255,255,255,0.35), transparent 60%)," +
-  "radial-gradient(1.5px 1.5px at 30% 80%, rgba(255,255,255,0.4), transparent 60%)," +
-  "radial-gradient(1px 1px at 90% 58%, rgba(255,255,255,0.5), transparent 60%)," +
-  "radial-gradient(1px 1px at 45% 10%, rgba(255,255,255,0.35), transparent 60%)";
 const HULL_SEGMENTS = 12;
 
 /** One stat on a small plate (design pass G): a label over a large number. */
@@ -430,12 +414,12 @@ const ShipCard: React.FC<ShipCardProps> = ({
         } ${hideOuterFrame ? "border border-solid" : ""}`}
         style={{
           borderColor: shipArtBorderColor,
-          background: `${BAY_STARS}, radial-gradient(ellipse 70% 60% at 50% 55%, ${bayGlow}, transparent 70%), linear-gradient(180deg, #111a24, var(--color-near-black))`,
+          background: bayBackground(bayGlow),
         }}
       >
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ background: "repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px)" }}
+          style={{ background: BAY_SCANLINES }}
         />
         <div className={`h-full w-full ${isSosArt ? "overflow-visible" : ""}`}>
           <div

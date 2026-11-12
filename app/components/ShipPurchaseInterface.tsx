@@ -12,13 +12,16 @@ import { FlowPaymentModal } from "./FlowPaymentModal";
 import { useFlowPaymentModal } from "../hooks/useFlowPaymentModal";
 import { CheckoutSheet, CheckoutDetail, CHECKOUT_CONFIRM_CLASS } from "./CheckoutSheet";
 import { ShipImage } from "./ShipImage";
-import { ShipPurchaseTierCard } from "./ShipPurchaseTierCard";
+import {
+  ShipPurchaseTierCard,
+  TIER_CARD_BUTTON_CLASS,
+  type ShipPurchaseTierCardLayout,
+} from "./ShipPurchaseTierCard";
 import { ShipPurchaseShell } from "./ShipPurchaseShell";
 import {
-  getTierColors,
   getTierCallout,
   getTierBadge,
-  getGuaranteedRanksDisplay,
+  getGuaranteedVeteranRanks,
 } from "../utils/shipPurchaseTierDisplay";
 import { getPreviewShipSpecsForTier } from "../utils/shipPreviewSpec";
 import {
@@ -116,8 +119,7 @@ const ShipPurchaseInterface: React.FC = () => {
     const price = prices[index];
     const shipsCount = maxPerTier[index];
     const priceFormatted = price ? truncateTo8Decimals(formatEther(price)) : "0";
-    const colors = getTierColors(tier);
-    const guaranteedRanksDisplay = getGuaranteedRanksDisplay(tier, shipsCount ?? 1);
+    const veteranRanks = getGuaranteedVeteranRanks(tier, shipsCount ?? 1);
     const tierCallout = getTierCallout(tier);
     const badge = getTierBadge(tier, tierCount);
     const previewShips = getPreviewShipsForTier(tier, previewSeeds[index] ?? 0);
@@ -130,8 +132,7 @@ const ShipPurchaseInterface: React.FC = () => {
       price,
       shipsCount,
       priceFormatted,
-      colors,
-      guaranteedRanksDisplay,
+      veteranRanks,
       tierCallout,
       badge,
       previewShips,
@@ -142,13 +143,15 @@ const ShipPurchaseInterface: React.FC = () => {
 
   type TierDatum = (typeof tierData)[number];
 
-  const renderTierCard = (d: TierDatum) => (
+  const renderTierCard = (d: TierDatum, layout: ShipPurchaseTierCardLayout) => (
     <ShipPurchaseTierCard
+      layout={layout}
+      tier={d.tier}
       tierCallout={d.tierCallout}
       badge={d.badge}
-      priceLabel={`$${d.flowTier.displayPrice} USD`}
+      priceLabel={`$${d.flowTier.displayPrice}`}
       shipsCount={d.shipsCount ?? 0}
-      guaranteedRanksDisplay={d.guaranteedRanksDisplay}
+      veteranRanks={d.veteranRanks}
       previewShipImages={d.previewShips.map((ship, idx) => (
         <ShipImage
           // Keyed by slot so a reroll swaps the ship in place, holding the
@@ -157,22 +160,26 @@ const ShipPurchaseInterface: React.FC = () => {
           ship={ship}
           holdPreviousImage
           showLoadingState={false}
-          rankStarsSize={idx === 0 ? "large" : "default"}
+          // The card's rank chips show the ranks.
+          hideRankStars
         />
       ))}
     />
   );
 
-  const tierCards = tierData.map((d) => (
+  const renderTierButton = (d: TierDatum, layout: ShipPurchaseTierCardLayout) => (
     <button
       key={d.index}
       type="button"
       onClick={() => setCheckoutIndex(d.index)}
-      className={`relative min-h-[420px] px-4 py-3 border-2 text-left ${d.colors.border} ${d.colors.text} ${d.colors.hoverBorder} ${d.colors.hoverText} ${d.colors.hoverBg} font-mono tracking-wider transition-all duration-200`}
+      className={TIER_CARD_BUTTON_CLASS}
     >
-      {renderTierCard(d)}
+      {renderTierCard(d, layout)}
     </button>
-  ));
+  );
+  // The top pack is featured; the others form the ladder, highest first.
+  const featuredTier = tierData[tierData.length - 1]!;
+  const ladderTiers = tierData.slice(0, -1).reverse();
 
   const checkout = checkoutIndex !== null ? tierData[checkoutIndex] : null;
   const closeCheckout = () => setCheckoutIndex(null);
@@ -214,7 +221,8 @@ const ShipPurchaseInterface: React.FC = () => {
   return (
     <>
       <ShipPurchaseShell
-        tierCards={tierCards}
+        featured={renderTierButton(featuredTier, "featured")}
+        rows={ladderTiers.map((d) => renderTierButton(d, "row"))}
         footerPaymentNote="Pick a pack, then choose how to pay: card or any token, your wallet's token, or UTC."
         topContent={
           <VariantPicker compact selectedVariant={selectedVariant} onSelect={setSelectedVariant} />
@@ -224,7 +232,7 @@ const ShipPurchaseInterface: React.FC = () => {
       {checkout && (
         <CheckoutSheet
           title="Checkout"
-          summary={renderTierCard(checkout)}
+          summary={renderTierCard(checkout, "summary")}
           selectedId={paymentMethod}
           onSelect={(id) => setPaymentMethod(id as PaymentMethod)}
           options={[

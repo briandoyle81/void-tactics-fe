@@ -70,6 +70,7 @@ import { LobbyCardActions } from "./LobbyCardActions";
 import { lobbyStatusColor, lobbyStatusLabel } from "../utils/lobbyStatusDisplay";
 import { useMapWeb2 } from "../hooks/useMapWeb2";
 import { GRID_DIMENSIONS } from "../types/types";
+import { formatCreditsUtc } from "../lib/credits";
 
 
 /** Web2 user ids (NextAuth subs / cuids) aren't addresses, but truncating them the same way keeps the card's identity row visually consistent with web3's. */
@@ -717,12 +718,12 @@ const LobbiesWeb2: React.FC = () => {
                       {playerState.lobbiesCreatedCount >= freeGamesPerAddress && lobbyCreationCostUtc > 0 ? (
                         <div className="flex justify-between gap-4">
                           <span className="text-text-secondary">Lobby fee (free games exhausted)</span>
-                          <span className="text-amber font-bold shrink-0">{lobbyCreationCostUtc} UTC</span>
+                          <span className="text-amber font-bold shrink-0">{formatCreditsUtc(lobbyCreationCostUtc)} UTC</span>
                         </div>
                       ) : null}
                       <div className="flex justify-between gap-4">
                         <span className="text-text-secondary">Reservation fee (vs AI)</span>
-                        <span className="text-amber font-bold shrink-0">{reservationFeeUtc} UTC</span>
+                        <span className="text-amber font-bold shrink-0">{formatCreditsUtc(reservationFeeUtc)} UTC</span>
                       </div>
                     </div>
                   </>
@@ -755,7 +756,7 @@ const LobbiesWeb2: React.FC = () => {
                         </p>
                       ) : reservedJoinerEmail.trim() ? (
                         <p className="text-xs text-amber mt-1">
-                          {`// Requires ${reservationFeeUtc} UTC to reserve game for this player`}
+                          {`// Requires ${formatCreditsUtc(reservationFeeUtc)} UTC to reserve game for this player`}
                         </p>
                       ) : (
                         <p className="text-xs text-amber mt-1">
@@ -774,7 +775,7 @@ const LobbiesWeb2: React.FC = () => {
                         {playerState.lobbiesCreatedCount >= freeGamesPerAddress && lobbyCreationCostUtc > 0 ? (
                           <div className="flex justify-between gap-4">
                             <span className="text-text-secondary">Lobby fee (free games exhausted)</span>
-                            <span className="text-amber font-bold shrink-0">{lobbyCreationCostUtc} UTC</span>
+                            <span className="text-amber font-bold shrink-0">{formatCreditsUtc(lobbyCreationCostUtc)} UTC</span>
                           </div>
                         ) : null}
                         {reservedJoinerEmail.trim() &&
@@ -782,7 +783,7 @@ const LobbiesWeb2: React.FC = () => {
                         reservedJoinerEmail.trim().toLowerCase() !== currentUserEmail.toLowerCase() ? (
                           <div className="flex justify-between gap-4">
                             <span className="text-text-secondary">Reservation fee (private lobby)</span>
-                            <span className="text-amber font-bold shrink-0">{reservationFeeUtc} UTC</span>
+                            <span className="text-amber font-bold shrink-0">{formatCreditsUtc(reservationFeeUtc)} UTC</span>
                           </div>
                         ) : null}
                       </div>

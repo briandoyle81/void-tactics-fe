@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { seedDeploymentIds } from "../seedDeploymentIds";
+import { contentSyncPath, seedDeploymentIds, syncStateFor } from "../seedDeploymentIds";
 import type { MissionSeedFiles } from "../missionSeedExport";
 
 const seeds = {
@@ -40,5 +40,14 @@ describe("seedDeploymentIds", () => {
       JSON.stringify({ type: "WIPE_APPLY", futureId: "DeployModule#CreateM01Map" }),
     ].join("\n");
     expect(seedDeploymentIds(seeds, journal, null).mapIds.size).toBe(0);
+  });
+
+  it("ignores a sync record left from an older deployment", () => {
+    const record = { mapsAddress: "0xAbC0000000000000000000000000000000000001", maps: { map67: "5" } };
+    expect(syncStateFor(record, "0xabc0000000000000000000000000000000000001")).toBe(record);
+    expect(syncStateFor(record, "0x0000000000000000000000000000000000000002")).toBeNull();
+    // Records from before mapsAddress existed still apply.
+    expect(syncStateFor({ maps: {} }, "0x0000000000000000000000000000000000000002")).toEqual({ maps: {} });
+    expect(contentSyncPath("chain-84532")).toBe("content-sync/chain-84532.json");
   });
 });

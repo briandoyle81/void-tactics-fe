@@ -6,13 +6,12 @@ import { usePurchaseTiersWeb2 } from "../hooks/usePurchaseTiersWeb2";
 import { useStaggeredPreviewSeeds } from "../hooks/useStaggeredPreviewSeeds";
 import { Web2Ship } from "../types/web2Ship";
 import { ShipImageWeb2 } from "./ShipImageWeb2";
-import { ShipPurchaseTierCard } from "./ShipPurchaseTierCard";
+import { ShipPurchaseTierCard, TIER_CARD_BUTTON_CLASS } from "./ShipPurchaseTierCard";
 import { ShipPurchaseShell } from "./ShipPurchaseShell";
 import {
-  getTierColors,
   getTierCallout,
   getTierBadge,
-  getGuaranteedRanksDisplay,
+  getGuaranteedVeteranRanks,
 } from "../utils/shipPurchaseTierDisplay";
 import { getPreviewShipSpecsForTier } from "../utils/shipPreviewSpec";
 import { PREVIEW_REFRESH_INTERVAL_MS, toPreviewShipWeb2 } from "../utils/previewShips";
@@ -40,12 +39,12 @@ export function ShipPurchaseInterfaceWeb2({ onSelectTier, busy }: ShipPurchaseIn
     getPreviewShipSpecsForTier(previewSeed, tier, shipCount, getKillsForRank).map(toPreviewShipWeb2);
 
   const tierCards = tiers.map((t, index) => {
-    const colors = getTierColors(t.tier);
-    const guaranteedRanksDisplay = getGuaranteedRanksDisplay(t.tier, t.shipCount);
+    const isFeatured = index === tiers.length - 1;
+    const veteranRanks = getGuaranteedVeteranRanks(t.tier, t.shipCount);
     const tierCallout = getTierCallout(t.tier);
     const badge = getTierBadge(t.tier, tiers.length);
     const previewShips = getPreviewShipsForTier(t.tier, t.shipCount, previewSeeds[index] ?? 0);
-    const priceLabel = `$${(t.priceUsdCents / 100).toFixed(2)} USD`;
+    const priceLabel = `$${(t.priceUsdCents / 100).toFixed(2)}`;
 
     return (
       <button
@@ -53,14 +52,16 @@ export function ShipPurchaseInterfaceWeb2({ onSelectTier, busy }: ShipPurchaseIn
         type="button"
         onClick={() => onSelectTier(t.tier)}
         disabled={busy}
-        className={`relative min-h-[420px] px-4 py-3 border-2 text-left ${colors.border} ${colors.text} ${colors.hoverBorder} ${colors.hoverText} ${colors.hoverBg} font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed`}
+        className={TIER_CARD_BUTTON_CLASS}
       >
         <ShipPurchaseTierCard
+          layout={isFeatured ? "featured" : "row"}
+          tier={t.tier}
           tierCallout={tierCallout}
           badge={badge}
           priceLabel={priceLabel}
           shipsCount={t.shipCount}
-          guaranteedRanksDisplay={guaranteedRanksDisplay}
+          veteranRanks={veteranRanks}
           previewShipImages={previewShips.map((ship, idx) => (
             <ShipImageWeb2
               // Keyed by slot so a reroll swaps the ship in place, holding the
@@ -69,7 +70,8 @@ export function ShipPurchaseInterfaceWeb2({ onSelectTier, busy }: ShipPurchaseIn
               ship={ship}
               holdPreviousImage
               showLoadingState={false}
-              rankStarsSize={idx === 0 ? "large" : "default"}
+              // The card's rank chips show the ranks.
+              hideRankStars
             />
           ))}
         />
@@ -79,7 +81,9 @@ export function ShipPurchaseInterfaceWeb2({ onSelectTier, busy }: ShipPurchaseIn
 
   return (
     <ShipPurchaseShell
-      tierCards={tierCards}
+      // The top pack is featured; the others form the ladder, highest first.
+      featured={tierCards[tierCards.length - 1]}
+      rows={tierCards.slice(0, -1).reverse()}
       footerPaymentNote="Pick a pack, then choose how to pay: USD or UTC."
     />
   );

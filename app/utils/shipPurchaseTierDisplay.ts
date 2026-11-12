@@ -80,10 +80,9 @@ export function getGuaranteedRankNumbers(tier: number, shipsInTier: number): num
   return Array.from({ length: shipsInTier }, (_, i) => Math.max(1, startRank - i));
 }
 
-export function getGuaranteedRanksDisplay(tier: number, shipsInTier: number): string[] {
-  return getGuaranteedRankNumbers(tier, shipsInTier)
-    .filter((r) => r > 1)
-    .map((r) => `R${r}`);
+/** The ranks a pack guarantees above R1, highest first (empty for the Entry Pack). */
+export function getGuaranteedVeteranRanks(tier: number, shipsInTier: number): number[] {
+  return getGuaranteedRankNumbers(tier, shipsInTier).filter((r) => r > 1);
 }
 
 /**

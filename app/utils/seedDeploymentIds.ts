@@ -8,8 +8,11 @@
 // - The deployment journal (ignition/deployments/<id>/journal.jsonl): each
 //   Create<Key>Map / CreateRoguelike<Key>Node call's confirmed nonce gives
 //   its creation order, so its id.
-// - content-sync.json next to it: ids the sync script created later
-//   (key -> id), and ids no seed entry owns ("ignored").
+// - The content-sync record (ignition/content-sync/<id>.json; until
+//   2026-11-12 it was content-sync.json in the deployment folder, which a
+//   redeploy deletes): ids the sync script created later (key -> id), and
+//   ids no seed entry owns ("ignored"). Its mapsAddress names the deployment
+//   it describes; see syncStateFor.
 //
 // Used by the mission seed export (chain -> seed keys) and the web2 import
 // (seed keys -> ids), so web2's ids match the live chain and the id-keyed
@@ -26,14 +29,34 @@ export interface SeedDeploymentIds {
   /** Onchain map ids no seed entry owns (e.g. a duplicate left by a failed sync). */
   ignoredMapIds: number[];
   ignoredRoguelikeNodeIds: number[];
-  /** False for positionalSeedIds: there's no content-sync.json to record new ids in. */
+  /** False for positionalSeedIds: there's no content-sync record to record new ids in. */
   fromRecord: boolean;
 }
 
 export interface ContentSyncState {
+  /** The Maps address of the deployment this record describes. */
+  mapsAddress?: string;
   maps?: Record<string, string>;
   roguelikeNodes?: Record<string, string>;
+  /** AI ship config ids (used by the contracts repo's scripts, not here). */
+  aiConfigs?: Record<string, string>;
   ignored?: { maps?: string[]; roguelikeNodes?: string[] };
+}
+
+/** Where the record for a deployment folder (e.g. "chain-84532") lives, relative to ignition/. */
+export const contentSyncPath = (deploymentFolder: string) => `content-sync/${deploymentFolder}.json`;
+
+/**
+ * The record if it describes the deployment whose Maps contract is
+ * `mapsAddress`, else null: the record outlives a redeploy, and an older
+ * deployment's ids would be wrong.
+ */
+export function syncStateFor(
+  syncState: ContentSyncState | null,
+  mapsAddress: string | undefined,
+): ContentSyncState | null {
+  if (!syncState?.mapsAddress || !mapsAddress) return syncState;
+  return syncState.mapsAddress.toLowerCase() === mapsAddress.toLowerCase() ? syncState : null;
 }
 
 const cap = (k: string) => `${k[0].toUpperCase()}${k.slice(1)}`;
