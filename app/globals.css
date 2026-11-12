@@ -1652,23 +1652,38 @@ select:focus {
 }
 
 /* Ship card (design pass G): a sheen that sweeps across a shiny ship's art. */
+/* A band of light that crosses a shiny ship's art, then waits off the edge.
+   It's a fixed-width band moved with transform, from fully off the left to
+   fully off the right, so each pass starts and ends unseen (the old
+   repeating background showed a second band at the end of each pass). */
 .ship-card-sheen {
-  background: linear-gradient(
-    115deg,
-    transparent 35%,
-    rgba(255, 236, 190, 0.12) 46%,
-    rgba(255, 255, 255, 0.18) 50%,
-    rgba(255, 236, 190, 0.12) 54%,
-    transparent 65%
-  );
-  background-size: 250% 100%;
+  overflow: hidden;
   mix-blend-mode: screen;
-  animation: ship-card-sheen 5s ease-in-out infinite;
+}
+.ship-card-sheen::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 60%;
+  background: linear-gradient(
+    105deg,
+    transparent 15%,
+    rgba(255, 236, 190, 0.12) 40%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 236, 190, 0.12) 60%,
+    transparent 85%
+  );
+  transform: translateX(-100%);
+  animation: ship-card-sheen 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  will-change: transform;
 }
 @keyframes ship-card-sheen {
-  0% { background-position: 130% 0; }
-  60%, 100% { background-position: -130% 0; }
+  0% { transform: translateX(-100%); }
+  /* 100% / 60% of the width: the band's left edge reaches the right side. */
+  55%, 100% { transform: translateX(167%); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ship-card-sheen { animation: none; opacity: 0.35; background-position: 50% 0; }
+  .ship-card-sheen::before { animation: none; opacity: 0.35; transform: translateX(33%); }
 }
