@@ -70,6 +70,15 @@ const CARD_BUTTON =
 /** Cut corners for the card frame and its inner panel (design pass G). */
 const CARD_CHAMFER =
   "polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px)";
+/** A small padlock for free ships (they can't be recycled). */
+function LockGlyph({ size = 10 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
+      <rect x="3" y="7" width="10" height="7.5" fill="currentColor" />
+      <path d="M5 7 V5 a3 3 0 0 1 6 0 V7" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
 const BADGE_CHAMFER =
   "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)";
 /** The frame's foil in a rank color: light, dark, and back, so it catches the light. */
@@ -399,7 +408,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
   const bayGlow = data.isDestroyed
     ? "rgba(255,77,77,0.16)"
     : data.isShiny
-      ? "rgba(255,184,77,0.34)"
+      ? "rgba(255,184,77,0.26)"
       : `color-mix(in srgb, ${rankColor} 24%, transparent)`;
   const artFilter = [
     // A destroyed ship's wreck stays in color; a ship that moved this round
@@ -526,17 +535,19 @@ const ShipCard: React.FC<ShipCardProps> = ({
           </span>
         )}
         {data.isConstructed && (
+          // The outline is a filled chamfer under a 1px-inset one (as the card
+          // frame), since a CSS border is cut off on clipped corners and edges.
           <span
-            className={`absolute top-2 z-10 border border-solid border-amber/55 bg-near-black/90 py-1 pl-2.5 pr-3 ${
-              flipShip ? "left-2" : "right-2"
-            }`}
+            className={`absolute top-2 z-10 bg-amber/55 p-px ${flipShip ? "left-2" : "right-2"}`}
             style={{ clipPath: BADGE_CHAMFER }}
           >
-            <ThreatValue
-              value={data.cost}
-              iconSize={useCompactStatGrid ? 13 : 16}
-              className={`font-sans ${useCompactStatGrid ? "text-lg" : "text-[22px]"}`}
-            />
+            <span className="block bg-near-black py-1 pl-2.5 pr-3" style={{ clipPath: BADGE_CHAMFER }}>
+              <ThreatValue
+                value={data.cost}
+                iconSize={useCompactStatGrid ? 13 : 16}
+                className={`font-sans ${useCompactStatGrid ? "text-lg" : "text-[22px]"}`}
+              />
+            </span>
           </span>
         )}
         {tooltipMode && tooltipGridPosition != null && (
@@ -595,7 +606,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
             >
               {data.name || `Ship #${data.id}`}
             </h5>
-            {(showRankLine || showRarityLine) && (
+            {(showRankLine || showRarityLine || data.isFree) && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
                 {showRankLine && (
                   <div className="group relative">
@@ -636,6 +647,18 @@ const ShipCard: React.FC<ShipCardProps> = ({
                 {showRankLine && showRarityLine && <span className="text-text-muted">·</span>}
                 {showRarityLine && (
                   <span className={data.isShiny ? "text-amber" : undefined}>{data.isShiny ? "Shiny ★" : "Common"}</span>
+                )}
+                {data.isFree && (
+                  <>
+                    {(showRankLine || showRarityLine) && <span className="text-text-muted">·</span>}
+                    <span
+                      className="inline-flex items-center gap-1 border border-solid border-cyan/40 px-1.5 leading-[13px] text-cyan"
+                      title="A free ship: it can't be recycled"
+                    >
+                      <LockGlyph />
+                      Free
+                    </span>
+                  </>
                 )}
               </div>
             )}
@@ -710,6 +733,85 @@ const ShipCard: React.FC<ShipCardProps> = ({
           </div>
         )}
       </div>
+      {/* The card's tools, along its bottom (the right inset clears the cut corner). */}
+      {showTools && (
+        <div
+          className={`flex flex-wrap items-center gap-1.5 border-t border-solid border-gunmetal pb-2.5 pt-2 ${
+            hideOuterFrame ? "" : "pl-3 pr-4"
+          }`}
+        >
+          {!hideCheckbox && (
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={isSelected}
+              // Selecting is for recycling, so a free ship can't be selected.
+              disabled={data.inFleet || data.isFree}
+              title={
+                data.inFleet
+                  ? "Ships in a fleet can't be selected"
+                  : data.isFree
+                    ? "Free ships can't be recycled"
+                    : undefined
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSelection();
+              }}
+              className={`flex items-center gap-1.5 py-1 pr-1 font-mono text-[10px] font-bold uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:py-2 ${
+                isSelected ? "text-cyan" : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              {isSelected ? (
+                <span className="flex h-3.5 w-3.5 items-center justify-center bg-cyan" aria-hidden="true">
+                  <svg width="10" height="10" viewBox="0 0 10 10">
+                    <path d="M1.5 5 L4 7.5 L8.5 2.5" fill="none" stroke="var(--color-near-black)" strokeWidth="2" />
+                  </svg>
+                </span>
+              ) : (
+                <span className="h-3.5 w-3.5 border-2 border-solid border-current" aria-hidden="true" />
+              )}
+              {isSelected ? "Selected" : "Select"}
+            </button>
+          )}
+          <span className="flex-1" />
+          {showCustomize && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCustomizeClick?.();
+              }}
+              className={`${CARD_BUTTON} border-cyan text-cyan hover:bg-cyan/10`}
+            >
+              Customize
+            </button>
+          )}
+          {!hideRecycle && data.isFree && (
+            <span
+              className="inline-flex items-center gap-1 whitespace-nowrap font-mono text-[10px] font-bold uppercase tracking-wider text-text-muted"
+              title="Free ships can't be recycled"
+            >
+              <LockGlyph size={11} />
+              No recycle
+            </span>
+          )}
+          {!hideRecycle && !data.isFree && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRecycleClick();
+              }}
+              disabled={data.inFleet}
+              title={data.inFleet ? "Remove it from your fleet to recycle it" : undefined}
+              className={`${CARD_BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
+            >
+              Recycle
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -748,65 +850,7 @@ const ShipCard: React.FC<ShipCardProps> = ({
         </div>
       )}
 
-      {/* Under the card: its tools and the Manage Navy extras. */}
-      {showTools && (
-        <div className="flex flex-wrap items-center gap-1.5 px-0.5 pt-2">
-          {!hideCheckbox && (
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={isSelected}
-              disabled={data.inFleet}
-              title={data.inFleet ? "Ships in a fleet can't be selected" : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSelection();
-              }}
-              className={`flex items-center gap-1.5 py-1 pr-1 font-mono text-[10px] font-bold uppercase tracking-wider disabled:cursor-not-allowed disabled:opacity-40 pointer-coarse:py-2 ${
-                isSelected ? "text-cyan" : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {isSelected ? (
-                <span className="flex h-3.5 w-3.5 items-center justify-center bg-cyan" aria-hidden="true">
-                  <svg width="10" height="10" viewBox="0 0 10 10">
-                    <path d="M1.5 5 L4 7.5 L8.5 2.5" fill="none" stroke="var(--color-near-black)" strokeWidth="2" />
-                  </svg>
-                </span>
-              ) : (
-                <span className="h-3.5 w-3.5 border-2 border-solid border-current" aria-hidden="true" />
-              )}
-              {isSelected ? "Selected" : "Select"}
-            </button>
-          )}
-          <span className="flex-1" />
-          {showCustomize && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCustomizeClick?.();
-              }}
-              className={`${CARD_BUTTON} border-cyan text-cyan hover:bg-cyan/10`}
-            >
-              Customize
-            </button>
-          )}
-          {!hideRecycle && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRecycleClick();
-              }}
-              disabled={data.inFleet}
-              title={data.inFleet ? "Remove it from your fleet to recycle it" : undefined}
-              className={`${CARD_BUTTON} border-warning-red text-warning-red hover:bg-warning-red/10 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent`}
-            >
-              Recycle
-            </button>
-          )}
-        </div>
-      )}
+      {/* Under the card: the Manage Navy extras. */}
       {fleetCompositionControls != null && (
         <div className="pt-2" onClick={(e) => e.stopPropagation()} role="presentation">
           {fleetCompositionControls}

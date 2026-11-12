@@ -1655,20 +1655,20 @@ select:focus {
 .ship-card-sheen {
   background: linear-gradient(
     115deg,
-    transparent 30%,
-    rgba(255, 236, 190, 0.22) 45%,
-    rgba(255, 255, 255, 0.32) 50%,
-    rgba(255, 236, 190, 0.22) 55%,
-    transparent 70%
+    transparent 35%,
+    rgba(255, 236, 190, 0.12) 46%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 236, 190, 0.12) 54%,
+    transparent 65%
   );
   background-size: 250% 100%;
   mix-blend-mode: screen;
-  animation: ship-card-sheen 3.6s ease-in-out infinite;
+  animation: ship-card-sheen 5s ease-in-out infinite;
 }
 @keyframes ship-card-sheen {
   0% { background-position: 130% 0; }
   60%, 100% { background-position: -130% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ship-card-sheen { animation: none; opacity: 0.5; background-position: 50% 0; }
+  .ship-card-sheen { animation: none; opacity: 0.35; background-position: 50% 0; }
 }

@@ -12,6 +12,8 @@ export interface ShipCardData {
   /** Seconds since epoch; 0 means "not destroyed". Fed to formatDestroyedDate. */
   timestampDestroyedSeconds: number;
   inFleet: boolean;
+  /** A free ship: it can't be recycled (web3 `isFreeShip`, web2 `isFree`). */
+  isFree: boolean;
   cost: number;
   equipment: {
     mainWeapon: number;

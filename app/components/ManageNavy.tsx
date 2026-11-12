@@ -853,10 +853,11 @@ const ManageNavy: React.FC = () => {
       {canRecycle &&
         selectedShips.size > 0 &&
         (() => {
-          // Filter out ships that are in fleets
+          // Leave out ships in a fleet and free ships (the contract reverts
+          // the whole batch on a free ship).
           const recyclableShips = Array.from(selectedShips).filter((id) => {
             const ship = ships.find((s) => s.id.toString() === id);
-            return ship && !ship.shipData.inFleet;
+            return ship && !ship.shipData.inFleet && !ship.shipData.isFreeShip;
           });
 
           return recyclableShips.length > 0 ? (

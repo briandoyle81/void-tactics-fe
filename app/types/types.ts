@@ -41,6 +41,8 @@ export interface ShipData {
   shiny: boolean;
   constructed: boolean;
   inFleet: boolean;
+  /** Free ships (claims, tutorial and mission rewards) can't be recycled. Read from the chain; ships built in the app leave it out. */
+  isFreeShip?: boolean;
   timestampDestroyed: bigint;
 }
 

@@ -8,7 +8,7 @@ import type { ShipCardData } from "../types/shipCardData";
 interface ShipCardSource extends ShipVisual {
   id: number | string;
   name: string;
-  shipData: ShipVisualData & { inFleet: boolean; cost: number };
+  shipData: ShipVisualData & { inFleet: boolean; cost: number; isFree?: boolean };
 }
 
 /** ShipCard's data for a web2 ship, or any number-native ship. */
@@ -22,6 +22,7 @@ export function toShipCardDataWeb2(ship: ShipCardSource): ShipCardData {
     isDestroyed: ship.shipData.timestampDestroyed > 0,
     timestampDestroyedSeconds: ship.shipData.timestampDestroyed,
     inFleet: ship.shipData.inFleet,
+    isFree: ship.shipData.isFree === true,
     cost: ship.shipData.cost,
     equipment: {
       mainWeapon: ship.equipment.mainWeapon,
@@ -49,6 +50,11 @@ export function toShipCardData(ship: Ship): ShipCardData {
     ...visual,
     id: ship.id.toString(),
     name: ship.name,
-    shipData: { ...visual.shipData, inFleet: ship.shipData.inFleet, cost: Number(ship.shipData.cost) },
+    shipData: {
+      ...visual.shipData,
+      inFleet: ship.shipData.inFleet,
+      cost: Number(ship.shipData.cost),
+      isFree: ship.shipData.isFreeShip === true,
+    },
   });
 }
