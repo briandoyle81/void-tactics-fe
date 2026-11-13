@@ -90,6 +90,10 @@ export interface FleetSelectionModalProps {
   onClose: () => void;
 
   showFirstFleetHint: boolean;
+  /** Replaces the "SELECT FLEET" heading (e.g. a roguelike combat node, whose roster is already chosen). */
+  title?: string;
+  /** A one-line hint under the header, in the first-fleet hint's style. */
+  hint?: string;
 
   fleetFilters: FleetFilters;
   onFleetFiltersChange: (updater: (prev: FleetFilters) => FleetFilters) => void;
@@ -141,6 +145,8 @@ export function FleetSelectionModal({
   leaveButton,
   onClose,
   showFirstFleetHint,
+  title,
+  hint,
   fleetFilters,
   onFleetFiltersChange,
   shownCount,
@@ -195,7 +201,7 @@ export function FleetSelectionModal({
         <div className="mb-2 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
           <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
             <h4 className="text-lg font-bold text-cyan whitespace-nowrap">
-              {participantHasFleet ? "VIEW FLEET" : "SELECT FLEET"}
+              {participantHasFleet ? "VIEW FLEET" : (title ?? "SELECT FLEET")}
             </h4>
             {participantHasFleet && (
               <span className="px-3 py-1 text-xs font-bold text-phosphor-green bg-phosphor-green/20 border border-phosphor-green rounded-none whitespace-nowrap">
@@ -315,6 +321,7 @@ export function FleetSelectionModal({
             {"// Creating your fleet first will make you go first in the game!"}
           </p>
         )}
+        {hint && !participantHasFleet && <p className="text-sm text-amber mb-4">{`// ${hint}`}</p>}
 
         {/* Filter Overlay */}
         {filtersExpanded && (

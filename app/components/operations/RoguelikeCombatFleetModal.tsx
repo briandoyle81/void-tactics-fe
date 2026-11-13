@@ -4,6 +4,7 @@ import React from "react";
 import { FleetSelectionModal } from "../FleetSelectionModal";
 import type { FleetShipListItemData } from "../FleetShipListPanel";
 import type { FleetFilters } from "../../utils/fleetFilters";
+import { DeployFleetTitleCard } from "./DeployFleetTitleCard";
 
 // Entering a run's combat node: the run's roster is already committed, so
 // every roster ship starts selected and the player only positions them.
@@ -122,6 +123,10 @@ export function RoguelikeCombatFleetModal<Id, S extends { traits: { variant: num
       isUnder90Percent={false}
       onClose={onClose}
       showFirstFleetHint={false}
+      // The roster is already chosen; this screen only sets where each ship
+      // starts the battle, so say that rather than "Select fleet".
+      title="SET STARTING POSITIONS"
+      hint="Drag your ships to where you want them when the battle starts."
       fleetFilters={fleet.fleetFilters}
       onFleetFiltersChange={fleet.setFleetFilters}
       shownCount={fleet.filteredShips.length}
@@ -132,7 +137,12 @@ export function RoguelikeCombatFleetModal<Id, S extends { traits: { variant: num
       shipsLoading={shipsLoading}
       isCreator={true}
       shipListItems={shipListItems}
-      mapDisplay={mapDisplay}
+      mapDisplay={
+        <div className="relative h-full w-full">
+          {mapDisplay}
+          <DeployFleetTitleCard />
+        </div>
+      }
       // The roster is fixed for combat entry: dropping a ship back on the
       // list doesn't remove it; only repositioning on the grid matters.
       onDropShip={() => {}}

@@ -356,6 +356,28 @@ body::before {
 .animate-result-title   { animation: result-title-in 0.45s ease-out 0.1s  both; }
 .animate-result-sub     { animation: result-title-in 0.45s ease-out 0.25s both; }
 
+/* Roguelike fleet placement: "Deploy your fleet" title card (DeployFleetTitleCard) */
+@keyframes deploy-title-card {
+  0%   { opacity: 0; transform: scale(1.06); }
+  12%  { opacity: 1; transform: scale(1); }
+  75%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+@keyframes deploy-title-card-still {
+  0%, 75% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+@keyframes deploy-title-wipe {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+.animate-deploy-title-card { animation: deploy-title-card 3s ease-out forwards; }
+.animate-deploy-title-wipe { animation: deploy-title-wipe 0.4s ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-deploy-title-card { animation-name: deploy-title-card-still; }
+  .animate-deploy-title-wipe { animation: none; width: 100%; }
+}
+
 /* Mobile portrait → landscape rotation hint */
 @keyframes phone-rotate {
   0%, 20% { transform: rotate(0deg); }
