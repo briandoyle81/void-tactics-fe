@@ -9,9 +9,15 @@
  *
  * Wallet SDK versions differ in how they take the message, so every
  * signature is verified against the public key before it's used, trying in
- * turn: the connector's signMessage(hex), the Solana signer's
- * signMessage(bytes) (external wallets), and signRawMessage(hex). A
- * signature that doesn't verify is never broadcast.
+ * turn:
+ *  1. signRawMessage({ message: hex }) — the Dynamic embedded wallet's
+ *     method for a 32-byte digest: it signs exactly those bytes.
+ *  2. The connector's signMessage(hex).
+ *  3. The Solana signer's signMessage(bytes), for external wallets only.
+ *     The embedded wallet's signer turns the bytes into a UTF-8 string
+ *     first (Buffer.from(bytes).toString()), so it would show the player
+ *     garbled text and sign that string instead of the hash.
+ * A signature that doesn't verify is never broadcast.
  */
 import { PublicKey, Signer, KeyType, baseDecode, baseEncode } from "near-api-js";
 import { bytesToHex, solanaAddressToPublicKeyBytes } from "./identity";
@@ -23,11 +29,17 @@ export interface DynamicSolanaWalletLike {
   getSigner?: () => Promise<unknown>;
 }
 
-type SignedLike = string | Uint8Array | { signature?: Uint8Array | string } | undefined | null;
+type SignedLike = string | Uint8Array | number[] | { signature?: Uint8Array | string } | undefined | null;
 
 function decodeSignature(signed: SignedLike): Uint8Array | null {
   if (!signed) return null;
-  if (signed instanceof Uint8Array) return signed;
+  // A copy: signatures from the wallet SDK can be Buffers or arrays from
+  // another bundle, which @noble's checks reject ("Uint8Array expected").
+  if (signed instanceof Uint8Array || ArrayBuffer.isView(signed)) {
+    const view = signed as ArrayBufferView;
+    return new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+  }
+  if (Array.isArray(signed)) return Uint8Array.from(signed as number[]);
   if (typeof signed === "object" && "signature" in signed) return decodeSignature(signed.signature as SignedLike);
   if (typeof signed !== "string") return null;
   const s = signed.trim();
@@ -41,7 +53,7 @@ function decodeSignature(signed: SignedLike): Uint8Array | null {
   // base58
   try {
     const b = baseDecode(s);
-    if (b.length === 64) return b;
+    if (b.length === 64) return Uint8Array.from(b);
   } catch {
     // not base58
   }
@@ -74,24 +86,27 @@ export class DynamicNearSigner extends Signer {
     return this.publicKey;
   }
 
-  protected async signBytes(bytes: Uint8Array): Promise<Uint8Array> {
+  protected async signBytes(input: Uint8Array): Promise<Uint8Array> {
+    const bytes = Uint8Array.from(input);
     const hex = bytesToHex(bytes);
     const connector = this.wallet.connector as
       | {
+          key?: string;
           signMessage?: (m: string) => Promise<SignedLike>;
           signRawMessage?: (a: { accountAddress: string; message: string }) => Promise<SignedLike>;
         }
       | undefined;
+    const isEmbedded = connector?.key === "dynamicwaas" || typeof connector?.signRawMessage === "function";
     const attempts: Array<() => Promise<SignedLike>> = [];
+    if (connector?.signRawMessage && bytes.length === 32) {
+      attempts.push(() => connector.signRawMessage!({ accountAddress: this.wallet.address, message: hex }));
+    }
     if (connector?.signMessage) attempts.push(() => connector.signMessage!(hex));
-    if (this.wallet.getSigner) {
+    if (this.wallet.getSigner && !isEmbedded) {
       attempts.push(async () => {
         const signer = (await this.wallet.getSigner!()) as { signMessage?: (b: Uint8Array) => Promise<SignedLike> };
         return signer.signMessage ? signer.signMessage(bytes) : null;
       });
-    }
-    if (connector?.signRawMessage && bytes.length === 32) {
-      attempts.push(() => connector.signRawMessage!({ accountAddress: this.wallet.address, message: hex }));
     }
 
     let lastError: unknown = null;

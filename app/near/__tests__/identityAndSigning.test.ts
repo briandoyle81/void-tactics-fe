@@ -100,6 +100,61 @@ describe("DynamicNearSigner", () => {
     ).rejects.toThrow(/User rejected/);
   });
 
+  it("signs the raw digest with the embedded wallet's signRawMessage first", async () => {
+    const { kp, address } = fakeSolanaWallet();
+    const calls: string[] = [];
+    const sig = await signWith(
+      {
+        address,
+        connector: {
+          signRawMessage: async ({ message }: { accountAddress: string; message: string }) => {
+            calls.push(`raw:${message.length}`);
+            return signHex(kp, message);
+          },
+          signMessage: async () => {
+            calls.push("message");
+            return "";
+          },
+        },
+      },
+      digest,
+    );
+    expect(kp.getPublicKey().verify(digest, sig)).toBe(true);
+    expect(calls).toEqual(["raw:64"]);
+  });
+
+  it("never uses the embedded wallet's signer, which signs the bytes as UTF-8 text", async () => {
+    const { kp, address } = fakeSolanaWallet();
+    let signerUsed = false;
+    await expect(
+      signWith(
+        {
+          address,
+          connector: {
+            signRawMessage: async () => {
+              throw new Error("raw signing unavailable");
+            },
+          },
+          getSigner: async () => {
+            signerUsed = true;
+            return { signMessage: async (b: Uint8Array) => ({ signature: kp.sign(b).signature }) };
+          },
+        },
+        digest,
+      ),
+    ).rejects.toThrow(/couldn't sign/);
+    expect(signerUsed).toBe(false);
+  });
+
+  it("accepts a signature from another bundle's array type", async () => {
+    const { kp, address } = fakeSolanaWallet();
+    const sig = await signWith(
+      { address, connector: { signMessage: async (hex: string) => Array.from(baseDecode(signHex(kp, hex))) as unknown as string } },
+      digest,
+    );
+    expect(kp.getPublicKey().verify(digest, sig)).toBe(true);
+  });
+
   it("accepts hex and base64 encoded signatures too", async () => {
     const { kp, address } = fakeSolanaWallet();
     const asHex = async (hex: string) => Buffer.from(baseDecode(signHex(kp, hex))).toString("hex");
