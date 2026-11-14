@@ -99,6 +99,7 @@ import { LobbyCardActions } from "./LobbyCardActions";
 import { lobbyStatusColor, lobbyStatusLabel } from "../utils/lobbyStatusDisplay";
 import { usePageVisible } from "../hooks/usePageVisible";
 import { setFastEventPolling } from "../utils/contractEventRouting";
+import { isNoAccount } from "../types/chain";
 
 /** Fallback lobby refresh while waiting on the other player (events cover the fast path). */
 const LOBBY_WAIT_POLL_MS = 10_000;
@@ -1994,12 +1995,11 @@ const Lobbies: React.FC = () => {
               address && lobby.players.joiner.toLowerCase() === address.toLowerCase(),
             );
             const hasJoiner =
-              lobby.players.joiner !== "0x0000000000000000000000000000000000000000";
+              !isNoAccount(lobby.players.joiner);
             const hasReservedJoiner =
               lobby.players.reservedJoiner &&
               typeof lobby.players.reservedJoiner === "string" &&
-              lobby.players.reservedJoiner !==
-                "0x0000000000000000000000000000000000000000";
+              !isNoAccount(lobby.players.reservedJoiner);
             // Matches pruneStaleLobby's own LobbyNotOpen/LobbyNotStaleYet
             // revert conditions exactly, so the badge/button only appear
             // when the call would actually succeed. See
@@ -2192,8 +2192,7 @@ const Lobbies: React.FC = () => {
                           return (
                             !found ||
                             !reserved ||
-                            reserved ===
-                              "0x0000000000000000000000000000000000000000"
+                            isNoAccount(reserved)
                           );
                         });
                         toast.success("Game rejected. Lobby is now open.");

@@ -15,6 +15,7 @@ import { GAME_MODE } from "../near/adapters/game";
 import { useShowPveGames } from "../hooks/useShowPveGames";
 import { isPveGame } from "../utils/pveGames";
 import { setUrlParams, useUrlParam } from "../utils/urlState";
+import { isNoAccount } from "../types/chain";
 
 function shortAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -51,7 +52,6 @@ const Games: React.FC = () => {
       setIsResettingCache(false);
     }
   };
-  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
   const TIE_ADDRESS = "0x0000000000000000000000000000000000000001";
 
   // Track if component has mounted (client-side only)
@@ -83,8 +83,8 @@ const Games: React.FC = () => {
   const sortedGames = useMemo(() => {
     const copy = [...games];
     copy.sort((a, b) => {
-      const aInProgress = a.metadata.winner === ZERO_ADDRESS ? 1 : 0;
-      const bInProgress = b.metadata.winner === ZERO_ADDRESS ? 1 : 0;
+      const aInProgress = isNoAccount(a.metadata.winner) ? 1 : 0;
+      const bInProgress = isNoAccount(b.metadata.winner) ? 1 : 0;
       if (aInProgress !== bInProgress) return bInProgress - aInProgress;
       const aStarted = Number(a.metadata.startedAt || 0n);
       const bStarted = Number(b.metadata.startedAt || 0n);
@@ -215,7 +215,7 @@ const Games: React.FC = () => {
       : null;
 
   const inboxItems: BattleInboxItem[] = visibleGames.map((game) => {
-    const isFinished = game.metadata.winner !== ZERO_ADDRESS;
+    const isFinished = !isNoAccount(game.metadata.winner);
     const isDraw = isFinished && game.metadata.winner === TIE_ADDRESS;
     const isPve = isPveGame(game);
     const isCreator = game.metadata.creator.toLowerCase() === address?.toLowerCase();

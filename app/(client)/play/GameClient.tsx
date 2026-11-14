@@ -50,6 +50,7 @@ import { GAME_CONTENT_MAX_WIDTH_CLASS } from "../../config/contentWidth";
 import { TOURNAMENTS_ENABLED } from "../../config/alpha";
 import { AI_USER_ID } from "../../config/aiUser";
 import { isPveGame } from "../../utils/pveGames";
+import { isNoAccount } from "@/app/types/chain";
 
 // Screens load when first opened, so the boot screen and Command Deck don't
 // download (and in dev, compile) the game view, tutorial, Lobbies, hangar,
@@ -445,7 +446,6 @@ export default function GameClient() {
     }
   }, [setActiveTab]);
 
-  const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
   const yourTurnGames =
     appMode === "web2"
       ? playerGamesWeb2
@@ -453,7 +453,7 @@ export default function GameClient() {
           .map((g) => ({ isPve: g.metadata.joiner === AI_USER_ID }))
       : isConnected
         ? playerGames
-            .filter((g) => g.metadata.winner === ZERO_ADDR && g.turnState.currentTurn === address)
+            .filter((g) => isNoAccount(g.metadata.winner) && g.turnState.currentTurn === address)
             .map((g) => ({ isPve: isPveGame(g) }))
         : [];
   // Your-turn counts (Battles tab marker, header bell, Command Deck) are for

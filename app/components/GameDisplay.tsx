@@ -142,6 +142,7 @@ const REPLAY_AUTOPLAY_PAUSE_MS = 600;
 import { boardMoveFromRaw, landShipPositions, type RawMove, shipStatusIn } from "../utils/movePlaybackBoard";
 import { registerGameMoves } from "../utils/gameMoveLogs";
 import { openClientTab } from "../utils/clientNavigation";
+import { isNoAccount } from "../types/chain";
 
 /** The web3 held board with landed moves applied (useHeldBoard). */
 function landWeb3Positions(game: GameDataView, landed: BoardMove[], activeKey: string | null): GameDataView {
@@ -2680,7 +2681,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         })
       : undefined;
   const mobileTurnLabel =
-    game.metadata.winner !== "0x0000000000000000000000000000000000000000"
+    !isNoAccount(game.metadata.winner)
       ? game.metadata.winner === address
         ? "Victory"
         : "Defeat"
@@ -2993,7 +2994,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               {mobileLeftPanelTab === "status" ? (
                 <div className="space-y-2">
                   <GameScoreTiles score={scoreView} />
-                  {game.metadata.winner !== "0x0000000000000000000000000000000000000000" ? (
+                  {!isNoAccount(game.metadata.winner) ? (
                     <div className="text-sm text-text-primary">
                       Result: {game.metadata.winner === address ? "Victory" : "Defeat"}
                     </div>
@@ -3165,10 +3166,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
                 {/* Replay banner and controls (a finished game or a replay opened
                     from Battles), as on desktop. */}
                 {(isReplaying ||
-                  game.metadata.winner !== "0x0000000000000000000000000000000000000000") &&
+                  !isNoAccount(game.metadata.winner)) &&
                   renderReplayOverlay()}
                 {canFlee &&
-                game.metadata.winner === "0x0000000000000000000000000000000000000000" ? (
+                isNoAccount(game.metadata.winner) ? (
                   <div
                     className={`pointer-events-none absolute top-1 z-[230] ${
                       isMobileJoiner ? "left-1" : "right-1"
@@ -3551,8 +3552,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
               <AudioControl />
             </div>
             {/* Turn Indicator and Countdown / Seize Turn */}
-            {game.metadata.winner ===
-              "0x0000000000000000000000000000000000000000" &&
+            {isNoAccount(game.metadata.winner) &&
               renderTurnTimerPanel()}
           </div>
           {/* Scores box aligned left, to the right of title */}
@@ -3741,8 +3741,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
           {/* Debug panel (debug mode only, top-right). */}
           <div className="absolute right-0 top-0 z-[225] pointer-events-none flex items-start justify-end">
             <div className="pointer-events-auto flex flex-col items-end pt-1 pr-1">
-              {game.metadata.winner ===
-                "0x0000000000000000000000000000000000000000" &&
+              {isNoAccount(game.metadata.winner) &&
                 debugMode &&
                 (isDebugPanelMinimized ? (
                     <button

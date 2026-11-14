@@ -1,5 +1,6 @@
 import type { GameDataView } from "../types/types";
 import type { GameScoreData, GameWinnerResult } from "../types/gameDisplayData";
+import { isNoAccount } from "../types/chain";
 
 // Boundary adapters from web3's bigint/address game data to the
 // number/string-native display shapes in app/types/gameDisplayData.ts. See
@@ -7,7 +8,6 @@ import type { GameScoreData, GameWinnerResult } from "../types/gameDisplayData";
 // in the shared display components. Web2 code never needs these — its data
 // is already display-native (see app/utils/gameDisplayDataWeb2.ts).
 
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
 
 export function toGameScoreData(
   game: Pick<GameDataView, "metadata" | "creatorScore" | "joinerScore" | "maxScore">,
@@ -25,6 +25,7 @@ export function toGameWinnerResult(
   winner: string,
   playerAddress: string | undefined,
 ): GameWinnerResult {
-  if (winner === ZERO_ADDR) return null;
+  // No winner yet: "" on NEAR (the EVM zero address is still accepted).
+  if (isNoAccount(winner)) return null;
   return winner === playerAddress ? "me" : "opponent";
 }
