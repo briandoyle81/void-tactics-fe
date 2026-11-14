@@ -1,16 +1,95 @@
-# Void Tactics — Frontend
+# Void Tactics — Frontend (NEAR port)
 
-> **Note for judges:** This is the original Void Tactics frontend repository, submitted with its full commit history. The contracts are submitted the same way ([briandoyle81/void-tactics-contracts](https://github.com/briandoyle81/void-tactics-contracts)). Everything described under "What's New" below was committed on or after **2026-09-14**, the hackathon start date. The first commit in the hackathon window is `a62c052` (2026-09-18); everything up to and including `719cd33` (2026-09-08) predates it. Run `git log --since=2026-09-14` to see exactly what was built during the event. Work from a short-lived intermediate copy of this repo (`void-tactics-fe-eth-ny-26`) was fast-forwarded back into this one, so every commit keeps its original hash and date.
+> **For NEAR hackathon judges: please read this first.** We found out about this hackathon at the last minute. Void Tactics was a large, working EVM game (about 99 Solidity contracts on Base Sepolia and a Next.js client built around wagmi and viem), and this submission is a hail mary: can we move the whole thing to native NEAR in about 36 hours? This branch is the result. The core game works end to end on NEAR testnet, and we say below exactly what was cut and what's still missing.
 
-**Live Deployment:** https://www.voidtactics.xyz
-**Frontend Repo:** https://github.com/briandoyle81/void-tactics-fe
-**Contracts Repo:** https://github.com/briandoyle81/void-tactics-contracts
+**Live NEAR build:** https://warpflow-git-near-migration-experiment-briandoyle81s-projects.vercel.app/
+**Branch:** `near-migration-experiment` (this repo) and `near-migration-experiment` in [briandoyle81/void-tactics-contracts](https://github.com/briandoyle81/void-tactics-contracts) (the Rust contracts are in its `near/` folder, with their own README).
+**What was built during the hackathon:** everything after commit `551228e` (2026-11-13 08:55 ET), the last EVM commit. `git diff --stat 551228e` shows it: about 465 files changed, 22,000 lines added, and 71,000 removed (most of the removals are the EVM chain layer, contract ABIs, and features we cut).
+**Network:** NEAR testnet, game contract `game.void-tactics.testnet`, renderer `art.void-tactics.testnet`.
 
-Void Tactics is a turn-based tactical space combat game where players build fleets of NFT ships and fight on a 17×11 grid. Every move and every outcome is resolved on-chain. The frontend is a Next.js 16 App Router application (wagmi, viem, TanStack Query and Tailwind) talking directly to EVM contracts on Base Sepolia.
+Void Tactics is a turn-based tactical space combat game. Players build fleets of NFT ships and fight on a 17×11 grid against other players or a campaign AI, and every move is resolved onchain.
 
 ---
 
-## What's New (Colosseum 9/14-10/12)
+## The NEAR Hackathon Attempt
+
+### What we tried to do
+
+Port the whole game, not a demo slice: ships, free claims, the store, the drone core economy, single-player missions, PvP lobbies, the roguelike campaign, and the Ops Console admin tools. We cut three features to fit the time: tournaments, the UTC lottery, and the Uniswap v4 sell hook.
+
+The rule we set ourselves was to swap the chain layer underneath the existing screens instead of building new NEAR screens. The game board, fleet builder, run map, store, and admin screens are the same components as the EVM version. What changed is how they read, write, sign, and stay fresh.
+
+### What changed in the frontend
+
+- **A new chain layer, `app/near/`.** Views, transactions, error decoding, account identity, and adapters that turn the contract's JSON into the app's existing types. The contract's ABI (`cargo near abi`) is turned into TypeScript by `near-scripts/gen-near-types.ts`, so every call's arguments are type-checked against the contract. That check caught two calls that would have failed onchain.
+- **Sign-in stays on Dynamic, with no wallet popups during play.** A Dynamic Solana embedded wallet is an Ed25519 key, which is exactly what a NEAR implicit account is, so the player's NEAR account is derived from the wallet they already sign in with. On first sign-in the app funds the account from a testnet faucet route, adds a browser session key (a function-call key limited to the game contract), and pays the storage deposit. After that, moves, claims, and matches sign with the session key and never prompt. Calls that attach NEAR, such as buying ships, are signed by the Dynamic wallet.
+- **No event logs, so polling by change counters.** NEAR RPC can't search logs the way the EVM client did. The contract keeps two counters, one per game and one per player, and the client polls those small numbers. It only re-reads a board, a ship list, or a balance when its counter moves. AI moves are animated from the `ai_turns` event and the board before and after.
+- **Removed:** wagmi, viem (except in the card checkout), gas sponsorship, the EVM gas faucet, and per-chain configuration. Lint now blocks EVM imports.
+
+### What's verified
+
+- `npx tsc --noEmit -p .` is clean, `npm run lint` has no errors, and `npx vitest run` passes (631 tests, including tests for account derivation, Dynamic signature checking, event parsing, and the NEAR adapters).
+- Read-only checks against the live testnet contract: all 72 maps decode, the 35-node roguelike campaign loads, 64 AI ship configs, settings, price tiers, ship stats from the live attribute tables, the renderer's art, and the change counters.
+- On the contracts side, the Rust rules engine replays 16 full campaign matches (743 steps) from the Solidity contracts and must match the board after every step, AI decisions included. That's documented in the contracts repo's `near/README.md`.
+
+### Tested end to end in the browser
+
+On the live build, against NEAR testnet:
+
+1. Sign in with a Dynamic embedded wallet (email code).
+2. Account activation: the faucet funds the new implicit account, the session key is added, and the storage deposit is paid.
+3. Claim free ships; they construct themselves a block or two later.
+4. Build a fleet and play a mission against the onchain AI, with no wallet prompts for moves.
+5. Buy ships in the store with NEAR, signed by the Dynamic wallet. That's the step we were least sure of going in: the wallet signs the transaction's sha256 hash through Solana message signing, and the client verifies the signature before sending it.
+
+### Known gaps
+
+- **Replay of past games.** The contract now writes the whole board into every event that changes a game, so an indexer could serve full replays, but we haven't built that indexer. Replay covers only moves the player's own device saw.
+- **Card checkout is off.** `/api/flow/fulfill` mints through the contract's Minter role, but no server account has that role on testnet yet.
+- **Tournaments, the lottery, and the Uniswap sell hook** are not ported.
+
+### How the pieces fit
+
+| Piece | Where |
+|---|---|
+| Chain layer (views, sends, sync, onboarding) | `app/near/` |
+| Session key and Dynamic signer | `app/near/session.tsx`, `app/near/dynamicSigner.ts`, `app/near/sessionKey.ts` |
+| Polling by change counters | `app/near/sync/NearSyncHost.tsx` |
+| Generated contract types | `app/near/generated/`, from `app/near/abi/*.json` |
+| Privileged server calls (faucet, Selfie Check verifier, card mint) | `app/api/faucet/near/`, `app/api/selfie-check/verify/`, `app/api/flow/fulfill/` |
+| Contract-side ids for seed content | `app/near/deployments/testnet.json` (a copy of the contracts repo's record) |
+
+---
+
+## The Game Itself
+
+### Fleet Building
+
+Players assemble fleets from their owned NFT ships, staying within a cost budget. Ships have procedurally generated stats (accuracy, hull, speed) and equipment (weapon, armor or shields, special). Expensive ships are more capable but allow fewer slots; cheaper ships give more numbers at the cost of individual power. Fleets are committed before the game starts.
+
+### Combat
+
+Turns alternate between players. Each turn, a player selects a ship, moves it within range, and chooses an action: shoot, use a special ability, ram, retreat, or hold. Ships and terrain block movement and line of sight. A ship knocked to 0 HP is disabled: it stays on the board, can be repaired or finished off, and takes reactor damage each round until it's destroyed.
+
+Destruction is permanent. The NFT still exists, but the destroyed flag is set in the contract and the ship can't join future fleets. Players decide in real time whether to spend a ship to win a round or pull it back and fight another day.
+
+### Scoring
+
+Resource tiles award points to the side holding them at the end of each round (some pay out only once). Reaching the point threshold wins the game, and so does destroying or driving off the enemy fleet. Maps define their own terrain, scoring tiles and deployment zones.
+
+### Onboarding
+
+First Contact, a fully scripted battle (simulated locally, no gas), teaches movement, inspecting ships, nebulae, scoring, shooting, EMPs, reactor damage and the choice between saving a ship and winning the round. Completing it unlocks a claimable ship reward onchain.
+
+---
+
+---
+
+## Before NEAR: the EVM Game (Colosseum, 9/14–10/12)
+
+Everything in this section was built for an earlier hackathon, on the EVM version of the game, and isn't part of the NEAR submission. It's here because it's what we ported.
+
+> **Note for Colosseum judges:** This is the original Void Tactics frontend repository, submitted with its full commit history. The contracts are submitted the same way ([briandoyle81/void-tactics-contracts](https://github.com/briandoyle81/void-tactics-contracts)). Everything described under "What's New" below was committed on or after **2026-09-14**, the hackathon start date. The first commit in the hackathon window is `a62c052` (2026-09-18); everything up to and including `719cd33` (2026-09-08) predates it. Run `git log --since=2026-09-14` to see exactly what was built during the event. Work from a short-lived intermediate copy of this repo (`void-tactics-fe-eth-ny-26`) was fast-forwarded back into this one, so every commit keeps its original hash and date.
 
 Between 2026-09-14 and 2026-10-12 the frontend received about 50 commits. The contracts side (rules overhaul, per-variant AI, roguelike progression, upgradeable-by-design infrastructure) is described in the contracts repo README. This section covers the frontend: a full redesign of the game client, a playable roguelike campaign with a story told through in-mission dialog, a play-first onboarding path, and the UI for the new combat rules.
 
@@ -62,42 +141,20 @@ Between 2026-09-14 and 2026-10-12 the frontend received about 50 commits. The co
 
 ---
 
-## The Game Itself
-
-### Fleet Building
-
-Players assemble fleets from their owned NFT ships, staying within a cost budget. Ships have procedurally generated stats (accuracy, hull, speed) and equipment (weapon, armor or shields, special). Expensive ships are more capable but allow fewer slots; cheaper ships give more numbers at the cost of individual power. Fleets are committed before the game starts.
-
-### Combat
-
-Turns alternate between players. Each turn, a player selects a ship, moves it within range, and chooses an action: shoot, use a special ability, ram, retreat, or hold. Ships and terrain block movement and line of sight. A ship knocked to 0 HP is disabled: it stays on the board, can be repaired or finished off, and takes reactor damage each round until it's destroyed.
-
-Destruction is permanent. The NFT still exists, but the destroyed flag is set in the contract and the ship can't join future fleets. Players decide in real time whether to spend a ship to win a round or pull it back and fight another day.
-
-### Scoring
-
-Resource tiles award points to the side holding them at the end of each round (some pay out only once). Reaching the point threshold wins the game, and so does destroying or driving off the enemy fleet. Maps define their own terrain, scoring tiles and deployment zones.
-
-### Onboarding
-
-First Contact, a fully scripted battle (simulated locally, no gas), teaches movement, inspecting ships, nebulae, scoring, shooting, EMPs, reactor damage and the choice between saving a ship and winning the round. Completing it unlocks a claimable ship reward on Base Sepolia.
-
----
-
 ## Network
 
-The live game runs on **Base Sepolia** (chain id 84532). Contract addresses are in `app/contracts/base-sepolia/deployed_addresses.json`. The client also has configuration for Flow Testnet, Ronin Saigon and Xai Testnet v2 (`app/config/networks.ts`), but those chains are disabled for now and their deployments predate this hackathon.
+This branch runs on **NEAR testnet** only: `game.void-tactics.testnet` (ships, tokens, all game modes) and `art.void-tactics.testnet` (view-only ship art). The EVM version on Base Sepolia lives on `master` and is what [voidtactics.xyz](https://www.voidtactics.xyz) serves.
 
 ---
 
 ## Stack
 
 - **Next.js 16** (App Router, Turbopack)
-- **wagmi 2 + viem 2** — chain interaction and contract reads/writes
-- **Dynamic** — embedded wallets, passkeys, authentication and Flow payments
+- **near-api-js 7** — RPC, transactions, and signing (only inside `app/near/` and `app/api/`)
+- **Dynamic** — sign-in and the Solana embedded wallet that backs the player's NEAR account
 - **TanStack React Query 5** — server and chain state
 - **Tailwind CSS 4**
-- **Prisma + Postgres (Neon)** — web2 mode data
+- **Prisma + Postgres (Neon)** — web2 mode data and the faucet's once-only records
 - **PostHog** — analytics
 - **Vitest** — unit tests (`npx vitest run`)
 
@@ -108,4 +165,14 @@ npm install
 npm run dev
 ```
 
-Requires `.env` with RPC URLs, Dynamic API keys, the ship minter private key and `DATABASE_URL`. See `.env.example` if present, or the CLAUDE.md in the root for variable names.
+Set these in `.env.local`:
+
+- `NEXT_PUBLIC_NEAR_DYNAMIC_ENVIRONMENT_ID` — a Dynamic project with Solana embedded wallets turned on
+- `NEXT_PUBLIC_NEAR_RPC_URL` — optional, defaults to `https://test.rpc.fastnear.com`
+- `NEAR_FAUCET_ACCOUNT_ID`, `NEAR_FAUCET_PRIVATE_KEY` — funds new accounts on testnet
+- `NEAR_VERIFIER_ACCOUNT_ID`, `NEAR_VERIFIER_PRIVATE_KEY` — Selfie Check verification
+- `DATABASE_URL` — for the faucet's records and web2 mode
+
+`CLAUDE.md` lists every variable, including the optional card checkout ones.
+
+After a contract change, copy the ABI from the contracts repo into `app/near/abi/` and run `npx tsx near-scripts/gen-near-types.ts`.
