@@ -6,15 +6,15 @@ import { renderShip } from "../utils/shipRenderer";
 import { ShipSpecControls } from "./ship/ShipSpecControls";
 import { toShipVisual } from "../utils/toShipVisual";
 import { useOwnedShips } from "../hooks/useOwnedShips";
-import { useAccount, useReadContract } from "wagmi";
-import { erc20Approval } from "../utils/approvalSteps";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useNearView } from "@/app/near/useNearView";
+import { useTokenBalance } from "@/app/near/useTokenBalance";
+import { GAS_HEAVY, TOKEN_UTC } from "@/app/near/config";
+import { formatUnits18 } from "@/app/near/codec";
+import { fromEquipment } from "@/app/near/adapters/ship";
 import { TransactionButton } from "./TransactionButton";
-import { CONTRACT_ADDRESSES, CONTRACT_ABIS } from "../config/contracts";
 import { toast } from "react-hot-toast";
-import { formatEther } from "viem";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import { useMaxSpecialSlot } from "../hooks/useGameContract";
-import { invalidateShipAttributesByIdsCache } from "../utils/shipAttributesLocalCache";
 
 interface ShipConstructorProps {
   initialShipId?: bigint | null;
@@ -28,8 +28,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
   initialMode = "customize",
   onClose,
 }) => {
-  const { address } = useAccount();
-  const selectedChainId = useSelectedChainId();
+  const { address } = useChainAccount();
   const { ships, isLoading: isLoadingShips, refetch: refetchShips } = useOwnedShips();
   const [mode, setMode] = useState<"create" | "customize">(
     initialShipId != null ? "customize" : initialMode,
@@ -285,52 +284,32 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
     variant,
   ]);
 
-  // Read the onchain UTC cost to modify this ship via DroneYard
-  const { data: modificationCost, refetch: refetchModificationCost } =
-    useReadContract({
-      address: CONTRACT_ADDRESSES.DRONE_YARD as `0x${string}`,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      abi: CONTRACT_ABIS.DRONE_YARD as any,
-      functionName: "calculateCostToModify",
-      args:
-        mode === "customize" && selectedShipId && buildDroneYardShipStruct
-          ? [selectedShipId, buildDroneYardShipStruct]
-          : undefined,
-      query: {
-        enabled:
-          mode === "customize" &&
-          !!selectedShipId &&
-          !!buildDroneYardShipStruct,
-      },
-    });
-
-  // Read UTC allowance and balance for DroneYard
-  const { data: utcBalance } = useReadContract({
-    address: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as any,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: mode === "customize" && !!address },
-  });
-
-  // DroneYard's UTC allowance is approved first if it's short, then the
-  // modification goes straight after (one click on CUSTOMIZE SHIP).
-  const modifyApprovals = React.useMemo(
+  // The ship's full desired end state, as get_modification_cost and
+  // modify_ship take it (DroneYard). Name and colors aren't modifiable.
+  const modifyArgs = useMemo(
     () =>
-      address && modificationCost
-        ? [
-            erc20Approval({
-              token: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
-              owner: address,
-              spender: CONTRACT_ADDRESSES.DRONE_YARD as `0x${string}`,
-              amount: modificationCost as bigint,
-              loadingText: `[APPROVING ${formatEther(modificationCost as bigint)} UTC…]`,
-            }),
-          ]
-        : undefined,
-    [address, modificationCost],
+      mode === "customize" && selectedShipId && buildDroneYardShipStruct
+        ? {
+            ship_id: selectedShipId.toString(),
+            equipment: fromEquipment({ mainWeapon, armor, shields, special }),
+            accuracy,
+            hull,
+            speed,
+            variant,
+            shiny,
+          }
+        : null,
+    [mode, selectedShipId, buildDroneYardShipStruct, mainWeapon, armor, shields, special, accuracy, hull, speed, variant, shiny],
   );
+
+  // The UTC cost of this modification (debited directly by modify_ship; no approval step).
+  const { data: modificationCostRaw, refetch: refetchModificationCost } = useNearView(
+    "get_modification_cost",
+    modifyArgs,
+    { staleTime: 10_000 },
+  );
+  const modificationCost = modificationCostRaw != null ? BigInt(modificationCostRaw) : undefined;
+  const { data: utcBalance } = useTokenBalance(address, TOKEN_UTC, mode === "customize");
 
   // Calculate a human-readable list of changes (purely UI; cost is from contract)
   const changes = useMemo(() => {
@@ -765,28 +744,17 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                 >
                   <TransactionButton
                     transactionId={`customize-ship-${selectedShipId}-${address}`}
-                    contractAddress={
-                      CONTRACT_ADDRESSES.DRONE_YARD as `0x${string}`
-                    }
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    abi={CONTRACT_ABIS.DRONE_YARD as any}
-                    functionName="modifyShip"
-                    args={[selectedShipId, buildDroneYardShipStruct]}
-                    approvals={modifyApprovals}
+                    call={modifyArgs ? { method: "modify_ship", args: modifyArgs, gas: GAS_HEAVY } : null}
                     className="w-full px-6 py-3 rounded-none border-2 border-amber text-amber hover:border-amber hover:text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     loadingText="[CUSTOMIZING SHIP…]"
                     errorText="[ERROR CUSTOMIZING]"
                     disabled={
                       !modificationCost ||
                       !utcBalance ||
-                      (utcBalance as bigint) < (modificationCost as bigint)
+                      utcBalance < modificationCost
                     }
                     onSuccess={async () => {
                       toast.success("Ship customized successfully!");
-                      invalidateShipAttributesByIdsCache(
-                        selectedChainId,
-                        selectedShipId ?? undefined,
-                      );
                       await Promise.all([
                         refetchModificationCost?.(),
                         refetchShips(),
@@ -808,7 +776,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                     }}
                     validateBeforeTransaction={() => {
                       if (!address) {
-                        return "Please connect your wallet";
+                        return "Please sign in first";
                       }
                       if (!selectedShipId) {
                         return "Please select a ship to customize";
@@ -819,10 +787,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                       if (!modificationCost) {
                         return "Cost not available";
                       }
-                      if (
-                        !utcBalance ||
-                        (utcBalance as bigint) < (modificationCost as bigint)
-                      ) {
+                      if (!utcBalance || utcBalance < modificationCost) {
                         return "Insufficient UTC balance";
                       }
                       return true;
@@ -910,7 +875,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                         <div className="mt-4 pt-3 border-t border-gunmetal">
                           <div className="text-sm font-bold text-amber font-mono">
                             COST TO MODIFY (ONCHAIN):{" "}
-                            {formatEther(modificationCost as bigint)} UTC
+                            {formatUnits18(modificationCost)} UTC
                           </div>
                         </div>
                       )}

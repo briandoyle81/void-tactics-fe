@@ -1,12 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { TOURNAMENTS_ENABLED } from "../../config/alpha";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { useRoguelikeRunView } from "../../hooks/useGameLens";
 import { useRoguelikeGraphWithContent } from "../../hooks/useRoguelikeNodeMap";
 import { useRunRosterHullWeb3 } from "../../hooks/useRunRosterHull";
-import { useTournamentList } from "../../hooks/useTournamentList";
 import { RoguelikeNodeKind, RunStatus } from "../../types/roguelike";
 import { TournamentState } from "../../types/types";
 import { buildRunPips } from "../../utils/runProgress";
@@ -30,7 +28,7 @@ const NO_SHIP_IDS: bigint[] = [];
 export function CommandDeckWeb3(
   props: Omit<CommandDeckProps, "operations" | "openTournamentCount" | "featuredPack">,
 ) {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   // Run, roster HP and cleared nodes in one GameLens call.
   const { run, defeatedByNodeId, isLoading: runLoading } = useRoguelikeRunView(address);
   const activeRun = run?.status === RunStatus.Active ? run : undefined;
@@ -72,7 +70,8 @@ export function CommandDeckWeb3(
   }, [runLoading, activeRun, nodes, defeatedByNodeId, rosterIds, hullByShipId]);
 
   // A count only: skip the list's live event watchers (they poll the RPC).
-  const { tournaments } = useTournamentList({ watch: false, enabled: TOURNAMENTS_ENABLED });
+  // Tournaments aren't on the NEAR contract (web2 keeps its own).
+  const tournaments: { state: TournamentState }[] = [];
   const openTournamentCount = tournaments.filter(
     (t) => t.state === TournamentState.Registration || t.state === TournamentState.Active,
   ).length;

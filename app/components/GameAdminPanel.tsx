@@ -1,23 +1,21 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { TransactionButton } from "./TransactionButton";
-import { useGameContract, useGameOwner, useHealCapPercent } from "../hooks/useGameContract";
+import { useGameOwner, useHealCapPercent } from "../hooks/useGameContract";
 
 const inputClass =
   "w-full px-3 py-2 bg-near-black border text-cyan focus:outline-none focus:ring-2 focus:ring-cyan";
 const inputStyle = { borderRadius: 0, borderColor: "var(--color-cyan)" } as const;
 
-// Owner-only Game admin control, gated on Ownable's owner() directly
-// (same pattern as LobbyAdminPanel.tsx). Currently just the global heal
-// cap (Game.setHealCapPercent / SpecialEffectsLib) — caps any heal effect,
-// in any mode, at a % of a ship's max HP.
+// Owner-only game setting: the global heal cap (set_heal_cap_percent) —
+// caps any heal effect, in any mode, at a % of a ship's max HP. Starts
+// from the current value (get_settings).
 export function GameAdminPanel() {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const { data: owner, isLoading: ownerLoading } = useGameOwner();
-  const { address: gameAddress, abi } = useGameContract();
-  const { data: healCapPercent, isLoading: capLoading, refetch } = useHealCapPercent();
+  const { data: healCapPercent, isLoading: capLoading } = useHealCapPercent();
 
   const [percent, setPercent] = useState("");
 
@@ -27,8 +25,7 @@ export function GameAdminPanel() {
     }
   }, [healCapPercent]);
 
-  const isOwner =
-    !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
+  const isOwner = !!address && owner === address;
 
   if (ownerLoading || !isOwner) return null;
 
@@ -66,15 +63,8 @@ export function GameAdminPanel() {
         </div>
         <TransactionButton
           transactionId="game-set-heal-cap-percent"
-          contractAddress={gameAddress}
-          abi={abi}
-          functionName="setHealCapPercent"
-          args={valid ? [parsedPercent] : []}
-          disabled={!valid}
+          call={valid ? { method: "set_heal_cap_percent", args: { percent: parsedPercent } } : null}
           validateBeforeTransaction={() => valid || "Enter a whole number 0-100"}
-          onSuccess={async () => {
-            await refetch();
-          }}
           className="px-4 py-2 border-2 border-cyan text-cyan hover:bg-cyan/10 font-mono font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
         >
           [SET HEAL CAP]

@@ -1,62 +1,53 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePublicClient, useReadContract } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
-import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNearSession } from "../near/session";
+import { GAS_HEAVY } from "../near/config";
+import { invalidateRoguelikeRunQueries } from "./useRoguelikeRun";
+import { useGameSettings } from "../near/useGameSettings";
+import type { GameSettings } from "../near/generated/voidTactics";
 
-const CHAIN_ID = baseSepolia.id;
-const ROGUELIKE_RESUPPLY_ABI = CONTRACT_ABIS.ROGUELIKE_RESUPPLY as Abi;
-export const ROGUELIKE_RESUPPLY_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[
-  CHAIN_ID
-].ROGUELIKE_RESUPPLY as `0x${string}`;
+const selectRepairCost = (s: GameSettings) => BigInt(s.repair_cost_per_hp);
 
-export function useRoguelikeResupplyContract() {
-  return {
-    address: ROGUELIKE_RESUPPLY_ADDRESS,
-    abi: ROGUELIKE_RESUPPLY_ABI,
-    chainId: CHAIN_ID,
-  };
-}
-
-/** Global admin-set rate: repair cost = missingHP * repairCostPerHP(), in UTC wei. Read live for a price preview before the player confirms. */
+/** Repair cost per missing HP (UTC, 18 decimals), from get_settings. */
 export function useRepairCostPerHP() {
-  const result = useReadContract({
-    address: ROGUELIKE_RESUPPLY_ADDRESS,
-    abi: ROGUELIKE_RESUPPLY_ABI,
-    chainId: CHAIN_ID,
-    functionName: "repairCostPerHP",
-  });
-  return { ...result, data: result.data as bigint | undefined };
+  return useGameSettings(selectRepairCost);
 }
 
-// resupplyRepair needs a UniversalCredits.approve step first — built as a
-// TransactionButton approve-then-act pair directly in the resupply UI
-// (same pattern as DroneStorefront.tsx/LobbyCreateButton.tsx), not wrapped
-// here. resupplyModifyRoster needs no approval, so it's a plain write like
-// useRoguelikeMatch's functions.
+/**
+ * Resupply-node actions. Repairs debit UTC directly (no approval step on
+ * NEAR); roster changes cost nothing.
+ */
 export function useRoguelikeResupply() {
-  const { writeContractAsync } = useSponsoredWriteContract();
-  const publicClient = usePublicClient({ chainId: CHAIN_ID });
+  const { send } = useNearSession();
+  const queryClient = useQueryClient();
 
   const resupplyModifyRoster = useCallback(
     async (shipIdsToAdd: bigint[], shipIdsToRemove: bigint[]) => {
-      const hash = await writeContractAsync({
-        address: ROGUELIKE_RESUPPLY_ADDRESS,
-        abi: ROGUELIKE_RESUPPLY_ABI,
-        functionName: "resupplyModifyRoster",
-        args: [shipIdsToAdd, shipIdsToRemove],
-        chainId: CHAIN_ID,
+      const receipt = await send({
+        method: "resupply_modify_roster",
+        args: { add: shipIdsToAdd.map(String), remove: shipIdsToRemove.map(String) },
+        gas: GAS_HEAVY,
       });
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash });
-      }
-      return hash;
+      void invalidateRoguelikeRunQueries(queryClient);
+      return receipt;
     },
-    [publicClient, writeContractAsync],
+    [send, queryClient],
   );
 
-  return { resupplyModifyRoster };
+  const resupplyRepair = useCallback(
+    async (shipIds: bigint[]) => {
+      const receipt = await send({
+        method: "resupply_repair",
+        args: { ship_ids: shipIds.map(String) },
+        gas: GAS_HEAVY,
+      });
+      void invalidateRoguelikeRunQueries(queryClient);
+      return receipt;
+    },
+    [send, queryClient],
+  );
+
+  return { resupplyModifyRoster, resupplyRepair };
 }

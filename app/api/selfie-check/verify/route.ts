@@ -1,9 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createWalletClient, createPublicClient, http, isAddress, isHex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { baseSepolia } from "viem/chains";
 import { WORLD_RP_ID, WORLD_SELFIE_CHECK_ACTION } from "@/app/config/tournament";
-import { CONTRACT_ADDRESSES_BY_CHAIN_ID } from "@/app/config/contracts";
+import { serverAccount, serverCall, safeErrorMessage } from "@/app/near/server";
+
+const isHex = (v: string) => /^0x[0-9a-fA-F]*$/.test(v);
+/** A NEAR account id (implicit 64-hex or named). */
+const isNearAccount = (v: string) => /^(([a-z\d]+[-_])*[a-z\d]+\.)*([a-z\d]+[-_])*[a-z\d]+$/.test(v) && v.length >= 2 && v.length <= 64;
 
 // Selfie Check has no onchain proof-verification path (unlike Orb-level World ID, which
 // Tournament.sol verifies onchain directly) — verification is this one off-chain REST call
@@ -18,25 +19,12 @@ import { CONTRACT_ADDRESSES_BY_CHAIN_ID } from "@/app/config/contracts";
 // rp_context, same rp_id) — v2 was the wrong endpoint from the start, not a config gap.
 const WORLD_VERIFY_URL = `https://developer.world.org/api/v4/verify/${WORLD_RP_ID}`;
 
-// Same backend wallet already authorized to mint ships (app/api/flow/fulfill/route.ts) is also
-// granted setAuthorizedVerifier on SelfieCheckEligibilityProvider per
-// docs/eth-global-remote/eth-global-remote-strategy-v2.md's Pick 2 section — reusing it rather
-// than provisioning a second backend signer, per that explicit decision.
-const rawKey = process.env.SHIP_MINTER_PRIVATE_KEY ?? "";
-const VERIFIER_KEY = (rawKey.startsWith("0x") ? rawKey : `0x${rawKey}`) as `0x${string}`;
-
-const MARK_VERIFIED_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "_player", type: "address" },
-      { internalType: "bytes32", name: "_nullifierHash", type: "bytes32" },
-    ],
-    name: "markVerified",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
+// The Verifier role's account on the game contract (mark_verified is
+// Verifier-gated). A backend is allowed here (CLAUDE.md): the player's own
+// key can't call it.
+//   NEAR_VERIFIER_ACCOUNT_ID, NEAR_VERIFIER_PRIVATE_KEY ("ed25519:...")
+const VERIFIER_ACCOUNT = process.env.NEAR_VERIFIER_ACCOUNT_ID ?? "";
+const VERIFIER_KEY = process.env.NEAR_VERIFIER_PRIVATE_KEY ?? "";
 
 interface WorldVerifyResultItem {
   identifier: string;
@@ -67,14 +55,14 @@ export async function POST(req: NextRequest) {
     proof?: string;
   };
 
-  if (!player || !isAddress(player)) {
-    return NextResponse.json({ error: "Missing or invalid player address" }, { status: 400 });
+  if (!player || !isNearAccount(player)) {
+    return NextResponse.json({ error: "Missing or invalid player account" }, { status: 400 });
   }
   if (!nonce || !merkle_root || !nullifier_hash || !proof) {
     return NextResponse.json({ error: "Missing proof fields" }, { status: 400 });
   }
   if (!isHex(nullifier_hash) || nullifier_hash.length !== 66) {
-    // markVerified takes bytes32 — reject anything that can't be one up front.
+    // A 32-byte nullifier: reject anything that can't be one up front.
     return NextResponse.json({ error: "Malformed nullifier_hash" }, { status: 400 });
   }
 
@@ -122,38 +110,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Verification succeeded but no nullifier returned" }, { status: 502 });
   }
 
-  if (!VERIFIER_KEY || VERIFIER_KEY === "0x") {
-    console.error("[selfie-check/verify] SHIP_MINTER_PRIVATE_KEY not set");
+  if (!VERIFIER_ACCOUNT || !VERIFIER_KEY) {
+    console.error("[selfie-check/verify] NEAR_VERIFIER_ACCOUNT_ID / NEAR_VERIFIER_PRIVATE_KEY not set");
     return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
   }
 
-  const providerAddress = CONTRACT_ADDRESSES_BY_CHAIN_ID[baseSepolia.id]
-    .SELFIE_CHECK_ELIGIBILITY_PROVIDER as `0x${string}`;
-  if (!providerAddress || providerAddress === "0x0000000000000000000000000000000000000000") {
-    return NextResponse.json(
-      { error: "SelfieCheckEligibilityProvider is not deployed on this network" },
-      { status: 500 },
-    );
-  }
-
   try {
-    const publicClient = createPublicClient({ chain: baseSepolia, transport: http() });
-    const account = privateKeyToAccount(VERIFIER_KEY);
-    const walletClient = createWalletClient({ account, chain: baseSepolia, transport: http() });
-
-    const hash = await walletClient.writeContract({
-      address: providerAddress,
-      abi: MARK_VERIFIED_ABI,
-      functionName: "markVerified",
-      args: [player as `0x${string}`, verifiedNullifier as `0x${string}`],
+    const receipt = await serverCall(serverAccount(VERIFIER_ACCOUNT, VERIFIER_KEY), "mark_verified", {
+      account_id: player,
+      nullifier_hash: verifiedNullifier,
     });
-
-    await publicClient.waitForTransactionReceipt({ hash });
-
-    return NextResponse.json({ success: true, txHash: hash });
+    if (!receipt.success) throw new Error(receipt.failure ?? "mark_verified failed");
+    return NextResponse.json({ success: true, txHash: receipt.hash });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[selfie-check/verify] markVerified failed:", message);
+    const message = safeErrorMessage(err);
+    console.error("[selfie-check/verify] mark_verified failed:", message);
     return NextResponse.json({ error: `Onchain verification failed: ${message}` }, { status: 500 });
   }
 }

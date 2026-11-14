@@ -5,24 +5,22 @@ import React, {
   useContext,
   useState,
   useCallback,
-  useEffect,
   useRef,
 } from "react";
 import { toast } from "react-hot-toast";
-import { useWaitForTransactionReceipt } from "wagmi";
 
 interface TransactionState {
   isPending: boolean;
   error: Error | null;
   activeTransactionId: string | null;
-  hash: `0x${string}` | null;
+  hash: string | null;
   startedAt: number | null;
 }
 
 interface TransactionContextType {
   transactionState: TransactionState;
   startTransaction: (transactionId: string) => void;
-  setTransactionHash: (transactionId: string, hash: `0x${string}`) => void;
+  setTransactionHash: (transactionId: string, hash: string) => void;
   completeTransaction: (
     transactionId: string,
     success: boolean,
@@ -81,7 +79,7 @@ export function TransactionProvider({
   }, []);
 
   const setTransactionHash = useCallback(
-    (transactionId: string, hash: `0x${string}`) => {
+    (transactionId: string, hash: string) => {
       setTransactionState((prev) => {
         if (prev.activeTransactionId !== transactionId) return prev;
         return { ...prev, hash };
@@ -90,46 +88,10 @@ export function TransactionProvider({
     []
   );
 
-  const { isError, error: receiptError } = useWaitForTransactionReceipt(
-    {
-      hash: transactionState.hash ?? undefined,
-      query: {
-        enabled: transactionState.isPending && !!transactionState.hash,
-      },
-    }
-  );
-
-  // Receipt success is NOT enough to clear pending. The originating button
-  // still has follow-up work (refetch, wait for a new lobby to appear, etc.)
-  // and calls completeTransaction when that work is done. Auto-clearing here
-  // re-enabled Create/Join/etc. a beat before the list updated. Receipt
-  // *failure* still clears, and the 90s fallback still covers an unmounted
-  // button.
-  useEffect(() => {
-    if (!transactionState.isPending) return;
-    if (!transactionState.activeTransactionId) return;
-    if (!transactionState.hash) return;
-
-    if (isError && receiptError) {
-      if (fallbackTimeoutRef.current) {
-        clearTimeout(fallbackTimeoutRef.current);
-        fallbackTimeoutRef.current = null;
-      }
-      setTransactionState({
-        isPending: false,
-        error: receiptError as Error,
-        activeTransactionId: null,
-        hash: null,
-        startedAt: null,
-      });
-    }
-  }, [
-    isError,
-    receiptError,
-    transactionState.isPending,
-    transactionState.activeTransactionId,
-    transactionState.hash,
-  ]);
+  // A NEAR send resolves with the executed transaction (app/near/session.tsx
+  // `send`), so there is no separate receipt to watch here: the originating
+  // button calls completeTransaction when its follow-up work is done, and
+  // the 90s fallback covers a button that unmounted mid-transaction.
 
   const completeTransaction = useCallback(
     (transactionId: string, success: boolean, error?: Error) => {

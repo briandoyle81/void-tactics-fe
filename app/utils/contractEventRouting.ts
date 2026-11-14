@@ -1,29 +1,7 @@
-// Routing for the app-wide contract event watcher (ContractEventsHost): one
-// eth_getLogs poll covers every watched event, and the decoded logs are
-// split back out by event name for their handlers. Pure, so it's testable.
-
-export const WATCHED_EVENT_NAMES = [
-  "Transfer",
-  "GameUpdate",
-  "GameStarted",
-  "AITurnTaken",
-  "GameReserved",
-  "Move",
-] as const;
-
-export type WatchedEventName = (typeof WATCHED_EVENT_NAMES)[number];
-
-export function groupLogsByEvent<T extends { eventName?: string }>(
-  logs: readonly T[],
-): Partial<Record<WatchedEventName, T[]>> {
-  const groups: Partial<Record<WatchedEventName, T[]>> = {};
-  for (const log of logs) {
-    const name = log.eventName as WatchedEventName | undefined;
-    if (!name || !(WATCHED_EVENT_NAMES as readonly string[]).includes(name)) continue;
-    (groups[name] ??= []).push(log);
-  }
-  return groups;
-}
+// Polling requests for the app-wide NEAR sync host (app/near/sync/NearSyncHost):
+// NEAR has no log search, so open screens are kept fresh by polling their
+// views; these let a screen ask for the fast cadence, or for a slow poll
+// while the tab is hidden. Pure, so it's testable.
 
 // Fast polling on request: screens waiting on another player (e.g. the
 // lobby waiting for an opponent's fleet) ask for the match-speed interval

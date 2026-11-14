@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
-import { useAccount } from "wagmi";
+import React, { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetAllPresetMaps,
@@ -21,12 +20,10 @@ import { MapEditScreen } from "./MapEditScreen";
 import { MapPreviewCard } from "./MapPreviewCard";
 import { MapsListShell } from "./MapsListShell";
 import { PresetMap, MapMode } from "../types/types";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
-import { MAP_ADMIN_ADDRESS } from "../config/alpha";
+import { useIsMapAdmin } from "../hooks/useIsMapAdmin";
 import { setUrlParams, useUrlParam } from "../utils/urlState";
 
 export default function Maps() {
-  const { address } = useAccount();
   const { data: allMapsData, refetch: refetchMaps } = useGetAllPresetMaps();
   const queryClient = useQueryClient();
   const { address: mapsAddress } = useMapsContract();
@@ -85,23 +82,13 @@ export default function Maps() {
     );
   }, [maps, modeByMapId, impassableByMapId, placements, placementsLoading, campaignNodes, campaignNodesLoading, roguelikeNodes, roguelikeNodesLoading]);
 
-  const canCreateMaps =
-    address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
+  const canCreateMaps = useIsMapAdmin();
 
   const editingMap = useMemo(
     () => maps.find((m) => m.id === editingMapId),
     [maps, editingMapId],
   );
 
-  useEffect(() => {
-    const onChainChanged = () => {
-      setUrlParams({ map: null }, { replace: true });
-    };
-    window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    return () => {
-      window.removeEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    };
-  }, []);
 
   const handleCreateMap = () => {
     setUrlParams({ map: "new" });

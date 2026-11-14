@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAccount } from "wagmi";
-import { MAP_ADMIN_ADDRESS } from "../config/alpha";
+import { useIsMapAdmin } from "./useIsMapAdmin";
 import { useShipAttributesOwner } from "./useShipAttributesContract";
 import { useIsEncounterEditor } from "./useIsEncounterEditor";
 import { useIsNodeMapEditor } from "./useIsNodeMapEditor";
@@ -35,7 +34,6 @@ export const OPS_CONSOLE_TABS: readonly OpsConsoleTab[] = [
  * whether the header menu links to the console at all.
  */
 export function useOpsConsoleAccess() {
-  const { address } = useAccount();
   const { isOwner } = useShipAttributesOwner();
   // AI fleet and mission editors get the Admin tab without owning contracts.
   const { isEditor: isEncounterEditor, isLoading: isEncounterEditorLoading } =
@@ -45,7 +43,7 @@ export function useOpsConsoleAccess() {
   const { canAdminShipPurchasePrices } = useShipPurchasePricesAccess();
   const { isOwner: isShipGrantOwner } = useIsShipGrantOwner();
   const isWeb2Admin = useWeb2Admin();
-  const isMapAdmin = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
+  const isMapAdmin = useIsMapAdmin();
 
   const tabs = useMemo(() => {
     const allowed = OPS_CONSOLE_TABS.filter((tab) => {

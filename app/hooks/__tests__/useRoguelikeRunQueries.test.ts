@@ -1,73 +1,46 @@
 import { describe, expect, it, vi } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 
-// The real contract config imports ABI JSON paths Vite can't resolve in tests.
-vi.mock("../../config/contracts", () => ({
-  CONTRACT_ABIS: { ROGUELIKE_RUN: [] },
-  CONTRACT_ADDRESSES_BY_CHAIN_ID: {
-    84532: {
-      ROGUELIKE_RUN: "0x1111111111111111111111111111111111111111",
-      GAME_LENS: "0x2222222222222222222222222222222222222222",
-    },
-  },
-}));
 vi.mock("../useShipsContract", () => ({ invalidateShipsReads: vi.fn() }));
 
-import {
-  ROGUELIKE_RUN_ADDRESS,
-  invalidateRoguelikeRunQueries,
-  resetRoguelikeRunQueries,
-} from "../useRoguelikeRun";
-
-const OTHER = "0x000000000000000000000000000000000000dEaD";
+import { invalidateRoguelikeRunQueries, resetRoguelikeRunQueries } from "../useRoguelikeRun";
+import { RL_RUN_QUERY_ROOT } from "../useGameLens";
+import { GAME_CONTRACT } from "../../near/config";
 
 function seed(client: QueryClient) {
-  client.setQueryData(["readContract", { address: ROGUELIKE_RUN_ADDRESS, functionName: "getRun" }], "run");
-  client.setQueryData(
-    ["readContracts", { contracts: [{ address: ROGUELIKE_RUN_ADDRESS, functionName: "getShipHP" }] }],
-    "hp",
-  );
-  client.setQueryData(
-    ["readContract", { address: "0x2222222222222222222222222222222222222222", functionName: "getRunView" }],
-    "runView",
-  );
-  client.setQueryData(
-    ["readContract", { address: "0x2222222222222222222222222222222222222222", functionName: "getShipsOwned" }],
-    "lensShips",
-  );
-  client.setQueryData(["readContract", { address: OTHER, functionName: "balanceOf" }], "other");
-  client.setQueryData(["readContracts", { contracts: [{ address: OTHER, functionName: "x" }] }], "otherBatch");
+  client.setQueryData([RL_RUN_QUERY_ROOT, "run", "alice"], "run");
+  client.setQueryData([RL_RUN_QUERY_ROOT, "hp", "alice", "1,2"], "hp");
+  client.setQueryData([RL_RUN_QUERY_ROOT, "view", "alice"], "runView");
+  client.setQueryData(["near", GAME_CONTRACT, "get_run", '{"account_id":"alice"}'], "getRun");
+  client.setQueryData(["near", GAME_CONTRACT, "mt_balance_of", "{}"], "other");
+  client.setQueryData(["near-owned-ships", "alice"], "ships");
 }
 
 describe("roguelike run query helpers", () => {
-  it("reset removes single and batched run reads, leaving other contracts", () => {
+  it("reset removes run reads, leaving other queries", () => {
     const client = new QueryClient();
     seed(client);
     resetRoguelikeRunQueries(client);
-    const keys = client.getQueryCache().getAll().map((q) => q.state.data);
-    expect(keys).not.toContain("run");
-    expect(keys).not.toContain("hp");
-    expect(keys).not.toContain("runView");
-    expect(keys).toContain("lensShips");
-    expect(keys).toContain("other");
-    expect(keys).toContain("otherBatch");
+    const data = client.getQueryCache().getAll().map((q) => q.state.data);
+    expect(data).not.toContain("run");
+    expect(data).not.toContain("hp");
+    expect(data).not.toContain("runView");
+    expect(data).not.toContain("getRun");
+    expect(data).toContain("other");
+    expect(data).toContain("ships");
   });
 
-  it("invalidate marks single and batched run reads stale (e.g. roster HP after a win)", () => {
+  it("invalidate marks run reads stale (e.g. roster HP after a win)", () => {
     const client = new QueryClient();
     seed(client);
-    const spy = vi.spyOn(client, "invalidateQueries");
-    invalidateRoguelikeRunQueries(client);
-    const runCall = spy.mock.calls.find(([filters]) => typeof filters?.predicate === "function");
-    expect(runCall).toBeDefined();
+    void invalidateRoguelikeRunQueries(client);
     const stale = client
       .getQueryCache()
       .getAll()
       .filter((q) => q.state.isInvalidated)
       .map((q) => q.state.data);
-    expect(stale).toEqual(expect.arrayContaining(["run", "hp", "runView"]));
-    expect(stale).not.toContain("lensShips");
+    expect(stale).toEqual(expect.arrayContaining(["run", "hp", "runView", "getRun"]));
     expect(stale).not.toContain("other");
-    expect(stale).not.toContain("otherBatch");
+    expect(stale).not.toContain("ships");
   });
 });

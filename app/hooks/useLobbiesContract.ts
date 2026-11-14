@@ -1,120 +1,64 @@
 import { useMemo } from "react";
-import { useReadContract } from "wagmi";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import type { Abi } from "viem";
-import { Lobby, PlayerLobbyStateTuple, tupleToPlayerLobbyState } from "../types/types";
-import { useSelectedChainId } from "./useSelectedChainId";
-import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
+import { useQuery } from "@tanstack/react-query";
+import { Lobby } from "../types/types";
+import { useNearView } from "../near/useNearView";
+import { viewGame } from "../near/rpc";
+import { toLobby, toPlayerLobbyState } from "../near/adapters/lobby";
+import { NEAR_QUERY_ROOTS } from "../near/sync/gameRefetchRegistry";
+import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
+import { useLobbyConfig } from "../near/useGameSettings";
 
-/** Lobbies contract target for the in-app network picker (reads and intended writes). */
-export function useLobbiesChainParams() {
-  const activeChainId = useSelectedChainId();
-  const contractAddresses = getContractAddresses(activeChainId);
-  return {
-    address: contractAddresses.LOBBIES as `0x${string}`,
-    abi: CONTRACT_ABIS.LOBBIES as Abi,
-    chainId: activeChainId,
-  } as const;
+export function lobbyQueryKey(lobbyId: bigint) {
+  return [NEAR_QUERY_ROOTS.lobbies, "one", lobbyId.toString()] as const;
 }
 
-// Hook for reading contract data
-export function useLobbiesContract() {
-  return useLobbiesChainParams();
-}
-
-// Hook for reading contract data with proper typing
-export function useLobbiesRead(
-  functionName: string,
-  args?: readonly unknown[],
-  options?: { query?: { enabled?: boolean } }
-) {
-  const { address, abi, chainId } = useLobbiesChainParams();
-  return useReadContract({
-    address,
-    abi,
-    chainId,
-    functionName,
-    args,
-    query: options?.query,
+/** One lobby (get_lobby). */
+export function useLobby(lobbyId: bigint, options?: { enabled?: boolean }) {
+  const { data, error, isLoading, refetch } = useQuery({
+    queryKey: lobbyQueryKey(lobbyId),
+    queryFn: async () => {
+      const l = await viewGame("get_lobby", { lobby_id: lobbyId.toString() });
+      return l ? toLobby(l) : null;
+    },
+    enabled: (options?.enabled ?? true) && lobbyId > BigInt(0),
+    staleTime: 5_000,
   });
-}
-
-// Hook for writing to contract with proper typing
-export function useLobbiesWrite() {
-  return useSponsoredWriteContract();
-}
-
-// Helper hooks for common operations
-export function useLobby(
-  lobbyId: bigint,
-  options?: { enabled?: boolean }
-) {
-  const args = useMemo(() => [lobbyId] as const, [lobbyId]);
-  const { data, error, isLoading, refetch } = useLobbiesRead(
-    "getLobby",
-    args,
-    { query: { enabled: options?.enabled ?? true } }
-  );
-
-  return {
-    // The contract returns the Lobby struct directly (same shape as `Lobby`).
-    lobby: (data as Lobby | undefined) ?? undefined,
-    error,
-    isLoading,
-    refetch,
-  };
+  return { lobby: (data ?? undefined) as Lobby | undefined, error, isLoading, refetch };
 }
 
 export function usePlayerLobbyState(playerAddress: string) {
-  const args = useMemo(() => [playerAddress] as const, [playerAddress]);
-  const { data, error, isLoading, refetch } = useLobbiesRead("getPlayerState", args);
-
-  return {
-    playerState: data
-      ? tupleToPlayerLobbyState(data as PlayerLobbyStateTuple)
-      : undefined,
-    error,
-    isLoading,
-    refetch,
-  };
+  const args = useMemo(() => (playerAddress ? { account_id: playerAddress } : null), [playerAddress]);
+  const select = useMemo(() => toPlayerLobbyState, []);
+  const { data, error, isLoading, refetch } = useNearView("get_player_lobby_state", args, { select, staleTime: 10_000 });
+  return { playerState: data, error, isLoading, refetch };
 }
 
 export function useLobbyCount() {
-  return useLobbiesRead("lobbyCount");
+  return useNearView("get_open_lobby_count", {}, { staleTime: 15_000 });
 }
 
+/** Lobby settings (free lobbies per player, extra-lobby fee, pause, stale threshold), from get_lobby_config. */
 export function useLobbySettings() {
-  const freeGames = useLobbiesRead("freeGamesPerAddress");
-  const additionalFee = useLobbiesRead("additionalLobbyFee");
-  const paused = useLobbiesRead("paused");
-  const staleLobbyThreshold = useLobbiesRead("staleLobbyThreshold");
-
+  const { data, isLoading, error, refetch } = useLobbyConfig();
   return {
-    freeGamesPerAddress: freeGames.data,
-    additionalLobbyFee: additionalFee.data,
-    paused: paused.data,
-    staleLobbyThreshold: staleLobbyThreshold.data as bigint | undefined,
-    isLoading:
-      freeGames.isLoading ||
-      additionalFee.isLoading ||
-      paused.isLoading ||
-      staleLobbyThreshold.isLoading,
-    error:
-      freeGames.error ||
-      additionalFee.error ||
-      paused.error ||
-      staleLobbyThreshold.error,
-    refetchStaleLobbyThreshold: staleLobbyThreshold.refetch,
+    freeGamesPerAddress: data ? BigInt(data.free_games_per_address) : undefined,
+    additionalLobbyFee: data ? BigInt(data.additional_lobby_fee) : undefined,
+    paused: data?.paused,
+    staleLobbyThreshold: data ? BigInt(data.stale_threshold_s) : undefined,
+    isLoading,
+    error,
+    refetchStaleLobbyThreshold: async () => {
+      await refetch();
+    },
   };
 }
 
 export function useIsLobbyOpenForJoining(lobbyId: bigint) {
-  const args = useMemo(() => [lobbyId] as const, [lobbyId]);
-  return useLobbiesRead("isLobbyOpenForJoining", args);
+  const args = useMemo(() => ({ lobby_id: lobbyId.toString() }), [lobbyId]);
+  return useNearView("is_lobby_open", args, { staleTime: 5_000 });
 }
 
-/** Ownable's `owner()` — gates the new stale-lobby-threshold admin control (setStaleLobbyThreshold is onlyOwner). */
+/** The contract owner, who may change lobby settings. */
 export function useLobbiesOwner() {
-  const result = useLobbiesRead("owner");
-  return { ...result, data: result.data as `0x${string}` | undefined };
+  return useNearView("owner_id", {}, { staleTime: ADMIN_DATA_STALE_MS });
 }

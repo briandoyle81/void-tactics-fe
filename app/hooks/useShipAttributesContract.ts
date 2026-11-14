@@ -1,12 +1,14 @@
 import { useMemo } from "react";
-import { useReadContract, useAccount } from "wagmi";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { getVariantForChainId } from "../config/networks";
-import { useSelectedChainId } from "./useSelectedChainId";
+import { useNearView } from "../near/useNearView";
+import { useChainAccount } from "../near/useChainAccount";
 import { useGameRuleRead } from "./useGameRuleRead";
+import type { Costs as NearCosts, VariantAttributeData as NearVariantAttributeData } from "../near/generated/voidTactics";
+import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
+import { useGameSettings } from "../near/useGameSettings";
+import type { GameSettings } from "../near/generated/voidTactics";
 
-// Types based on the contract
+const selectMaxVariant = (s: GameSettings) => s.max_variant;
+
 export interface GunData {
   range: number;
   damage: number;
@@ -29,12 +31,7 @@ export interface SpecialData {
   movement: number;
 }
 
-// A published attributes table for one (variant, version). As of the
-// 2026-09-20/21 redesign this has no `version` field of its own — the
-// version is tracked separately via getCurrentAttributesVersion/
-// getLatestAttributesVersion, and rankThresholds/rankBonusPct are now part
-// of the table (previously hard-coded). See
-// docs/eth-global-remote/frontend-handoff-attributes-costs-and-ai-2026-09-21.md §1.2.
+/** A published attributes table for one (variant, version). */
 export interface VariantAttributeData {
   baseHull: number;
   baseSpeed: number;
@@ -61,190 +58,155 @@ export interface Costs {
   special: number[];
 }
 
-export type ShipAttributesReadFunction =
-  | "getCurrentAttributesVersion"
-  | "getLatestAttributesVersion"
-  | "getVariantAttributes"
-  | "getCurrentCostsVersion"
-  | "getCosts"
-  | "getGunData"
-  | "getArmorData"
-  | "getShieldData"
-  | "getSpecialData"
-  | "getSpecialRange"
-  | "getSpecialStrength"
-  | "getSpecialRangeAt"
-  | "getSpecialStrengthAt"
-  | "getRank"
-  | "owner";
+/** Fallback for the highest mintable variant until get_settings has loaded. */
+export const MAX_VARIANT = 2;
 
-// `chainIdOverride` pins the read to a specific chain instead of following
-// the header network picker — needed by the campaign flow (Base-Sepolia-
-// only, like every other campaign hook).
-export function useShipAttributesRead(
-  functionName: ShipAttributesReadFunction,
-  args?: readonly unknown[],
-  chainIdOverride?: number,
-  enabled: boolean = true,
-) {
-  const pickerChainId = useSelectedChainId();
-  const chainId = chainIdOverride ?? pickerChainId;
-  const shipAttributes = getContractAddresses(chainId)
-    .SHIP_ATTRIBUTES as `0x${string}`;
-
-  return useReadContract({
-    address: shipAttributes,
-    abi: CONTRACT_ABIS.SHIP_ATTRIBUTES,
-    chainId,
-    functionName,
-    query: {
-      enabled,
-      staleTime: Infinity,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-      notifyOnChangeProps: ["data", "error"],
-    },
-    args,
-  });
-}
-
-// A ShipAttributes read used by live battles, saved across sessions and
-// refreshed after a failed move (see useGameRuleRead.ts).
-function useShipAttributesRuleRead(
-  functionName: ShipAttributesReadFunction,
-  args: readonly unknown[],
-  enabled: boolean,
-) {
-  const chainId = useSelectedChainId();
-  return useGameRuleRead({
-    address: getContractAddresses(chainId).SHIP_ATTRIBUTES as `0x${string}`,
-    abi: CONTRACT_ABIS.SHIP_ATTRIBUTES as Abi,
-    chainId,
-    functionName,
-    args,
-    enabled,
-  });
-}
-
-export function useShipAttributesOwner() {
-  const { data } = useShipAttributesRead("owner");
-  const { address } = useAccount();
-  const owner = typeof data === "string" ? (data as `0x${string}`) : undefined;
-
+export function toVariantAttributeData(d: NearVariantAttributeData): VariantAttributeData {
   return {
-    owner,
-    isOwner:
-      !!address &&
-      !!owner &&
-      address.toLowerCase() === owner.toLowerCase(),
+    baseHull: d.base_hull,
+    baseSpeed: d.base_speed,
+    foreAccuracy: d.fore_accuracy,
+    hull: d.hull,
+    engineSpeeds: d.engine_speeds,
+    guns: d.guns,
+    armors: d.armors.map((a) => ({ damageReduction: a.damage_reduction, movement: a.movement })),
+    shields: d.shields.map((a) => ({ damageReduction: a.damage_reduction, movement: a.movement })),
+    specials: d.specials,
+    rankThresholds: d.rank_thresholds,
+    rankBonusPct: d.rank_bonus_pct,
   };
 }
 
-// Every per-variant getter below takes a `_variant` (ship traits.variant) as of
-// the contract redeploy that made costs and attributes per-faction — omitting
-// it throws an ABI encoding length mismatch and silently leaves `data`
-// undefined. Callers that don't care about a specific faction get the
-// selected chain's variant.
-export function useChainVariant(chainIdOverride?: number) {
-  const pickerChainId = useSelectedChainId();
-  return getVariantForChainId(chainIdOverride ?? pickerChainId);
+/** App attributes table -> the contract's VariantAttributeData (publish_variant_attributes). */
+export function fromVariantAttributeData(d: VariantAttributeData): NearVariantAttributeData {
+  return {
+    base_hull: d.baseHull,
+    base_speed: d.baseSpeed,
+    fore_accuracy: d.foreAccuracy,
+    hull: d.hull,
+    engine_speeds: d.engineSpeeds,
+    guns: d.guns,
+    armors: d.armors.map((a) => ({ damage_reduction: a.damageReduction, movement: a.movement })),
+    shields: d.shields.map((a) => ({ damage_reduction: a.damageReduction, movement: a.movement })),
+    specials: d.specials,
+    rank_thresholds: d.rankThresholds,
+    rank_bonus_pct: d.rankBonusPct,
+  };
 }
 
-const SHIPS_ABI = CONTRACT_ABIS.SHIPS as Abi;
+export function toCosts(c: NearCosts): Costs {
+  return {
+    version: c.version,
+    baseCost: c.base_cost,
+    accuracy: c.accuracy,
+    hull: c.hull,
+    speed: c.speed,
+    mainWeapon: c.main_weapon,
+    armor: c.armor,
+    shields: c.shields,
+    special: c.special,
+  };
+}
 
-/** Highest ship variant (faction) the Ships contract will mint; variants are 1..maxVariant. */
+export function fromCosts(c: Costs): NearCosts {
+  return {
+    version: c.version,
+    base_cost: c.baseCost,
+    accuracy: c.accuracy,
+    hull: c.hull,
+    speed: c.speed,
+    main_weapon: c.mainWeapon,
+    armor: c.armor,
+    shields: c.shields,
+    special: c.special,
+  };
+}
+
+/** The contract owner (owner_id), and whether the signed-in player is it. */
+export function useShipAttributesOwner() {
+  const { data } = useNearView("owner_id", {}, { staleTime: ADMIN_DATA_STALE_MS });
+  const { address } = useChainAccount();
+  const owner = typeof data === "string" ? data : undefined;
+  return { owner, isOwner: !!address && !!owner && address === owner };
+}
+
+/** Callers that don't care about a specific faction use variant 1. */
+export function useChainVariant() {
+  return 1;
+}
+
+/** Highest ship variant (faction) players can mint; variants are 1..maxVariant. */
 export function useMaxVariant() {
-  const chainId = useSelectedChainId();
-  const config = useMemo(
-    () => ({
-      address: getContractAddresses(chainId).SHIPS as `0x${string}`,
-      abi: SHIPS_ABI,
-      functionName: "maxVariant" as const,
-      chainId,
-    }),
-    [chainId],
-  );
-  return useReadContract(config);
+  const { data, isLoading, error } = useGameSettings(selectMaxVariant);
+  return { data: data ?? MAX_VARIANT, isLoading, error };
 }
 
-// --- Attributes: versioned per variant, no global version any more ---
-
-/** The attributes version currently live for a variant; 0 means the variant has never been configured (`getVariantAttributes` reverts `VariantNotConfigured` for it). */
+/** The attributes version currently live for a variant; 0 means never configured. */
 export function useCurrentAttributesVersion(variant: number) {
-  const args = useMemo(() => [variant] as const, [variant]);
-  return useShipAttributesRead("getCurrentAttributesVersion", args);
+  const args = useMemo(() => ({ variant }), [variant]);
+  return useNearView("get_current_attributes_version", args, { staleTime: ADMIN_DATA_STALE_MS });
 }
 
-/** Highest attributes version ever published for a variant (kept forever, immutable, readable regardless of which version is live). */
+/** Highest published version. The contract exposes only the live one, so this is the same. */
 export function useLatestAttributesVersion(variant: number) {
-  const args = useMemo(() => [variant] as const, [variant]);
-  return useShipAttributesRead("getLatestAttributesVersion", args);
+  return useCurrentAttributesVersion(variant);
 }
 
 /** A variant's full attributes table at a given version; `version = 0` means "whatever's currently live". */
 export function useVariantAttributes(variant: number, version: number = 0) {
-  const args = useMemo(() => [variant, version] as const, [variant, version]);
-  return useShipAttributesRead("getVariantAttributes", args);
+  const current = useCurrentAttributesVersion(variant);
+  const v = version || current.data || 0;
+  const args = useMemo(() => (v > 0 ? { variant, version: v } : null), [variant, v]);
+  const select = useMemo(
+    () => (d: NearVariantAttributeData | null) => (d ? toVariantAttributeData(d) : undefined),
+    [],
+  );
+  return useNearView("get_variant_attributes", args, { staleTime: ADMIN_DATA_STALE_MS, select });
 }
 
-// --- Costs: per variant, unchanged model (only validation changed) ---
+const selectCosts = (c: NearCosts | null) => (c ? toCosts(c) : undefined);
 
-export function useCurrentCostsVersion(
-  chainIdOverride?: number,
-  variantOverride?: number,
-) {
-  const chainVariant = useChainVariant(chainIdOverride);
-  const variant = variantOverride ?? chainVariant;
-  const args = useMemo(() => [variant] as const, [variant]);
-  return useShipAttributesRead("getCurrentCostsVersion", args, chainIdOverride);
+/** A variant's live cost table version. */
+export function useCurrentCostsVersion(variantOverride?: number) {
+  const variant = variantOverride ?? 1;
+  const args = useMemo(() => ({ variant }), [variant]);
+  const result = useNearView("get_costs", args, { staleTime: ADMIN_DATA_STALE_MS, select: selectCosts });
+  return { ...result, data: result.data?.version };
 }
 
 export function useCosts(variantOverride?: number) {
-  const chainVariant = useChainVariant();
-  const variant = variantOverride ?? chainVariant;
-  const args = useMemo(() => [variant] as const, [variant]);
-  return useShipAttributesRead("getCosts", args);
+  const variant = variantOverride ?? 1;
+  const args = useMemo(() => ({ variant }), [variant]);
+  return useNearView("get_costs", args, { staleTime: ADMIN_DATA_STALE_MS, select: selectCosts });
 }
 
-// `getSpecialData` takes a `_variant` argument (ship traits.variant) as of
-// the contract redeploy that added per-variant special stats — see
-// useSpecialRange.ts's matching doc for the failure mode when it's omitted.
-export function useSpecialData(specialIndex: number, variant: number = 0) {
-  const args = useMemo(() => [specialIndex, variant] as const, [specialIndex, variant]);
-  return useShipAttributesRead("getSpecialData", args);
+/** A special's live stats (preview UI). */
+export function useSpecialData(specialIndex: number, variant: number = 1) {
+  const table = useVariantAttributes(variant || 1);
+  const data = table.data?.specials[specialIndex];
+  return { ...table, data };
 }
 
-// Specials are pinned per game: resolvers (and Variant1AI's heal-range
-// check) read a special's range/strength at the acting ship's pinned
-// attributes.version, not the live table, so a mid-game rebalance can't
-// change an in-flight game. In-game tooltips must use these, not
-// `getSpecialRange`/`getSpecialData` above.
-export function useSpecialRangeAt(
-  variant: number,
-  version: number,
-  special: number,
-  enabled: boolean = true,
-) {
+// Specials are pinned per game: resolvers read a special's range/strength at
+// the acting ship's pinned attributes.version, not the live table, so a
+// mid-game rebalance can't change an in-flight game. In-game tooltips use
+// these. Saved across sessions (useGameRuleRead): a pinned version's values
+// never change.
+function usePinnedSpecial(variant: number, version: number, special: number, enabled: boolean) {
   const args = useMemo(
-    () => [variant, version, special] as const,
-    [variant, version, special],
+    () => (enabled && version > 0 && variant > 0 ? { variant, version } : null),
+    [enabled, variant, version],
   );
-  // version 0 is never a real pinned version (InvalidAttributesVersion
-  // onchain) — guard it here so callers can pass a not-yet-loaded ship's
-  // version without tripping a doomed read. Saved across sessions
-  // (useGameRuleRead): a pinned version's values never change.
-  return useShipAttributesRuleRead("getSpecialRangeAt", args, enabled && version > 0);
+  const result = useGameRuleRead("get_variant_attributes", args);
+  return { ...result, special: (result.data as NearVariantAttributeData | null | undefined)?.specials[special] };
 }
 
-export function useSpecialStrengthAt(
-  variant: number,
-  version: number,
-  special: number,
-  enabled: boolean = true,
-) {
-  const args = useMemo(
-    () => [variant, version, special] as const,
-    [variant, version, special],
-  );
-  return useShipAttributesRuleRead("getSpecialStrengthAt", args, enabled && version > 0);
+export function useSpecialRangeAt(variant: number, version: number, special: number, enabled: boolean = true) {
+  const r = usePinnedSpecial(variant, version, special, enabled);
+  return { ...r, data: r.special?.range };
+}
+
+export function useSpecialStrengthAt(variant: number, version: number, special: number, enabled: boolean = true) {
+  const r = usePinnedSpecial(variant, version, special, enabled);
+  return { ...r, data: r.special?.strength };
 }

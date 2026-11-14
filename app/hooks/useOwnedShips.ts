@@ -1,143 +1,68 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useAccount } from "wagmi";
-import { useShipsRead } from "./useShipsContract";
+import { useCallback, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useChainAccount } from "../near/useChainAccount";
 import { Ship } from "../types/types";
 import { cacheShipsData } from "./useShipDataCache";
-import { useSelectedChainId } from "./useSelectedChainId";
+import { viewGame } from "../near/rpc";
+import { fetchAllPages } from "../near/useNearView";
+import { toShipFromView } from "../near/adapters/ship";
+import { NEAR_QUERY_ROOTS } from "../near/sync/gameRefetchRegistry";
 
-const REFETCH_DEBOUNCE_MS = 400;
-const REFETCH_RETRY_MS = 2000;
+const PAGE_SIZE = 50;
 
-// `chainIdOverride` pins the read to a specific chain instead of following
-// the header network picker — the campaign fleet-selection flow needs this
-// (single-player only exists on Base Sepolia, same as every other campaign
-// hook), so a player browsing a different picked chain still sees their
-// real, submittable Base Sepolia ships and attributes rather than whatever
-// chain the picker happens to be on.
-export function useOwnedShips(
-  chainIdOverride?: number,
-  options?: { enabled?: boolean },
-) {
-  const { address } = useAccount();
-  const pickerChainId = useSelectedChainId();
-  const activeChainId = chainIdOverride ?? pickerChainId;
-  const queryEnabled = options?.enabled ?? true;
+/** Query key for a player's ships; NearSyncHost invalidates the root after ship events. */
+export function ownedShipsQueryKey(accountId: string | undefined) {
+  return [NEAR_QUERY_ROOTS.ownedShips, accountId ?? ""] as const;
+}
 
-  const baselineOwnedIdsKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    baselineOwnedIdsKeyRef.current = null;
-  }, [address, activeChainId]);
-
-  const shipIdsArgs = useMemo(
-    () => (address ? [address] : undefined),
-    [address],
+/** Every ship an account owns (paginated get_ships_for_owner, all pages). */
+export async function fetchOwnedShips(accountId: string): Promise<Ship[]> {
+  const views = await fetchAllPages(
+    (from, limit) => viewGame("get_ships_for_owner", { account_id: accountId, from_index: from, limit }),
+    PAGE_SIZE,
   );
-  const shipIdsResult = useShipsRead(
-    "getShipIdsOwned",
-    shipIdsArgs,
-    chainIdOverride,
-    queryEnabled && !!address,
-  );
+  return views.map(toShipFromView);
+}
 
-  const shipsDataArgs = useMemo(
-    () => (shipIdsResult.data ? [shipIdsResult.data] : undefined),
-    [shipIdsResult.data],
-  );
-  const shipsDataResult = useShipsRead(
-    "getShipsByIds",
-    shipsDataArgs,
-    chainIdOverride,
-    queryEnabled && !!shipIdsResult.data,
-  );
+/**
+ * The signed-in player's ships. Ships auto-construct a block or two after
+ * minting (self-callback randomness); while any is still unconstructed this
+ * polls every 2s until they're all built.
+ */
+export function useOwnedShips(options?: { enabled?: boolean }) {
+  const { address } = useChainAccount();
+  const queryClient = useQueryClient();
+  const enabled = (options?.enabled ?? true) && !!address;
 
-  const prevChainIdRef = useRef<number | null>(null);
+  const query = useQuery({
+    queryKey: ownedShipsQueryKey(address),
+    queryFn: () => fetchOwnedShips(address!),
+    enabled,
+    staleTime: 30_000,
+    refetchInterval: (q) => {
+      const ships = q.state.data;
+      return ships?.some((s) => !s.shipData.constructed) ? 2000 : false;
+    },
+  });
+
+  const ships = useMemo(() => query.data ?? [], [query.data]);
+  const shipIds = useMemo(() => ships.map((s) => s.id), [ships]);
+
   useEffect(() => {
-    const prev = prevChainIdRef.current;
-    prevChainIdRef.current = activeChainId;
-    if (prev === null || prev === activeChainId) return;
-    void shipIdsResult.refetch();
-    void shipsDataResult.refetch();
-  }, [activeChainId, shipIdsResult.refetch, shipsDataResult.refetch]);
-
-  const ownedIdsKey = useMemo(() => {
-    const raw = shipIdsResult.data as bigint[] | undefined;
-    if (!raw?.length) return "";
-    return [...raw]
-      .map((id) => id.toString())
-      .sort((a, b) => a.localeCompare(b))
-      .join(",");
-  }, [shipIdsResult.data]);
-
-  // When owned ship IDs change (claim, recycle, purchase), `getShipsByIds` often
-  // still has the previous ID list in its query key until React re-renders. Refetch
-  // ship details after the ID list key changes so new hulls always load.
-  const refetchShipsByIds = shipsDataResult.refetch;
-  useEffect(() => {
-    if (!ownedIdsKey) return;
-    const prev = baselineOwnedIdsKeyRef.current;
-    if (prev === null) {
-      baselineOwnedIdsKeyRef.current = ownedIdsKey;
-      return;
-    }
-    if (prev === ownedIdsKey) return;
-    baselineOwnedIdsKeyRef.current = ownedIdsKey;
-    let cancelled = false;
-    const id = requestAnimationFrame(() => {
-      if (!cancelled) void refetchShipsByIds();
-    });
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(id);
-    };
-  }, [ownedIdsKey, refetchShipsByIds]);
-
-  // Cache ship data when it's fetched
-  useEffect(() => {
-    if (shipsDataResult.data && Array.isArray(shipsDataResult.data)) {
-      const ships = shipsDataResult.data as Ship[];
-      if (ships.length > 0) {
-        cacheShipsData(ships);
-      }
-    }
-  }, [shipsDataResult.data]);
-
-  // Combine loading states
-  const isLoading = shipIdsResult.isLoading || shipsDataResult.isLoading;
-
-  // Combine errors
-  const error = shipIdsResult.error || shipsDataResult.error;
-
-  // Refetch IDs first, then ship rows. Same-ID updates (construct, attribute sync)
-  // are served by the second refetch. New IDs rely on `ownedIdsKey` effect above.
-  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    return () => {
-      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-    };
-  }, []);
+    if (ships.length > 0) cacheShipsData(ships);
+  }, [ships]);
 
   const refetch = useCallback(async () => {
-    await shipIdsResult.refetch();
-    await shipsDataResult.refetch();
-    await new Promise((resolve) => setTimeout(resolve, REFETCH_DEBOUNCE_MS));
-    await shipIdsResult.refetch();
-    await shipsDataResult.refetch();
-    if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-    retryTimeoutRef.current = setTimeout(() => {
-      retryTimeoutRef.current = null;
-      void shipsDataResult.refetch();
-    }, REFETCH_RETRY_MS);
-  }, [shipIdsResult.refetch, shipsDataResult.refetch]);
+    await queryClient.invalidateQueries({ queryKey: ownedShipsQueryKey(address) });
+  }, [queryClient, address]);
 
   return {
-    shipIds: (shipIdsResult.data as bigint[]) || [],
-    ships: (shipsDataResult.data as Ship[]) || [],
-    isLoading,
-    error,
+    shipIds,
+    ships,
+    isLoading: query.isLoading,
+    error: query.error,
     refetch,
-    hasShips: shipIdsResult.data
-      ? (shipIdsResult.data as bigint[]).length > 0
-      : false,
-    shipCount: shipIdsResult.data ? (shipIdsResult.data as bigint[]).length : 0,
+    hasShips: ships.length > 0,
+    shipCount: ships.length,
   };
 }

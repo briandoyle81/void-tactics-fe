@@ -1,116 +1,41 @@
-import { useMemo } from "react";
-import { useAccount, useReadContract } from "wagmi";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useSelectedChainId } from "./useSelectedChainId";
-
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+import { useCallback, useMemo } from "react";
+import { useChainAccount } from "../near/useChainAccount";
+import { useNearView } from "../near/useNearView";
+import { TOKEN_DEC } from "../near/config";
 
 /**
- * Reads for the DroneStorefront DEC sink (docs/faction-2.md §3): a player's
- * current tier, the exact cost of their next tier, and their DEC
- * balance/allowance. `tierCoreCost` reverts once past the last configured
- * tier — `nextTierCostError` set means "max tier reached" rather than a
- * real failure.
+ * The DCC storefront (turn_in_cores): a player's tier, the cost of their
+ * next tier (get_claim_status / get_storefront_tiers), and their DCC
+ * balance (NEP-245 "dec", 0 decimals). Turning in debits DCC directly: no
+ * approval step.
  */
 export function useDroneStorefront() {
-  const { address } = useAccount();
-  const activeChainId = useSelectedChainId();
-  const contractAddresses = getContractAddresses(activeChainId);
+  const { address } = useChainAccount();
+  const accountArgs = useMemo(() => (address ? { account_id: address } : null), [address]);
+  const decArgs = useMemo(() => (address ? { account_id: address, token_id: TOKEN_DEC } : null), [address]);
 
-  const droneStorefrontAddress = contractAddresses.DRONE_STOREFRONT as
-    | `0x${string}`
-    | undefined;
-  const droneEnergyCoresAddress = contractAddresses.DRONE_ENERGY_CORES as
-    | `0x${string}`
-    | undefined;
+  const status = useNearView("get_claim_status", accountArgs, { staleTime: 30_000 });
+  const tiers = useNearView("get_storefront_tiers", {}, { staleTime: 5 * 60_000 });
+  const dec = useNearView("mt_balance_of", decArgs, { staleTime: 15_000 });
 
-  const isDeployed =
-    !!droneStorefrontAddress &&
-    droneStorefrontAddress.toLowerCase() !== ZERO_ADDRESS &&
-    !!droneEnergyCoresAddress &&
-    droneEnergyCoresAddress.toLowerCase() !== ZERO_ADDRESS;
+  const currentTier = status.data?.drone_core_tier ?? 0;
+  const nextTier = currentTier + 1;
+  const nextCostRaw = status.data?.next_tier_cost ?? (tiers.data ? tiers.data[currentTier] : undefined);
+  const maxTierReached = !!tiers.data && currentTier >= tiers.data.length;
 
-  const {
-    data: currentTier,
-    isLoading: isLoadingTier,
-    refetch: refetchTier,
-  } = useReadContract({
-    address: droneStorefrontAddress,
-    abi: CONTRACT_ABIS.DRONE_STOREFRONT as Abi,
-    functionName: "droneCoreTier",
-    args: address ? [address] : undefined,
-    chainId: activeChainId,
-    query: { enabled: isDeployed && !!address },
-  });
-
-  const tierNumber = currentTier !== undefined ? Number(currentTier) : 0;
-  const nextTier = tierNumber + 1;
-
-  const {
-    data: nextTierCost,
-    isError: nextTierCostErrored,
-    isLoading: isLoadingNextTierCost,
-    refetch: refetchNextTierCost,
-  } = useReadContract({
-    address: droneStorefrontAddress,
-    abi: CONTRACT_ABIS.DRONE_STOREFRONT as Abi,
-    functionName: "tierCoreCost",
-    args: useMemo(() => [BigInt(nextTier)] as const, [nextTier]),
-    chainId: activeChainId,
-    query: { enabled: isDeployed && currentTier !== undefined },
-  });
-
-  const maxTierReached = isDeployed && currentTier !== undefined && nextTierCostErrored;
-
-  const {
-    data: decBalance,
-    refetch: refetchDecBalance,
-  } = useReadContract({
-    address: droneEnergyCoresAddress,
-    abi: CONTRACT_ABIS.DRONE_ENERGY_CORES as Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    chainId: activeChainId,
-    query: { enabled: isDeployed && !!address },
-  });
-
-  const {
-    data: decAllowance,
-    refetch: refetchDecAllowance,
-  } = useReadContract({
-    address: droneEnergyCoresAddress,
-    abi: CONTRACT_ABIS.DRONE_ENERGY_CORES as Abi,
-    functionName: "allowance",
-    args:
-      address && droneStorefrontAddress
-        ? [address, droneStorefrontAddress]
-        : undefined,
-    chainId: activeChainId,
-    query: { enabled: isDeployed && !!address },
-  });
-
-  const refetchAll = async () => {
-    await Promise.all([
-      refetchTier(),
-      refetchNextTierCost(),
-      refetchDecBalance(),
-      refetchDecAllowance(),
-    ]);
-  };
+  const refetchAll = useCallback(async () => {
+    await Promise.all([status.refetch(), tiers.refetch(), dec.refetch()]);
+  }, [status, tiers, dec]);
 
   return {
-    isDeployed,
-    droneStorefrontAddress,
-    droneEnergyCoresAddress,
-    currentTier: tierNumber,
+    isDeployed: true,
+    currentTier,
     nextTier,
-    nextTierCost: nextTierCost as bigint | undefined,
+    nextTierCost: maxTierReached || nextCostRaw == null ? undefined : BigInt(nextCostRaw),
     maxTierReached,
-    isLoadingTier,
-    isLoadingNextTierCost,
-    decBalance: decBalance as bigint | undefined,
-    decAllowance: decAllowance as bigint | undefined,
+    isLoadingTier: status.isLoading,
+    isLoadingNextTierCost: tiers.isLoading,
+    decBalance: dec.data != null ? BigInt(dec.data) : undefined,
     refetchAll,
   };
 }

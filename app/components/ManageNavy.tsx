@@ -4,13 +4,11 @@ import React, { useEffect } from "react";
 import {
   useOwnedShips,
   useShipDetails,
-  useContractEvents,
   useFreeShipClaiming,
   clearAllShipDataCache,
-  clearAllShipImageCache,
 } from "../hooks";
-import { useAccount, usePublicClient } from "wagmi";
-import { formatEther } from "viem";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { formatUnits18 } from "@/app/near/codec";
 import { toast } from "react-hot-toast";
 import { Ship } from "../types/types";
 import {
@@ -37,19 +35,16 @@ import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
 import { useTransaction } from "../providers/TransactionContext";
-import { useShipsRead } from "../hooks/useShipsContract";
 import { TransactionButton } from "./TransactionButton";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import type { Abi } from "viem";
-import {
-  useCurrentCostsVersion,
-  useMaxVariant,
-} from "../hooks/useShipAttributesContract";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
+import { GAS_HEAVY } from "../near/config";
+import { useCurrentCostsVersion, useMaxVariant } from "../hooks/useShipAttributesContract";
+import { useGameSettings } from "../near/useGameSettings";
+import type { GameSettings } from "../near/generated/voidTactics";
+
+const selectRecycleReward = (s: GameSettings) => BigInt(s.recycle_reward);
 import { useSelfieCheckEligibility } from "../hooks/useSelfieCheckEligibility";
 import { SelfieCheckVerifyButton } from "./SelfieCheckVerifyButton";
 import { useShipAttributesByIds } from "../hooks/useShipAttributesByIds";
-import { fetchAndPersistShipAttributesCaches } from "../utils/shipAttributesLocalCache";
 import {
   clearManageNavyTutorialCache,
   dismissBuyShipsTutorialForSession,
@@ -83,53 +78,34 @@ import {
   manageNavyActionButtonClassName,
 } from "./ManageNavyActionButton";
 import { ClaimFreeShipsControls } from "./ClaimFreeShipsControls";
-import { invalidateAllShipPurchasePriceCachesForChain } from "../utils/shipPurchaseInfoCache";
 import { ManageNavyFleetCompositionCardSlot } from "./ManageNavyFleetCompositionCardSlot";
 import ShipConstructor from "./ShipConstructor";
 import { parseBigintParam, setUrlParams, useUrlParam } from "../utils/urlState";
 
 
 const ManageNavy: React.FC = () => {
-  const { address, isConnected, status } = useAccount();
-  const chainId = useSelectedChainId();
-  const shipsContractAddress = React.useMemo(
-    () => getContractAddresses(chainId).SHIPS as `0x${string}`,
-    [chainId],
-  );
-  const shipAttributesContractAddress = React.useMemo(
-    () => getContractAddresses(chainId).SHIP_ATTRIBUTES as `0x${string}`,
-    [chainId],
-  );
-  const publicClient = usePublicClient({ chainId });
+  const { address, isConnected, status } = useChainAccount();
+  /** Tutorial-cache scope (was the EVM chain id). */
+  const chainId = 397;
   const { transactionState } = useTransaction();
   const { ships, isLoading, error, hasShips, shipCount, refetch } =
     useOwnedShips();
   const { fleetStats, shipsByStatus } = useShipDetails();
 
-  // Read the recycle reward amount from the contract
-  const { data: recycleReward } = useShipsRead("recycleReward");
+  const { data: recycleReward } = useGameSettings(selectRecycleReward);
 
-  // Costs versions are per variant (faction) — a navy can hold ships of more
-  // than one variant, and each variant's costs version bumps independently,
-  // so staleness must be checked against the SHIP's OWN variant's version,
-  // not a single chain-wide number. Only variants 1-2 are ever minted today
-  // (see VALID_SPECIALS_BY_VARIANT in types.ts for the same assumption); a
-  // third variant would need another read added here.
+  // Costs versions are per variant (faction). A ship priced under an older
+  // cost table can't join a fleet (ShipCostVersionMismatch) until
+  // sync_ship_costs re-prices it. Only variants 1-2 are minted today; a third
+  // variant would need another read here.
   const { data: maxVariantData } = useMaxVariant();
   const maxVariant = Math.max(Number(maxVariantData ?? 0), 1);
-  const { data: costsVersionV1 } = useCurrentCostsVersion(undefined, 1);
-  const { data: costsVersionV2 } = useCurrentCostsVersion(
-    undefined,
-    maxVariant >= 2 ? 2 : 1,
-  );
+  const { data: costsVersionV1 } = useCurrentCostsVersion(1);
+  const { data: costsVersionV2 } = useCurrentCostsVersion(maxVariant >= 2 ? 2 : 1);
   const costsVersionByVariant = React.useMemo(() => {
     const map = new Map<number, number>();
-    if (costsVersionV1 !== undefined && costsVersionV1 !== null) {
-      map.set(1, Number(costsVersionV1));
-    }
-    if (maxVariant >= 2 && costsVersionV2 !== undefined && costsVersionV2 !== null) {
-      map.set(2, Number(costsVersionV2));
-    }
+    if (costsVersionV1 != null) map.set(1, Number(costsVersionV1));
+    if (maxVariant >= 2 && costsVersionV2 != null) map.set(2, Number(costsVersionV2));
     return map;
   }, [costsVersionV1, costsVersionV2, maxVariant]);
 
@@ -137,26 +113,17 @@ const ManageNavy: React.FC = () => {
     if (costsVersionByVariant.size === 0) return [] as bigint[];
     return ships
       .filter((ship) => {
-        const shipCv = Number(ship.shipData.costsVersion);
-        const currentForVariant = costsVersionByVariant.get(
-          ship.traits.variant,
-        );
+        const currentForVariant = costsVersionByVariant.get(ship.traits.variant);
         return (
           ship.shipData.constructed &&
           ship.shipData.timestampDestroyed === 0n &&
           !ship.shipData.inFleet &&
           currentForVariant !== undefined &&
-          shipCv !== currentForVariant
+          Number(ship.shipData.costsVersion) !== currentForVariant
         );
       })
       .map((s) => s.id);
   }, [ships, costsVersionByVariant]);
-
-  // Read the user's purchase count
-  const { data: amountPurchased } = useShipsRead(
-    "amountPurchased",
-    address ? [address] : undefined,
-  );
 
   // Get ship attributes for in-game properties
   const shipIds = ships.map((ship) => ship.id);
@@ -165,14 +132,6 @@ const ManageNavy: React.FC = () => {
     shipIdsRef.current = shipIds;
   }, [shipIds]);
 
-  const afterShipCostSyncPersistCaches = React.useCallback(() => {
-    if (!publicClient) return;
-    void fetchAndPersistShipAttributesCaches(publicClient, {
-      chainId,
-      shipAttributesAddress: shipAttributesContractAddress,
-      shipIds: shipIdsRef.current,
-    });
-  }, [publicClient, chainId, shipAttributesContractAddress]);
 
   const {
     attributes: shipAttributes,
@@ -191,13 +150,13 @@ const ManageNavy: React.FC = () => {
     return map;
   }, [shipIds, shipAttributes]);
 
-  // Check if user can recycle (minimum 10 purchases required)
-  const canRecycle = amountPurchased ? Number(amountPurchased) >= 10 : false;
+  // Free ships can't be recycled; the contract enforces it.
+  const canRecycle = true;
 
   // Note: Ship actions are now handled by ShipActionButton components
 
   // Check if wallet is connecting
-  const isConnecting = status === "connecting" || status === "reconnecting";
+  const isConnecting = status === "connecting";
 
   // Free ship claiming functionality
   const {
@@ -404,14 +363,13 @@ const ManageNavy: React.FC = () => {
     showConstructDeliveryTutorial ||
     showBuyShipsTutorial;
 
-  // Phase 3: Real-time updates
-  const { isListening } = useContractEvents();
+  // Kept fresh by NearSyncHost (polling and the player's own transactions).
+  const isListening = isConnected;
 
   // Clear cache when user disconnects
   useEffect(() => {
     if (!address) {
       clearAllShipDataCache();
-      clearAllShipImageCache();
     }
   }, [address]);
 
@@ -811,28 +769,24 @@ const ManageNavy: React.FC = () => {
     </>
   );
 
+  const staleCostSyncBatch =
+    staleCostSyncShipIds.length > STALE_COST_SYNC_BATCH_CAP
+      ? staleCostSyncShipIds.slice(0, STALE_COST_SYNC_BATCH_CAP)
+      : staleCostSyncShipIds;
   const staleCostBulkButton =
     staleCostSyncShipIds.length === 0 ? null : (
       <TransactionButton
         transactionId="manage-navy-sync-stale-costs-bulk"
-        contractAddress={shipsContractAddress}
-        abi={CONTRACT_ABIS.SHIPS as Abi}
-        functionName="syncShipCosts"
-        args={[
-          staleCostSyncShipIds.length > STALE_COST_SYNC_BATCH_CAP
-            ? staleCostSyncShipIds.slice(0, STALE_COST_SYNC_BATCH_CAP)
-            : staleCostSyncShipIds,
-        ]}
+        call={{ method: "sync_ship_costs", args: { ship_ids: staleCostSyncBatch.map(String) }, gas: GAS_HEAVY }}
         disabled={transactionState.isPending}
         className="w-full justify-center px-6 py-3 rounded-none border-2 border-amber text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
         style={{ borderRadius: 0 }}
         onSuccess={async () => {
           toast.success(
             staleCostSyncShipIds.length > STALE_COST_SYNC_BATCH_CAP
-              ? "60 ships cost version update started!"
+              ? `${STALE_COST_SYNC_BATCH_CAP} ships updated`
               : "Ship cost versions updated!",
           );
-          afterShipCostSyncPersistCaches();
           await refetch();
         }}
         onError={() => {
@@ -840,7 +794,7 @@ const ManageNavy: React.FC = () => {
         }}
       >
         {staleCostSyncShipIds.length > STALE_COST_SYNC_BATCH_CAP
-          ? "[UPDATE 60 SHIPS]"
+          ? `[UPDATE ${STALE_COST_SYNC_BATCH_CAP} SHIPS]`
           : "[UPDATE ALL SHIPS]"}
       </TransactionButton>
     );
@@ -882,7 +836,7 @@ const ManageNavy: React.FC = () => {
 
       {!canRecycle && isConnected && (
         <RecycleLockedNotice
-          purchasedCount={amountPurchased ? Number(amountPurchased) : 0}
+          purchasedCount={0}
           threshold={10}
         />
       )}
@@ -1110,7 +1064,6 @@ const ManageNavy: React.FC = () => {
             <button
               onClick={() => {
                 clearAllShipDataCache();
-                clearAllShipImageCache();
                 toast.success(`Cleared all ship cache`);
                 window.location.reload();
               }}
@@ -1136,17 +1089,6 @@ const ManageNavy: React.FC = () => {
               [CLEAR TUTORIAL CACHE]
             </button>
 
-            <button
-              onClick={() => {
-                invalidateAllShipPurchasePriceCachesForChain(chainId);
-                toast.success(
-                  "Cleared purchase price cache (native + UTC) for this network",
-                );
-              }}
-              className="px-4 py-2 rounded-none border border-cyan text-cyan hover:bg-cyan/10 font-mono font-bold text-sm transition-all duration-200"
-            >
-              [CLEAR PRICE CACHE]
-            </button>
 
           </div>
         )}
@@ -1325,18 +1267,11 @@ const ManageNavy: React.FC = () => {
                     costsVersionStale ? (
                       <TransactionButton
                         transactionId={`sync-ship-costs-${ship.id.toString()}`}
-                        contractAddress={shipsContractAddress}
-                        abi={CONTRACT_ABIS.SHIPS as Abi}
-                        // Ships.syncShipCosts(uint256[]): only for ships the caller owns
-                        // or is approved for (else reverts NotYourShip); applies
-                        // getCurrentCostsVersion + calculateShipCost. Not setCostOfShip
-                        // (owner / game only). Reverts onchain if ship is in fleet.
-                        functionName="syncShipCosts"
-                        args={[[ship.id]]}
+                        // sync_ship_costs: only the caller's own ships, not in a fleet.
+                        call={{ method: "sync_ship_costs", args: { ship_ids: [ship.id.toString()] } }}
                         className="w-full px-2 py-1.5 border-2 border-solid text-xs font-bold uppercase tracking-wider transition-colors duration-150"
                         style={{
-                          fontFamily:
-                            "var(--font-rajdhani), 'Arial Black', sans-serif",
+                          fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
                           borderColor: "var(--color-amber)",
                           color: "var(--color-amber)",
                           backgroundColor: "var(--color-near-black)",
@@ -1344,7 +1279,6 @@ const ManageNavy: React.FC = () => {
                         }}
                         onSuccess={async () => {
                           toast.success("Ship cost version updated");
-                          afterShipCostSyncPersistCaches();
                           await refetch();
                         }}
                         onError={() => {
@@ -1380,32 +1314,15 @@ const ManageNavy: React.FC = () => {
         show={showRecycleModal && shipToRecycle != null}
         shipName={shipToRecycle ? (shipToRecycle.name || `Ship #${shipToRecycle.id}`) : ""}
         canRecycle={canRecycle}
-        purchasedCount={amountPurchased ? Number(amountPurchased) : 0}
-        threshold={10}
-        rewardLabel={recycleReward ? formatEther(recycleReward as bigint) : "…"}
+        purchasedCount={0}
+        threshold={0}
+        rewardLabel={recycleReward ? formatUnits18(recycleReward) : "…"}
         onCancel={handleRecycleCancel}
         confirmButton={
           shipToRecycle && (
             <TransactionButton
               transactionId={`recycle-ship-${shipToRecycle.id}`}
-              contractAddress={shipsContractAddress}
-              abi={[
-                {
-                  inputs: [
-                    {
-                      internalType: "uint256[]",
-                      name: "_shipIds",
-                      type: "uint256[]",
-                    },
-                  ],
-                  name: "shipBreaker",
-                  outputs: [],
-                  stateMutability: "nonpayable",
-                  type: "function",
-                },
-              ]}
-              functionName="shipBreaker"
-              args={[[shipToRecycle.id]]}
+              call={{ method: "recycle_ships", args: { ship_ids: [shipToRecycle.id.toString()] }, gas: GAS_HEAVY }}
               className="px-6 py-2 border border-warning-red text-warning-red hover:bg-warning-red/10 rounded-none font-mono font-bold transition-all duration-200"
               onSuccess={async () => {
                 toast.success("Ship recycled successfully!");

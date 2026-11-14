@@ -1,4 +1,4 @@
-import type { Address } from "viem";
+import type { Address } from "@/app/types/chain";
 import type {
   Ship,
   ShipColors,

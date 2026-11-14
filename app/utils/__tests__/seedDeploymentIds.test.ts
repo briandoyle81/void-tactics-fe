@@ -1,53 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { contentSyncPath, seedDeploymentIds, syncStateFor } from "../seedDeploymentIds";
+import { isNearDeploymentRecord, positionalSeedIds, seedIdsFromNearRecord } from "../seedDeploymentIds";
 import type { MissionSeedFiles } from "../missionSeedExport";
 
-const seeds = {
-  singlePlayer: { maps: [{ key: "m01" }, { key: "m02" }] },
-  roguelike: { maps: [{ key: "map67" }], nodes: [{ key: "r1" }, { key: "r2" }] },
-  pvp: { maps: [{ key: "pvp01" }] },
-} as unknown as MissionSeedFiles;
+const record = {
+  written_at: "2026-11-14T17:33:59Z",
+  network: "testnet",
+  game: "game.void-tactics.testnet",
+  single_player: { maps: { m01: 1, m02: 2 }, nodes: { m01: 1 } },
+  roguelike: { maps: { m01: 1, rlM01: 31 }, nodes: { r1: 1, r2: 2 } },
+  pvp_maps: { pvp01: 67 },
+};
 
-/** Journal lines for one completed, confirmed call future. */
-function call(futureId: string, nonce: number): string[] {
-  const hash = `0x${nonce.toString(16).padStart(4, "0")}`;
-  return [
-    JSON.stringify({ type: "TRANSACTION_SEND", futureId, nonce, transaction: { hash } }),
-    JSON.stringify({ type: "TRANSACTION_CONFIRM", futureId, hash }),
-    JSON.stringify({ type: "CALL_EXECUTION_STATE_COMPLETE", futureId, result: { type: "SUCCESS" } }),
-  ];
-}
-
-describe("seedDeploymentIds", () => {
-  it("numbers created keys by nonce and applies the sync state", () => {
-    // The deploy created m02 before m01, and pvp01; map67 came later from the sync script.
-    const journal = [
-      ...call("DeployModule#CreateM02Map", 10),
-      ...call("DeployModule#CreateM01Map", 11),
-      ...call("DeployModule#CreatePvp01Map", 12),
-      ...call("DeployModule#CreateRoguelikeR1Node", 13),
-      ...call("DeployModule#CreateRoguelikeR2Node", 14),
-    ].join("\n");
-    const ids = seedDeploymentIds(seeds, journal, { maps: { map67: "5" }, ignored: { maps: ["4"] } });
-    expect([...ids.mapIds]).toEqual([["m02", 1], ["m01", 2], ["pvp01", 3], ["map67", 5]]);
-    expect([...ids.roguelikeNodeIds]).toEqual([["r1", 1], ["r2", 2]]);
-    expect(ids.ignoredMapIds).toEqual([4]);
+describe("seedIdsFromNearRecord", () => {
+  it("merges every map section (one id space) and takes the roguelike node ids", () => {
+    const ids = seedIdsFromNearRecord(record);
+    expect(Object.fromEntries(ids.mapIds)).toEqual({ m01: 1, m02: 2, rlM01: 31, pvp01: 67 });
+    expect(Object.fromEntries(ids.roguelikeNodeIds)).toEqual({ r1: 1, r2: 2 });
+    expect(ids.fromRecord).toBe(true);
   });
 
-  it("drops a call the journal wiped", () => {
-    const journal = [
-      ...call("DeployModule#CreateM01Map", 1),
-      JSON.stringify({ type: "WIPE_APPLY", futureId: "DeployModule#CreateM01Map" }),
-    ].join("\n");
-    expect(seedDeploymentIds(seeds, journal, null).mapIds.size).toBe(0);
+  it("recognizes a record by shape", () => {
+    expect(isNearDeploymentRecord(record)).toBe(true);
+    expect(isNearDeploymentRecord({ maps: {} })).toBe(false);
   });
+});
 
-  it("ignores a sync record left from an older deployment", () => {
-    const record = { mapsAddress: "0xAbC0000000000000000000000000000000000001", maps: { map67: "5" } };
-    expect(syncStateFor(record, "0xabc0000000000000000000000000000000000001")).toBe(record);
-    expect(syncStateFor(record, "0x0000000000000000000000000000000000000002")).toBeNull();
-    // Records from before mapsAddress existed still apply.
-    expect(syncStateFor({ maps: {} }, "0x0000000000000000000000000000000000000002")).toEqual({ maps: {} });
-    expect(contentSyncPath("chain-84532")).toBe("content-sync/chain-84532.json");
+describe("positionalSeedIds", () => {
+  it("numbers maps across the three seed files, then nodes, from 1", () => {
+    const seeds = {
+      singlePlayer: { maps: [{ key: "m01" }, { key: "m02" }] },
+      roguelike: { maps: [{ key: "rlM01" }], nodes: [{ key: "r1" }] },
+      pvp: { maps: [{ key: "pvp01" }] },
+    } as unknown as MissionSeedFiles;
+    const ids = positionalSeedIds(seeds);
+    expect(ids.mapIds.get("pvp01")).toBe(4);
+    expect(ids.roguelikeNodeIds.get("r1")).toBe(1);
+    expect(ids.fromRecord).toBe(false);
   });
 });

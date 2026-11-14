@@ -1,93 +1,53 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, usePublicClient, useReadContract, useReadContracts } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi, Address } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useChainAccount } from "../near/useChainAccount";
+import { useNearSession } from "../near/session";
+import { viewGame } from "../near/rpc";
+import { GAS_HEAVY } from "../near/config";
 import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
 import type { NodeRewardShip, ShipGrantSpec } from "../utils/shipGrant";
 import { REWARD_SHIP_SNAPSHOT, SNAPSHOT_REWARD_SHIPS } from "../config/rewardShips";
 import { isSnapshotForContract } from "../utils/rewardShipSnapshot";
-import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
+import { RL_GRAPH_QUERY_ROOT } from "./useGameLens";
+import { useIsRoguelikeNodeEditor } from "./useRoguelikeNodeMap";
+import { useMaxVariant } from "./useShipAttributesContract";
+import { useNearView } from "../near/useNearView";
+import {
+  WIN_EFFECT_IDS,
+  fromShipGrantSpec,
+  shipGrantOf,
+  toShipGrantSpec,
+} from "../near/adapters/winEffects";
+import type { WinEffect } from "../near/generated/voidTactics";
 
-// Web3 reads and owner writes for ShipGrantWinEffect's per-node reward ships
-// (docs/frontend-handoff-2026-10-19.md §2). The contract's ShipGrant tuple
-// converts to the shared number-native ShipGrantSpec here and nowhere else.
+// A roguelike node's reward ship is its ShipGrant win effect
+// (app/near/adapters/winEffects.ts): the grant only exists while the node
+// runs the effect. The contract's ShipGrant converts to the shared
+// number-native ShipGrantSpec here and nowhere else.
 
-const CHAIN_ID = baseSepolia.id;
-const SHIP_GRANT_ABI = CONTRACT_ABIS.SHIP_GRANT_WIN_EFFECT as Abi;
-const SHIPS_ABI = CONTRACT_ABIS.SHIPS as Abi;
-export const SHIP_GRANT_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID].SHIP_GRANT_WIN_EFFECT as Address;
-const SHIPS_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID].SHIPS as Address;
+/** The id the reward ship snapshot and admin screens use for the grant effect. */
+export const SHIP_GRANT_ADDRESS = WIN_EFFECT_IDS.SHIP_GRANT_WIN_EFFECT;
 
-interface ShipGrantTuple {
-  name: string;
-  equipment: { mainWeapon: number; armor: number; shields: number; special: number };
-  colors: ShipGrantSpec["colors"];
-  variant: number;
-  accuracy: number;
-  hull: number;
-  speed: number;
-  shipsDestroyed: number;
-  shiny: boolean;
-  isFreeShip: boolean;
-  oncePerAddress: boolean;
-}
-
-function fromTuple(t: ShipGrantTuple): ShipGrantSpec {
-  return {
-    name: t.name,
-    equipment: {
-      mainWeapon: Number(t.equipment.mainWeapon),
-      armor: Number(t.equipment.armor),
-      shields: Number(t.equipment.shields),
-      special: Number(t.equipment.special),
-    },
-    colors: {
-      h1: Number(t.colors.h1), s1: Number(t.colors.s1), l1: Number(t.colors.l1),
-      h2: Number(t.colors.h2), s2: Number(t.colors.s2), l2: Number(t.colors.l2),
-    },
-    variant: Number(t.variant),
-    accuracy: Number(t.accuracy),
-    hull: Number(t.hull),
-    speed: Number(t.speed),
-    shipsDestroyed: Number(t.shipsDestroyed),
-    shiny: t.shiny,
-    isFreeShip: t.isFreeShip,
-    oncePerAddress: t.oncePerAddress,
-  };
-}
-
-/** Every number in a ShipGrantSpec fits the tuple's uint8/uint16/uint32 fields as-is. */
-const toTuple = (spec: ShipGrantSpec): ShipGrantTuple => ({ ...spec, name: spec.name.trim() });
-
-/**
- * The reward ship configured for each node (hasGrant + getGrant in one
- * multicall), keyed by node id; nodes without one are absent.
- */
+/** The reward ship configured for each node, keyed by node id; nodes without one are absent. */
 export function useShipGrants(nodeIds: readonly number[], enabled = true) {
-  const contracts = useMemo(
-    () =>
-      nodeIds.flatMap((id) => [
-        { address: SHIP_GRANT_ADDRESS, abi: SHIP_GRANT_ABI, chainId: CHAIN_ID, functionName: "hasGrant" as const, args: [BigInt(id)] as const },
-        { address: SHIP_GRANT_ADDRESS, abi: SHIP_GRANT_ABI, chainId: CHAIN_ID, functionName: "getGrant" as const, args: [BigInt(id)] as const },
-      ]),
-    [nodeIds],
-  );
-  const result = useReadContracts({
-    contracts,
-    query: { enabled: enabled && nodeIds.length > 0, staleTime: ADMIN_DATA_STALE_MS },
+  const key = nodeIds.join(",");
+  const result = useQuery({
+    queryKey: [RL_GRAPH_QUERY_ROOT, "grants", key],
+    queryFn: async () => {
+      const nodes = await Promise.all(nodeIds.map((id) => viewGame("get_rl_node", { node_id: String(id) })));
+      const map = new Map<number, ShipGrantSpec>();
+      nodes.forEach((n, i) => {
+        const grant = shipGrantOf(n?.win_effects);
+        if (grant) map.set(nodeIds[i], toShipGrantSpec(grant));
+      });
+      return map;
+    },
+    enabled: enabled && nodeIds.length > 0,
+    staleTime: ADMIN_DATA_STALE_MS,
   });
-  const grantsByNodeId = useMemo(() => {
-    const map = new Map<number, ShipGrantSpec>();
-    nodeIds.forEach((id, i) => {
-      const has = result.data?.[i * 2]?.result as boolean | undefined;
-      const grant = result.data?.[i * 2 + 1]?.result as ShipGrantTuple | undefined;
-      if (has && grant) map.set(id, fromTuple(grant));
-    });
-    return map;
-  }, [nodeIds, result.data]);
+  const grantsByNodeId = useMemo(() => result.data ?? new Map<number, ShipGrantSpec>(), [result.data]);
   return { grantsByNodeId, isLoading: result.isLoading, refetch: result.refetch };
 }
 
@@ -96,8 +56,8 @@ export const SNAPSHOT_IS_CURRENT = isSnapshotForContract(REWARD_SHIP_SNAPSHOT, S
 
 /**
  * A node's reward ship as players see it: from the app's snapshot
- * (app/data/content/rewardShips.json, no RPC), or read from the chain when
- * the snapshot is from another deploy.
+ * (app/data/content/rewardShips.json, no RPC) when it's from this deploy,
+ * otherwise read from the node.
  */
 export function useNodeGrant(nodeId: number | undefined): ShipGrantSpec | undefined {
   const ids = useMemo(() => (nodeId != null && !SNAPSHOT_IS_CURRENT ? [nodeId] : []), [nodeId]);
@@ -106,23 +66,17 @@ export function useNodeGrant(nodeId: number | undefined): ShipGrantSpec | undefi
   return SNAPSHOT_IS_CURRENT ? SNAPSHOT_REWARD_SHIPS.get(nodeId) : grantsByNodeId.get(nodeId);
 }
 
-/** hasClaimed for the signed-in player; only read when `enabled`. */
-function useHasClaimed(nodeId: number | undefined, enabled: boolean, staleTime?: number) {
-  const { address } = useAccount();
-  return useReadContract({
-    address: SHIP_GRANT_ADDRESS,
-    abi: SHIP_GRANT_ABI,
-    chainId: CHAIN_ID,
-    functionName: "hasClaimed",
-    args: nodeId != null && address ? [BigInt(nodeId), address] : undefined,
-    query: { enabled: enabled && nodeId != null && !!address, staleTime },
-  });
+/** is_rl_grant_claimed for the signed-in player: whether a once-per-player grant was paid out. */
+function useHasClaimed(nodeId: number | undefined, enabled: boolean, staleTime = 30_000) {
+  const { address } = useChainAccount();
+  const args = useMemo(
+    () => (nodeId != null && address && enabled ? { node_id: String(nodeId), account_id: address } : null),
+    [nodeId, address, enabled],
+  );
+  return useNearView("is_rl_grant_claimed", args, { staleTime });
 }
 
-/**
- * One node's reward ship for the signed-in player: the grant, and whether
- * they already received it (hasClaimed) when it's once per address.
- */
+/** One node's reward ship for the signed-in player, with whether a once-only grant was already claimed. */
 export function useNodeRewardShip(nodeId: number | undefined): NodeRewardShip | null {
   const grant = useNodeGrant(nodeId);
   const { data: claimed } = useHasClaimed(nodeId, !!grant?.oncePerAddress);
@@ -139,7 +93,7 @@ export function useRewardClaimedBeforeWin(nodeId: number | undefined, gameLive: 
   const grant = useNodeGrant(nodeId);
   const { data } = useHasClaimed(nodeId, gameLive && !!grant?.oncePerAddress, Infinity);
   // Keep the first answer read during the game: the same query reads true
-  // once the win's mint lands, which mustn't hide the reward.
+  // once the win's grant lands, which mustn't hide the reward.
   const [beforeWin, setBeforeWin] = useState<boolean | undefined>(undefined);
   useEffect(() => {
     if (gameLive && beforeWin === undefined && typeof data === "boolean") setBeforeWin(data);
@@ -147,61 +101,59 @@ export function useRewardClaimedBeforeWin(nodeId: number | undefined, gameLive: 
   return grant && !grant.oncePerAddress ? false : beforeWin;
 }
 
-/** Ships.maxVariant(): the highest variant a grant may use. */
+/** The highest variant a grant may use (get_settings.max_variant). */
 export function useShipsMaxVariant() {
-  const { data } = useReadContract({
-    address: SHIPS_ADDRESS,
-    abi: SHIPS_ABI,
-    chainId: CHAIN_ID,
-    functionName: "maxVariant",
-    query: { staleTime: ADMIN_DATA_STALE_MS },
-  });
-  return data != null ? Number(data) : undefined;
+  return useMaxVariant().data;
 }
 
-/** Whether the connected wallet owns ShipGrantWinEffect (only the owner can set grants). */
+/** Whether the signed-in player may set grants (owner or NODE_EDITOR). */
 export function useIsShipGrantOwner() {
-  const { address } = useAccount();
-  const { data: owner, isLoading } = useReadContract({
-    address: SHIP_GRANT_ADDRESS,
-    abi: SHIP_GRANT_ABI,
-    chainId: CHAIN_ID,
-    functionName: "owner",
-    query: { staleTime: ADMIN_DATA_STALE_MS },
-  });
-  return {
-    isOwner: !!address && typeof owner === "string" && owner.toLowerCase() === address.toLowerCase(),
-    isLoading,
-  };
+  const { address } = useChainAccount();
+  const { data, isLoading } = useIsRoguelikeNodeEditor(address);
+  return { isOwner: data === true, isLoading };
 }
 
-/** Owner writes: setGrant, clearGrant, resetClaim. Each resolves to the mined tx hash. */
+/** Grant writes: set a node's ship (adds the effect when missing), clear it, reset a player's claim. */
 export function useShipGrantAdmin() {
-  const { writeContractAsync } = useSponsoredWriteContract();
-  const publicClient = usePublicClient({ chainId: CHAIN_ID });
+  const { send } = useNearSession();
+  const queryClient = useQueryClient();
 
-  const send = useCallback(
-    async (functionName: "setGrant" | "clearGrant" | "resetClaim", args: readonly unknown[]) => {
-      const hash = await writeContractAsync({
-        address: SHIP_GRANT_ADDRESS,
-        abi: SHIP_GRANT_ABI,
-        chainId: CHAIN_ID,
-        functionName,
-        args,
+  const writeEffects = useCallback(
+    async (nodeId: number, change: (current: WinEffect[]) => WinEffect[]) => {
+      const node = await viewGame("get_rl_node", { node_id: String(nodeId) });
+      if (!node) throw new Error(`No roguelike node ${nodeId}`);
+      const receipt = await send({
+        method: "set_rl_node_win_effects",
+        args: { node_id: String(nodeId), effects: change(node.win_effects) },
+        gas: GAS_HEAVY,
       });
-      await publicClient!.waitForTransactionReceipt({ hash });
-      return hash;
+      void queryClient.invalidateQueries({ queryKey: [RL_GRAPH_QUERY_ROOT] });
+      return receipt.hash;
     },
-    [writeContractAsync, publicClient],
+    [send, queryClient],
   );
 
   const setGrant = useCallback(
-    (nodeId: number, spec: ShipGrantSpec) => send("setGrant", [BigInt(nodeId), toTuple(spec)]),
-    [send],
+    (nodeId: number, spec: ShipGrantSpec) =>
+      writeEffects(nodeId, (current) => {
+        const grant: WinEffect = { ShipGrant: fromShipGrantSpec(spec) };
+        const i = current.findIndex((e) => "ShipGrant" in e);
+        return i < 0 ? [...current, grant] : current.map((e, j) => (j === i ? grant : e));
+      }),
+    [writeEffects],
   );
-  const clearGrant = useCallback((nodeId: number) => send("clearGrant", [BigInt(nodeId)]), [send]);
+  const clearGrant = useCallback(
+    (nodeId: number) => writeEffects(nodeId, (current) => current.filter((e) => !("ShipGrant" in e))),
+    [writeEffects],
+  );
   const resetClaim = useCallback(
-    (nodeId: number, player: Address) => send("resetClaim", [BigInt(nodeId), player]),
+    async (nodeId: number, player: string) => {
+      const receipt = await send({
+        method: "reset_rl_grant_claim",
+        args: { node_id: String(nodeId), account_id: player },
+      });
+      return receipt.hash;
+    },
     [send],
   );
   return { setGrant, clearGrant, resetClaim };

@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import Header from "../../components/Header";
 import GameDisplay from "../../components/GameDisplay";
 import { useGetGame } from "../../hooks/useGameContract";
 import { GameDataView } from "../../types/types";
 import { useRouter } from "next/navigation";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../../config/networks";
 import { PLAY_PATH } from "../../config/routes";
 
 interface SpectatorGamePageProps {
@@ -24,16 +22,6 @@ export default function SpectatorGamePage({
     isLoading,
     error,
   } = useGetGame(gameId ?? 0);
-
-  useEffect(() => {
-    const onChainChanged = () => {
-      router.push(PLAY_PATH);
-    };
-    window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    return () => {
-      window.removeEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    };
-  }, [router]);
 
   const game = gameData as GameDataView | undefined;
   const hasValidId = gameId !== null;

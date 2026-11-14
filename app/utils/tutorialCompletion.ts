@@ -163,12 +163,12 @@ export function persistTutorialSkipped(playerKey: string): void {
 /** Once true per chain+wallet, tutorial claim never reverts; cache indefinitely. */
 const TUTORIAL_CLAIM_COMPLETED_CACHE_KEY = "void-tactics-tutorial-claim-completed";
 
-export function isTutorialClaimCompletedCached(chainId: number, walletAddress: string): boolean {
+export function isTutorialClaimCompletedCached(chainId: number | string, walletAddress: string): boolean {
   if (typeof window === "undefined") return false;
   return readFlags(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY)[`${chainId}:${walletAddress.toLowerCase()}`] === true;
 }
 
-export function persistTutorialClaimCompleted(chainId: number, walletAddress: string): void {
+export function persistTutorialClaimCompleted(chainId: number | string, walletAddress: string): void {
   if (typeof window === "undefined") return;
   try {
     const flags = readFlags(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY);
@@ -181,7 +181,7 @@ export function persistTutorialClaimCompleted(chainId: number, walletAddress: st
 }
 
 /** Dev: clear local "already claimed" cache when tutorial reward contract or rewards change. */
-export function clearTutorialClaimCompletedCacheEntry(chainId: number, walletAddress: string): void {
+export function clearTutorialClaimCompletedCacheEntry(chainId: number | string, walletAddress: string): void {
   if (typeof window === "undefined") return;
   try {
     const flags = readFlags(TUTORIAL_CLAIM_COMPLETED_CACHE_KEY);

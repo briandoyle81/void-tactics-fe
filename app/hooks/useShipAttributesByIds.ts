@@ -1,141 +1,72 @@
 import React from "react";
-import { useReadContract } from "wagmi";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useSelectedChainId } from "./useSelectedChainId";
-import { Attributes } from "../types/types";
-import {
-  readValidShipAttributesByIdsCache,
-  shipIdsToCacheKeyString,
-  writeShipAttributesByIdsCache,
-  SHIP_ATTRIBUTES_CACHE_INVALIDATED_EVENT,
-} from "../utils/shipAttributesLocalCache";
+import { useQuery } from "@tanstack/react-query";
+import type { Attributes, Ship } from "../types/types";
+import { viewGame } from "../near/rpc";
+import { calculateAttributesFromContracts, tableFromNear, type VariantAttributeTable } from "../utils/shipAttributesCalculator";
+import { useShipList } from "./useShipsContract";
+import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
 
-// `chainIdOverride` pins the read to a specific chain instead of following
-// the header network picker — needed by the campaign flow (Base-Sepolia-
-// only, like every other campaign hook), so attributes stay correct
-// regardless of what chain the picker happens to be set to.
-export function useShipAttributesByIds(shipIds: bigint[], chainIdOverride?: number) {
-  const pickerChainId = useSelectedChainId();
-  const chainId = chainIdOverride ?? pickerChainId;
-  const shipIdsString = React.useMemo(
-    () => shipIdsToCacheKeyString(shipIds),
-    [shipIds],
-  );
+export interface LiveAttributeTable {
+  version: number;
+  table: VariantAttributeTable;
+}
 
-  // Bumped when the local attributes cache is invalidated (e.g. after a ship
-  // is constructed or modified) so the memo below re-reads localStorage and
-  // falls through to a contract refetch within the same session, instead of
-  // holding the now-stale in-memory array until the next mount/reload.
-  const [cacheBust, setCacheBust] = React.useState(0);
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onInvalidated = (event: Event) => {
-      const detail = (event as CustomEvent<{ chainId?: number }>).detail;
-      // No chainId in the event means "clear everything"; otherwise only
-      // react to our own chain's invalidation.
-      if (detail?.chainId == null || detail.chainId === chainId) {
-        setCacheBust((n) => n + 1);
-      }
-    };
-    window.addEventListener(
-      SHIP_ATTRIBUTES_CACHE_INVALIDATED_EVENT,
-      onInvalidated,
-    );
-    return () =>
-      window.removeEventListener(
-        SHIP_ATTRIBUTES_CACHE_INVALIDATED_EVENT,
-        onInvalidated,
+/**
+ * Each variant's current attribute table (get_current_attributes_version +
+ * get_variant_attributes). A ship's stats are a pure function of the ship
+ * and its variant's table (the contract computes them the same way in
+ * vt-core), so the app computes them locally instead of a per-ship read.
+ */
+export function useVariantAttributeTables(variants: readonly number[] = [1, 2]) {
+  const key = [...new Set(variants)].sort().join(",");
+  return useQuery({
+    queryKey: ["near-attribute-tables", key],
+    queryFn: async () => {
+      const out = new Map<number, LiveAttributeTable>();
+      await Promise.all(
+        key.split(",").filter(Boolean).map(async (v) => {
+          const variant = Number(v);
+          const version = await viewGame("get_current_attributes_version", { variant });
+          const data = await viewGame("get_variant_attributes", { variant, version });
+          if (data) out.set(variant, { version, table: tableFromNear(data) });
+        }),
       );
-  }, [chainId]);
-
-  const getCachedData = React.useCallback((): Attributes[] | null => {
-    return readValidShipAttributesByIdsCache(chainId, shipIdsString);
-    // cacheBust intentionally in deps: it forces a fresh localStorage read
-    // after an invalidation even when chainId/shipIdsString are unchanged.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chainId, shipIdsString, cacheBust]);
-
-  // Get cached data
-  const cachedData = React.useMemo(() => getCachedData(), [getCachedData]);
-
-  // Only call contract if we don't have valid cached data
-  const shouldCallContract = !cachedData && shipIds.length > 0;
-
-  const shipAttributesAddress = React.useMemo(
-    () => getContractAddresses(chainId).SHIP_ATTRIBUTES as `0x${string}`,
-    [chainId],
-  );
-
-  const contractArgs = React.useMemo(
-    () => (shouldCallContract ? ([shipIds] as const) : undefined),
-    [shouldCallContract, shipIds],
-  );
-
-  const {
-    data: contractData,
-    isLoading,
-    error,
-    refetch,
-  } = useReadContract({
-    address: shipAttributesAddress,
-    abi: CONTRACT_ABIS.SHIP_ATTRIBUTES,
-    chainId,
-    functionName: "calculateShipAttributesByIds",
-    args: contractArgs,
-    // A new query after each invalidation. Otherwise wagmi serves the rows it
-    // read before (e.g. zeroed stats from before construction) for the same
-    // ids, and the effect below writes them straight back into the cache.
-    scopeKey: `ship-attributes-${cacheBust}`,
+      return out;
+    },
+    staleTime: ADMIN_DATA_STALE_MS,
   });
+}
 
-  React.useEffect(() => {
-    if (contractData) {
-      const rows = contractData as Attributes[];
-      if (rows.length === shipIds.length) {
-        writeShipAttributesByIdsCache(chainId, shipIds, rows);
-      }
-    }
-  }, [chainId, contractData, shipIds]);
+/** One ship's stats from the live tables (falls back to the built-in mirror while they load). */
+export function attributesFor(ship: Ship, tables: Map<number, LiveAttributeTable> | undefined): Attributes {
+  const live = tables?.get(ship.traits.variant);
+  return calculateAttributesFromContracts(ship, live?.table, live?.version);
+}
 
-  // Only use rows that match the current id list. Otherwise wagmi can briefly
-  // keep the previous query's array while `shipIds` has already updated, which
-  // mis-attributes stats (wrong damage reduction, etc.) when keyed by index.
+/** In-game stats for ships by id (player ships), in the same order. */
+export function useShipAttributesByIds(shipIds: bigint[]) {
+  const shipsQuery = useShipList(shipIds);
+  const tablesQuery = useVariantAttributeTables();
+  const ships = shipsQuery.data;
+  const tables = tablesQuery.data;
+
   const attributes = React.useMemo((): Attributes[] => {
-    const n = shipIds.length;
-    if (n === 0) return [];
-
-    if (cachedData && cachedData.length === n) {
-      return cachedData;
+    if (!ships || !tables || shipIds.length === 0) return [];
+    const byId = new Map(ships.map((s) => [s.id.toString(), s]));
+    const rows: Attributes[] = [];
+    for (const id of shipIds) {
+      const ship = byId.get(id.toString());
+      if (!ship) return [];
+      rows.push(attributesFor(ship, tables));
     }
-
-    const fromContract = contractData as Attributes[] | undefined;
-    // Do not trust `contractData` while this query is still loading: wagmi can
-    // keep the previous successful result until the new `args` resolve, and
-    // lengths can match while rows belong to an older `shipIds` list.
-    if (
-      shouldCallContract &&
-      fromContract &&
-      fromContract.length === n &&
-      !isLoading
-    ) {
-      return fromContract;
-    }
-
-    return [];
-  }, [
-    cachedData,
-    contractData,
-    shipIds.length,
-    shipIdsString,
-    shouldCallContract,
-    isLoading,
-  ]);
+    return rows;
+  }, [ships, tables, shipIds]);
 
   return {
     attributes,
-    isLoading: shouldCallContract && isLoading,
-    error,
-    refetch,
-    isFromCache: !!cachedData && cachedData.length === shipIds.length,
+    isLoading: shipIds.length > 0 && (shipsQuery.isLoading || tablesQuery.isLoading),
+    error: shipsQuery.error ?? tablesQuery.error,
+    refetch: shipsQuery.refetch,
+    isFromCache: false,
   };
 }

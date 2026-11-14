@@ -1,63 +1,18 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { WagmiProvider, createConfig, http } from "wagmi";
 import { SignInModal } from "./components/signIn/SignInModal";
 import { DynamicContextProvider, type DynamicContextProps } from "@dynamic-labs/sdk-react-core";
-import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
-import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
-import { baseSepolia, flowTestnet, saigon } from "viem/chains";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
 import { SessionProvider } from "next-auth/react";
 import { TransactionProvider } from "./providers/TransactionContext";
-import { type ReactNode, useEffect, memo } from "react";
-import { ContractEventsHost } from "./hooks/useContractEvents";
-import { useQueryClient } from "@tanstack/react-query";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT, xaiTestnet } from "./config/networks";
-import { useShipArtCacheGuard } from "./hooks/useShipImageCache";
+import { type ReactNode, memo } from "react";
 import { PosthogAppChainSync } from "./components/PosthogAppChainSync";
-import { RestoreWalletConnection } from "./components/RestoreWalletConnection";
 import { ClearOAuthRedirectParams } from "./components/ClearOAuthRedirectParams";
-import { GasGrantClaimer } from "./components/GasGrantClaimer";
-import { RegisterGasSponsorship } from "./hooks/useSponsoredWriteContract";
-import { recordRpcRequest } from "./utils/rpcUsage";
-
-// Base Sepolia RPC for reads (wagmi) and wallet writes (Dynamic). Set
-// NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL to a keyed provider (e.g. Ankr): the
-// public sepolia.base.org endpoint rate-limits (403s) under heavy AI-turn
-// polling. As a client-side URL the key is visible to the browser either
-// way — the env var just keeps it out of source and easy to rotate (the
-// previously hardcoded Ankr key was disabled on 2026-10-08, which broke
-// every Base Sepolia read).
-const PUBLIC_BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";
-const CONFIGURED_BASE_SEPOLIA_RPC_URL = process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL?.trim() || null;
-const BASE_SEPOLIA_RPC_URL = CONFIGURED_BASE_SEPOLIA_RPC_URL ?? PUBLIC_BASE_SEPOLIA_RPC_URL;
-
-const wagmiConfig = createConfig({
-  chains: [flowTestnet, saigon, baseSepolia, xaiTestnet],
-  multiInjectedProviderDiscovery: false,
-  transports: {
-    [flowTestnet.id]: http(),
-    [saigon.id]: http(),
-    // onFetchRequest counts requests by method (app/utils/rpcUsage.ts).
-    [baseSepolia.id]: http(BASE_SEPOLIA_RPC_URL, { onFetchRequest: recordRpcRequest }),
-    [xaiTestnet.id]: http(),
-  },
-});
-
-
-function InvalidateQueriesOnChainChange() {
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    const handler = () => {
-      void queryClient.invalidateQueries();
-    };
-    window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, handler);
-    return () => {
-      window.removeEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, handler);
-    };
-  }, [queryClient]);
-  return null;
-}
+import { NearSessionProvider } from "./near/session";
+import { NearOnboardingHost } from "./near/onboarding/NearOnboardingHost";
+import { NearSyncHost } from "./near/sync/NearSyncHost";
+import { NEAR_DYNAMIC_ENVIRONMENT_ID } from "./near/config";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,71 +23,43 @@ const queryClient = new QueryClient({
   },
 });
 
+// Dynamic signs players in (email code, Google, passkey) and holds their
+// Solana embedded wallet, whose Ed25519 key is their NEAR key
+// (app/near/identity.ts). The NEAR build uses its own Dynamic project
+// (NEXT_PUBLIC_NEAR_DYNAMIC_ENVIRONMENT_ID) with Solana embedded wallets on.
 const DYNAMIC_SETTINGS: DynamicContextProps["settings"] = {
-  environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID!,
-  walletConnectors: [EthereumWalletConnectors],
-  // wagmiConfig's `transports` above only governs the wagmi public client
-  // (reads via usePublicClient/useReadContract) — writes sent through a
-  // Dynamic-connected wallet (DynamicWagmiConnector) resolve their own RPC
-  // from Dynamic's own network config, entirely separate from wagmi's. That
-  // still defaulted to the public sepolia.base.org even after the wagmi
-  // transport was switched to Ankr, so takeAITurn/acceptMatch/etc. kept
-  // hitting the rate-limited public endpoint. Override just Base Sepolia's
-  // RPC here too, leaving every other dashboard-configured network as-is.
-  // Only when a keyed RPC is configured; otherwise Dynamic keeps its own.
-  overrides: CONFIGURED_BASE_SEPOLIA_RPC_URL
-    ? {
-        evmNetworks: (networks) =>
-          networks.map((network) =>
-            Number(network.chainId) === baseSepolia.id
-              ? {
-                  ...network,
-                  rpcUrls: [CONFIGURED_BASE_SEPOLIA_RPC_URL],
-                  privateCustomerRpcUrls: [CONFIGURED_BASE_SEPOLIA_RPC_URL],
-                }
-              : network,
-          ),
-      }
-    : undefined,
+  environmentId: NEAR_DYNAMIC_ENVIRONMENT_ID,
+  walletConnectors: [SolanaWalletConnectors],
 };
 
-function ShipArtCacheGuard() {
-  useShipArtCacheGuard();
-  return null;
-}
-
-// memo prevents DynamicWagmiConnectorInner's frequent re-renders from cascading into the entire app tree
+// memo keeps Dynamic's frequent context updates from re-rendering the whole app.
 const AppContent = memo(function AppContent({ children }: { children: ReactNode }) {
   return (
     <>
-      <InvalidateQueriesOnChainChange />
-      <ContractEventsHost />
+      <NearSyncHost />
       <PosthogAppChainSync />
-      <RestoreWalletConnection />
       <ClearOAuthRedirectParams />
-      <GasGrantClaimer />
-      <RegisterGasSponsorship />
-      <ShipArtCacheGuard />
       <SignInModal />
-      <TransactionProvider>{children}</TransactionProvider>
+      <TransactionProvider>
+        <NearOnboardingHost />
+        {children}
+      </TransactionProvider>
     </>
   );
 });
 
-// The game client's providers (wallet, chain reads, session), mounted once by
-// its shared layout (app/(client)/layout.tsx: /play, /admin, a game,
-// tournaments). The website doesn't need the wallet stack, so it doesn't load it.
+// The game client's providers (wallet, NEAR session, reads, session), mounted
+// once by its shared layout (app/(client)/layout.tsx: /play, /admin, a game).
+// The website doesn't need the wallet stack, so it doesn't load it.
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <DynamicContextProvider settings={DYNAMIC_SETTINGS}>
-        <WagmiProvider config={wagmiConfig}>
-          <QueryClientProvider client={queryClient}>
-            <DynamicWagmiConnector>
-              <AppContent>{children}</AppContent>
-            </DynamicWagmiConnector>
-          </QueryClientProvider>
-        </WagmiProvider>
+        <QueryClientProvider client={queryClient}>
+          <NearSessionProvider>
+            <AppContent>{children}</AppContent>
+          </NearSessionProvider>
+        </QueryClientProvider>
       </DynamicContextProvider>
     </SessionProvider>
   );

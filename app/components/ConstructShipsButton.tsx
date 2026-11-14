@@ -1,81 +1,80 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { ShipActionButton } from "./ShipActionButton";
-import { useExpiredShipSerials } from "../hooks/useRandomManager";
-import { STALE_COST_SYNC_BATCH_CAP } from "../utils/navyFilters";
 import type { Ship } from "../types/types";
+import { useNearSession } from "../near/session";
+import { GAS_HEAVY } from "../near/config";
+import { isContractError, shortErrorMessage } from "../near/errors";
+import { openStorageTopUp } from "../near/onboarding/NearOnboardingHost";
 
-// Constructs the player's unconstructed ships: all of them in one
-// constructAllMyShips call, or the first STALE_COST_SYNC_BATCH_CAP via
-// constructShips when there are more than that. Shared by Manage Navy and the
-// roguelike roster picker.
-//
-// A ship whose construction window has passed (RandomManager.isExpired; see
-// useRandomManager.ts) still constructs, but as a basic ship; a note says
-// how many.
+/** How long new ships may take to build themselves before the manual build is offered. */
+const AUTO_BUILD_GRACE_MS = 20_000;
+
+/**
+ * On NEAR new ships build themselves a block or two after minting
+ * (self-callback randomness), so this mostly shows "building". A ship can
+ * stay unbuilt if the player's storage ran out at mint; after a short wait
+ * this offers to build those ships (construct_ships, up to 50 per call;
+ * the session key signs, no prompt). Renders nothing when every ship is built.
+ */
+const CONSTRUCT_BATCH = 50;
+
 export function ConstructShipsButton({
   unconstructedShips,
-  className,
+  className = "",
   onConstructed,
 }: {
   unconstructedShips: Ship[];
-  className: string;
-  /** Runs after the success toast, e.g. to refetch ships. */
-  onConstructed: () => void | Promise<void>;
+  className?: string;
+  onConstructed?: () => void | Promise<unknown>;
 }) {
-  const { expiredSerials } = useExpiredShipSerials(unconstructedShips);
-  const buildable = unconstructedShips;
-  const expiredCount = unconstructedShips.filter((ship) =>
-    expiredSerials.has(ship.traits.serialNumber.toString()),
-  ).length;
+  const { send } = useNearSession();
+  const [graceOver, setGraceOver] = useState(false);
+  const [building, setBuilding] = useState(false);
+  const count = unconstructedShips.length;
 
-  const expiredNote =
-    expiredCount > 0 ? (
-      <p className="max-w-xs font-mono text-xs leading-snug text-amber">
-        {expiredCount === 1 ? "1 ship" : `${expiredCount} ships`} missed the construction window and will be
-        built as {expiredCount === 1 ? "a basic ship" : "basic ships"}.
-      </p>
-    ) : null;
+  useEffect(() => {
+    setGraceOver(false);
+    if (count === 0) return;
+    const t = setTimeout(() => setGraceOver(true), AUTO_BUILD_GRACE_MS);
+    return () => clearTimeout(t);
+  }, [count]);
 
-  const constructAll = buildable.length <= STALE_COST_SYNC_BATCH_CAP;
-  const batch = buildable.slice(0, STALE_COST_SYNC_BATCH_CAP);
+  if (count === 0) return null;
 
-  const button = constructAll ? (
-    <ShipActionButton
-      action="constructAll"
-      ships={buildable}
+  const buildNow = async () => {
+    setBuilding(true);
+    try {
+      // construct_ships builds up to 50 per call.
+      for (let i = 0; i < count; i += CONSTRUCT_BATCH) {
+        const ids = unconstructedShips.slice(i, i + CONSTRUCT_BATCH).map((ship) => ship.id.toString());
+        await send({ method: "construct_ships", args: { ship_ids: ids }, gas: GAS_HEAVY });
+      }
+      toast.success(`Built ${count} ship${count === 1 ? "" : "s"}.`);
+      await onConstructed?.();
+    } catch (e) {
+      if (isContractError(e, "InsufficientStorageBalance")) openStorageTopUp();
+      else toast.error(`Couldn't build ships: ${shortErrorMessage(e)}`);
+      await onConstructed?.();
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={() => void buildNow()}
+      disabled={!graceOver || building}
       className={className}
-      disabled={buildable.length === 0}
-      onSuccess={async () => {
-        toast.success("Ships constructed successfully!");
-        await onConstructed();
-      }}
+      style={{ borderRadius: 0 }}
     >
-      [CONSTRUCT ALL SHIPS]
-    </ShipActionButton>
-  ) : (
-    <ShipActionButton
-      action="constructShips"
-      shipIds={batch.map((ship) => ship.id)}
-      ships={batch}
-      className={className}
-      onSuccess={async () => {
-        toast.success(`${batch.length} ${batch.length === 1 ? "ship" : "ships"} constructed!`);
-        await onConstructed();
-      }}
-    >
-      {`[CONSTRUCT ${batch.length} ${batch.length === 1 ? "SHIP" : "SHIPS"}]`}
-    </ShipActionButton>
-  );
-
-  return expiredNote ? (
-    <>
-      {button}
-      {expiredNote}
-    </>
-  ) : (
-    button
+      {building
+        ? "[BUILDING…]"
+        : graceOver
+          ? `[BUILD ${count} SHIP${count === 1 ? "" : "S"}]`
+          : `[BUILDING ${count} SHIP${count === 1 ? "" : "S"}…]`}
+    </button>
   );
 }

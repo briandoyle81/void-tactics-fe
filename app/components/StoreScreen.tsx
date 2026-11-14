@@ -6,7 +6,6 @@ import UTCPurchasePanel from "./UTCPurchasePanel";
 import UTCPurchasePanelWeb2 from "./UTCPurchasePanelWeb2";
 import DroneStorefront from "./DroneStorefront";
 import DroneStorefrontWeb2 from "./DroneStorefrontWeb2";
-import { UtcLotteryPanel } from "./UtcLotteryPanel";
 import { SubTabs } from "./SubTabs";
 import { useAppMode } from "../hooks/useAppMode";
 import { STORE_SECTIONS, type StoreSection } from "./storeSections";
@@ -19,14 +18,12 @@ const SECTION_LABELS: Record<StoreSection, string> = {
   packs: "Ship packs",
   credits: "Credits (UTC)",
   cores: "Cores (DCC)",
-  lottery: "Lottery",
 };
-/** Phone labels, so all four tabs fit on one line. */
+/** Phone labels, so every tab fits on one line. */
 const SECTION_SHORT_LABELS: Record<StoreSection, string> = {
   packs: "Packs",
   credits: "Credits",
   cores: "Cores",
-  lottery: "Lottery",
 };
 
 export function StoreScreen({
@@ -37,8 +34,7 @@ export function StoreScreen({
   onSection: (section: StoreSection) => void;
 }) {
   const isWeb2 = useAppMode() === "web2";
-  // The UTC lottery is a Uniswap pool hook — wallet players only.
-  const sections = STORE_SECTIONS.filter((s) => !(isWeb2 && s === "lottery"));
+  const sections = STORE_SECTIONS;
   const active = sections.includes(section) ? section : "packs";
 
   return (
@@ -52,7 +48,6 @@ export function StoreScreen({
       {active === "packs" && (isWeb2 ? <StoreWeb2 /> : <Store />)}
       {active === "credits" && (isWeb2 ? <UTCPurchasePanelWeb2 /> : <UTCPurchasePanel />)}
       {active === "cores" && (isWeb2 ? <DroneStorefrontWeb2 /> : <DroneStorefront />)}
-      {active === "lottery" && <UtcLotteryPanel />}
     </div>
   );
 }

@@ -1,22 +1,10 @@
 "use client";
 
-import { useAccount, useReadContract } from "wagmi";
-import { useNodeMapContract } from "./useNodeMap";
+import { useRoles } from "../near/useRoles";
+import { ROLE } from "../near/config";
 
-// NodeMap has its own onchain, multi-address editor permission system
-// (isNodeEditor/setNodeEditor) — separate from MAP_ADMIN_ADDRESS (map
-// geometry) and AIEncounters' isEncounterEditor (enemy fleet configs).
-// Don't conflate the three.
+// Campaign nodes are edited by NODE_EDITOR (or the owner) on the game contract.
 export function useIsNodeMapEditor() {
-  const { address } = useAccount();
-  const contract = useNodeMapContract();
-
-  const result = useReadContract({
-    ...contract,
-    functionName: "isNodeEditor",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
-
-  return { isEditor: result.data === true, isLoading: result.isLoading };
+  const roles = useRoles();
+  return { isEditor: roles.has(ROLE.NODE_EDITOR), isLoading: roles.isLoading };
 }

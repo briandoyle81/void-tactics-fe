@@ -21,16 +21,15 @@
   },
   "dependencies": {
     "@dynamic-labs-sdk/client": "^1.8.2",
-    "@dynamic-labs-sdk/evm": "1.8.2",
-    "@dynamic-labs/ethereum": "^4.88.5",
     "@dynamic-labs/sdk-react-core": "^4.88.5",
-    "@dynamic-labs/wagmi-connector": "^4.88.5",
+    "@dynamic-labs/solana": "^4.88.5",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@tanstack/react-query": "^5.85.3",
     "@worldcoin/idkit": "^4.1.8",
     "clsx": "^2.1.1",
     "jose": "^6.2.12",
+    "near-api-js": "^7.4.0",
     "next": "16.1.4",
     "next-auth": "^4.24.14",
     "pg": "^8.22.0",
@@ -39,8 +38,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
-    "viem": "^2.52.2",
-    "wagmi": "^2.19.5"
+    "viem": "^2.52.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

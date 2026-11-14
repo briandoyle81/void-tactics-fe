@@ -247,7 +247,7 @@ describe("buildMissionSeedFiles", () => {
 
     const { files, warnings } = buildMissionSeedFiles(chain, seed, ids);
     // Id 4 has no seed key, so it's exported as a new map, with a reminder to record its id.
-    expect(warnings).toEqual([expect.stringContaining('Record "map4": "4"')]);
+    expect(warnings).toEqual([expect.stringContaining('Map #4 is new to the seed as "map4"')]);
     expect(files.pvp.maps.map((m) => m.key)).toEqual(["pvp01", "map4"]);
     expect({ ...files, pvp: { ...files.pvp, maps: files.pvp.maps.slice(0, 1) } }).toEqual(seed);
     // Seed order would have keyed id 3 as rlM01.

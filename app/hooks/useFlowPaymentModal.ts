@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useReducer, useRef } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "../near/useChainAccount";
 import {
   createCheckoutTransaction,
   attachCheckoutTransactionSource,
@@ -14,7 +14,6 @@ import {
 import { createPublicClient, http, formatUnits } from "viem";
 import { mainnet, base, polygon, arbitrum, optimism } from "viem/chains";
 import { FLOW_USD_TIERS, type FlowPaymentMemo } from "@/app/config/flowPayment";
-import { useConstructAfterMint } from "./useConstructAfterMint";
 
 const CHECKOUT_ID = process.env.NEXT_PUBLIC_FLOW_CHECKOUT_ID!;
 
@@ -304,11 +303,10 @@ function reducer(s: State, a: Action): State {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Promise<unknown> }) {
-  const { address: buyerAddress } = useAccount();
+  const { address: buyerAddress } = useChainAccount();
   // Read when the payment is created (selectToken), which has no deps.
   const buyerAddressRef = useRef(buyerAddress);
   buyerAddressRef.current = buyerAddress;
-  const constructAfterMint = useConstructAfterMint();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const ref = useRef(state);
   ref.current = state;
@@ -481,20 +479,19 @@ export function useFlowPaymentModal({ onSuccess }: { onSuccess: () => void | Pro
       await pollSettlement(transactionId);
 
       dispatch({ type: "STEP", step: "minting" });
-      const mintTxHash = await requestFulfillment(transactionId);
+      await requestFulfillment(transactionId);
 
+      // The server minted the ships to the player's NEAR account; they
+      // construct themselves a block or two later (useOwnedShips polls).
       dispatch({ type: "STEP", step: "success" });
       await onSuccess();
-      // The server minted the ships: build them now, while their
-      // construction window is open (useConstructAfterMint).
-      if (mintTxHash) void constructAfterMint({ hash: mintTxHash });
     } catch (err) {
       dispatch({
         type: "ERROR",
         error: err instanceof Error ? err.message : "Payment failed",
       });
     }
-  }, [onSuccess, constructAfterMint]);
+  }, [onSuccess]);
 
   const close = useCallback(() => dispatch({ type: "CLOSE" }), []);
   const retry = useCallback(() => dispatch({ type: "RETRY" }), []);

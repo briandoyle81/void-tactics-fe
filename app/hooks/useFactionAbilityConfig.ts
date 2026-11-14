@@ -1,56 +1,30 @@
 import { useMemo } from "react";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, getContractAddresses, ZERO_ADDRESS } from "../config/contracts";
-import { useSelectedChainId } from "./useSelectedChainId";
 import { useGameRuleRead } from "./useGameRuleRead";
+import type { Resolver } from "../near/generated/voidTactics";
 
-// Every ship's innate faction ability — variant 1's Ram, variant 2's Repair
-// — is dispatched via ActionType.FactionAbility and resolved by a
-// dedicated, unequipped resolver contract (RamResolver/RepairResolver),
-// decoupled from the equipped-Special config table entirely (see those
-// contracts' own header comments). This only exists where the resolver
-// system does — Base Sepolia today; the other three chains still run the
-// older Game.sol where ramming was an automatic side effect of a plain
-// move and Repair never existed, so `isSupported` gates the FE onto the
-// right calling convention per chain rather than assuming everywhere has
-// been redeployed. See docs/eth-global-remote/frontend-handoff-attributes-costs-and-ai-2026-09-21.md
-// and docs/ai-behavior-registry.md.
+// Every ship's innate faction ability — variant 1's Ram, variant 2's Repair —
+// is dispatched via ActionType.FactionAbility and resolved by the variant's
+// faction resolver (get_faction_resolver: Ram { range } or Repair { range,
+// strength }), separate from the equipped-Special table.
 
-/** Live `RamResolver.range()` (variant 1's Ram — evict a downed enemy). */
-export function useRamResolverConfig() {
-  const chainId = useSelectedChainId();
-  const address = getContractAddresses(chainId).RAM_RESOLVER as `0x${string}`;
-  const isSupported = address.toLowerCase() !== ZERO_ADDRESS;
-  const { data } = useGameRuleRead({
-    address,
-    abi: CONTRACT_ABIS.RAM_RESOLVER as Abi,
-    chainId,
-    functionName: "range",
-    enabled: isSupported,
-  });
-  return { range: data as number | undefined, isSupported };
+function useFactionResolver(variant: number) {
+  const args = useMemo(() => ({ variant }), [variant]);
+  const { data } = useGameRuleRead("get_faction_resolver", args);
+  return data as Resolver | null | undefined;
 }
 
-/** Live `RepairResolver.range()`/`strength()` (variant 2's Repair — heal a friendly, including self). */
+/** Variant 1's Ram (evict a downed enemy). */
+export function useRamResolverConfig() {
+  const resolver = useFactionResolver(1);
+  const ram = resolver && "Ram" in resolver ? resolver.Ram : undefined;
+  return { range: ram?.range, isSupported: true };
+}
+
+/** Variant 2's Repair (heal a friendly, including self). */
 export function useRepairResolverConfig() {
-  const chainId = useSelectedChainId();
-  const address = getContractAddresses(chainId).REPAIR_RESOLVER as `0x${string}`;
-  const isSupported = address.toLowerCase() !== ZERO_ADDRESS;
-  const { data: range } = useGameRuleRead({
-    address,
-    abi: CONTRACT_ABIS.REPAIR_RESOLVER as Abi,
-    chainId,
-    functionName: "range",
-    enabled: isSupported,
-  });
-  const { data: strength } = useGameRuleRead({
-    address,
-    abi: CONTRACT_ABIS.REPAIR_RESOLVER as Abi,
-    chainId,
-    functionName: "strength",
-    enabled: isSupported,
-  });
-  return { range: range as number | undefined, strength: strength as number | undefined, isSupported };
+  const resolver = useFactionResolver(2);
+  const repair = resolver && "Repair" in resolver ? resolver.Repair : undefined;
+  return { range: repair?.range, strength: repair?.strength, isSupported: true };
 }
 
 /** Whichever resolver applies to `variant` (defaults to Ram/variant 1 for an unknown/undefined variant). */
@@ -59,8 +33,8 @@ export function useFactionAbilityConfig(variant: number | undefined) {
   const repair = useRepairResolverConfig();
   return useMemo(() => {
     if (Number(variant) === 2) {
-      return { range: repair.range, strength: repair.strength, isSupported: repair.isSupported, isHeal: true };
+      return { range: repair.range, strength: repair.strength, isSupported: true, isHeal: true };
     }
-    return { range: ram.range, strength: undefined, isSupported: ram.isSupported, isHeal: false };
-  }, [variant, ram.range, ram.isSupported, repair.range, repair.strength, repair.isSupported]);
+    return { range: ram.range, strength: undefined, isSupported: true, isHeal: false };
+  }, [variant, ram.range, repair.range, repair.strength]);
 }

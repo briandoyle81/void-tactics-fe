@@ -1,96 +1,52 @@
 "use client";
 
-import { useMemo } from "react";
-import { useReadContract, useReadContracts } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useQuery } from "@tanstack/react-query";
 import { CampaignNode } from "../types/types";
-
-// Single-player (NodeMap/SinglePlayerMatch/AIEncounters) is Base Sepolia
-// only — always read from that chain regardless of the connected
-// wallet/picker chain, same pattern as useSinglePlayerMatch.ts.
-const CHAIN_ID = baseSepolia.id;
-const NODE_MAP_ABI = CONTRACT_ABIS.NODE_MAP as Abi;
-const NODE_MAP_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-  .NODE_MAP as `0x${string}`;
-
-export function useNodeMapContract() {
-  return {
-    address: NODE_MAP_ADDRESS,
-    abi: NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-  };
-}
+import { viewGame } from "../near/rpc";
+import { toBig } from "../near/codec";
+import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
 
 /**
- * Every node across every existing campaign — admin/export use only (the
- * "show everything, labeled by campaign" case: NodeMapAdminPanel.tsx,
- * AdminSettingsExport.tsx), not the player-facing single-active-campaign
- * graph. Reads campaignCount() then batches getNodesInCampaign(id) for ids
- * 1..count (campaigns are 1-indexed — verified live: campaignExists(0) is
- * false, campaignExists(1) is true), flattens, then batches getNode(id).
+ * Every single-player campaign node across every campaign — admin/export
+ * use only. Campaigns are numbered from 1 (read until the first missing
+ * one); each lists its node ids (get_campaign), then each node is read.
  */
 export function useAllCampaignNodes() {
-  const countResult = useReadContract({
-    address: NODE_MAP_ADDRESS,
-    abi: NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "campaignCount",
-  });
-
-  const campaignIds = useMemo(() => {
-    const count = countResult.data != null ? Number(countResult.data as bigint) : 0;
-    return Array.from({ length: count }, (_, i) => BigInt(i + 1));
-  }, [countResult.data]);
-
-  const idsPerCampaignResult = useReadContracts({
-    contracts: campaignIds.map((id) => ({
-      address: NODE_MAP_ADDRESS,
-      abi: NODE_MAP_ABI,
-      chainId: CHAIN_ID,
-      functionName: "getNodesInCampaign" as const,
-      args: [id] as const,
-    })),
-    query: { enabled: campaignIds.length > 0 },
-  });
-
-  const nodeIds = useMemo(() => {
-    const ids: bigint[] = [];
-    idsPerCampaignResult.data?.forEach((r) => {
-      (r.result as readonly bigint[] | undefined)?.forEach((id) => ids.push(id));
-    });
-    return ids;
-  }, [idsPerCampaignResult.data]);
-
-  const nodesResult = useReadContracts({
-    contracts: nodeIds.map((id) => ({
-      address: NODE_MAP_ADDRESS,
-      abi: NODE_MAP_ABI,
-      chainId: CHAIN_ID,
-      functionName: "getNode" as const,
-      args: [id] as const,
-    })),
-    query: { enabled: nodeIds.length > 0 },
-  });
-
-  const nodes = useMemo(
-    () =>
-      nodesResult.data
-        ?.map((r) => r.result as CampaignNode | undefined)
-        .filter((n): n is CampaignNode => n != null) ?? [],
-    [nodesResult.data],
-  );
-
-  return {
-    data: nodes,
-    campaignCount: campaignIds.length,
-    isLoading: countResult.isLoading || idsPerCampaignResult.isLoading || nodesResult.isLoading,
-    error: countResult.error ?? idsPerCampaignResult.error ?? nodesResult.error ?? null,
-    refetch: () => {
-      void countResult.refetch();
-      void idsPerCampaignResult.refetch();
-      void nodesResult.refetch();
+  const result = useQuery({
+    queryKey: ["near-sp-campaign-nodes", "all"],
+    queryFn: async () => {
+      const campaigns: Array<{ id: bigint; nodeIds: number[] }> = [];
+      for (let id = 1; id <= 100; id++) {
+        const c = await viewGame("get_campaign", { campaign_id: String(id) });
+        if (!c) break;
+        campaigns.push({ id: BigInt(id), nodeIds: c.node_ids });
+      }
+      const nodeIds = campaigns.flatMap((c) => c.nodeIds);
+      const nodes = await Promise.all(nodeIds.map((id) => viewGame("get_node", { node_id: String(id) })));
+      const out: CampaignNode[] = [];
+      nodes.forEach((n, i) => {
+        if (!n) return;
+        out.push({
+          id: BigInt(nodeIds[i]),
+          campaignId: toBig(n.campaign_id),
+          mapId: toBig(n.map_id),
+          prerequisites: n.prerequisites.map((p) => toBig(p)),
+          costLimit: toBig(n.cost_limit),
+          turnTime: toBig(n.turn_time),
+          maxScore: toBig(n.max_score),
+          creatorGoesFirst: n.creator_goes_first,
+          exists: true,
+        });
+      });
+      return { nodes: out, campaignCount: campaigns.length };
     },
+    staleTime: ADMIN_DATA_STALE_MS,
+  });
+  return {
+    data: result.data?.nodes ?? [],
+    campaignCount: result.data?.campaignCount ?? 0,
+    isLoading: result.isLoading,
+    error: result.error ?? null,
+    refetch: () => void result.refetch(),
   };
 }

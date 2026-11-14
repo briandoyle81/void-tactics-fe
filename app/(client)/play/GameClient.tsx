@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { SessionRestoreProbe } from "../../components/SessionRestoreProbe";
 import Header from "../../components/Header";
 import { GameNav, type GameSection } from "../../components/GameNav";
@@ -81,7 +81,6 @@ const Games = dynamic(() => import("../../components/Games"), { loading: ScreenL
 const GamesWeb2 = dynamic(() => import("../../components/GamesWeb2"), { loading: ScreenLoading });
 const Profile = dynamic(() => import("../../components/Profile"), { loading: ScreenLoading });
 const ProfileWeb2 = dynamic(() => import("../../components/ProfileWeb2"), { loading: ScreenLoading });
-const Tournaments = dynamic(() => import("../../components/Tournaments").then((m) => m.Tournaments), { loading: ScreenLoading });
 const TournamentsWeb2 = dynamic(
   () => import("../../components/TournamentsWeb2").then((m) => m.TournamentsWeb2),
   { loading: ScreenLoading },
@@ -213,7 +212,7 @@ function CenteredMessage({ children }: { children: ReactNode }) {
  * tabs live in the Ops Console (/admin).
  */
 export default function GameClient() {
-  const { status, address, isConnected } = useAccount();
+  const { status, address, isConnected } = useChainAccount();
   const [isGamesDetailActive, setIsGamesDetailActive] = useState(false);
   const { games: playerGames, refetch: refetchPlayerGames } = usePlayerGames({
     enabled: !isGamesDetailActive,
@@ -418,7 +417,7 @@ export default function GameClient() {
   // "disconnected" until it does, and resetting then overwrote the saved
   // tab (a refresh mid-match landed on the Command Deck, not the match).
   useEffect(() => {
-    if (status === "connecting" || status === "reconnecting" || isUserLoading) return;
+    if (status === "connecting" || isUserLoading) return;
     if (!hasRestoreProbeReported || isRestoringSession) return;
     if (!isConnected && !isLoggedIn && activeTab !== "Command Deck") {
       setActiveTab("Command Deck", { replace: true });
@@ -466,7 +465,6 @@ export default function GameClient() {
   const isSignedIn = appMode === "web2" ? isLoggedIn : status === "connected";
   const isCheckingSignIn =
     status === "connecting" ||
-    status === "reconnecting" ||
     isUserLoading ||
     (appMode !== "web2" && !isLoggedIn && isRestoringSession);
 
@@ -576,7 +574,7 @@ export default function GameClient() {
         )}
         {activeTab === "Lobbies" && <ScreenPanel>{appMode === "web2" ? <LobbiesWeb2 /> : <Lobbies />}</ScreenPanel>}
         {activeTab === "Tournaments" && TOURNAMENTS_ENABLED && (
-          <ScreenPanel>{appMode === "web2" ? <TournamentsWeb2 /> : <Tournaments />}</ScreenPanel>
+          <ScreenPanel>{appMode === "web2" ? <TournamentsWeb2 /> : null}</ScreenPanel>
         )}
         {activeTab === "Profile" && (
           <ScreenPanel>

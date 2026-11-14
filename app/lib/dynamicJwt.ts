@@ -6,7 +6,9 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 // app.dynamicauth.com/<environmentId>, not expired, and a `scope` list that
 // includes `user:basic` (anything else means sign-in or MFA isn't finished).
 
-const ENV_ID = process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID ?? "";
+// The NEAR build has its own Dynamic project (Solana embedded wallets).
+const ENV_ID =
+  process.env.NEXT_PUBLIC_NEAR_DYNAMIC_ENVIRONMENT_ID || process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID || "";
 
 const jwks = ENV_ID
   ? createRemoteJWKSet(new URL(`https://app.dynamicauth.com/api/v0/sdk/${ENV_ID}/.well-known/jwks`))

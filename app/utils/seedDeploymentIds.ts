@@ -1,18 +1,9 @@
-// The onchain id of each seed map and roguelike node on a real deployment,
-// read the way the contracts repo's scripts/syncStarterContent.ts reads them
-// (frontend-handoff-2026-10-20.md §2). Ids can't be worked out from the
-// seed's array order any more: the live Base Sepolia deploy created
-// "Repair Facility DS7" (seed key map67) as map 68 after the PvP maps, and
-// map 67 is a duplicate no seed entry owns.
-//
-// - The deployment journal (ignition/deployments/<id>/journal.jsonl): each
-//   Create<Key>Map / CreateRoguelike<Key>Node call's confirmed nonce gives
-//   its creation order, so its id.
-// - The content-sync record (ignition/content-sync/<id>.json; until
-//   2026-11-12 it was content-sync.json in the deployment folder, which a
-//   redeploy deletes): ids the sync script created later (key -> id), and
-//   ids no seed entry owns ("ignored"). Its mapsAddress names the deployment
-//   it describes; see syncStateFor.
+// The onchain id of each seed map and roguelike node on the live
+// deployment. Ids can't be worked out from the seed's array order once
+// content is synced after a deploy, so they come from the contracts repo's
+// NEAR deployment record (near/deployments/<network>.json), which its
+// deploy tool writes after reading every id back from the chain (rerun it
+// with --record-only after a deploy or a content sync).
 //
 // Used by the mission seed export (chain -> seed keys) and the web2 import
 // (seed keys -> ids), so web2's ids match the live chain and the id-keyed
@@ -29,115 +20,8 @@ export interface SeedDeploymentIds {
   /** Onchain map ids no seed entry owns (e.g. a duplicate left by a failed sync). */
   ignoredMapIds: number[];
   ignoredRoguelikeNodeIds: number[];
-  /** False for positionalSeedIds: there's no content-sync record to record new ids in. */
+  /** False for positionalSeedIds: there's no deployment record to record new ids in. */
   fromRecord: boolean;
-}
-
-export interface ContentSyncState {
-  /** The Maps address of the deployment this record describes. */
-  mapsAddress?: string;
-  maps?: Record<string, string>;
-  roguelikeNodes?: Record<string, string>;
-  /** AI ship config ids (used by the contracts repo's scripts, not here). */
-  aiConfigs?: Record<string, string>;
-  ignored?: { maps?: string[]; roguelikeNodes?: string[] };
-}
-
-/** Where the record for a deployment folder (e.g. "chain-84532") lives, relative to ignition/. */
-export const contentSyncPath = (deploymentFolder: string) => `content-sync/${deploymentFolder}.json`;
-
-/**
- * The record if it describes the deployment whose Maps contract is
- * `mapsAddress`, else null: the record outlives a redeploy, and an older
- * deployment's ids would be wrong.
- */
-export function syncStateFor(
-  syncState: ContentSyncState | null,
-  mapsAddress: string | undefined,
-): ContentSyncState | null {
-  if (!syncState?.mapsAddress || !mapsAddress) return syncState;
-  return syncState.mapsAddress.toLowerCase() === mapsAddress.toLowerCase() ? syncState : null;
-}
-
-const cap = (k: string) => `${k[0].toUpperCase()}${k.slice(1)}`;
-
-interface JournalSummary {
-  confirmedNonce: Map<string, number>;
-  completed: Set<string>;
-}
-
-/** Confirmed nonce per completed call future. Mirrors syncStarterContent.ts's readJournal. */
-function readJournal(text: string): JournalSummary {
-  const nonceByHash = new Map<string, number>();
-  const confirmedNonce = new Map<string, number>();
-  const completed = new Set<string>();
-  for (const line of text.split("\n")) {
-    if (!line.trim()) continue;
-    const msg = JSON.parse(line);
-    const id: string | undefined = msg.futureId;
-    switch (msg.type) {
-      case "TRANSACTION_SEND":
-        nonceByHash.set(msg.transaction.hash, msg.nonce);
-        break;
-      case "TRANSACTION_CONFIRM":
-        if (id && nonceByHash.has(msg.hash)) confirmedNonce.set(id, nonceByHash.get(msg.hash)!);
-        break;
-      case "CALL_EXECUTION_STATE_COMPLETE":
-        if (id && msg.result?.type === "SUCCESS") completed.add(id);
-        break;
-      case "WIPE_APPLY":
-        if (id) {
-          completed.delete(id);
-          confirmedNonce.delete(id);
-        }
-        break;
-    }
-  }
-  return { confirmedNonce, completed };
-}
-
-/** Ids for keys whose creation calls ran, numbered 1..n by nonce order. */
-function idsFromJournal(
-  journal: JournalSummary,
-  keys: string[],
-  futureIdFor: (key: string) => string,
-): Map<string, number> {
-  const found = keys
-    .map((key) => ({ key, futureId: futureIdFor(key) }))
-    .filter(({ futureId }) => journal.completed.has(futureId))
-    .map(({ key, futureId }) => {
-      const nonce = journal.confirmedNonce.get(futureId);
-      if (nonce === undefined) throw new Error(`No confirmed transaction in the journal for ${futureId}`);
-      return { key, nonce };
-    })
-    .sort((a, b) => a.nonce - b.nonce);
-  return new Map(found.map(({ key }, i) => [key, i + 1]));
-}
-
-/** Every seed map and roguelike node's id on the deployment the journal and sync state describe. */
-export function seedDeploymentIds(
-  seeds: Pick<MissionSeedFiles, "singlePlayer" | "roguelike" | "pvp">,
-  journalText: string,
-  syncState: ContentSyncState | null,
-): SeedDeploymentIds {
-  const journal = readJournal(journalText);
-  // Same order as DeployAndConfig.ts.
-  const mapKeys = [...seeds.singlePlayer.maps, ...seeds.roguelike.maps, ...seeds.pvp.maps].map((m) => m.key);
-  const mapIds = idsFromJournal(journal, mapKeys, (k) => `DeployModule#Create${cap(k)}Map`);
-  const roguelikeNodeIds = idsFromJournal(
-    journal,
-    seeds.roguelike.nodes.map((n) => n.key),
-    (k) => `DeployModule#CreateRoguelike${cap(k)}Node`,
-  );
-  Object.entries(syncState?.maps ?? {}).forEach(([k, id]) => mapIds.set(k, Number(id)));
-  Object.entries(syncState?.roguelikeNodes ?? {}).forEach(([k, id]) => roguelikeNodeIds.set(k, Number(id)));
-  return {
-    mapIds,
-    roguelikeNodeIds,
-    ignoredMapIds: (syncState?.ignored?.maps ?? []).map(Number),
-    ignoredRoguelikeNodeIds: (syncState?.ignored?.roguelikeNodes ?? []).map(Number),
-    fromRecord: true,
-  };
 }
 
 /** Ids as a fresh deploy from these seeds gives them: 1-indexed array position. */
@@ -152,4 +36,35 @@ export function positionalSeedIds(
     ignoredRoguelikeNodeIds: [],
     fromRecord: false,
   };
+}
+
+/**
+ * The NEAR deployment record (the contracts repo's
+ * near/deployments/<network>.json, written by its deploy tool after reading
+ * every id back from the chain): seed key -> id for maps (single-player,
+ * roguelike and PvP share one id space) and roguelike nodes.
+ */
+export interface NearDeploymentRecord {
+  written_at?: string;
+  network?: string;
+  game: string;
+  single_player?: { maps?: Record<string, number>; nodes?: Record<string, number> };
+  roguelike?: { maps?: Record<string, number>; nodes?: Record<string, number> };
+  pvp_maps?: Record<string, number>;
+}
+
+export const isNearDeploymentRecord = (d: unknown): d is NearDeploymentRecord =>
+  !!d &&
+  typeof d === "object" &&
+  typeof (d as NearDeploymentRecord).game === "string" &&
+  typeof (d as NearDeploymentRecord).roguelike === "object";
+
+/** Every seed map and roguelike node's id from a NEAR deployment record. */
+export function seedIdsFromNearRecord(record: NearDeploymentRecord): SeedDeploymentIds {
+  const mapIds = new Map<string, number>();
+  for (const maps of [record.single_player?.maps, record.roguelike?.maps, record.pvp_maps]) {
+    Object.entries(maps ?? {}).forEach(([k, id]) => mapIds.set(k, Number(id)));
+  }
+  const roguelikeNodeIds = new Map(Object.entries(record.roguelike?.nodes ?? {}).map(([k, id]) => [k, Number(id)]));
+  return { mapIds, roguelikeNodeIds, ignoredMapIds: [], ignoredRoguelikeNodeIds: [], fromRecord: true };
 }

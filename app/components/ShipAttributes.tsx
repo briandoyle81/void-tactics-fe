@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import {
   useShipAttributesOwner,
   useCurrentAttributesVersion,
@@ -26,8 +26,7 @@ import {
 } from "../types/types";
 import { TransactionButton } from "./TransactionButton";
 import { toast } from "react-hot-toast";
-import { CONTRACT_ADDRESSES, CONTRACT_ABIS } from "../config/contracts";
-import type { Abi } from "viem";
+import { fromCosts, fromVariantAttributeData } from "../hooks/useShipAttributesContract";
 
 type CostArrayKey = Exclude<keyof Costs, "version" | "baseCost">;
 
@@ -441,7 +440,7 @@ function validateDraft(draft: VariantAttributeData): string[] {
 }
 
 const ShipAttributes: React.FC = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useChainAccount();
   const { owner, isOwner } = useShipAttributesOwner();
 
   // Costs and attributes are stored per ship variant (faction); the picker
@@ -455,7 +454,7 @@ const ShipAttributes: React.FC = () => {
   const otherVariant = variant === 1 ? 2 : 1;
 
   // --- Costs (per-variant version; model unchanged, only validation added) ---
-  const { data: currentCostsVersion, refetch: refetchCostsVersion } = useCurrentCostsVersion(undefined, variant);
+  const { data: currentCostsVersion, refetch: refetchCostsVersion } = useCurrentCostsVersion(variant);
   const { data: costsData, error: costsError, refetch: refetchCosts } = useCosts(variant);
   const costs =
     Array.isArray(costsData) && costsData.length > 1
@@ -762,18 +761,18 @@ const ShipAttributes: React.FC = () => {
                       </button>
                       <TransactionButton
                         transactionId="update-costs"
-                        contractAddress={CONTRACT_ADDRESSES.SHIP_ATTRIBUTES as `0x${string}`}
-                        abi={CONTRACT_ABIS.SHIP_ATTRIBUTES as Abi}
-                        functionName="setCosts"
-                        disabled={costErrors.length > 0}
-                        args={[
-                          variant,
-                          {
-                            ...merged,
-                            // Contract ignores this and bumps the stored version itself.
-                            version: costs.version,
-                          },
-                        ]}
+                        call={
+                          costErrors.length > 0
+                            ? null
+                            : {
+                                method: "set_costs",
+                                args: {
+                                  variant,
+                                  // The contract ignores `version` and bumps the stored one itself.
+                                  costs: fromCosts({ ...merged, version: costs.version } as Costs),
+                                },
+                              }
+                        }
                         className="px-4 py-2 border border-phosphor-green text-phosphor-green rounded-none font-mono hover:bg-phosphor-green/10 transition-colors disabled:opacity-50"
                         onSuccess={async () => {
                           toast.success("Costs updated successfully!");
@@ -894,10 +893,7 @@ const ShipAttributes: React.FC = () => {
                 historyVersion !== Number(currentAttributesVersion) && (
                   <TransactionButton
                     transactionId="rollback-attributes-version"
-                    contractAddress={CONTRACT_ADDRESSES.SHIP_ATTRIBUTES as `0x${string}`}
-                    abi={CONTRACT_ABIS.SHIP_ATTRIBUTES as Abi}
-                    functionName="setCurrentAttributesVersion"
-                    args={[variant, historyVersion]}
+                    call={{ method: "set_current_attributes_version", args: { variant, version: historyVersion } }}
                     className="px-3 py-1.5 border border-amber text-amber rounded-none font-mono hover:bg-amber/10 transition-colors text-sm"
                     onSuccess={async () => {
                       toast.success(`Variant ${variant} rolled back to v${historyVersion}`);
@@ -1136,11 +1132,14 @@ const ShipAttributes: React.FC = () => {
               </button>
               <TransactionButton
                 transactionId="publish-attributes"
-                contractAddress={CONTRACT_ADDRESSES.SHIP_ATTRIBUTES as `0x${string}`}
-                abi={CONTRACT_ABIS.SHIP_ATTRIBUTES as Abi}
-                functionName="setVariantAttributes"
-                disabled={validationErrors.length > 0}
-                args={[{ variant, ...draft }]}
+                call={
+                  validationErrors.length > 0 || !draft
+                    ? null
+                    : {
+                        method: "publish_variant_attributes",
+                        args: { variant, data: fromVariantAttributeData(draft as VariantAttributeData) },
+                      }
+                }
                 className="px-4 py-2 border border-phosphor-green text-phosphor-green rounded-none font-mono hover:bg-phosphor-green/10 transition-colors disabled:opacity-50"
                 onSuccess={async () => {
                   toast.success(`Variant ${variant} attributes published!`);

@@ -1,15 +1,12 @@
 "use client";
 
 import React, { useCallback, useMemo } from "react";
-import { isAddress, type Abi, type Address } from "viem";
-import { baseSepolia } from "viem/chains";
-import { useAccount, useReadContracts } from "wagmi";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../../config/contracts";
+import { useChainAccount } from "../../near/useChainAccount";
+import { useNearViews } from "../../near/useNearView";
 import { ADMIN_DATA_STALE_MS } from "../../config/queryTiming";
 import { DEFAULT_MAX_SPECIAL_SLOT, validSpecialsForVariant } from "../../types/types";
 import { RoguelikeNodeKind } from "../../types/roguelike";
 import { useAllRoguelikeNodes } from "../../hooks/useRoguelikeNodeMap";
-import { useRoguelikeNodeMapAdmin } from "../../hooks/useRoguelikeNodeMapAdmin";
 import { useRoguelikeNodesWinEffects } from "../../hooks/useWinEffects";
 import { resolveNodeContent, useWeb3NodeContent } from "../../hooks/useNodeContent";
 import {
@@ -24,13 +21,12 @@ import { RewardShipSnapshotPanel } from "./RewardShipSnapshotPanel";
 import { REWARD_SHIP_SNAPSHOT } from "../../config/rewardShips";
 import { staleSnapshotNodeIds } from "../../utils/rewardShipSnapshot";
 
-const CHAIN_ID = baseSepolia.id;
-const GAME_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID].GAME as Address;
-const GAME_ABI = CONTRACT_ABIS.GAME as Abi;
-
-/** Web3's Reward Ships tab: ShipGrantWinEffect owner calls (see RewardShipsAdminView). */
+/**
+ * Web3's Reward Ships tab (see RewardShipsAdminView): each roguelike combat
+ * node's reward ship is its ShipGrant win effect (NODE_EDITOR or owner).
+ */
 export function RewardShipsAdmin() {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const { nodes: allNodes, isLoading: nodesLoading } = useAllRoguelikeNodes();
   const combatNodes = useMemo(() => allNodes.filter((n) => n.kind === RoguelikeNodeKind.Combat), [allNodes]);
   const bigIds = useMemo(() => combatNodes.map((n) => n.id), [combatNodes]);
@@ -42,27 +38,18 @@ export function RewardShipsAdmin() {
   const { isOwner, isLoading: ownerLoading } = useIsShipGrantOwner();
   const maxVariant = useShipsMaxVariant() ?? 2;
   const grantAdmin = useShipGrantAdmin();
-  const nodeMapAdmin = useRoguelikeNodeMapAdmin();
 
-  // Special slots per variant (Game.maxSpecialSlot), one multicall.
-  const slotContracts = useMemo(
-    () =>
-      Array.from({ length: maxVariant }, (_, i) => ({
-        address: GAME_ADDRESS,
-        abi: GAME_ABI,
-        chainId: CHAIN_ID,
-        functionName: "maxSpecialSlot" as const,
-        args: [i + 1] as const,
-      })),
-    [maxVariant],
-  );
-  const { data: slotData } = useReadContracts({ contracts: slotContracts, query: { staleTime: ADMIN_DATA_STALE_MS } });
+  // Special slots per variant (get_max_special_slot).
+  const slotArgs = useMemo(() => Array.from({ length: maxVariant }, (_, i) => ({ variant: i + 1 })), [maxVariant]);
+  const slotResults = useNearViews("get_max_special_slot", slotArgs, { staleTime: ADMIN_DATA_STALE_MS });
+  const slotData = slotResults.map((r) => r.data);
   const specialsForVariant = useCallback(
     (variant: number) => {
-      const raw = slotData?.[variant - 1]?.result;
+      const raw = slotData[variant - 1];
       return validSpecialsForVariant(variant, raw != null ? Number(raw) : DEFAULT_MAX_SPECIAL_SLOT);
     },
-    [slotData],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- slotData is rebuilt each render from cached queries
+    [slotData.join(",")],
   );
 
   const nodes = useMemo(
@@ -89,11 +76,11 @@ export function RewardShipsAdmin() {
   );
 
   const editBlockedReason = !address
-    ? "Connect the ShipGrantWinEffect owner wallet to edit rewards."
+    ? "Sign in as the contract owner or a node editor to edit rewards."
     : ownerLoading
       ? null
       : !isOwner
-        ? "This wallet doesn't own ShipGrantWinEffect, so it can only view rewards."
+        ? "This account isn't the owner or a node editor, so it can only view rewards."
         : null;
 
   return (
@@ -105,7 +92,7 @@ export function RewardShipsAdmin() {
       editBlockedReason={editBlockedReason}
       maxVariant={maxVariant}
       specialsForVariant={specialsForVariant}
-      playerLabel="Player wallet address (0x…)"
+      playerLabel="Player account"
       staleNodeIds={staleNodeIds}
       header={
         <RewardShipSnapshotPanel
@@ -125,14 +112,16 @@ export function RewardShipsAdmin() {
         return `Reward ship cleared for node #${nodeId}. (tx: ${hash.slice(0, 10)}…)`;
       }}
       onResetClaim={async (nodeId, player) => {
-        if (!isAddress(player)) throw new Error("Enter a wallet address (0x…).");
+        if (!player.trim()) throw new Error("Enter the player's account.");
         const hash = await grantAdmin.resetClaim(nodeId, player);
         return `Claim reset for ${player.slice(0, 8)}… on node #${nodeId}. (tx: ${hash.slice(0, 10)}…)`;
       }}
       onAttachEffect={async (nodeId) => {
-        const current = effectsByNodeId.get(nodeId) ?? [];
-        const hash = await nodeMapAdmin.setNodeWinEffects(BigInt(nodeId), [...current, SHIP_GRANT_ADDRESS]);
-        await refetchEffects();
+        // On NEAR the grant is the effect: saving a reward ship adds it.
+        const grant = grantsByNodeId.get(nodeId);
+        if (!grant) throw new Error("Save a reward ship for this node first; that adds the Grant Ship effect.");
+        const hash = await grantAdmin.setGrant(nodeId, grant);
+        await Promise.all([refetchEffects(), refetchGrants()]);
         return `Grant Ship added to node #${nodeId}'s win effects. (tx: ${hash.slice(0, 10)}…)`;
       }}
     />

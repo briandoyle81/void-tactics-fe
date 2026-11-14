@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import type { Address } from "./chain";
 
 export interface Ship {
   name: string;
@@ -197,7 +197,7 @@ export interface LobbyGameConfig {
   selectedMapId: bigint;
   maxScore: bigint; // Maximum score needed to win the game
   /** Engine this lobby's game will start on, pinned at lobby creation. */
-  pvpMatch: Address;
+  pvpMatch?: Address;
 }
 
 export interface LobbyState {
@@ -267,7 +267,11 @@ export interface GameMetadata {
   startedAt: bigint;
   winner: Address;
   ended: boolean;
-  orchestrator: Address; // PvPMatch or SinglePlayerMatch — whichever contract started this game
+  /** Which flow started this game: "pvp" | "single" | "roguelike" (app/near/adapters/game.ts GAME_MODE). */
+  orchestrator: string;
+  mode?: "pvp" | "single" | "roguelike";
+  /** Campaign / roguelike node of an AI game (0 for PvP). */
+  nodeId?: bigint;
 }
 
 export interface GameTurnState {
@@ -495,7 +499,11 @@ export interface GameMetadata {
   startedAt: bigint;
   winner: Address;
   ended: boolean;
-  orchestrator: Address; // PvPMatch or SinglePlayerMatch — whichever contract started this game
+  /** Which flow started this game: "pvp" | "single" | "roguelike" (app/near/adapters/game.ts GAME_MODE). */
+  orchestrator: string;
+  mode?: "pvp" | "single" | "roguelike";
+  /** Campaign / roguelike node of an AI game (0 for PvP). */
+  nodeId?: bigint;
 }
 
 export interface GameTurnState {

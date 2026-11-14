@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { baseSepolia } from "viem/chains";
-import type { Address } from "viem";
+import type { Address } from "../types/chain";
 import { useRoguelikeRunView } from "./useGameLens";
 import { useFleetShipAttributes } from "./useFleetShipAttributes";
 import { useShipAttributesByIdsWeb2 } from "./useShipAttributesByIdsWeb2";
@@ -13,13 +12,10 @@ import { currentHullFromOnchainRosterHp, currentHullFromWeb2RosterHp } from "../
 // map's action bar and the Command Deck's layout B. Keyed by ship id string
 // so both modes hand number-native data to shared components.
 
-/** Web3: HP from GameLens.getRunView (0 = not yet damaged this run, i.e. full). */
-export function useRunRosterHullWeb3(
-  playerAddress: Address | undefined,
-  rosterShipIds: bigint[],
-): Map<string, number> {
+/** Web3: HP from the run's roster (0 = not yet damaged this run, i.e. full). */
+export function useRunRosterHullWeb3(playerAddress: Address | undefined, rosterShipIds: bigint[]): Map<string, number> {
   const { hpByShipId } = useRoguelikeRunView(playerAddress, rosterShipIds.length > 0);
-  const { attributesMap } = useFleetShipAttributes(rosterShipIds, baseSepolia.id);
+  const { attributesMap } = useFleetShipAttributes(rosterShipIds);
   return useMemo(() => {
     const hull = new Map<string, number>();
     rosterShipIds.forEach((id) => {

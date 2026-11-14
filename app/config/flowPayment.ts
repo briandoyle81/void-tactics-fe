@@ -28,3 +28,12 @@ export interface FlowPaymentMemo {
   gameChainId: number;
   variant?: number;
 }
+
+/**
+ * Card / any-token checkout (Fireblocks Flow). /api/flow/fulfill mints with
+ * the game contract's create_ships_for, which needs a server account with
+ * the MINTER role (NEAR_MINTER_ACCOUNT_ID / NEAR_MINTER_PRIVATE_KEY) and a
+ * checkout in the NEAR Dynamic project. Off until those are set up: set
+ * NEXT_PUBLIC_CARD_CHECKOUT_ENABLED=1 to show the option in the Store.
+ */
+export const CARD_CHECKOUT_ENABLED = process.env.NEXT_PUBLIC_CARD_CHECKOUT_ENABLED === "1";

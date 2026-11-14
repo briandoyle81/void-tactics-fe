@@ -2,7 +2,7 @@ import { prisma } from "./prisma";
 import { AI_USER_ID } from "../config/aiUser";
 
 // Sentinel User row representing the AI opponent — the web2 analog of
-// SINGLE_PLAYER_MATCH_ADDRESS on the web3 side (see useSinglePlayerMatch.ts).
+// the game contract (AI_PLAYER, app/near/adapters/game.ts) on the web3 side.
 // A real User row (not a nullable/optional FK) so every existing
 // User-FK-dependent code path (Game.player1Id/player2Id, Fleet.ownerId,
 // PlayerStats, etc.) works unmodified.

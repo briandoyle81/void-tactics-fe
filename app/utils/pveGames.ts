@@ -1,13 +1,9 @@
 import type { GameDataView } from "../types/types";
-import { SINGLE_PLAYER_MATCH_ADDRESS } from "../hooks/useSinglePlayerMatch";
-import { ROGUELIKE_MATCH_ADDRESS } from "../hooks/useRoguelikeMatch";
+import { GAME_MODE } from "../near/adapters/game";
 
-// PvE = a campaign or roguelike mission, i.e. a game orchestrated by
-// SinglePlayerMatch or RoguelikeMatch (same test as GameDisplay.tsx).
+// PvE = a campaign or roguelike mission: a game the contract's AI plays
+// (GameMetadata.orchestrator is the mode that started it).
 export function isPveGame(game: GameDataView): boolean {
-  const orchestrator = game.metadata.orchestrator?.toLowerCase();
-  return (
-    orchestrator === SINGLE_PLAYER_MATCH_ADDRESS.toLowerCase() ||
-    orchestrator === ROGUELIKE_MATCH_ADDRESS.toLowerCase()
-  );
+  const mode = game.metadata.orchestrator;
+  return mode === GAME_MODE.SINGLE || mode === GAME_MODE.ROGUELIKE;
 }

@@ -1,26 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
-import type { Abi } from "viem";
+import React from "react";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { formatDec } from "../utils/formatDec";
 import { toast } from "react-hot-toast";
 import { TransactionButton } from "./TransactionButton";
-import { CONTRACT_ABIS } from "../config/contracts";
 import { useDroneStorefront } from "../hooks/useDroneStorefront";
 
 /**
- * DroneStorefront (docs/faction-2.md §3): turn in DCC for a permanent,
+ * The DCC storefront (turn_in_cores): turn in DCC for a permanent,
  * cumulative bonus to the number of free ships granted per 28-day claim.
- * Tier ladder, not a flat exchange rate — must read `tierCoreCost` for the
- * exact next-tier cost rather than guessing.
+ * A tier ladder: the next tier's exact cost comes from the contract. The
+ * contract debits DCC directly, so there's no approval step.
  */
 const DroneStorefront: React.FC = () => {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const {
     isDeployed,
-    droneStorefrontAddress,
-    droneEnergyCoresAddress,
     currentTier,
     nextTier,
     nextTierCost,
@@ -28,19 +24,8 @@ const DroneStorefront: React.FC = () => {
     isLoadingTier,
     isLoadingNextTierCost,
     decBalance,
-    decAllowance,
     refetchAll,
   } = useDroneStorefront();
-
-  const [decApproved, setDecApproved] = useState(false);
-
-  useEffect(() => {
-    if (nextTierCost !== undefined && decAllowance !== undefined) {
-      setDecApproved(decAllowance >= nextTierCost);
-    } else {
-      setDecApproved(false);
-    }
-  }, [nextTierCost, decAllowance]);
 
   const insufficientBalance =
     nextTierCost !== undefined &&
@@ -76,7 +61,7 @@ const DroneStorefront: React.FC = () => {
           </p>
         ) : !address ? (
           <p className="text-center text-text-muted font-mono py-6">
-            Connect your wallet to view your tier.
+            Sign in to view your tier.
           </p>
         ) : isLoadingTier ? (
           <p className="text-center text-text-muted font-mono py-6">
@@ -132,40 +117,10 @@ const DroneStorefront: React.FC = () => {
                   </div>
                 </div>
 
-                {!decApproved ? (
-                  <TransactionButton
-                    transactionId={`approve-dec-drone-storefront-${nextTier}-${address}`}
-                    contractAddress={droneEnergyCoresAddress as `0x${string}`}
-                    abi={CONTRACT_ABIS.DRONE_ENERGY_CORES as Abi}
-                    functionName="approve"
-                    args={[droneStorefrontAddress as `0x${string}`, nextTierCost]}
-                    className="w-full px-4 py-3 rounded-none border-2 border-cyan text-cyan hover:text-cyan hover:bg-cyan/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={insufficientBalance}
-                    loadingText={`[APPROVING ${nextTierCostFormatted} DCC…]`}
-                    errorText="[ERROR APPROVING]"
-                    onSuccess={async () => {
-                      await refetchAll();
-                      toast.success("DCC approved.");
-                    }}
-                    onError={(error) => {
-                      console.error("Failed to approve DCC:", error);
-                      toast.error("Failed to approve DCC transfer");
-                    }}
-                    validateBeforeTransaction={() => {
-                      if (!address) return "Please connect your wallet";
-                      if (insufficientBalance) return "Insufficient DCC balance";
-                      return true;
-                    }}
-                  >
-                    [APPROVE {nextTierCostFormatted} DCC]
-                  </TransactionButton>
-                ) : (
+                {(
                   <TransactionButton
                     transactionId={`turn-in-dec-drone-storefront-${nextTier}-${address}`}
-                    contractAddress={droneStorefrontAddress as `0x${string}`}
-                    abi={CONTRACT_ABIS.DRONE_STOREFRONT as Abi}
-                    functionName="turnInCores"
-                    args={[nextTierCost]}
+                    call={{ method: "turn_in_cores", args: { amount: nextTierCost.toString() } }}
                     className="w-full px-4 py-3 rounded-none border-2 border-cyan text-cyan hover:text-cyan hover:bg-cyan/10 font-mono tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={insufficientBalance}
                     loadingText="[TURNING IN…]"
@@ -179,7 +134,7 @@ const DroneStorefront: React.FC = () => {
                       toast.error("Failed to turn in DCC");
                     }}
                     validateBeforeTransaction={() => {
-                      if (!address) return "Please connect your wallet";
+                      if (!address) return "Please sign in first";
                       if (insufficientBalance) return "Insufficient DCC balance";
                       return true;
                     }}

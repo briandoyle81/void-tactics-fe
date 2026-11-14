@@ -2,13 +2,14 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { CONTRACT_ADDRESSES } from "../config/contracts";
-import { useAccount, useBalance } from "wagmi";
-import { getSelectedChainId } from "../config/networks";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useNearBalance } from "@/app/near/useNearBalance";
+import { GAS_HEAVY } from "@/app/near/config";
 import posthog from "posthog-js";
 
 interface UTCPurchaseButtonProps {
   tier: number;
+  /** The tier's NEAR price, in yoctoNEAR (attached as the deposit). */
   flowCost: bigint;
   utcAmount: string;
   children: React.ReactNode;
@@ -19,19 +20,7 @@ interface UTCPurchaseButtonProps {
   refetch?: () => void | Promise<unknown>;
 }
 
-const UTC_PURCHASE_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "_to", type: "address" },
-      { internalType: "uint256", name: "_tier", type: "uint256" },
-    ],
-    name: "purchaseUTCWithFlow",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-] as const;
-
+/** Buys a tier's UTC with NEAR (buy_utc_with_near); the wallet confirms the deposit. */
 export function UTCPurchaseButton({
   tier,
   flowCost,
@@ -43,24 +32,14 @@ export function UTCPurchaseButton({
   onError,
   refetch,
 }: UTCPurchaseButtonProps) {
-  const { address } = useAccount();
-  const activeChainId = getSelectedChainId();
-
-  // Get user's FLOW balance
-  const { data: flowBalance } = useBalance({
-    address,
-    chainId: activeChainId,
-  });
+  const { address } = useChainAccount();
+  const { data: nearBalance } = useNearBalance(address);
 
   const validateBeforeTransaction = React.useCallback(() => {
-    if (!address) {
-      return "Please connect your wallet";
-    }
-    if (!flowBalance || flowBalance.value < flowCost) {
-      return "Insufficient FLOW balance";
-    }
+    if (!address) return "Please sign in first";
+    if (!nearBalance || nearBalance.value < flowCost) return "Not enough NEAR";
     return true;
-  }, [address, flowBalance, flowCost]);
+  }, [address, nearBalance, flowCost]);
 
   const handleSuccess = React.useCallback(async () => {
     posthog.capture("utc_purchased", { tier, utc_amount: utcAmount });
@@ -71,15 +50,7 @@ export function UTCPurchaseButton({
   return (
     <TransactionButton
       transactionId={`purchase-utc-tier-${tier}-${address}`}
-      contractAddress={CONTRACT_ADDRESSES.SHIP_PURCHASER as `0x${string}`}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      abi={UTC_PURCHASE_ABI as any}
-      functionName="purchaseUTCWithFlow"
-      args={[
-        address,
-        BigInt(tier), // Tier is 0-based (0-4), uint256 expects BigInt
-      ]}
-      value={flowCost}
+      call={{ method: "buy_utc_with_near", args: { tier }, deposit: flowCost, gas: GAS_HEAVY }}
       className={className}
       disabled={disabled}
       loadingText="[PURCHASING UTC…]"

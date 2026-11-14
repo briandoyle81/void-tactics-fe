@@ -6,12 +6,8 @@ import React, {
   useMemo,
   useRef,
 } from "react";
-import {
-  useAccount,
-  useChainId,
-  useWaitForTransactionReceipt,
-} from "wagmi";
-import { formatEther } from "viem";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { formatUnits18 } from "@/app/near/codec";
 import { useLobbies } from "../hooks/useLobbies";
 import { useFleetPlacement } from "../hooks/useFleetPlacement";
 import { useFleetShipAttributes } from "../hooks/useFleetShipAttributes";
@@ -83,7 +79,6 @@ import {
   readFleetCompositionPersisted,
   type FleetComposition,
 } from "../utils/fleetCompositionStorage";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
 import {
   IMMEDIATE_GAME_TURN_SECONDS,
   CORRESPONDENCE_GAME_TURN_SECONDS,
@@ -126,21 +121,19 @@ function hasGameForLobby(games: GameDataView[], lobbyId: bigint): boolean {
   return findGameForLobby(games, lobbyId) != null;
 }
 
-function CreatorStats({
-  address,
-  chainId,
-}: {
-  address: `0x${string}`;
-  chainId: number;
-}) {
-  const stats = usePlayerStats(address, chainId);
+function CreatorStats({ address }: { address: string; chainId?: number }) {
+  const stats = usePlayerStats(address);
   if (!stats) return null;
   return <WinLossBadge wins={Number(stats.wins)} losses={Number(stats.losses)} />;
 }
 
+/** Fleet drafts and saved compositions are scoped per network (were per EVM chain id). */
+const NEAR_DRAFT_SCOPE = 397;
+
 const Lobbies: React.FC = () => {
-  const { address, isConnected } = useAccount();
-  const chainId = useChainId();
+  const { address, isConnected } = useChainAccount();
+  /** Draft/composition storage scope (was the EVM chain id). */
+  const chainId = NEAR_DRAFT_SCOPE;
   const {
     lobbyList,
     playerState,
@@ -154,7 +147,6 @@ const Lobbies: React.FC = () => {
     createFleet,
     // quitWithPenalty,
     loadLobbies,
-    lastTransactionHash,
   } = useLobbies();
 
   // PvP map picker — Maps now has a PvP/PvE/Both mode (see
@@ -213,11 +205,11 @@ const Lobbies: React.FC = () => {
     lobbyMapModeById,
   ]);
 
-  // Wait for transaction receipt for fleet creation
-  const { isSuccess: isFleetCreated, error: fleetCreationError } =
-    useWaitForTransactionReceipt({
-      hash: lastTransactionHash,
-    });
+  // Fleet creation: the NEAR call resolves once the transaction has
+  // executed, so success flips this and the effect below follows up.
+  // Failures throw out of createFleet and are handled where it's called.
+  const [isFleetCreated, setIsFleetCreated] = useState(false);
+  const fleetCreationError = null as Error | null;
 
   const { ships, isLoading: shipsLoading, shipCount } = useOwnedShips();
 
@@ -1014,25 +1006,6 @@ const Lobbies: React.FC = () => {
     })();
   }, [lobbyList.lobbies, isMyLobbyWaitingOnOpponentFleet, goToGameForLobby]);
 
-  useEffect(() => {
-    const onChainChanged = () => {
-      setCreateFormParam(false, { replace: true });
-      resetFleetSelectionModalState();
-      closeFleetViewParam({ replace: true });
-      setIsCreatingFleet(false);
-      setFleetTxLobbyId(null);
-      setDraggedShipId(null);
-      setDragOverPosition(null);
-    };
-    window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    return () => {
-      window.removeEventListener(
-        VOID_TACTICS_CHAIN_CHANGED_EVENT,
-        onChainChanged,
-      );
-    };
-  }, [resetFleetSelectionModalState, setDraggedShipId, setDragOverPosition]);
-
   /** Close the fleet modal but keep in-memory and saved draft selection. */
   const closeFleetModalOnly = useCallback(() => {
     setSelectedLobbyParam(null);
@@ -1273,6 +1246,7 @@ const Lobbies: React.FC = () => {
   // so the second admiral never auto-opens the new game.
   React.useEffect(() => {
     if (!isFleetCreated || !lastFleetCreationLobbyRef.current) return;
+    setIsFleetCreated(false);
     const lobbyId = lastFleetCreationLobbyRef.current;
     lastFleetCreationLobbyRef.current = null;
 
@@ -1383,6 +1357,7 @@ const Lobbies: React.FC = () => {
       // outcome.
       lastFleetCreationLobbyRef.current = lobbyId;
       await createFleet(lobbyId, selectedShips, startingPositions);
+      setIsFleetCreated(true);
 
       // Don't show toast here - wait for receipt (handled in useEffect above)
     } catch (error) {
@@ -1803,7 +1778,7 @@ const Lobbies: React.FC = () => {
         createButtonHint={
           needsPaymentForLobby && additionalLobbyFee ? (
             <p className="text-center text-xs text-amber font-mono">
-              {`// Free games used. Lobby fee: ${formatEther(additionalLobbyFee as bigint)} UTC`}
+              {`// Free games used. Lobby fee: ${formatUnits18(additionalLobbyFee as bigint)} UTC`}
             </p>
           ) : null
         }
@@ -1876,7 +1851,7 @@ const Lobbies: React.FC = () => {
                       <div className="flex justify-between gap-4">
                         <span className="text-text-secondary">Lobby fee (free games exhausted)</span>
                         <span className="text-amber font-bold shrink-0">
-                          {formatEther(additionalLobbyFee as bigint)} UTC
+                          {formatUnits18(additionalLobbyFee as bigint)} UTC
                         </span>
                       </div>
                     ) : null}
@@ -2003,7 +1978,7 @@ const Lobbies: React.FC = () => {
         ) : lobbyList.lobbies.length === 0 ? (
           <div className="text-center text-text-muted">
             [NO OPEN ENGAGEMENTS]
-            {lobbyCount && typeof lobbyCount === "bigint" && lobbyCount > 0n ? (
+            {lobbyCount != null && BigInt(lobbyCount) > 0n ? (
               <div className="mt-2 text-sm">
                 Total lobbies in system: {lobbyCount.toString()}
               </div>

@@ -2,7 +2,7 @@
 
 import { shipGrantToPreviewShip } from "../utils/previewShips";
 import React from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { toast } from "react-hot-toast";
 import { MissionBriefing } from "./MissionBriefing";
 import { MissionDossier } from "./MissionDossier";
@@ -84,7 +84,7 @@ export function RoguelikeGraph({
   tutorial,
   tutorialDone = false,
 }: RoguelikeGraphProps) {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const { retreatRun, enterResupplyNode } = useRoguelikeMatch();
   const { data: isEditor = false } = useIsRoguelikeNodeEditor(address);
   const admin = useRoguelikeNodeMapAdmin();

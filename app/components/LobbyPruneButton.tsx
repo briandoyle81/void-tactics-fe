@@ -2,8 +2,7 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { CONTRACT_ADDRESSES } from "../config/contracts";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import posthog from "posthog-js";
 
 interface LobbyPruneButtonProps {
@@ -15,15 +14,6 @@ interface LobbyPruneButtonProps {
   onError?: (error: Error) => void;
 }
 
-const LOBBY_PRUNE_ABI = [
-  {
-    inputs: [{ internalType: "uint256", name: "_lobbyId", type: "uint256" }],
-    name: "pruneStaleLobby",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
 
 // pruneStaleLobby is permissionless — no wallet-connection requirement
 // beyond having one to sign with, unlike LobbyJoinButton's role-specific
@@ -36,7 +26,7 @@ export function LobbyPruneButton({
   onSuccess,
   onError,
 }: LobbyPruneButtonProps) {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
 
   const validateBeforeTransaction = React.useCallback(() => {
     if (!address) {
@@ -48,10 +38,7 @@ export function LobbyPruneButton({
   return (
     <TransactionButton
       transactionId={`prune-lobby-${lobbyId}-${address}`}
-      contractAddress={CONTRACT_ADDRESSES.LOBBIES as `0x${string}`}
-      abi={LOBBY_PRUNE_ABI}
-      functionName="pruneStaleLobby"
-      args={[lobbyId]}
+      call={{ method: "prune_stale_lobby", args: { lobby_id: lobbyId.toString() } }}
       className={className}
       disabled={disabled}
       loadingText="[PRUNING…]"

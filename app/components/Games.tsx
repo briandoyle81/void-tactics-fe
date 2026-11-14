@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePlayerGames } from "../hooks/usePlayerGames";
 import { useDebugMode } from "../hooks/useDebugMode";
@@ -11,8 +11,7 @@ import { resolveNodeContent, useWeb3NodeContent } from "../hooks/useNodeContent"
 import { useGetRoguelikeRun } from "../hooks/useRoguelikeRun";
 import type { RoguelikeRun } from "../types/roguelike";
 import { GameDataView } from "../types/types";
-import { VOID_TACTICS_CHAIN_CHANGED_EVENT } from "../config/networks";
-import { ROGUELIKE_MATCH_ADDRESS } from "../hooks/useRoguelikeMatch";
+import { GAME_MODE } from "../near/adapters/game";
 import { useShowPveGames } from "../hooks/useShowPveGames";
 import { isPveGame } from "../utils/pveGames";
 import { setUrlParams, useUrlParam } from "../utils/urlState";
@@ -22,7 +21,7 @@ function shortAddress(addr: string): string {
 }
 
 const Games: React.FC = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useChainAccount();
   // The open match is in the URL (`?game=<id>`, `&replay=1` when opened
   // from the inbox's Replay button; see urlState.ts), so a refresh reopens
   // it and Back returns to the list. `selectedGame` is the list row it was
@@ -194,18 +193,6 @@ const Games: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const onChainChanged = () => {
-      setSelectedGame(null);
-      setUrlParams({ game: null, replay: null }, { replace: true });
-      void refetchRef.current();
-    };
-    window.addEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    return () => {
-      window.removeEventListener(VOID_TACTICS_CHAIN_CHANGED_EVENT, onChainChanged);
-    };
-  }, []);
-
   const handleBackToList = useCallback(() => {
     setUrlParams({ game: null, replay: null }, { back: true });
   }, []);
@@ -234,7 +221,7 @@ const Games: React.FC = () => {
     const isCreator = game.metadata.creator.toLowerCase() === address?.toLowerCase();
     const opponent = isCreator ? game.metadata.joiner : game.metadata.creator;
     const isRoguelike =
-      game.metadata.orchestrator?.toLowerCase() === ROGUELIKE_MATCH_ADDRESS.toLowerCase();
+      game.metadata.orchestrator === GAME_MODE.ROGUELIKE;
     const isRunGame = isRoguelike && run?.activeGameId === game.metadata.gameId;
     const myScore = Number(isCreator ? game.creatorScore : game.joinerScore);
     const theirScore = Number(isCreator ? game.joinerScore : game.creatorScore);

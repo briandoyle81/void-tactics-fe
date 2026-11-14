@@ -1,11 +1,10 @@
 "use client";
 
 import React from "react";
-import { useAccount, useReadContract } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useTokenBalance } from "@/app/near/useTokenBalance";
+import { GAS_HEAVY, TOKEN_UTC } from "@/app/near/config";
 import { toast } from "react-hot-toast";
-import { erc20Approval } from "../utils/approvalSteps";
 import { TransactionButton } from "./TransactionButton";
 import { formatUtcWei } from "../utils/formatUtc";
 import { RepairConfirmModal, type RepairConfirmShip } from "./RepairConfirmModal";
@@ -13,8 +12,7 @@ import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useFleetShipAttributes } from "../hooks/useFleetShipAttributes";
 import { useFleetPlacement } from "../hooks/useFleetPlacement";
 import { useRoguelikeRosterHP } from "../hooks/useRoguelikeRun";
-import { useRepairCostPerHP, useRoguelikeResupply, ROGUELIKE_RESUPPLY_ADDRESS } from "../hooks/useRoguelikeResupply";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
+import { useRepairCostPerHP, useRoguelikeResupply } from "../hooks/useRoguelikeResupply";
 import { RoguelikeRun, RoguelikeNode } from "../types/roguelike";
 import { DUPLICATE_SHIP_ID_TOAST, hasDuplicateShipIds } from "../utils/fleetShipIds";
 import { buildFleetShipListItems } from "../utils/buildFleetShipListItems";
@@ -47,10 +45,8 @@ interface RoguelikeResupplyPanelProps {
  * run keeps their damage). The cost cap is the node's new maximum.
  */
 export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyPanelProps) {
-  const { address } = useAccount();
-  const { ships: ownedShips, isLoading: shipsLoading, refetch: refetchOwnedShips } = useOwnedShips(
-    baseSepolia.id,
-  );
+  const { address } = useChainAccount();
+  const { ships: ownedShips, isLoading: shipsLoading, refetch: refetchOwnedShips } = useOwnedShips();
   const { resupplyModifyRoster } = useRoguelikeResupply();
   const { data: repairCostPerHP } = useRepairCostPerHP();
   const [isSaving, setIsSaving] = React.useState(false);
@@ -96,10 +92,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
   useSeedCombatRoster(fleet, rosterShips);
 
   const shipIdsForAttributes = React.useMemo(() => fleet.ships.map((s) => s.id), [fleet.ships]);
-  const { attributesMap, attributesLoading } = useFleetShipAttributes(
-    shipIdsForAttributes,
-    baseSepolia.id,
-  );
+  const { attributesMap, attributesLoading } = useFleetShipAttributes(shipIdsForAttributes);
   // Run hull for every ship on offer, not just the roster: the run keeps a
   // dropped ship's damage (RoguelikeRun.shipHPByGen), so it comes back damaged.
   const { hpByShipId, refetch: refetchHP } = useRoguelikeRosterHP(address, shipIdsForAttributes);
@@ -151,34 +144,13 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
     return missing;
   }, [attributesWithRosterHull, selectedRosterKeys]);
 
-  const contractAddresses = getContractAddresses(baseSepolia.id);
-  const { data: utcBalance } = useReadContract({
-    address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    chainId: baseSepolia.id,
-    query: { enabled: !!address && totalMissingHP > 0 },
-  });
-  const repairCost = (repairCostPerHP ?? 0n) * BigInt(totalMissingHP);
-  const canAffordRepair = (utcBalance as bigint | undefined) != null && (utcBalance as bigint) >= repairCost;
-  // The resupply contract's UTC allowance is approved first if it's short,
-  // then the repair goes straight after, on the one Confirm.
-  const repairApprovals = React.useMemo(
-    () =>
-      address && repairCost > 0n
-        ? [
-            erc20Approval({
-              token: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-              owner: address,
-              spender: ROGUELIKE_RESUPPLY_ADDRESS,
-              amount: repairCost,
-              loadingText: `[APPROVING ${formatUtcWei(repairCost)} UTC…]`,
-            }),
-          ]
-        : undefined,
-    [address, repairCost, contractAddresses.UNIVERSAL_CREDITS],
-  );
+  const { data: utcBalance } = useTokenBalance(address, TOKEN_UTC, totalMissingHP > 0);
+  // The repair rate comes from get_settings; until it loads the price shows
+  // "?" and the contract checks the balance itself. Repairs debit UTC
+  // directly (no approval step).
+  const repairCost = (repairCostPerHP ?? BigInt(0)) * BigInt(totalMissingHP);
+  const repairCostLabel = repairCostPerHP == null ? "?" : formatUtcWei(repairCost);
+  const canAffordRepair = repairCostPerHP == null || (utcBalance != null && utcBalance >= repairCost);
   const repairKeys = React.useMemo(
     () => Array.from(selectedRosterKeys).filter((key) => {
       const id = BigInt(key);
@@ -277,7 +249,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
         extra={
           totalMissingHP > 0 ? (
             <ResupplyRepairBox
-              costLabel={formatUtcWei(repairCost)}
+              costLabel={repairCostLabel}
               missingHp={totalMissingHP}
               action={
                 (
@@ -308,16 +280,12 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
         show={isRepairConfirmOpen}
         ships={repairShips}
         totalHp={totalMissingHP}
-        costLabel={formatUtcWei(repairCost)}
+        costLabel={repairCostLabel}
         onCancel={() => setIsRepairConfirmOpen(false)}
         confirmButton={
           <TransactionButton
             transactionId={`repair-roguelike-roster-${address}`}
-            contractAddress={ROGUELIKE_RESUPPLY_ADDRESS}
-            abi={CONTRACT_ABIS.ROGUELIKE_RESUPPLY as Abi}
-            functionName="resupplyRepair"
-            args={[repairKeys.map((id) => BigInt(id))]}
-            approvals={repairApprovals}
+            call={{ method: "resupply_repair", args: { ship_ids: repairKeys.map(String) }, gas: GAS_HEAVY }}
             validateBeforeTransaction={() => (canAffordRepair ? true : "Insufficient UTC balance")}
             className="h-11 w-full border-2 border-phosphor-green bg-phosphor-green/10 px-4 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/20 disabled:cursor-not-allowed disabled:opacity-50"
             loadingText="[REPAIRING…]"

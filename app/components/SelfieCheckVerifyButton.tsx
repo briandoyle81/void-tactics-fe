@@ -34,7 +34,7 @@ function extractProofFields(
  * anywhere in the tree. Shared by FreeShipClaim and TutorialClaim gating — verifying once covers
  * both, same shared-instance eligibility window.
  */
-export function useSelfieCheckVerifyFlow(address: `0x${string}` | undefined, onVerified: () => void) {
+export function useSelfieCheckVerifyFlow(address: string | undefined, onVerified: () => void) {
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [rpContext, setRpContext] = useState<RpContext | null>(null);
   const [fetchingContext, setFetchingContext] = useState(false);
@@ -111,7 +111,7 @@ export function useSelfieCheckVerifyFlow(address: `0x${string}` | undefined, onV
 }
 
 interface SelfieCheckVerifyButtonProps {
-  address: `0x${string}`;
+  address: string;
   onVerified: () => void;
   className?: string;
   children?: React.ReactNode;

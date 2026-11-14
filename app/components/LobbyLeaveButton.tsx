@@ -2,7 +2,6 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { CONTRACT_ADDRESSES } from "../config/contracts";
 
 interface LobbyLeaveButtonProps {
   lobbyId: bigint;
@@ -15,21 +14,6 @@ interface LobbyLeaveButtonProps {
   onError?: (error: Error) => void;
 }
 
-const LOBBY_LEAVE_ABI = [
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_lobbyId",
-        type: "uint256",
-      },
-    ],
-    name: "leaveLobby",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
 
 export function LobbyLeaveButton({
   lobbyId,
@@ -43,10 +27,7 @@ export function LobbyLeaveButton({
   return (
     <TransactionButton
       transactionId={`leave-lobby-${lobbyId}`}
-      contractAddress={CONTRACT_ADDRESSES.LOBBIES as `0x${string}`}
-      abi={LOBBY_LEAVE_ABI}
-      functionName="leaveLobby"
-      args={[lobbyId]}
+      call={{ method: "leave_lobby", args: { lobby_id: lobbyId.toString() } }}
       className={className}
       disabled={disabled}
       allowWhenOtherPending={allowWhenOtherPending}

@@ -1,18 +1,15 @@
-import { parseEventLogs, type Abi, type Log } from "viem";
-import { CONTRACT_ABIS } from "../config/contracts";
-import { eventAbi } from "../hooks/useCombinedEventWatch";
-import { fromOnChainActionType } from "./normalizeGameDataView";
+import type { NearEvent } from "../near/codec";
+import type { GameState, ActionType as NearActionType } from "../near/generated/voidTactics";
+import { fromNearAction } from "../near/adapters/game";
 
-// Game's Move event, one per action: the moves an AI batch (takeAITurns)
-// or an opponent made, each in order, which the game read's single lastMove
-// can't give. Read by the app-wide event watch (ContractEventsHost, routed
-// per game with registerGameMoves) and from the AI loop's own receipts, and
-// played back on the board (useMovePlayback). Number-native.
-
-export const MOVE_EVENT = eventAbi(CONTRACT_ABIS.GAME as Abi, "Move");
+// A game's moves, one per action, played back on the board in order
+// (useMovePlayback). The game read's single lastMove can't show an AI batch
+// (take_ai_turns), so the AI loop builds each move here from the
+// transaction's `ai_turns` event and the board before and after it, and
+// hands them to the open game (registerGameMoves). Number-native.
 
 export interface GameMoveLog {
-  /** Unique per log: transaction hash and log index. */
+  /** Unique per move: transaction hash and index. */
   key: string;
   gameId: number;
   shipId: number;
@@ -22,53 +19,58 @@ export interface GameMoveLog {
   newCol: number;
   actionType: number;
   targetShipId: number;
-  /** For ordering across transactions. */
+  /** For ordering across transactions (a sequence number). */
   blockNumber: bigint;
   logIndex: number;
 }
 
-type MoveArgs = {
-  gameId?: bigint;
-  shipId?: bigint;
-  oldRow?: number | bigint;
-  oldCol?: number | bigint;
-  newRow?: number | bigint;
-  newCol?: number | bigint;
-  actionType?: number | bigint;
-  targetShipId?: bigint;
-};
+let sequence = BigInt(0);
 
-/** Decoded Move logs (from the watcher, already decoded) in chain order. */
-export function toGameMoveLogs(logs: readonly (Log & { args?: unknown })[]): GameMoveLog[] {
-  const moves: GameMoveLog[] = [];
-  for (const log of logs) {
-    const args = log.args as MoveArgs | undefined;
-    if (!args || args.gameId == null || args.shipId == null) continue;
-    moves.push({
-      key: `${log.transactionHash}:${log.logIndex}`,
-      gameId: Number(args.gameId),
-      shipId: Number(args.shipId),
-      oldRow: Number(args.oldRow),
-      oldCol: Number(args.oldCol),
-      newRow: Number(args.newRow),
-      newCol: Number(args.newCol),
-      // The app's ActionType, as the game read's lastMove is (FactionAbility
-      // is 5 on chain, 7 here), so the same move from both matches.
-      actionType: fromOnChainActionType(Number(args.actionType)),
-      targetShipId: Number(args.targetShipId ?? 0n),
-      blockNumber: log.blockNumber ?? 0n,
-      logIndex: log.logIndex ?? 0,
-    });
-  }
-  return moves.sort((a, b) =>
-    a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber < b.blockNumber ? -1 : 1,
-  );
+interface AiTurnsEventData {
+  game_id?: string;
+  turns?: Array<{ ship_id?: string; action?: NearActionType; target?: string; decision_failed?: string }>;
 }
 
-/** Move logs out of a transaction receipt (raw logs). */
-export function moveLogsFromReceipt(receiptLogs: readonly Log[]): GameMoveLog[] {
-  const decoded = parseEventLogs({ abi: [MOVE_EVENT], logs: receiptLogs as Log[], strict: false });
-  return toGameMoveLogs(decoded as unknown as (Log & { args?: unknown })[]);
+/**
+ * The AI moves in a take_ai_turns transaction. The event names each ship,
+ * action and target; where each ship moved comes from the boards before and
+ * after (an AI ship acts once per round, so one transaction moves each ship
+ * at most once).
+ */
+export function aiMovesFromTurns(
+  txHash: string,
+  events: readonly NearEvent[],
+  before: GameState | null,
+  after: GameState | null,
+): GameMoveLog[] {
+  const moves: GameMoveLog[] = [];
+  const order = ++sequence;
+  for (const ev of events) {
+    if (ev.event !== "ai_turns") continue;
+    const data = ev.data as AiTurnsEventData;
+    const gameId = Number(data.game_id ?? 0);
+    (data.turns ?? []).forEach((turn, i) => {
+      if (turn.decision_failed != null || turn.ship_id == null) return;
+      const id = String(turn.ship_id);
+      const from = before?.board[id];
+      const to = after?.board[id] ?? from;
+      if (!from || !to) return;
+      moves.push({
+        key: `${txHash}:${i}`,
+        gameId,
+        shipId: Number(id),
+        oldRow: from.row,
+        oldCol: from.col,
+        newRow: to.row,
+        newCol: to.col,
+        actionType: fromNearAction(turn.action ?? "Pass"),
+        targetShipId: Number(turn.target ?? 0),
+        blockNumber: order,
+        logIndex: i,
+      });
+    });
+  }
+  return moves;
 }
 
 // Per-game listeners: the open GameDisplay subscribes to its own game's moves.
@@ -87,7 +89,7 @@ export function registerGameMoves(gameId: number, listener: (moves: GameMoveLog[
   };
 }
 
-/** Hands decoded moves to each game's listeners (games nobody watches are dropped). */
+/** Hands moves to each game's listeners (games nobody watches are dropped). */
 export function dispatchGameMoves(moves: GameMoveLog[]) {
   const byGame = new Map<number, GameMoveLog[]>();
   for (const m of moves) {

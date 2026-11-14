@@ -1,5 +1,5 @@
 import posthog from "posthog-js";
-import { getChainById, getSelectedChainId } from "./app/config/networks";
+import { NEAR_NETWORK } from "./app/near/config";
 
 const posthogProjectToken =
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ??
@@ -96,11 +96,9 @@ if (typeof window !== "undefined") {
     });
 
     try {
-      const chainId = getSelectedChainId();
-      const chain = getChainById(chainId);
       posthog.register({
-        app_chain_id: chainId,
-        app_chain_name: chain.name,
+        app_chain_id: `near-${NEAR_NETWORK}`,
+        app_chain_name: `NEAR ${NEAR_NETWORK}`,
       });
     } catch {
       /* ignore storage / edge cases */

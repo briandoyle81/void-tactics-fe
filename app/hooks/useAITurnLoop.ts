@@ -1,46 +1,40 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePublicClient } from "wagmi";
-import { baseSepolia } from "viem/chains";
 import { useSinglePlayerMatch } from "./useSinglePlayerMatch";
 import { refetchUntilChanged } from "../utils/refetchUntilChanged";
-import { dispatchGameMoves, moveLogsFromReceipt } from "../utils/gameMoveLogs";
-import { AI_TURN_GAS_RETRIES, aiTurnTakenIn } from "../utils/aiTurnReceipt";
+import { aiMovesFromTurns, dispatchGameMoves } from "../utils/gameMoveLogs";
 import { trackAITurnFailed } from "../utils/analytics/gameEvents";
+import { viewGame } from "../near/rpc";
 
-// Defensive cap on consecutive takeAITurn calls for a single AI turn.
-// `maxPlacementsPerMap` is a live, owner-tunable value (default raised from
-// 8 to 14 — the hardest campaign nodes, e.g. bastion, now field 14 AI
-// ships) — keep this comfortably above the live max, not hardcoded to the
-// old default.
+// Defensive cap on consecutive take_ai_turns calls for a single AI turn,
+// comfortably above the largest AI fleet.
 const MAX_ITERATIONS = 20;
 
-// Deliberate pause before each takeAITurn call so the player has time to
-// actually see the previous move (ship position, shot animation, etc.)
-// before the board changes again — without this, moves can land back to
-// back as fast as wallet signing + RPC allow, which reads as the board
-// jumping around rather than a turn being played.
+// Deliberate pause before each AI call so the player sees the previous move
+// before the board changes again.
 const MOVE_PACING_MS = 1800;
 
 interface UseAITurnLoopParams {
   gameId: bigint;
   isAITurn: boolean;
   isGameOver: boolean;
-  // Changes whenever fresh onchain state lands for this game (e.g. a move
-  // timestamp) — used to re-check `isAITurn` after each takeAITurn call
-  // without racing ahead of confirmed chain data.
+  /** Changes whenever fresh state lands for this game (e.g. a move timestamp). */
   lastMoveSignal: string;
   refetchGame: () => void;
-  /** AI moves to send in one takeAITurns call (tail case); 1 = takeAITurn. See app/utils/aiTurnBatch.ts. */
+  /** AI moves to send in one take_ai_turns call (tail case); see app/utils/aiTurnBatch.ts. */
   batchMoves?: number;
+  /** For analytics. */
+  gameMode?: "campaign" | "roguelike";
 }
 
 /**
- * Auto-drives SinglePlayerMatch.takeAITurn while it's the AI's turn. Each
- * call moves exactly one AI ship; this re-fires (after a pacing delay) as
- * long as isAITurn stays true after fresh state lands, until the turn
- * returns to the human or the game ends.
+ * Drives the contract's AI (take_ai_turns, the same call for single-player
+ * and roguelike games) while it's the AI's turn: the player's session key
+ * sends each call with no prompt. Each call's AI moves play back on the
+ * board in order (gameMoveLogs.ts: the `ai_turns` event plus the board
+ * before and after), then this re-fires after a pacing delay until the turn
+ * returns to the player or the game ends.
  */
 export function useAITurnLoop({
   gameId,
@@ -49,20 +43,14 @@ export function useAITurnLoop({
   lastMoveSignal,
   refetchGame,
   batchMoves = 1,
+  gameMode = "campaign",
 }: UseAITurnLoopParams) {
-  const { takeAITurn, takeAITurns } = useSinglePlayerMatch();
-  // takeAITurn only resolves once the wallet sends the tx, not once it's
-  // confirmed — refetching right on send (the old behavior) reads stale
-  // chain state, so lastMoveSignal never changes and this loop stalls after
-  // one ship. Wait for the actual receipt before refetching/advancing.
-  const publicClient = usePublicClient({ chainId: baseSepolia.id });
+  const { takeAITurns } = useSinglePlayerMatch();
   const [moveCount, setMoveCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isWaitingToAct, setIsWaitingToAct] = useState(false);
   const inFlightRef = useRef(false);
   const iterationRef = useRef(0);
-  // Latest lastMoveSignal, for refetchUntilChanged to see when the
-  // AI's move has reached the data.
   const lastMoveSignalRef = useRef(lastMoveSignal);
   lastMoveSignalRef.current = lastMoveSignal;
 
@@ -77,58 +65,38 @@ export function useAITurnLoop({
     if (inFlightRef.current || error) return;
     if (iterationRef.current >= MAX_ITERATIONS) {
       setError("AI turn did not resolve — please refresh.");
-      trackAITurnFailed({ appMode: "web3", gameMode: "campaign", gameId, reason: "stalled" });
+      trackAITurnFailed({ appMode: "web3", gameMode, gameId, reason: "stalled" });
       return;
     }
 
     inFlightRef.current = true;
     setIsWaitingToAct(true);
-    // Tracks whether the scheduled call below actually fired, so the
-    // cleanup can tell "cancelled before it ever ran" (nothing in flight,
-    // undo the flag) apart from "already sent, awaiting settlement"
-    // (leave the flag alone — a real request is in progress). Without
-    // this distinction, any effect re-run before the pacing delay elapses
-    // — including React Strict Mode's dev-only double-invoke of effects,
-    // which reliably reproduces this — cancels the pending timeout via
-    // clearTimeout but leaves inFlightRef permanently stuck true, since
-    // the call that would have reset it never happened. Every subsequent
-    // run then bails on "already in flight" forever, silently dead-ending
-    // the whole AI turn.
+    // Whether the scheduled call fired: a cleanup before it fires (an
+    // effect re-run, Strict Mode's double-invoke) must reset the in-flight
+    // flag, or every later run bails on "already in flight" forever.
     let didFire = false;
     const pacingTimeout = setTimeout(() => {
       didFire = true;
       iterationRef.current += 1;
       const signalAtSend = lastMoveSignalRef.current;
-      const send = async (attempt: number): Promise<void> => {
-        const hash = await (batchMoves > 1
-          ? takeAITurns(gameId, batchMoves, attempt)
-          : takeAITurn(gameId, attempt));
-        if (!publicClient) return;
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        // No AITurnTaken: the AI ran out of gas without acting, and it's
-        // still its turn, so resend with more gas (aiTurnReceipt.ts).
-        if (!aiTurnTakenIn(receipt.logs)) {
-          if (attempt < AI_TURN_GAS_RETRIES) return send(attempt + 1);
-          throw new Error("AI turn sent without the AI acting (no AITurnTaken)");
-        }
-        // Each AI move in this transaction plays back on the board, in
-        // order, without waiting for the event poll (gameMoveLogs.ts).
-        dispatchGameMoves(moveLogsFromReceipt(receipt.logs));
-      };
-      send(0)
+      void (async () => {
+        const id = gameId.toString();
+        const before = await viewGame("get_game", { game_id: id });
+        const receipt = await takeAITurns(gameId, batchMoves);
+        const after = await viewGame("get_game", { game_id: id });
+        dispatchGameMoves(aiMovesFromTurns(receipt.hash, receipt.events, before, after));
+      })()
         .then(() => {
           setMoveCount((c) => c + 1);
-          // Not awaited: the loop moves on as soon as fresh state lands
-          // (lastMoveSignal changes and re-runs this effect).
           void refetchUntilChanged({
             refetch: refetchGame,
             hasChanged: () => lastMoveSignalRef.current !== signalAtSend,
           });
         })
         .catch((err) => {
-          console.error("takeAITurn failed:", err);
+          console.error("take_ai_turns failed:", err);
           setError("AI turn failed — please refresh.");
-          trackAITurnFailed({ appMode: "web3", gameMode: "campaign", gameId, reason: "failed" });
+          trackAITurnFailed({ appMode: "web3", gameMode, gameId, reason: "failed" });
         })
         .finally(() => {
           inFlightRef.current = false;
@@ -142,12 +110,9 @@ export function useAITurnLoop({
         inFlightRef.current = false;
         setIsWaitingToAct(false);
       }
-      // If didFire is true, takeAITurn is genuinely in flight — its own
-      // .finally() above is what clears inFlightRef, not this cleanup.
     };
-    // lastMoveSignal intentionally re-runs this effect once fresh chain
-    // state confirms the previous AI move landed, so we don't fire the next
-    // takeAITurn call against stale isAITurn/game data.
+    // lastMoveSignal re-runs this once fresh state confirms the previous AI
+    // move landed, so the next call never fires against stale data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAITurn, isGameOver, gameId, lastMoveSignal]);
 

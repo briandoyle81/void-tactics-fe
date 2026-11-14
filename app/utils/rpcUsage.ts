@@ -1,7 +1,8 @@
 import posthog from "posthog-js";
 
-// Counts Base Sepolia RPC requests by JSON-RPC method, to check the cost
-// estimate against real usage (Ankr bills per request). Dev: a console
+// Counts NEAR RPC requests (views by contract method, plus sends and
+// access-key/account lookups), to check the cost estimate against real
+// usage (providers bill per request). Dev: a console
 // summary every minute. Production: a sampled `rpc_usage` PostHog event
 // every 5 minutes from ~10% of sessions. Live totals: window.__vtRpcUsage.
 
@@ -40,22 +41,12 @@ function report() {
   windowCounts = {};
 }
 
-/**
- * Hook for viem's http transport `onFetchRequest`. Counts each JSON-RPC
- * call in the request (a batch counts every call, as the provider bills).
- */
-export function recordRpcRequest(request: Request): void {
+/** Counts one RPC request, labelled e.g. `view:get_game` or `send_tx`. */
+export function recordRpcMethod(method: string): void {
   if (typeof window === "undefined" || !sessionSampled) return;
   if (!timer) {
     timer = setInterval(report, REPORT_INTERVAL_MS);
     (window as unknown as { __vtRpcUsage: Record<string, number> }).__vtRpcUsage = sessionCounts;
   }
-  void request
-    .clone()
-    .json()
-    .then((body: unknown) => {
-      const calls = Array.isArray(body) ? body : [body];
-      for (const call of calls) bump((call as { method?: string })?.method ?? "unknown");
-    })
-    .catch(() => bump("unknown"));
+  bump(method);
 }

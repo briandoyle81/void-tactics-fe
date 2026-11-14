@@ -10,11 +10,10 @@
 // existing keys stable. It takes the current seed files as a baseline and
 // maps chain items back to their keys:
 // - maps and roguelike nodes: by the deployment's own record of each key's
-//   id (seedDeploymentIds.ts: the Ignition journal plus the sync script's
-//   content-sync record, ignition/content-sync/<id>.json). Content synced after the deploy gets ids out of
-//   array order (live Base Sepolia: seed map67 is map 68, and map 67 is an
-//   ignored duplicate). Without that record, ids are 1-indexed array
-//   positions, as a fresh deploy gives them.
+//   id (seedDeploymentIds.ts: the contracts repo's NEAR deployment record,
+//   near/deployments/<network>.json). Content synced after the deploy can
+//   get ids out of array order. Without that record, ids are 1-indexed
+//   array positions, as a fresh deploy gives them.
 // - NodeMap campaigns/nodes: the deploy forces these to be created in array
 //   order and nothing syncs them later, so onchain id == 1-indexed position.
 // - AI ship configs: created without forced order (ids read from events),
@@ -324,8 +323,8 @@ export function buildMissionSeedFiles(
     // script and the web2 import only find its id once it's recorded.
     if (!existing && deploymentIds.fromRecord) {
       warnings.push(
-        `Map #${m.id} is new to the seed as "${key}". Record "${key}": "${m.id}" under "maps" in the ` +
-          "contracts repo's ignition/content-sync/chain-84532.json (and remove it from \"ignored\") so the sync script and the web2 import use id " +
+        `Map #${m.id} is new to the seed as "${key}". After saving, rerun the contracts repo's deploy tool with ` +
+          "--record-only so near/deployments/testnet.json records its id and the web2 import uses id " +
           `${m.id}.`,
       );
     }

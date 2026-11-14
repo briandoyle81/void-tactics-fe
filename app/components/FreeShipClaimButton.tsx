@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { toast } from "react-hot-toast";
 import posthog from "posthog-js";
 import type { TransactionFollowUp } from "./TransactionButton";
@@ -44,7 +44,7 @@ export function FreeShipClaimButton({
   onSuccess,
   onError,
 }: FreeShipClaimButtonProps) {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const hasCalledOnSuccess = useRef(false);
   const [followUpPending, setFollowUpPending] = useState(false);
 

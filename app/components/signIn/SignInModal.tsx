@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "../../near/useChainAccount";
 import posthog from "posthog-js";
 import { OPEN_SIGN_IN_EVENT } from "../../hooks/useOpenWalletSignIn";
 import { SignInPanel, type SignInStep } from "./SignInPanel";
@@ -12,7 +12,7 @@ import { SignInPanel, type SignInStep } from "./SignInPanel";
 // with openSignIn() / useOpenWalletSignIn(). Closes once the wallet connects.
 
 export function SignInModal() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useChainAccount();
   const [open, setOpen] = useState(false);
   const stateRef = useRef<{ step: SignInStep; noticeOpen: boolean }>({ step: "email", noticeOpen: false });
 

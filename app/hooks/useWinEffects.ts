@@ -1,22 +1,23 @@
 "use client";
 
 import { useMemo } from "react";
-import { useReadContract, useReadContracts } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi, Address } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useQuery } from "@tanstack/react-query";
+import { viewGame } from "../near/rpc";
+import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
+import { RL_GRAPH_QUERY_ROOT } from "./useGameLens";
+import { fetchAllRoguelikeNodes } from "../near/adapters/roguelike";
+import {
+  WIN_EFFECT_IDS,
+  decBonusOf,
+  healPercentOf,
+  winEffectId,
+} from "../near/adapters/winEffects";
+import type { WinEffect } from "../near/generated/voidTactics";
 
-// Pluggable win effects (see contracts/IWinEffect.sol) — one singleton
-// instance of each concrete effect exists per deploy
-// (DECBonusWinEffect/HealAboveFloorWinEffect/ShipGrantWinEffect), each with
-// its own global config, and RoguelikeNodeMap assigns an ordered subset
-// of these addresses per node via setNodeWinEffects (PvP and tournament
-// games have none since the 2026-10-17 redeploy). This catalog is the FE's map
-// from "known effect contract" to a human label + which chain key to
-// resolve its address from — adding a future effect kind means deploying
-// its contract, adding one entry here, and wiring its own config UI, not
-// touching any of the three callers or this file's shape.
-const CHAIN_ID = baseSepolia.id;
+// Roguelike win effects: each node carries an ordered list of effects with
+// their values (app/near/adapters/winEffects.ts). Screens identify an effect
+// kind by its id in WIN_EFFECT_IDS (what used to be the effect contract's
+// address).
 
 export const WIN_EFFECT_CATALOG = [
   { key: "DEC_BONUS_WIN_EFFECT", label: "DCC Bonus" },
@@ -24,79 +25,88 @@ export const WIN_EFFECT_CATALOG = [
   { key: "SHIP_GRANT_WIN_EFFECT", label: "Grant Ship" },
 ] as const;
 
-export function useWinEffectAddresses(): Record<string, Address> {
-  return useMemo(() => {
-    const addresses = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID];
-    return Object.fromEntries(
-      WIN_EFFECT_CATALOG.map(({ key }) => [key, addresses[key] as Address]),
-    );
-  }, []);
+/** Effect kind -> its id (stand-in for the old effect contract address). */
+export function useWinEffectAddresses(): Record<string, string> {
+  return WIN_EFFECT_IDS;
 }
 
+function useNodeEffectsQuery(nodeIds: readonly bigint[], enabled = true) {
+  const key = nodeIds.map(String).join(",");
+  return useQuery({
+    queryKey: [RL_GRAPH_QUERY_ROOT, "win-effects", key],
+    queryFn: async () => {
+      const nodes = await Promise.all(nodeIds.map((id) => viewGame("get_rl_node", { node_id: id.toString() })));
+      return nodes.map((n) => (n?.win_effects ?? []) as WinEffect[]);
+    },
+    enabled: enabled && nodeIds.length > 0,
+    staleTime: ADMIN_DATA_STALE_MS,
+  });
+}
+
+/** A node's effect ids (`data`) and the effects with their values (`effects`). */
 export function useRoguelikeNodeWinEffects(nodeId: bigint | undefined) {
-  const nodeMapAddress = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-    .ROGUELIKE_NODE_MAP as Address;
-  const result = useReadContract({
-    address: nodeMapAddress,
-    abi: CONTRACT_ABIS.ROGUELIKE_NODE_MAP as Abi,
-    chainId: CHAIN_ID,
-    functionName: "getNodeWinEffects",
-    args: nodeId != null ? [nodeId] : undefined,
-    query: { enabled: nodeId != null },
-  });
-  return { ...result, data: result.data as Address[] | undefined };
+  const ids = useMemo(() => (nodeId != null ? [nodeId] : []), [nodeId]);
+  const result = useNodeEffectsQuery(ids, nodeId != null);
+  const effects = result.data?.[0];
+  const data = useMemo(() => effects?.map(winEffectId), [effects]);
+  return { ...result, data, effects };
 }
 
-/** Batched getNodeWinEffects for many roguelike nodes (admin export). */
+/** Effect ids (and values) for many roguelike nodes (admin export). */
 export function useRoguelikeNodesWinEffects(nodeIds: bigint[]) {
-  const nodeMapAddress = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-    .ROGUELIKE_NODE_MAP as Address;
-  const contracts = useMemo(
-    () =>
-      nodeIds.map((id) => ({
-        address: nodeMapAddress,
-        abi: CONTRACT_ABIS.ROGUELIKE_NODE_MAP as Abi,
-        chainId: CHAIN_ID,
-        functionName: "getNodeWinEffects" as const,
-        args: [id] as const,
-      })),
-    [nodeIds, nodeMapAddress],
-  );
-  const result = useReadContracts({
-    contracts,
-    query: { enabled: nodeIds.length > 0 },
-  });
-  const effectsByNodeId = useMemo(() => {
-    const map = new Map<number, Address[]>();
+  const result = useNodeEffectsQuery(nodeIds);
+  const { effectsByNodeId, rawByNodeId } = useMemo(() => {
+    const ids = new Map<number, string[]>();
+    const raw = new Map<number, WinEffect[]>();
     nodeIds.forEach((id, i) => {
-      const effects = result.data?.[i]?.result as Address[] | undefined;
-      if (effects) map.set(Number(id), effects);
+      const effects = result.data?.[i];
+      if (!effects) return;
+      ids.set(Number(id), effects.map(winEffectId));
+      raw.set(Number(id), effects);
     });
-    return map;
+    return { effectsByNodeId: ids, rawByNodeId: raw };
   }, [nodeIds, result.data]);
-  return { effectsByNodeId, isLoading: result.isLoading, error: result.error, refetch: result.refetch };
+  return { effectsByNodeId, rawByNodeId, isLoading: result.isLoading, error: result.error, refetch: result.refetch };
 }
 
-export function useDECBonusAmount() {
-  const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-    .DEC_BONUS_WIN_EFFECT as Address;
-  const result = useReadContract({
-    address,
-    abi: CONTRACT_ABIS.DEC_BONUS_WIN_EFFECT as Abi,
-    chainId: CHAIN_ID,
-    functionName: "bonusAmount",
+/** Every node's effects (for "campaign-wide" values). */
+function useAllNodeEffects() {
+  return useQuery({
+    queryKey: [RL_GRAPH_QUERY_ROOT, "all"],
+    queryFn: () => fetchAllRoguelikeNodes(),
+    staleTime: ADMIN_DATA_STALE_MS,
   });
-  return { ...result, data: result.data as bigint | undefined };
 }
 
-export function useHealAboveFloorPercent() {
-  const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-    .HEAL_ABOVE_FLOOR_WIN_EFFECT as Address;
-  const result = useReadContract({
-    address,
-    abi: CONTRACT_ABIS.HEAL_ABOVE_FLOOR_WIN_EFFECT as Abi,
-    chainId: CHAIN_ID,
-    functionName: "healToPercent",
-  });
-  return { ...result, data: result.data as number | undefined };
+/**
+ * The DCC bonus: a node's, or (no node) the value the campaign's DCC-bonus
+ * nodes use (the first one found). Set campaign-wide with useWinEffectsAdmin.
+ */
+export function useDECBonusAmount(nodeId?: bigint) {
+  const node = useRoguelikeNodeWinEffects(nodeId);
+  const all = useAllNodeEffects();
+  const data = useMemo(() => {
+    if (nodeId != null) return decBonusOf(node.effects);
+    for (const n of all.data ?? []) {
+      const v = decBonusOf(n.raw.win_effects);
+      if (v != null) return v;
+    }
+    return undefined;
+  }, [nodeId, node.effects, all.data]);
+  return { data, isLoading: nodeId != null ? node.isLoading : all.isLoading, refetch: nodeId != null ? node.refetch : all.refetch };
+}
+
+/** The heal-above-floor percent: a node's, or the campaign's (first found). */
+export function useHealAboveFloorPercent(nodeId?: bigint) {
+  const node = useRoguelikeNodeWinEffects(nodeId);
+  const all = useAllNodeEffects();
+  const data = useMemo(() => {
+    if (nodeId != null) return healPercentOf(node.effects);
+    for (const n of all.data ?? []) {
+      const v = healPercentOf(n.raw.win_effects);
+      if (v != null) return v;
+    }
+    return undefined;
+  }, [nodeId, node.effects, all.data]);
+  return { data, isLoading: nodeId != null ? node.isLoading : all.isLoading, refetch: nodeId != null ? node.refetch : all.refetch };
 }

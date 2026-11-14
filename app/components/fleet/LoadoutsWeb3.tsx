@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { useOwnedShips } from "../../hooks/useOwnedShips";
-import { useSelectedChainId } from "../../hooks/useSelectedChainId";
+import { NEAR_NETWORK } from "../../near/config";
 import { useFleetComposition } from "../../hooks/useFleetComposition";
 import { ShipImage } from "../ShipImage";
 import { FleetCompositionLocalNoticeModal } from "../FleetCompositionLocalNoticeModal";
@@ -17,8 +17,8 @@ const isActiveShip = (s: Ship) => s.shipData.constructed && s.shipData.timestamp
  * Navy (same scope key), so editing opens Ships with the preset selected.
  */
 export function LoadoutsWeb3({ onOpenShips }: { onOpenShips: () => void }) {
-  const { address } = useAccount();
-  const chainId = useSelectedChainId();
+  const { address } = useChainAccount();
+  const chainId = `near-${NEAR_NETWORK}`;
   const { ships, isLoading } = useOwnedShips();
 
   const validShipIds = useMemo(

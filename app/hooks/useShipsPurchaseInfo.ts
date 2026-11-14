@@ -1,69 +1,25 @@
 "use client";
 
 import React from "react";
-import { useReadContract } from "wagmi";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useSelectedChainId } from "./useSelectedChainId";
-import { normalizeGetPurchaseInfoTuple } from "../utils/normalizePurchaseInfo";
-import {
-  readValidShipPurchaseInfoCache,
-  writeShipPurchaseInfoCache,
-  invalidateShipPurchaseInfoCache,
-} from "../utils/shipPurchaseInfoCache";
+import { usePriceTiers, tierFields } from "./usePriceTiers";
+import type { PurchaseInfoNormalized } from "../utils/normalizePurchaseInfo";
 
-const ZERO = "0x0000000000000000000000000000000000000000";
-
+/** Ship packs paid in NEAR: `pricesWei` is each tier's price in yoctoNEAR (purchase_ships_with_near). */
 export function useShipsPurchaseInfo() {
-  const chainId = useSelectedChainId();
-  const shipsAddr = getContractAddresses(chainId).SHIPS as `0x${string}`;
-  const shipsDeployed =
-    Boolean(shipsAddr) && shipsAddr.toLowerCase() !== ZERO.toLowerCase();
-
-  const [reloadKey, setReloadKey] = React.useState(0);
-
-  const fromCache = React.useMemo(() => {
-    if (!shipsDeployed) return null;
-    return readValidShipPurchaseInfoCache(chainId, "ships");
-  }, [chainId, shipsDeployed, reloadKey]);
-
-  const shouldFetch = shipsDeployed && fromCache === null;
-
-  const { data, isLoading, error, refetch } = useReadContract({
-    address: shipsAddr,
-    abi: CONTRACT_ABIS.SHIPS,
-    chainId,
-    functionName: "getPurchaseInfo",
-    query: { enabled: shouldFetch },
-  });
-
-  React.useEffect(() => {
-    if (!data || !shipsDeployed) return;
-    const normalized = normalizeGetPurchaseInfoTuple(data);
-    if (normalized && normalized.tierCount > 0) {
-      writeShipPurchaseInfoCache(chainId, "ships", normalized);
-    }
-  }, [data, chainId, shipsDeployed]);
-
-  const normalized = React.useMemo(() => {
-    if (fromCache) return fromCache;
-    return normalizeGetPurchaseInfoTuple(data);
-  }, [fromCache, data]);
-
-  const refetchFromChain = React.useCallback(() => {
-    invalidateShipPurchaseInfoCache(chainId, "ships");
-    setReloadKey((k) => k + 1);
-    void refetch();
-  }, [chainId, refetch]);
-
+  const { data, isLoading, error, refetch } = usePriceTiers();
+  const normalized = React.useMemo((): PurchaseInfoNormalized | null => {
+    if (!data) return null;
+    return { ...tierFields(data), pricesWei: data.map((t) => BigInt(t.near_ship_price)) };
+  }, [data]);
   return {
     tierCount: normalized?.tierCount ?? 0,
     tiers: normalized?.tiers ?? [],
     shipsPerTier: normalized?.shipsPerTier ?? [],
     pricesWei: normalized?.pricesWei ?? [],
     normalized,
-    isLoading: shouldFetch && isLoading,
+    isLoading,
     error,
-    isFromCache: fromCache !== null,
-    refetch: refetchFromChain,
+    isFromCache: false,
+    refetch: () => void refetch(),
   };
 }

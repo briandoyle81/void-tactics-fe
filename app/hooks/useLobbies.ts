@@ -1,16 +1,14 @@
-import { useAccount, usePublicClient } from "wagmi";
-import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWrite";
-import type { Address } from "viem";
-import {
-  useLobbiesWrite,
-  useLobbiesChainParams,
-  useLobbyCount,
-  usePlayerLobbyState,
-  useLobbySettings,
-} from "./useLobbiesContract";
+import { useCallback } from "react";
+import { useChainAccount } from "../near/useChainAccount";
+import { useNearSession } from "../near/session";
+import { GAS_HEAVY } from "../near/config";
+import { toBig } from "../near/codec";
+import type { Address } from "../types/chain";
+import { useLobbyCount, usePlayerLobbyState, useLobbySettings } from "./useLobbiesContract";
 import { useLobbyList } from "./useLobbyList";
 import { Lobby } from "../types/types";
-import { useSwitchToSelectedChainIfNeeded } from "./useSwitchToSelectedChainIfNeeded";
+import type { NearCallSpec } from "../near/session";
+import type { Calls } from "../near/generated/voidTactics";
 
 export interface CreateLobbyParams {
   costLimit: bigint;
@@ -18,7 +16,8 @@ export interface CreateLobbyParams {
   creatorGoesFirst: boolean;
   selectedMapId: bigint;
   maxScore: bigint;
-  reservedJoiner?: Address; // Optional: address to reserve for (address(0) for open lobby)
+  /** Reserve the lobby for this player (omit for an open lobby). */
+  reservedJoiner?: Address;
 }
 
 export interface LobbyListState {
@@ -27,223 +26,70 @@ export interface LobbyListState {
   error: string | null;
 }
 
+/**
+ * PvP lobby actions. Fees (an extra lobby, a reservation) are UTC debited
+ * directly by the contract: no approval step.
+ */
 export function useLobbies() {
-  const { address } = useAccount();
-  const lobbiesRpc = useLobbiesChainParams();
-  const publicClient = usePublicClient({ chainId: lobbiesRpc.chainId });
-  const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
-  const { writeContract, data: hash } = useLobbiesWrite();
+  const { address } = useChainAccount();
+  const { send } = useNearSession();
   const { data: lobbyCount } = useLobbyCount();
   const { playerState } = usePlayerLobbyState(address || "");
-  const { freeGamesPerAddress, additionalLobbyFee, paused, staleLobbyThreshold } =
-    useLobbySettings();
+  const { freeGamesPerAddress, additionalLobbyFee, paused, staleLobbyThreshold } = useLobbySettings();
+  const { lobbies, isLoading, error, refetch: loadLobbies } = useLobbyList();
 
-  // Use the new lobby list hook
-  const {
-    lobbies,
-    isLoading: lobbiesLoading,
-    error: lobbiesError,
-    refetch: loadLobbies,
-  } = useLobbyList();
+  const lobbyList: LobbyListState = { lobbies, isLoading, error };
 
-  const lobbyList: LobbyListState = {
-    lobbies,
-    isLoading: lobbiesLoading,
-    error: lobbiesError,
-  };
+  const call = useCallback(
+    async <M extends keyof Calls>(method: M, args: Calls[M]["args"]) => {
+      if (!address) throw new Error("No wallet connected");
+      return send({ method, args, gas: GAS_HEAVY } as NearCallSpec);
+    },
+    [address, send],
+  );
 
-  // Create a new lobby
-  const createLobby = async (
-    params: CreateLobbyParams & { activeLobbiesCount?: number }
-  ) => {
-    if (!address) throw new Error("No wallet connected");
-    if (paused) throw new Error("Lobby creation is currently paused");
-
-    try {
-      // createLobby isn't payable: an extra lobby's fee (and a reservation)
-      // is UTC taken with transferFrom, so the caller approves UTC to
-      // Lobbies first (LobbyCreateButton does).
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "createLobby",
-        args: [
-          params.costLimit,
-          params.turnTime,
-          params.creatorGoesFirst,
-          params.selectedMapId,
-          params.maxScore,
-          params.reservedJoiner || "0x0000000000000000000000000000000000000000", // Use zero address if not specified
-        ],
+  const createLobby = useCallback(
+    async (params: CreateLobbyParams & { activeLobbiesCount?: number }) => {
+      const receipt = await call("create_lobby", {
+        cost_limit: Number(params.costLimit),
+        turn_time: Number(params.turnTime),
+        creator_goes_first: params.creatorGoesFirst,
+        map_id: params.selectedMapId.toString(),
+        max_score: Number(params.maxScore),
+        reserved_joiner: params.reservedJoiner || null,
       });
+      return toBig(receipt.returnValue as string);
+    },
+    [call],
+  );
 
-    } catch (error) {
-      console.error("Failed to create lobby:", error);
-      throw error;
-    }
-  };
+  const joinLobby = useCallback((lobbyId: bigint) => call("join_lobby", { lobby_id: lobbyId.toString() }), [call]);
+  const leaveLobby = useCallback((lobbyId: bigint) => call("leave_lobby", { lobby_id: lobbyId.toString() }), [call]);
+  const timeoutJoiner = useCallback(
+    (lobbyId: bigint) => call("timeout_joiner", { lobby_id: lobbyId.toString() }),
+    [call],
+  );
 
-  // Join an existing lobby
-  const joinLobby = async (lobbyId: bigint) => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "joinLobby",
-        args: [lobbyId],
+  /** Places the player's fleet; when both fleets exist the game starts (its id is the return value). */
+  const createFleet = useCallback(
+    async (lobbyId: bigint, shipIds: bigint[], startingPositions: Array<{ row: number; col: number }>) => {
+      await call("create_lobby_fleet", {
+        lobby_id: lobbyId.toString(),
+        ship_ids: shipIds.map(String),
+        positions: startingPositions.map((p) => ({ row: p.row, col: p.col })),
       });
+    },
+    [call],
+  );
 
-    } catch (error) {
-      console.error("Failed to join lobby:", error);
-      throw error;
-    }
-  };
-
-  // Leave a lobby
-  const leaveLobby = async (lobbyId: bigint) => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "leaveLobby",
-        args: [lobbyId],
-      });
-    } catch (error) {
-      console.error("Failed to leave lobby:", error);
-      throw error;
-    }
-  };
-
-  // Timeout a joiner
-  const timeoutJoiner = async (lobbyId: bigint) => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "timeoutJoiner",
-        args: [lobbyId],
-      });
-    } catch (error) {
-      console.error("Failed to timeout joiner:", error);
-      throw error;
-    }
-  };
-
-  // Create a fleet for a lobby
-  const createFleet = async (
-    lobbyId: bigint,
-    shipIds: bigint[],
-    startingPositions: Array<{ row: number; col: number }>
-  ): Promise<void> => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "createFleet",
-        args: [lobbyId, shipIds, startingPositions],
-      });
-      // Transaction submitted successfully
-    } catch (error) {
-      console.error("Failed to create fleet:", error);
-      throw error;
-    }
-  };
-
-  // Quit with penalty
-  const quitWithPenalty = async (lobbyId: bigint) => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "quitWithPenalty",
-        args: [lobbyId],
-      });
-    } catch (error) {
-      console.error("Failed to quit with penalty:", error);
-      throw error;
-    }
-  };
-
-  // Accept a reserved game
-  const acceptGame = async (lobbyId: bigint) => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "acceptGame",
-        args: [lobbyId],
-      });
-
-    } catch (error) {
-      console.error("Failed to accept game:", error);
-      throw error;
-    }
-  };
-
-  // Reject a reserved game
-  const rejectGame = async (lobbyId: bigint) => {
-    if (!address) throw new Error("No wallet connected");
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        ...lobbiesRpc,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          lobbiesRpc.chainId,
-          publicClient,
-        )),
-        functionName: "rejectGame",
-        args: [lobbyId],
-      });
-
-    } catch (error) {
-      console.error("Failed to reject game:", error);
-      throw error;
-    }
-  };
+  const quitWithPenalty = useCallback(
+    (lobbyId: bigint) => call("quit_with_penalty", { lobby_id: lobbyId.toString() }),
+    [call],
+  );
+  const acceptGame = useCallback((lobbyId: bigint) => call("accept_game", { lobby_id: lobbyId.toString() }), [call]);
+  const rejectGame = useCallback((lobbyId: bigint) => call("reject_game", { lobby_id: lobbyId.toString() }), [call]);
 
   return {
-    // State
     lobbyList,
     playerState,
     lobbyCount,
@@ -252,7 +98,6 @@ export function useLobbies() {
     paused,
     staleLobbyThreshold,
 
-    // Actions
     createLobby,
     joinLobby,
     leaveLobby,
@@ -263,14 +108,12 @@ export function useLobbies() {
     rejectGame,
     loadLobbies,
 
-    // Transaction hash for waiting on receipt
-    lastTransactionHash: hash,
+    lastTransactionHash: undefined as string | undefined,
 
-    // Computed values
     canCreateLobby: !paused && address !== undefined,
-    needsPaymentForLobby: playerState
-      ? Number(playerState.activeLobbiesCount) >=
-        Number(freeGamesPerAddress || 0n)
-      : false,
+    needsPaymentForLobby:
+      playerState && freeGamesPerAddress != null
+        ? Number(playerState.activeLobbiesCount) >= Number(freeGamesPerAddress)
+        : false,
   };
 }

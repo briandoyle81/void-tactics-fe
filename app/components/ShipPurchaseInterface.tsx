@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useAccount } from "wagmi";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useStaggeredPreviewSeeds } from "../hooks/useStaggeredPreviewSeeds";
 import { VariantPicker } from "./VariantPicker";
@@ -30,9 +29,8 @@ import {
   toPreviewShip,
 } from "../utils/previewShips";
 import type { Ship } from "../types/types";
-import { formatEther } from "viem";
-import { getNativeTokenSymbol, getSelectedChainId } from "../config/networks";
-import { FLOW_USD_TIERS, type FlowTier } from "../config/flowPayment";
+import { formatNear, formatUnits18 } from "@/app/near/codec";
+import { CARD_CHECKOUT_ENABLED, FLOW_USD_TIERS, type FlowTier } from "../config/flowPayment";
 
 type PaymentMethod = "USD" | "FLOW" | "UTC";
 
@@ -47,16 +45,16 @@ function truncateTo8Decimals(value: string): string {
 
 /**
  * Web3 ship packs: tier cards priced in USD; picking one opens checkout,
- * where the player pays by card or any token (Fireblocks Flow), the chain's
- * native token, or UTC.
+ * where the player pays with NEAR or UTC (and by card or any token through
+ * Fireblocks Flow, when CARD_CHECKOUT_ENABLED).
  */
 const ShipPurchaseInterface: React.FC = () => {
   const shipsPack = useShipsPurchaseInfo();
   const utcPack = useShipPurchaserPurchaseInfo();
   const { refetch } = useOwnedShips();
-  const { chainId: walletChainId } = useAccount();
-  const activeGameChainId = walletChainId ?? getSelectedChainId();
-  const nativeTokenSymbol = getNativeTokenSymbol(activeGameChainId);
+  const nativeTokenSymbol = "NEAR";
+  /** Card checkout's memo field (was the game's EVM chain id). */
+  const activeGameChainId = 0;
   const flowModal = useFlowPaymentModal({
     onSuccess: async () => {
       await refetch();
@@ -74,7 +72,7 @@ const ShipPurchaseInterface: React.FC = () => {
 
   // Which pack's checkout is open (null = closed), and how it's being paid.
   const [checkoutIndex, setCheckoutIndex] = useState<number | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("USD");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(CARD_CHECKOUT_ENABLED ? "USD" : "FLOW");
 
   // Packs (ship counts, ranks, previews) come from Ships; ShipPurchaser
   // prices the same tiers in UTC.
@@ -118,7 +116,7 @@ const ShipPurchaseInterface: React.FC = () => {
   const tierData = tiers.map((tier: number, index: number) => {
     const price = prices[index];
     const shipsCount = maxPerTier[index];
-    const priceFormatted = price ? truncateTo8Decimals(formatEther(price)) : "0";
+    const priceFormatted = price ? formatNear(price, 4) : "0";
     const veteranRanks = getGuaranteedVeteranRanks(tier, shipsCount ?? 1);
     const tierCallout = getTierCallout(tier);
     const badge = getTierBadge(tier, tierCount);
@@ -223,7 +221,11 @@ const ShipPurchaseInterface: React.FC = () => {
       <ShipPurchaseShell
         featured={renderTierButton(featuredTier, "featured")}
         rows={ladderTiers.map((d) => renderTierButton(d, "row"))}
-        footerPaymentNote="Pick a pack, then choose how to pay: card or any token, your wallet's token, or UTC."
+        footerPaymentNote={
+          CARD_CHECKOUT_ENABLED
+            ? "Pick a pack, then choose how to pay: card or any token, NEAR, or UTC."
+            : "Pick a pack, then choose how to pay: NEAR or UTC."
+        }
         topContent={
           <VariantPicker compact selectedVariant={selectedVariant} onSelect={setSelectedVariant} />
         }
@@ -236,12 +238,16 @@ const ShipPurchaseInterface: React.FC = () => {
           selectedId={paymentMethod}
           onSelect={(id) => setPaymentMethod(id as PaymentMethod)}
           options={[
+            ...(CARD_CHECKOUT_ENABLED
+              ? [
             {
               id: "USD",
               label: "Card or any token",
               note: "Any chain, via Fireblocks Flow",
               priceLabel: `$${checkout.flowTier.displayPrice}`,
             },
+                ]
+              : []),
             {
               id: "FLOW",
               label: nativeTokenSymbol,
@@ -251,10 +257,10 @@ const ShipPurchaseInterface: React.FC = () => {
             {
               id: "UTC",
               label: "UTC",
-              note: "Approve, then confirm",
+              note: "From your UTC balance",
               priceLabel:
                 checkout.utcPrice !== undefined
-                  ? `${truncateTo8Decimals(formatEther(checkout.utcPrice))} UTC`
+                  ? `${truncateTo8Decimals(formatUnits18(checkout.utcPrice, 8))} UTC`
                   : "—",
               disabledReason:
                 checkout.utcPrice === undefined

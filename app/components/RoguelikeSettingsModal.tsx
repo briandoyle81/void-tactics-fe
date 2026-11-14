@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { Address } from "viem";
+import type { Address } from "../types/chain";
 import {
   useCampaignAutoHealPercent,
   useRoguelikeCampaignRequiredVariant,

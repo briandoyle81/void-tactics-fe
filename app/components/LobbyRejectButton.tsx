@@ -2,8 +2,7 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { CONTRACT_ADDRESSES } from "../config/contracts";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 
 interface LobbyRejectButtonProps {
   lobbyId: bigint;
@@ -14,15 +13,6 @@ interface LobbyRejectButtonProps {
   onError?: (error: Error) => void;
 }
 
-const LOBBY_REJECT_ABI = [
-  {
-    inputs: [{ internalType: "uint256", name: "_lobbyId", type: "uint256" }],
-    name: "rejectGame",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
 
 export function LobbyRejectButton({
   lobbyId,
@@ -32,7 +22,7 @@ export function LobbyRejectButton({
   onSuccess,
   onError,
 }: LobbyRejectButtonProps) {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
 
   const validateBeforeTransaction = React.useCallback(() => {
     if (!address) {
@@ -44,10 +34,7 @@ export function LobbyRejectButton({
   return (
     <TransactionButton
       transactionId={`reject-game-${lobbyId}-${address}`}
-      contractAddress={CONTRACT_ADDRESSES.LOBBIES as `0x${string}`}
-      abi={LOBBY_REJECT_ABI}
-      functionName="rejectGame"
-      args={[lobbyId]}
+      call={{ method: "reject_game", args: { lobby_id: lobbyId.toString() } }}
       className={className}
       disabled={disabled}
       loadingText="[REJECTING…]"

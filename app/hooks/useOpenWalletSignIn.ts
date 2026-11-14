@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useDynamicContext, useProjectSettings } from "@dynamic-labs/sdk-react-core";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { toast } from "react-hot-toast";
 
 /** The event that opens the sign-in modal (SignInModal, mounted once by the client's providers). */
@@ -32,7 +32,7 @@ export function openSignIn() {
 export function usePrepareSignIn() {
   const { user, sdkHasLoaded, handleLogOut } = useDynamicContext();
   const projectSettings = useProjectSettings();
-  const { isConnected } = useAccount();
+  const { isConnected } = useChainAccount();
 
   return useCallback(async (): Promise<boolean> => {
     if (!sdkHasLoaded || !projectSettings) {

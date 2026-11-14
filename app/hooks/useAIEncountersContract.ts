@@ -2,77 +2,83 @@
 
 import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
 import { useMemo } from "react";
-import { useReadContract, useReadContracts } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
-import { AIShipConfig } from "../types/types";
+import { useQuery } from "@tanstack/react-query";
+import { Archetype, AIShipConfig } from "../types/types";
 import { aiConfigToPreviewShip } from "../utils/aiShipConfig";
+import { viewGame } from "../near/rpc";
+import { toEquipment } from "../near/adapters/ship";
+import { toBig } from "../near/codec";
+import type { AiShipConfig as NearAiShipConfig, Position } from "../near/generated/voidTactics";
+import { useGameSettings } from "../near/useGameSettings";
+import type { GameSettings } from "../near/generated/voidTactics";
+import { fetchAllPages } from "../near/useNearView";
 
-const CHAIN_ID = baseSepolia.id;
-const AI_ENCOUNTERS_ABI = CONTRACT_ABIS.AI_ENCOUNTERS as Abi;
-const AI_ENCOUNTERS_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-  .AI_ENCOUNTERS as `0x${string}`;
+const selectMaxPlacements = (s: GameSettings) => BigInt(s.max_placements_per_map);
 
-export function useAIEncountersContract() {
+const ARCHETYPES = ["Grunt", "Aggressor", "Sniper", "Support", "Turtle", "Rammer", "Runner", "Hunter"] as const;
+
+export const AI_CONFIGS_KEY = ["near-ai-configs", "all"] as const;
+export function mapPlacementsKey(mapId: number | bigint) {
+  return ["near-map-placements", String(mapId)] as const;
+}
+
+export function toAIShipConfig(id: bigint, c: NearAiShipConfig): AIShipConfig {
   return {
-    address: AI_ENCOUNTERS_ADDRESS,
-    abi: AI_ENCOUNTERS_ABI,
-    chainId: CHAIN_ID,
+    id,
+    name: c.name,
+    equipment: toEquipment(c.equipment),
+    traits: {
+      serialNumber: toBig(c.traits.serial_number),
+      colors: { ...c.traits.colors },
+      variant: c.traits.variant,
+      accuracy: c.traits.accuracy,
+      hull: c.traits.hull,
+      speed: c.traits.speed,
+    },
+    archetype: Math.max(0, ARCHETYPES.indexOf(c.archetype as (typeof ARCHETYPES)[number])) as Archetype,
+    shiny: c.shiny,
+    shipsDestroyed: c.ships_destroyed,
   };
+}
+
+/** Every AI ship config (ids 1..get_ai_config_count). */
+export async function fetchAllAIShipConfigs(): Promise<AIShipConfig[]> {
+  const pairs = await fetchAllPages(
+    (from, limit) => viewGame("get_ai_ship_configs", { from_index: from, limit }),
+    100,
+  );
+  return pairs.map(([id, c]) => toAIShipConfig(BigInt(id), c));
 }
 
 export function useGetAllAIShipConfigs() {
-  const result = useReadContract({
-    address: AI_ENCOUNTERS_ADDRESS,
-    abi: AI_ENCOUNTERS_ABI,
-    chainId: CHAIN_ID,
-    functionName: "getAllAIShipConfigs",
-    query: { staleTime: ADMIN_DATA_STALE_MS },
-  });
-  return { ...result, data: result.data as AIShipConfig[] | undefined };
+  return useQuery({ queryKey: AI_CONFIGS_KEY, queryFn: fetchAllAIShipConfigs, staleTime: ADMIN_DATA_STALE_MS });
 }
 
-// Was a hardcoded `constant` (MAX_PLACEMENTS_PER_MAP); now a plain owner-
-// tunable uint (`maxPlacementsPerMap`) — read live, don't assume 8.
+/** Most AI ships one map may place (get_settings.max_placements_per_map). */
 export function useMaxPlacementsPerMap() {
-  const result = useReadContract({
-    address: AI_ENCOUNTERS_ADDRESS,
-    abi: AI_ENCOUNTERS_ABI,
-    chainId: CHAIN_ID,
-    functionName: "maxPlacementsPerMap",
-    query: { staleTime: ADMIN_DATA_STALE_MS },
-  });
-  return { ...result, data: result.data as bigint | undefined };
+  return useGameSettings(selectMaxPlacements);
 }
 
-export function useGetMapPlacements(mapId: bigint | undefined) {
-  const result = useReadContract({
-    address: AI_ENCOUNTERS_ADDRESS,
-    abi: AI_ENCOUNTERS_ABI,
-    chainId: CHAIN_ID,
-    functionName: "getMapPlacements",
-    args: mapId != null ? [mapId] : undefined,
-    query: { enabled: mapId != null, staleTime: ADMIN_DATA_STALE_MS },
-  });
-  const raw = result.data as
-    | readonly [readonly { row: number; col: number }[], readonly bigint[]]
-    | undefined;
+async function fetchMapPlacements(mapId: number | bigint) {
+  const raw = (await viewGame("get_map_placements", { map_id: String(mapId) })) as unknown as Array<[Position, string]>;
   return {
-    ...result,
-    data: raw ? { positions: raw[0], configIds: raw[1] } : undefined,
+    positions: raw.map(([p]) => ({ row: p.row, col: p.col })),
+    configIds: raw.map(([, id]) => toBig(id)),
   };
 }
 
+export function useGetMapPlacements(mapId: bigint | undefined) {
+  return useQuery({
+    queryKey: mapPlacementsKey(mapId ?? BigInt(0)),
+    queryFn: () => fetchMapPlacements(mapId!),
+    enabled: mapId != null,
+    staleTime: ADMIN_DATA_STALE_MS,
+  });
+}
+
 /**
- * Total "enemy threat" for a campaign/roguelike node's map — derived as the
- * sum of each placed AI ship's cost (aiConfigToPreviewShip, the same
- * formula real player ships use), not a stored contract field. NodeMap and
- * RoguelikeNodeMap both dropped their onchain `enemyThreat` field (removed
- * from createNode/updateNode/getNode on both contracts, undocumented,
- * caught by live verification rather than any changelog) — this replaces
- * it for both, since both node kinds carry a `mapId` and AI placement is
- * keyed by mapId regardless of which node-graph system is asking.
+ * Total "enemy threat" for a node's map: the sum of each placed AI ship's
+ * cost (aiConfigToPreviewShip, the same formula real player ships use).
  */
 export function useMapEnemyThreat(mapId: bigint | undefined) {
   const { data: allConfigs, isLoading: configsLoading } = useGetAllAIShipConfigs();
@@ -90,29 +96,23 @@ export function useMapEnemyThreat(mapId: bigint | undefined) {
   return { totalThreat, isLoading: configsLoading || placementsLoading };
 }
 
-/** Batched getMapPlacements across every map id — for admin export, where reading N maps one at a time isn't worth N separate hook instances. */
+/** Placements for every map id (admin export / map problems). */
 export function useGetAllMapPlacements(mapIds: number[]) {
-  const result = useReadContracts({
-    contracts: mapIds.map((id) => ({
-      address: AI_ENCOUNTERS_ADDRESS,
-      abi: AI_ENCOUNTERS_ABI,
-      chainId: CHAIN_ID,
-      functionName: "getMapPlacements" as const,
-      args: [BigInt(id)] as const,
-    })),
-    query: { enabled: mapIds.length > 0 },
+  const key = mapIds.join(",");
+  const result = useQuery({
+    queryKey: ["near-map-placements", "all", key],
+    queryFn: () => Promise.all(mapIds.map((id) => fetchMapPlacements(id))),
+    enabled: mapIds.length > 0,
+    staleTime: ADMIN_DATA_STALE_MS,
   });
-
-  const data = mapIds.map((mapId, i) => {
-    const raw = result.data?.[i]?.result as
-      | readonly [readonly { row: number; col: number }[], readonly bigint[]]
-      | undefined;
-    return {
-      mapId,
-      positions: raw ? raw[0] : [],
-      configIds: raw ? raw[1] : [],
-    };
-  });
-
+  const data = useMemo(
+    () =>
+      mapIds.map((mapId, i) => ({
+        mapId,
+        positions: result.data?.[i]?.positions ?? [],
+        configIds: result.data?.[i]?.configIds ?? [],
+      })),
+    [mapIds, result.data],
+  );
   return { ...result, data };
 }

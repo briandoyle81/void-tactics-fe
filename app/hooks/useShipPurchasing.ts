@@ -1,200 +1,91 @@
-import {
-  useAccount,
-  useBalance,
-  useWaitForTransactionReceipt,
-  usePublicClient,
-} from "wagmi";
-import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWrite";
-import { getContractAddresses } from "../config/contracts";
+import { useCallback, useState } from "react";
 import { toast } from "react-hot-toast";
+import { useChainAccount } from "../near/useChainAccount";
+import { useNearSession } from "../near/session";
+import { useNearBalance } from "../near/useNearBalance";
+import { GAS_HEAVY } from "../near/config";
+import { formatNear } from "../near/codec";
+import { isUserRejection, shortErrorMessage } from "../near/errors";
 import { useOwnedShips } from "./useOwnedShips";
-import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
-
-const POST_PURCHASE_REFETCH_DELAY_MS = 2000;
-import { useEffect } from "react";
-import { getVariantForChainId } from "../config/networks";
 import { useShipsPurchaseInfo } from "./useShipsPurchaseInfo";
-import { useSelectedChainId } from "./useSelectedChainId";
-import { useSwitchToSelectedChainIfNeeded } from "./useSwitchToSelectedChainIfNeeded";
-import { formatEther } from "viem";
 
-// Ships contract ABI for purchasing with FLOW
-const shipsContractABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "_to", type: "address" },
-      { internalType: "uint8", name: "_tier", type: "uint8" },
-      { internalType: "address", name: "_referral", type: "address" },
-      { internalType: "uint16", name: "_variant", type: "uint16" },
-    ],
-    name: "purchaseWithFlow",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-] as const;
-
+/**
+ * Ship packs paid in NEAR (purchase_ships_with_near). The attached deposit
+ * must be the tier's exact price, which also pays the new ships' storage;
+ * the wallet confirms it (deposits never use the session key).
+ */
 export function useShipPurchasing() {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
+  const { send } = useNearSession();
   const { refetch } = useOwnedShips();
-  const activeChainId = useSelectedChainId();
-  const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
-  const contractAddresses = getContractAddresses(activeChainId);
-  const chainVariant = getVariantForChainId(activeChainId);
+  const { tiers, shipsPerTier, pricesWei, isLoading: isLoadingPurchaseInfo } = useShipsPurchaseInfo();
+  const { data: nearBalance, isLoading: isLoadingFlowBalance } = useNearBalance(address);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
-  const {
-    tiers,
-    shipsPerTier,
-    pricesWei,
-    isLoading: isLoadingPurchaseInfo,
-  } = useShipsPurchaseInfo();
-
-  const { data: flowBalance, isLoading: isLoadingFlowBalance } = useBalance({
-    address,
-    chainId: activeChainId,
-  });
-
-  const { writeContract, isPending, error, data: hash } = useSponsoredWriteContract();
-  const publicClient = usePublicClient({ chainId: activeChainId });
-
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    error: receiptError,
-  } = useWaitForTransactionReceipt({
-    hash,
-    chainId: activeChainId,
-  });
-
-  useEffect(() => {
-    if (error) {
-      const errorMessage = error.message || "";
-      if (
-        errorMessage.includes("User rejected") ||
-        errorMessage.includes("User denied") ||
-        errorMessage.includes("rejected")
-      ) {
-        toast.error("Transaction declined by user");
-      } else {
-        toast.error("Transaction failed: " + errorMessage);
+  const purchaseShips = useCallback(
+    async (tier: number, variant = 1) => {
+      if (!address) {
+        toast.error("Please sign in first");
+        return;
       }
-    }
-  }, [error]);
-
-  useEffect(() => {
-    if (isConfirmed && hash) {
-      toast.success("Ships purchased successfully!");
-      setTimeout(() => refetch(), POST_PURCHASE_REFETCH_DELAY_MS);
-    }
-  }, [isConfirmed, hash, refetch]);
-
-  useEffect(() => {
-    if (receiptError) {
-      const errorMessage = receiptError.message || "Transaction failed";
-      if (
-        errorMessage.includes("User rejected") ||
-        errorMessage.includes("User denied") ||
-        errorMessage.includes("rejected")
-      ) {
-        toast.error("Transaction declined by user");
-      } else {
-        toast.error(`Transaction failed: ${errorMessage}`);
+      if (tier < 0 || tier >= tiers.length) {
+        toast.error("Invalid tier selected");
+        return;
       }
-    }
-  }, [receiptError]);
-
-  const purchaseShips = async (tier: number) => {
-    if (!address) {
-      toast.error("Please connect your wallet");
-      return;
-    }
-
-    if (tier < 0 || tier >= tiers.length) {
-      toast.error("Invalid tier selected");
-      return;
-    }
-
-    const tierPrice = pricesWei[tier] ?? 0n;
-    if (tierPrice === 0n) {
-      toast.error("Invalid tier price");
-      return;
-    }
-
-    if (flowBalance && flowBalance.value < tierPrice) {
-      toast.error("Insufficient FLOW balance");
-      return;
-    }
-
-    const referralAddress =
-      "0xac5b774D7a700AcDb528048B6052bc1549cd73B9" as `0x${string}`;
-
-    try {
-      await switchToSelectedChainIfNeeded();
-      await writeContract({
-        address: contractAddresses.SHIPS as `0x${string}`,
-        abi: shipsContractABI,
-        functionName: "purchaseWithFlow",
-        args: [address, tier as number, referralAddress, chainVariant],
-        value: tierPrice,
-        chainId: activeChainId,
-        ...(await getLegacyGasPriceOverridesForWrite(
-          activeChainId,
-          publicClient,
-        )),
-      });
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      if (
-        errorMessage.includes("User rejected") ||
-        errorMessage.includes("User denied") ||
-        errorMessage.includes("rejected")
-      ) {
-        toast.error("Transaction declined by user");
-      } else {
-        toast.error("Failed to purchase ships");
+      const price = pricesWei[tier] ?? BigInt(0);
+      if (price === BigInt(0)) {
+        toast.error("Invalid tier price");
+        return;
       }
-    }
-  };
+      if (nearBalance && nearBalance.value < price) {
+        toast.error("Not enough NEAR");
+        return;
+      }
+      setIsPending(true);
+      setError(null);
+      try {
+        await send({
+          method: "purchase_ships_with_near",
+          args: { tier, referral: null, variant },
+          deposit: price,
+          gas: GAS_HEAVY,
+        });
+        toast.success("Ships purchased! They're being built now.");
+        await refetch();
+      } catch (err) {
+        const e = err instanceof Error ? err : new Error(String(err));
+        setError(e);
+        toast.error(isUserRejection(e) ? "Transaction declined" : `Purchase failed: ${shortErrorMessage(e)}`);
+      } finally {
+        setIsPending(false);
+      }
+    },
+    [address, tiers.length, pricesWei, nearBalance, send, refetch],
+  );
 
-  const getPurchaseCosts = (tier: number, maxCount: number = 10) => {
+  const getPurchaseCosts = (tier: number) => {
     const p = pricesWei[tier];
     if (p === undefined) return [];
-
-    const shipsInTier = Number(shipsPerTier[tier] || 1);
-    const costs = [];
-
-    for (let i = 1; i <= Math.min(maxCount, shipsInTier); i++) {
-      costs.push({
-        count: i,
-        cost: p * BigInt(i),
-        costFormatted: `${formatEther(p * BigInt(i))} FLOW`,
-      });
-    }
-    return costs;
+    return [{ count: Number(shipsPerTier[tier] || 1), cost: p, costFormatted: `${formatNear(p)} NEAR` }];
   };
 
-  const canAfford = (tier: number, count: number) => {
+  const canAfford = (tier: number) => {
     const p = pricesWei[tier];
-    if (p === undefined || !flowBalance) return false;
-    const totalCost = p * BigInt(count);
-    return flowBalance.value >= totalCost;
+    return p !== undefined && !!nearBalance && nearBalance.value >= p;
   };
 
   return {
     tiers,
     prices: pricesWei,
     maxPerTier: shipsPerTier,
-    flowBalance,
-
+    flowBalance: nearBalance,
     isLoadingFlowBalance,
     isLoadingPurchaseInfo,
-
     purchaseShips,
-
     getPurchaseCosts,
     canAfford,
-
-    isPending: isPending || isConfirming,
-    error: error || receiptError,
+    isPending,
+    error,
   };
 }

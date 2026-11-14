@@ -1,5 +1,5 @@
 import React from "react";
-import { registerGameRefetch, unregisterGameRefetch } from "./useContractEvents";
+import { registerGameRefetch, unregisterGameRefetch } from "../near/sync/gameRefetchRegistry";
 
 const POLL_INTERVAL_FOCUSED_MS = 30 * 1000;
 const POLL_INTERVAL_UNFOCUSED_MS = 5 * 60 * 1000;

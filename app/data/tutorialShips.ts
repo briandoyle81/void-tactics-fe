@@ -1,5 +1,5 @@
 import { Ship, ShipColors, ShipData, ShipEquipment } from "../types/types";
-import { Address } from "viem";
+import type { Address } from "@/app/types/chain";
 import {
   buildTutorialShip,
   type TutorialCombatTraits,

@@ -27,7 +27,7 @@ interface SpecialEntry {
   movement: number;
 }
 
-interface VariantAttributeTable {
+export interface VariantAttributeTable {
   baseHull: number;
   baseSpeed: number;
   foreAccuracy: number[];
@@ -238,8 +238,14 @@ function calcBaseDamageReduction(ship: Ship, table: VariantAttributeTable): numb
 //   or negative; only the computed total is raised)
 //
 // This mirrors the Solidity implementation in ShipAttributes.calculateShipAttributes.
-export function calculateAttributesFromContracts(ship: Ship): Attributes {
-  const table = tableForVariant(ship.traits.variant);
+export function calculateAttributesFromContracts(
+  ship: Ship,
+  /** A live table (get_variant_attributes via tableFromNear); default the built-in mirror. */
+  liveTable?: VariantAttributeTable,
+  /** The table's attributes version, reported in `version`. */
+  liveVersion?: number,
+): Attributes {
+  const table = liveTable ?? tableForVariant(ship.traits.variant);
   const gun = table.guns[ship.equipment.mainWeapon] ?? table.guns[0];
 
   const baseRange = gun.range;
@@ -249,8 +255,18 @@ export function calculateAttributesFromContracts(ship: Ship): Attributes {
   const baseDamageReduction = calcBaseDamageReduction(ship, table);
 
   // Rank-based bonuses (live per-variant thresholds/multipliers)
-  const rank = getRankFromKills(ship.traits.variant, Number(ship.shipData.shipsDestroyed ?? 0n));
-  const rankMultiplier = getRankMultiplier(ship.traits.variant, rank);
+  const kills = Number(ship.shipData.shipsDestroyed ?? 0);
+  let rankMultiplier: number;
+  if (liveTable) {
+    let rank = 1;
+    liveTable.rankThresholds.forEach((t, i) => {
+      if (kills >= t) rank = i + 2;
+    });
+    rankMultiplier = liveTable.rankBonusPct[rank - 1] ?? 0;
+  } else {
+    const rank = getRankFromKills(ship.traits.variant, kills);
+    rankMultiplier = getRankMultiplier(ship.traits.variant, rank);
+  }
 
   const applyPercentBonus = (value: number, percent: number): number =>
     value + Math.floor((value * percent) / 100);
@@ -270,7 +286,7 @@ export function calculateAttributesFromContracts(ship: Ship): Attributes {
   const maxHullPoints = hullWithRank;
 
   return {
-    version: 1,
+    version: liveVersion ?? 1,
     range: Math.max(1, rangeWithFore),
     gunDamage: gunDamageWithRank,
     hullPoints,
@@ -349,4 +365,33 @@ export function getAttributeMaxima(): AttributeMaxima {
     );
   }
   return maxima;
+}
+
+/** The contract's VariantAttributeData (get_variant_attributes) as a calculator table. */
+export function tableFromNear(d: {
+  base_hull: number;
+  base_speed: number;
+  fore_accuracy: number[];
+  hull: number[];
+  engine_speeds: number[];
+  guns: { range: number; damage: number; movement: number }[];
+  armors: { damage_reduction: number; movement: number }[];
+  shields: { damage_reduction: number; movement: number }[];
+  specials: { range: number; strength: number; movement: number }[];
+  rank_thresholds: number[];
+  rank_bonus_pct: number[];
+}): VariantAttributeTable {
+  return {
+    baseHull: d.base_hull,
+    baseSpeed: d.base_speed,
+    foreAccuracy: d.fore_accuracy,
+    hullBonus: d.hull,
+    engineSpeeds: d.engine_speeds,
+    guns: d.guns,
+    armors: d.armors.map((a) => ({ damageReduction: a.damage_reduction, movement: a.movement })),
+    shields: d.shields.map((a) => ({ damageReduction: a.damage_reduction, movement: a.movement })),
+    specials: d.specials,
+    rankThresholds: d.rank_thresholds,
+    rankBonusPct: d.rank_bonus_pct,
+  };
 }

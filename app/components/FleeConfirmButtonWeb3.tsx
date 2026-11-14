@@ -2,14 +2,14 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { usePvPMatchContract } from "../hooks/useGameContract";
-import { useRoguelikeMatchContract } from "../hooks/useRoguelikeMatch";
+import { GAS_HEAVY } from "../near/config";
 import { toast } from "react-hot-toast";
+import type { NearCallSpec } from "../near/session";
 
 // The web3-specific CONFIRM button for FleeSafetySwitch.tsx's retreat
 // modal. Pass to `renderConfirmButton`.
-// - PvP: `PvPMatch.flee(gameId)` (flee lives on PvPMatch, not Game).
-// - Roguelike: `RoguelikeMatch.retreatRun(gameId)`, which forfeits the
+// - PvP: `flee(game_id)`.
+// - Roguelike: `retreat_run(game_id)`, which forfeits the
 //   match as a loss and ends the run (the contract has no mission-only
 //   retreat).
 interface FleeConfirmButtonWeb3Props {
@@ -23,17 +23,18 @@ export function FleeConfirmButtonWeb3({
   onSuccess,
   isRoguelike = false,
 }: FleeConfirmButtonWeb3Props) {
-  const pvpMatchContract = usePvPMatchContract();
-  const roguelikeMatchContract = useRoguelikeMatchContract();
-  const contract = isRoguelike ? roguelikeMatchContract : pvpMatchContract;
+  const call = React.useMemo<NearCallSpec>(
+    () =>
+      isRoguelike
+        ? { method: "retreat_run", args: { game_id: gameId.toString() }, gas: GAS_HEAVY }
+        : { method: "flee", args: { game_id: gameId.toString() }, gas: GAS_HEAVY },
+    [isRoguelike, gameId],
+  );
 
   return (
     <TransactionButton
       transactionId={`flee-game-${gameId}`}
-      contractAddress={contract.address}
-      abi={contract.abi}
-      functionName={isRoguelike ? "retreatRun" : "flee"}
-      args={[gameId]}
+      call={call}
       onSuccess={async () => {
         toast.success("Disengaged from battle.");
         await onSuccess();

@@ -2,13 +2,13 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { erc20Approval } from "../utils/approvalSteps";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useAccount, useReadContract } from "wagmi";
-import type { Abi, Address } from "viem";
-import { parseEther, formatEther } from "viem";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useTokenBalance } from "@/app/near/useTokenBalance";
+import { TOKEN_UTC } from "@/app/near/config";
+import { formatUnits18, parseUnits18 } from "@/app/near/codec";
+import type { Address } from "../types/chain";
+import { isNoAccount } from "../types/chain";
 import { useMapExists } from "../hooks/useMapsContract";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import posthog from "posthog-js";
 
 interface LobbyCreateButtonProps {
@@ -17,40 +17,20 @@ interface LobbyCreateButtonProps {
   creatorGoesFirst: boolean;
   selectedMapId: bigint;
   maxScore: bigint;
-  /** additionalLobbyFee (UTC wei) when this open lobby is past the player's
-   * free ones, else 0. Lobbies.createLobby takes it with transferFrom. */
+  /** The extra-lobby fee (UTC, 18 decimals) when this open lobby is past the
+   * player's free ones, else 0. The contract debits it directly. */
   lobbyFeeUtc: bigint;
-  reservedJoiner?: Address; // Optional: address to reserve for (undefined or zero address for open lobby)
-  /** True when this is the player's first unresolved AI reservation — Lobbies.createLobby waives the
-   * usual 1 UTC reservation fee for it. Caller derives this from
-   * playerState.activeAILobbiesCount (see Lobbies.tsx); ignored for human-reserved/open lobbies. */
+  /** Reserve the lobby for this player (omit for an open lobby). */
+  reservedJoiner?: Address;
+  /** True when the reservation fee is waived (the caller decides). */
   skipReservationFee?: boolean;
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
   onSuccess?: TransactionFollowUp;
   onError?: (error: Error) => void;
-  onTransactionSent?: (hash: `0x${string}`) => void;
+  onTransactionSent?: (hash: string) => void;
 }
-
-const LOBBY_CREATE_ABI = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "_costLimit", type: "uint256" },
-      { internalType: "uint256", name: "_turnTime", type: "uint256" },
-      { internalType: "bool", name: "_creatorGoesFirst", type: "bool" },
-      { internalType: "uint256", name: "_selectedMapId", type: "uint256" },
-      { internalType: "uint256", name: "_maxScore", type: "uint256" },
-      { internalType: "address", name: "_reservedJoiner", type: "address" },
-    ],
-    name: "createLobby",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  // Listed so viem decodes the revert name (matched by the caller's onError).
-  { type: "error", name: "InsufficientUTC", inputs: [] },
-] as const;
 
 export function LobbyCreateButton({
   costLimit,
@@ -68,135 +48,66 @@ export function LobbyCreateButton({
   onError,
   onTransactionSent,
 }: LobbyCreateButtonProps) {
-  const { address } = useAccount();
-  const chainId = useSelectedChainId();
-  const contractAddresses = getContractAddresses(chainId);
-
-  // Check if this is a reserved lobby
-  const isReserved =
-    reservedJoiner &&
-    reservedJoiner !== "0x0000000000000000000000000000000000000000";
-  const zeroAddress = "0x0000000000000000000000000000000000000000" as Address;
-
-  // Read UTC balance
-  const { data: utcBalance } = useReadContract({
-    address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    chainId,
-  });
-
-  // Check if map exists
+  const { address } = useChainAccount();
+  const isReserved = !!reservedJoiner && !isNoAccount(reservedJoiner);
+  const { data: utcBalance } = useTokenBalance(address, TOKEN_UTC);
   const { data: mapExists } = useMapExists(Number(selectedMapId));
 
-  // Check if contract is paused
-  const { data: paused } = useReadContract({
-    address: contractAddresses.LOBBIES as `0x${string}`,
-    abi: CONTRACT_ABIS.LOBBIES as Abi,
-    functionName: "paused",
-    chainId,
-  });
-
-  // Lobbies.createLobby charges one UTC fee: 1 UTC to reserve the lobby for
-  // a player, otherwise additionalLobbyFee once the free lobbies are used.
-  // skipReservationFee (a waived reservation) is the caller's to set.
+  // One UTC fee: 1 UTC to reserve the lobby for a player, otherwise the
+  // extra-lobby fee once the free lobbies are used.
   const totalUtcRequired = React.useMemo(() => {
-    if (isReserved) return skipReservationFee ? 0n : parseEther("1");
+    if (isReserved) return skipReservationFee ? BigInt(0) : parseUnits18("1");
     return lobbyFeeUtc;
   }, [isReserved, skipReservationFee, lobbyFeeUtc]);
 
   const validateBeforeTransaction = React.useCallback(() => {
-    if (!address) {
-      return "Please connect your wallet";
+    if (!address) return "Please sign in first";
+    if (mapExists === false) return `Map ID ${selectedMapId} does not exist. Please select a valid map.`;
+    if (turnTime === BigInt(0)) return "Turn time must be greater than 0";
+    if (isReserved && reservedJoiner === address) {
+      return "Cannot reserve a lobby for yourself. Enter a different player's account, or leave it empty for an open lobby.";
     }
-    if (paused === true) {
-      return "Lobby creation is currently paused";
-    }
-    if (mapExists === false) {
-      return `Map ID ${selectedMapId} does not exist. Please select a valid map.`;
-    }
-    if (turnTime === 0n) {
-      return "Turn time must be greater than 0";
-    }
-    // Prevent reserving lobby for yourself
-    if (isReserved && reservedJoiner && address) {
-      if (reservedJoiner.toLowerCase() === address.toLowerCase()) {
-        return "Cannot reserve a lobby for yourself. Please enter a different player's address or leave empty for an open lobby.";
-      }
-    }
-    // The reservation or extra-lobby fee, in UTC.
-    if (totalUtcRequired > 0n) {
-      const balance = utcBalance as bigint | undefined;
-      if (!balance || balance < totalUtcRequired) {
-        return `Insufficient UTC balance. Need ${formatEther(totalUtcRequired)} UTC.`;
-      }
+    if (totalUtcRequired > BigInt(0) && (utcBalance ?? BigInt(0)) < totalUtcRequired) {
+      return `Insufficient UTC balance. Need ${formatUnits18(totalUtcRequired)} UTC.`;
     }
     return true;
-  }, [
-    address,
-    paused,
-    mapExists,
-    selectedMapId,
-    turnTime,
-    isReserved,
-    reservedJoiner,
-    totalUtcRequired,
-    utcBalance,
-  ]);
+  }, [address, mapExists, selectedMapId, turnTime, isReserved, reservedJoiner, totalUtcRequired, utcBalance]);
 
   const transactionId = React.useMemo(
-    () =>
-      `create-lobby-${address}-${costLimit}-${turnTime}-${selectedMapId}-${maxScore}-${
-        reservedJoiner || "open"
-      }`,
-    [address, costLimit, turnTime, selectedMapId, maxScore, reservedJoiner]
+    () => `create-lobby-${address}-${costLimit}-${turnTime}-${selectedMapId}-${maxScore}-${reservedJoiner || "open"}`,
+    [address, costLimit, turnTime, selectedMapId, maxScore, reservedJoiner],
   );
 
-  // The UTC fee: the Lobbies contract's UTC allowance is approved
-  // first if it's short, then the lobby is created straight after (one click).
-  const utcApprovals = React.useMemo(
-    () =>
-      totalUtcRequired > 0n && address
-        ? [
-            erc20Approval({
-              token: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-              owner: address,
-              spender: contractAddresses.LOBBIES as `0x${string}`,
-              amount: totalUtcRequired,
-              loadingText: `[APPROVING ${formatEther(totalUtcRequired)} UTC…]`,
-            }),
-          ]
-        : undefined,
-    [totalUtcRequired, address, contractAddresses.UNIVERSAL_CREDITS, contractAddresses.LOBBIES],
+  const call = React.useMemo(
+    () => ({
+      method: "create_lobby" as const,
+      args: {
+        cost_limit: Number(costLimit),
+        turn_time: Number(turnTime),
+        creator_goes_first: creatorGoesFirst,
+        map_id: selectedMapId.toString(),
+        max_score: Number(maxScore),
+        reserved_joiner: isReserved ? reservedJoiner! : null,
+      },
+    }),
+    [costLimit, turnTime, creatorGoesFirst, selectedMapId, maxScore, isReserved, reservedJoiner],
   );
 
   return (
     <TransactionButton
       transactionId={transactionId}
-      contractAddress={contractAddresses.LOBBIES as `0x${string}`}
-      abi={LOBBY_CREATE_ABI}
-      functionName="createLobby"
-      args={[
-        costLimit,
-        turnTime,
-        creatorGoesFirst,
-        selectedMapId,
-        maxScore,
-        reservedJoiner || zeroAddress,
-      ]}
-      approvals={utcApprovals}
+      call={call}
       className={className}
       disabled={disabled}
       loadingText="[CREATING…]"
       errorText="[ERROR CREATING]"
       onSuccess={async () => {
         posthog.capture("lobby_created", {
-          cost_limit_eth: formatEther(costLimit),
+          cost_limit: costLimit.toString(),
           turn_time_seconds: turnTime.toString(),
           creator_goes_first: creatorGoesFirst,
           max_score: maxScore.toString(),
-          is_reserved: Boolean(isReserved),
+          is_reserved: isReserved,
           reservation_fee_waived: skipReservationFee,
         });
         await onSuccess?.();

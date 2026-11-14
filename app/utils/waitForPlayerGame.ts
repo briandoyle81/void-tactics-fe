@@ -1,58 +1,25 @@
-import type { Abi } from "viem";
-import { baseSepolia } from "viem/chains";
-import type { Config } from "wagmi";
-import { readContractQueryOptions } from "wagmi/query";
 import type { QueryClient } from "@tanstack/react-query";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
 import { apiFetch } from "../lib/apiFetch";
 import { GAMES_WEB2_PLAYER_QUERY_KEY } from "../hooks/useGamesWeb2";
 import type { Web2GameDataView } from "../types/web2Game";
+import { NEAR_QUERY_ROOTS } from "../near/sync/gameRefetchRegistry";
 
 /**
- * After a mission-launch receipt, re-fetches the exact cached query that
- * usePlayerGames (Games tab) reads — getGamesForPlayer on Base Sepolia,
- * cached with staleTime: Infinity — until it contains `gameId`. Navigating
- * before that left the Games tab unable to find the new game (its read was
- * stale, or a lagging RPC node hadn't indexed the block yet), so it fell
- * back to the list view. Resolves true once found, false on timeout.
+ * After a mission launch, makes sure the Games tab's list (usePlayerGames)
+ * has `gameId` before navigating: get_games_for_player lists it once the
+ * launch transaction has executed, so one refetch is enough (no polling).
  */
 export async function waitForPlayerGame({
-  config,
   queryClient,
-  playerAddress,
-  gameId,
-  timeoutMs = 20_000,
 }: {
-  config: Config;
+  config?: unknown;
   queryClient: QueryClient;
   playerAddress: string;
   gameId: bigint;
   timeoutMs?: number;
 }): Promise<boolean> {
-  const options = readContractQueryOptions(config, {
-    address: getContractAddresses(baseSepolia.id).GAME as `0x${string}`,
-    abi: CONTRACT_ABIS.GAME as Abi,
-    chainId: baseSepolia.id,
-    functionName: "getGamesForPlayer",
-    args: [playerAddress],
-  });
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    try {
-      const raw = await queryClient.fetchQuery({ ...options, staleTime: 0 });
-      const found =
-        Array.isArray(raw) &&
-        raw.some((game) => {
-          const id = (game as { metadata?: { gameId?: bigint } } | null)?.metadata?.gameId;
-          return id != null && BigInt(id) === gameId;
-        });
-      if (found) return true;
-    } catch (error) {
-      console.warn("waitForPlayerGame: read failed, retrying", error);
-    }
-    if (Date.now() >= deadline) return false;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
+  await queryClient.invalidateQueries({ queryKey: [NEAR_QUERY_ROOTS.playerGames] });
+  return true;
 }
 
 /**

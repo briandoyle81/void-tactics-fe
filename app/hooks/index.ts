@@ -1,14 +1,6 @@
-// Contract hooks
+// Chain hooks (NEAR)
+export { useShipList, useShipsRead } from "./useShipsContract";
 export {
-  useShipsContract,
-  useShipsRead,
-  useShipsWrite,
-} from "./useShipsContract";
-export {
-  useLobbiesChainParams,
-  useLobbiesContract,
-  useLobbiesRead,
-  useLobbiesWrite,
   useLobby,
   usePlayerLobbyState,
   useLobbyCount,
@@ -21,23 +13,13 @@ export { useOwnedShips } from "./useOwnedShips";
 export { useShipActions } from "./useShipActions";
 export { useShipDetails } from "./useShipDetails";
 
-// Phase 3: Real-time & Performance hooks
-export { useContractEvents } from "./useContractEvents";
-
-// Phase 4: Ship Purchasing with FLOW
+// Ship purchasing (NEAR deposit) and free claims
 export { useShipPurchasing } from "./useShipPurchasing";
 export { useShipsPurchaseInfo } from "./useShipsPurchaseInfo";
 export { useShipPurchaserPurchaseInfo } from "./useShipPurchaserPurchaseInfo";
 export { useFreeShipClaiming } from "./useFreeShipClaiming";
 
-// Legacy image cache utilities (clears old localStorage entries from pre-renderer system)
-export {
-  clearAllShipImageCache,
-  getUseLocalRendering,
-  setUseLocalRendering,
-} from "./useShipImageCache";
-
-// Ship Renderer (new - uses local rendering with ship data cache)
+// Ship Renderer (local rendering with ship data cache)
 export {
   useShipRenderer,
   getCachedShipData,
@@ -57,6 +39,3 @@ export {
   getShipDataCacheStats as getShipDataCacheStatsDirect,
   cacheShipsData as cacheShipsDataDirect,
 } from "./useShipDataCache";
-
-// Types
-export type { ShipsReadFunction, ShipsWriteFunction } from "./useShipsContract";

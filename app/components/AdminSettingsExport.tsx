@@ -1,21 +1,20 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { useAccount } from "wagmi";
-import { MAP_ADMIN_ADDRESS } from "../config/alpha";
+import { useIsMapAdmin } from "../hooks/useIsMapAdmin";
 import { useIsEncounterEditor } from "../hooks/useIsEncounterEditor";
 import { useIsNodeMapEditor } from "../hooks/useIsNodeMapEditor";
 import { useMissionChainSnapshot } from "../hooks/useMissionChainSnapshot";
 import { SHIP_GRANT_ADDRESS } from "../hooks/useShipGrants";
 import { buildRewardShipSnapshot, REWARD_SHIP_SNAPSHOT_FILE } from "../utils/rewardShipSnapshot";
 import {
-  contentSyncPath,
+  isNearDeploymentRecord,
   positionalSeedIds,
-  seedDeploymentIds,
-  syncStateFor,
-  type ContentSyncState,
+  seedIdsFromNearRecord,
+  type NearDeploymentRecord,
 } from "../utils/seedDeploymentIds";
-import { baseSepolia } from "viem/chains";
+import { GAME_CONTRACT, NEAR_NETWORK } from "../near/config";
+import BUNDLED_RECORD from "../near/deployments/testnet.json";
 import type { ShipGrantSpec } from "../utils/shipGrant";
 import {
   buildMissionSeedFiles,
@@ -36,12 +35,13 @@ import {
 
 // Seed file names in the contracts repo (ignition/data/), read by
 // ignition/modules/DeployAndConfig.ts. Where the browser can write files
-// (Chromium's File System Access API), the panel opens the repo's ignition/
-// folder, reads the seeds and the deployment's record of their onchain ids
-// (deployments/chain-<id>/ and content-sync/chain-<id>.json, see
-// seedDeploymentIds.ts) and saves over the
-// seed files in place; elsewhere it reads picked files and downloads under
-// the same names, to be dropped over the originals by hand.
+// (Chromium's File System Access API), the panel opens the contracts repo,
+// reads the seeds (ignition/data/) and the NEAR deployment record of their
+// onchain ids (near/deployments/<network>.json, see seedDeploymentIds.ts)
+// and saves over the seed files in place; elsewhere it reads picked files
+// and downloads under the same names, to be dropped over the originals by
+// hand. Without the repo's record it uses this repo's copy
+// (app/near/deployments/testnet.json).
 const SEED_FILE_NAMES = {
   singlePlayer: "singlePlayerStarterContent.json",
   roguelike: "roguelikeStarterContent.json",
@@ -49,21 +49,27 @@ const SEED_FILE_NAMES = {
 } as const;
 type SeedSlot = keyof typeof SEED_FILE_NAMES;
 
-/** The deployment whose ids the export uses (the live chain the panel reads). */
-const DEPLOYMENT_FOLDER = `chain-${baseSepolia.id}`;
-const JOURNAL_FILE = "journal.jsonl";
-/** The sync script's id record, relative to ignition/ (outside deployments/, which a redeploy deletes). */
-const SYNC_STATE_FILE = contentSyncPath(DEPLOYMENT_FOLDER);
+/** The NEAR deployment record (seed key -> onchain id), relative to the contracts repo. */
+const RECORD_FILE = `near/deployments/${NEAR_NETWORK}.json`;
 
-/** The deployment record: Ignition's journal and the sync script's content-sync record. */
+/** The record the export uses, and where it came from. */
 interface DeploymentRecord {
-  journal: string;
-  syncState: ContentSyncState | null;
+  record: NearDeploymentRecord;
+  source: string;
 }
 
-const isSyncState = (d: unknown): d is ContentSyncState =>
-  !!d && typeof d === "object" && !Array.isArray((d as ContentSyncState).maps) &&
-  typeof (d as ContentSyncState).maps === "object";
+/** This repo's copy, when it describes the game contract the app talks to. */
+const BUNDLED: DeploymentRecord | null =
+  isNearDeploymentRecord(BUNDLED_RECORD) && BUNDLED_RECORD.game === GAME_CONTRACT
+    ? { record: BUNDLED_RECORD, source: `app/near/deployments/testnet.json (${BUNDLED_RECORD.written_at ?? "undated"})` }
+    : null;
+
+/** A record for another contract (an old deploy) has the wrong ids. */
+function checkRecord(record: NearDeploymentRecord, source: string): DeploymentRecord | string {
+  return record.game === GAME_CONTRACT
+    ? { record, source }
+    : `${source} is for ${record.game}, not ${GAME_CONTRACT}, so it was ignored.`;
+}
 
 // The reward ship app copy (app/data/content/rewardShips.json, see
 // app/utils/rewardShipSnapshot.ts) lives in this repo, not the contracts
@@ -111,8 +117,7 @@ function seedSlotOf(data: unknown): SeedSlot | null {
 // the admin roles this page already gates on, since it only aggregates data
 // those roles can already see.
 export function AdminSettingsExport() {
-  const { address } = useAccount();
-  const isMapAdmin = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
+  const isMapAdmin = useIsMapAdmin();
   const { isEditor: isEncounterEditor } = useIsEncounterEditor();
   const { isEditor: isNodeEditor } = useIsNodeMapEditor();
   if (!isMapAdmin && !isEncounterEditor && !isNodeEditor) return null;
@@ -125,8 +130,7 @@ function MissionSeedExportPanel() {
   const [baseline, setBaseline] = useState<Partial<MissionSeedFiles>>({});
   // The ignition/data/ folder, when it was opened for writing.
   const [seedDir, setSeedDir] = useState<WritableDirectoryHandle | null>(null);
-  const [deployment, setDeployment] = useState<DeploymentRecord | null>(null);
-  const [journalName, setJournalName] = useState<string | null>(null);
+  const [deployment, setDeployment] = useState<DeploymentRecord | null>(BUNDLED);
   // This repo's app/data/content/ folder, for the reward ship app copy.
   const [contentDir, setContentDir] = useState<WritableDirectoryHandle | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -145,18 +149,14 @@ function MissionSeedExportPanel() {
     if (!fileList) return;
     resetResult();
     const next: Partial<MissionSeedFiles> = { ...baseline };
-    let journal = deployment?.journal ?? null;
-    let syncState = deployment?.syncState ?? null;
+    let record = deployment;
     for (const file of Array.from(fileList)) {
       try {
-        if (file.name.endsWith(".jsonl")) {
-          journal = await file.text();
-          setJournalName(file.name);
-          continue;
-        }
         const data = JSON.parse(await file.text());
-        if (isSyncState(data)) {
-          syncState = data;
+        if (isNearDeploymentRecord(data)) {
+          const checked = checkRecord(data, file.name);
+          if (typeof checked === "string") setFileError(checked);
+          else record = checked;
           continue;
         }
         const slot = seedSlotOf(data);
@@ -172,7 +172,7 @@ function MissionSeedExportPanel() {
       }
     }
     setBaseline(next);
-    setDeployment(journal != null ? { journal, syncState } : null);
+    setDeployment(record);
   };
 
   const openSeedFolder = async () => {
@@ -185,10 +185,11 @@ function MissionSeedExportPanel() {
         setFileError(`Couldn't open the folder: ${e instanceof Error ? e.message : String(e)}`);
       return;
     }
-    // The contracts repo's ignition/ folder (or the repo itself): the seeds
-    // are in data/, the deployment record in deployments/.
+    // The contracts repo (or its ignition/ folder): the seeds are in
+    // ignition/data/, the NEAR deployment record in near/deployments/.
     let dir: WritableDirectoryHandle;
     let ignitionDir: WritableDirectoryHandle;
+    const repoDir = (await subfolder(picked, "ignition")) ? picked : null;
     try {
       ignitionDir = (await subfolder(picked, "ignition")) ?? picked;
       const data = await subfolder(ignitionDir, "data");
@@ -196,7 +197,7 @@ function MissionSeedExportPanel() {
       dir = data;
     } catch {
       setSeedDir(null);
-      setFileError(`${picked.name}/ isn't the contracts repo's ignition/ folder (it needs data/ and deployments/). Pick ignition/.`);
+      setFileError(`${picked.name}/ isn't the contracts repo (it needs ignition/data/). Pick the contracts repo's folder.`);
       return;
     }
     const next: Partial<MissionSeedFiles> = {};
@@ -215,34 +216,30 @@ function MissionSeedExportPanel() {
       } catch (e) {
         problems.push(
           e instanceof DOMException && e.name === "NotFoundError"
-            ? `${name} isn't in ignition/data/. Pick the contracts repo's ignition/ folder.`
+            ? `${name} isn't in ignition/data/. Pick the contracts repo's folder.`
             : `${name} couldn't be read: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }
-    // Without a deployment record the export assumes fresh-deploy ids (seed
-    // order), which is wrong once content was synced after the deploy.
-    let record: DeploymentRecord | null = null;
-    try {
-      const deployDir = await subfolder(await ignitionDir.getDirectoryHandle("deployments"), DEPLOYMENT_FOLDER);
-      if (deployDir) {
-        const journal = await readText(deployDir, JOURNAL_FILE);
-        const syncDir = await subfolder(ignitionDir, "content-sync");
-        const sync = syncDir ? await readText(syncDir, `${DEPLOYMENT_FOLDER}.json`).catch(() => null) : null;
-        const addresses = await readText(deployDir, "deployed_addresses.json").catch(() => null);
-        const mapsAddress = addresses ? JSON.parse(addresses)["DeployModule#Maps"] : undefined;
-        const saved = sync ? (JSON.parse(sync) as ContentSyncState) : null;
-        const syncState = syncStateFor(saved, mapsAddress);
-        if (saved && !syncState)
-          problems.push(`${SYNC_STATE_FILE} is for an older deployment (Maps ${saved.mapsAddress}), so it was ignored.`);
-        record = { journal, syncState };
+    // The contracts repo's own record is the current one; without it, this repo's copy.
+    let record: DeploymentRecord | null = BUNDLED;
+    if (repoDir) {
+      try {
+        const nearDir = await subfolder(repoDir, "near");
+        const deploymentsDir = nearDir ? await subfolder(nearDir, "deployments") : null;
+        const text = deploymentsDir ? await readText(deploymentsDir, `${NEAR_NETWORK}.json`).catch(() => null) : null;
+        if (text) {
+          const data = JSON.parse(text);
+          const checked = isNearDeploymentRecord(data) ? checkRecord(data, RECORD_FILE) : `${RECORD_FILE} isn't a deployment record.`;
+          if (typeof checked === "string") problems.push(checked);
+          else record = checked;
+        }
+      } catch (e) {
+        problems.push(`${RECORD_FILE} couldn't be read: ${e instanceof Error ? e.message : String(e)}`);
       }
-    } catch (e) {
-      problems.push(`The deployment record couldn't be read: ${e instanceof Error ? e.message : String(e)}`);
     }
     setBaseline(next);
     setDeployment(record);
-    setJournalName(record ? `deployments/${DEPLOYMENT_FOLDER}/${JOURNAL_FILE}` : null);
     setSeedDir(problems.length === 0 ? dir : null);
     if (problems.length > 0) setFileError(problems.join(" "));
   };
@@ -279,16 +276,10 @@ function MissionSeedExportPanel() {
     const saveWarnings: string[] = [];
     let ids = positionalSeedIds(seeds);
     if (deployment) {
-      try {
-        ids = seedDeploymentIds(seeds, deployment.journal, deployment.syncState);
-      } catch (e) {
-        setFileError(`The deployment record couldn't be used: ${e instanceof Error ? e.message : String(e)}`);
-        return;
-      }
+      ids = seedIdsFromNearRecord(deployment.record);
     } else {
       saveWarnings.push(
-        `No deployment record (${DEPLOYMENT_FOLDER}/${JOURNAL_FILE}), so ids were taken from seed order, as on a fresh deploy. ` +
-          "That's wrong for a chain whose content was synced after the deploy (live Base Sepolia).",
+        `No deployment record (${RECORD_FILE}), so ids were taken from seed order, as on a fresh deploy.`,
       );
     }
     const { files, warnings: exportWarnings } = buildMissionSeedFiles(snapshot, seeds, ids);
@@ -352,9 +343,9 @@ function MissionSeedExportPanel() {
         Turns the current onchain missions (maps, AI ship configs, enemy placements, campaign and roguelike
         nodes, node titles, roguelike win effects, reward ships) into the contracts repo&apos;s deploy seed
         files, and saves the app&apos;s reward ship copy (<code>app/data/content/{REWARD_SHIP_SNAPSHOT_FILE}</code>)
-        with them. Open the contracts repo&apos;s current <code>ignition/</code> folder first: its{" "}
-        <code>data/</code> seed files keep existing keys the same, and{" "}
-        <code>deployments/{DEPLOYMENT_FOLDER}/</code> and <code>{SYNC_STATE_FILE}</code> say which onchain id each key has.{" "}
+        with them. Open the contracts repo&apos;s folder first: its{" "}
+        <code>ignition/data/</code> seed files keep existing keys the same, and <code>{RECORD_FILE}</code> says
+        which onchain id each key has.{" "}
         {writable
           ? "Saving writes the seed files back into that folder and the reward ship copy into this repo's app/data/content/."
           : `This browser can't save into a folder, so drop the three seed downloads over the originals and ${REWARD_SHIP_SNAPSHOT_FILE} over app/data/content/${REWARD_SHIP_SNAPSHOT_FILE}.`}{" "}
@@ -365,11 +356,11 @@ function MissionSeedExportPanel() {
         <p className="text-xs text-text-secondary">
           {writable ? (
             <>
-              Pick the contracts repo&apos;s <code>ignition/</code> folder, then this repo&apos;s{" "}
+              Pick the contracts repo&apos;s folder, then this repo&apos;s{" "}
               <code>app/data/content/</code> folder, and allow editing for both.
             </>
           ) : (
-            `Current seed files (${Object.values(SEED_FILE_NAMES).join(", ")}) and the deployment record (deployments/${DEPLOYMENT_FOLDER}/${JOURNAL_FILE} and ${SYNC_STATE_FILE}, from ignition/). Select them all at once.`
+            `Current seed files (${Object.values(SEED_FILE_NAMES).join(", ")}, from ignition/data/) and, optionally, the deployment record (${RECORD_FILE}; this repo's copy is used otherwise). Select them all at once.`
           )}
         </p>
         <button
@@ -391,7 +382,7 @@ function MissionSeedExportPanel() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/json,.json,.jsonl"
+          accept="application/json,.json"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -410,8 +401,8 @@ function MissionSeedExportPanel() {
         ))}
         <li className={deployment ? "text-phosphor-green" : "text-amber"}>
           {deployment
-            ? `[LOADED] ${journalName ?? JOURNAL_FILE}${deployment.syncState ? ` + ${SYNC_STATE_FILE}` : ""} (onchain ids)`
-            : `[MISSING] deployments/${DEPLOYMENT_FOLDER}/${JOURNAL_FILE}: ids will follow seed order, as on a fresh deploy`}
+            ? `[LOADED] ${deployment.source} (onchain ids)`
+            : `[MISSING] ${RECORD_FILE}: ids will follow seed order, as on a fresh deploy`}
         </li>
         {writable && (
           <li className={contentDir ? "text-phosphor-green" : "text-text-muted"}>

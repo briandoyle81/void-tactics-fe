@@ -67,7 +67,6 @@ import {
   LandscapeStagedMove,
 } from "./LandscapeBattleRail";
 import { TutorialTarget } from "./TutorialTarget";
-import { useConstructAfterMint } from "../hooks/useConstructAfterMint";
 import {
   clearTutorialClaimCompletedCacheEntry,
   isTutorialClaimCompletedCached,
@@ -126,15 +125,11 @@ import { GameScoreBox, GameScoreTiles } from "./GameScoreBox";
 import { projectRoundPoints } from "../utils/roundScoreProjection";
 import type { GameScoreData } from "../types/gameDisplayData";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
-import {
-  useAccount,
-  usePublicClient,
-  useReadContract,
-  useWaitForTransactionReceipt,
-} from "wagmi";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, getContractAddresses } from "../config/contracts";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useNearCall } from "@/app/near/useNearCall";
+import { GAS_HEAVY } from "@/app/near/config";
+import { isContractError, isUserRejection } from "@/app/near/errors";
+import { TUTORIAL_CLAIM_SCOPE } from "../hooks/useTutorialCompleted";
 import { useAppMode } from "../hooks/useAppMode";
 import {
   TUTORIAL_COMPLETION_CARD,
@@ -145,8 +140,6 @@ import {
 } from "../data/dialog/tutorial";
 import { useSelfieCheckEligibility } from "../hooks/useSelfieCheckEligibility";
 import { useSelfieCheckVerifyFlow } from "./SelfieCheckVerifyButton";
-import { useSwitchToSelectedChainIfNeeded } from "../hooks/useSwitchToSelectedChainIfNeeded";
-import { getLegacyGasPriceOverridesForWrite } from "../utils/legacyGasPriceForWrite";
 import posthog from "posthog-js";
 import {
   getTutorialGridPanelConfig,
@@ -158,7 +151,6 @@ import {
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
 import { useMovePlayback, useRunBoard, type ShipLoadout } from "../hooks/useMovePlayback";
 import { boardMoveFromRaw, shipStatusIn } from "../utils/movePlaybackBoard";
-import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
 
 /** A tutorial last move's identity: which ship did what, from where to where. */
 function tutorialMoveKey(m: NonNullable<SimulatedGameState["lastMove"]>): string {
@@ -311,15 +303,10 @@ export function SimulatedGameDisplay({
   // Web2 has no tutorial reward claim (that's TutorialClaim, web3), so from
   // the Operations map its completion button just continues.
   const continuesWithoutClaim = useAppMode() === "web2" && continueToFleetSelection;
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const openWalletSignIn = useOpenWalletSignIn();
-  const activeChainId = useSelectedChainId();
-  const publicClient = usePublicClient({ chainId: activeChainId });
-  const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
-  const contractAddresses = useMemo(
-    () => getContractAddresses(activeChainId),
-    [activeChainId],
-  );
+  /** Tutorial-claim cache scope (was the EVM chain id). */
+  const activeChainId = TUTORIAL_CLAIM_SCOPE;
   const [pendingTutorialClaimPath, setPendingTutorialClaimPath] = useState<
     "win" | "loss" | null
   >(null);
@@ -329,12 +316,9 @@ export function SimulatedGameDisplay({
     path: "win" | "loss";
     functionName: "completeTutorialWinPath" | "completeTutorialLossPath";
   } | null>(null);
-  const {
-    writeContract: writeTutorialClaim,
-    isPending: isTutorialClaimPending,
-    data: tutorialClaimHash,
-    error: tutorialClaimWriteError,
-  } = useSponsoredWriteContract();
+  // complete_tutorial: the session key signs, and the reward ships build
+  // themselves a block or two later.
+  const { call: sendNearCall, isPending: isTutorialClaimPending } = useNearCall();
 
   // Gates completeTutorialWinPath/completeTutorialLossPath on Selfie Check
   // verification when TutorialClaim.eligibilityProvider is set. Already live:
@@ -518,105 +502,17 @@ export function SimulatedGameDisplay({
     toast.success("Cleared local tutorial reward / claim cache for this wallet");
   }, [activeChainId, address]);
 
-  const tutorialClaimContractReady =
-    !!contractAddresses.TUTORIAL_CLAIM &&
-    contractAddresses.TUTORIAL_CLAIM !==
-      "0x0000000000000000000000000000000000000000";
+  // The contract has no "tutorial completed" view yet: completion is known
+  // from this device's record, or from complete_tutorial saying it's done.
+  const isTutorialCompletedFetched = true;
+  const isTutorialRewardAlreadyClaimed = claimCompleteCached;
+  const isTutorialClaimConfirming = false;
 
-  const shouldReadTutorialCompletedFromChain = useMemo(
-    () =>
-      isTutorialCompletionStep &&
-      !!address &&
-      tutorialClaimContractReady &&
-      !claimCompleteCached,
-    [
-      address,
-      claimCompleteCached,
-      isTutorialCompletionStep,
-      tutorialClaimContractReady,
-    ],
-  );
-
-  const tutorialCompletedReadConfig = useMemo(
-    () => ({
-      address: contractAddresses.TUTORIAL_CLAIM as `0x${string}`,
-      abi: CONTRACT_ABIS.TUTORIAL_CLAIM as Abi,
-      functionName: "tutorialCompleted" as const,
-      args: address ? [address] : undefined,
-      chainId: activeChainId,
-      query: {
-        enabled: shouldReadTutorialCompletedFromChain,
-      },
-    }),
-    [
-      activeChainId,
-      address,
-      contractAddresses.TUTORIAL_CLAIM,
-      shouldReadTutorialCompletedFromChain,
-    ],
-  );
-
-  const { data: tutorialCompletedOnChain, isFetched: isTutorialCompletedFetched } = useReadContract(
-    tutorialCompletedReadConfig,
-  );
-
-  useEffect(() => {
-    if (tutorialCompletedOnChain !== true) return;
+  const markTutorialClaimed = useCallback(() => {
     if (!address) return;
     persistTutorialClaimCompleted(activeChainId, address);
     setClaimCompleteCached(true);
-  }, [tutorialCompletedOnChain, activeChainId, address]);
-
-  const isTutorialRewardAlreadyClaimed =
-    claimCompleteCached || tutorialCompletedOnChain === true;
-
-  const tutorialClaimReceiptConfig = useMemo(
-    () => ({
-      hash: tutorialClaimHash,
-      chainId: activeChainId,
-    }),
-    [tutorialClaimHash, activeChainId],
-  );
-  const {
-    isLoading: isTutorialClaimConfirming,
-    isSuccess: isTutorialClaimConfirmed,
-    error: tutorialClaimReceiptError,
-    data: tutorialClaimReceipt,
-  } = useWaitForTransactionReceipt(tutorialClaimReceiptConfig);
-  const constructAfterMint = useConstructAfterMint();
-
-  useEffect(() => {
-    if (!tutorialClaimWriteError) return;
-    const message = tutorialClaimWriteError.message || "Transaction failed";
-    if (
-      message.includes("User rejected") ||
-      message.includes("User denied") ||
-      message.includes("rejected")
-    ) {
-      toast.error("Transaction declined by user");
-    } else {
-      toast.error("Tutorial claim failed");
-    }
-    setPendingTutorialClaimPath(null);
-  }, [tutorialClaimWriteError]);
-
-  useEffect(() => {
-    if (!tutorialClaimReceiptError) return;
-    toast.error("Tutorial claim transaction failed");
-    setPendingTutorialClaimPath(null);
-  }, [tutorialClaimReceiptError]);
-
-  useEffect(() => {
-    if (!isTutorialClaimConfirmed || !address) return;
-    persistTutorialClaimCompleted(activeChainId, address);
-    setClaimCompleteCached(true);
-    toast.success("Tutorial reward claimed");
-    setPendingTutorialClaimPath(null);
-    // Build the reward ships now, while their construction window is open.
-    if (tutorialClaimReceipt?.status === "success") void constructAfterMint(tutorialClaimReceipt);
-    // Once per confirmed claim; constructAfterMint is stable per address.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTutorialClaimConfirmed, activeChainId, address]);
+  }, [activeChainId, address]);
 
   const runTutorialClaimTx = useCallback(
     async (
@@ -639,14 +535,6 @@ export function SimulatedGameDisplay({
         }
         return;
       }
-      if (
-        !contractAddresses.TUTORIAL_CLAIM ||
-        contractAddresses.TUTORIAL_CLAIM ===
-          "0x0000000000000000000000000000000000000000"
-      ) {
-        toast.error("Tutorial claim is unavailable on this network");
-        return;
-      }
       if (isTutorialSelfieCheckBlocking) {
         toast.error("Verify with Selfie Check to claim this reward");
         return;
@@ -654,46 +542,44 @@ export function SimulatedGameDisplay({
       if (isTutorialClaimPending || isTutorialClaimConfirming) {
         return;
       }
+      setPendingTutorialClaimPath(path);
+      posthog.capture("tutorial_reward_claim_submitted", {
+        claim_path: path,
+        reward_path: path === "win" ? "two_ships_win" : "three_ships_loss",
+        completion_step_id: currentStep?.id,
+        contract_function: functionName,
+        chain_id: activeChainId,
+      });
       try {
-        await switchToSelectedChainIfNeeded();
-        setPendingTutorialClaimPath(path);
-        posthog.capture("tutorial_reward_claim_submitted", {
-          claim_path: path,
-          reward_path:
-            path === "win" ? "two_ships_win" : "three_ships_loss",
-          completion_step_id: currentStep?.id,
-          contract_function: functionName,
-          chain_id: activeChainId,
-        });
-        writeTutorialClaim({
-          address: contractAddresses.TUTORIAL_CLAIM as `0x${string}`,
-          abi: CONTRACT_ABIS.TUTORIAL_CLAIM as Abi,
-          functionName,
-          chainId: activeChainId,
-          ...(await getLegacyGasPriceOverridesForWrite(
-            activeChainId,
-            publicClient,
-          )),
-        });
-      } catch {
-        toast.error("Could not switch network or send transaction");
+        await sendNearCall({ method: "complete_tutorial", args: { win_path: path === "win" }, gas: GAS_HEAVY });
+        markTutorialClaimed();
+        toast.success("Tutorial reward claimed");
+      } catch (e) {
+        if (isUserRejection(e)) {
+          toast.error("Transaction declined by user");
+        } else if (isContractError(e, "TutorialAlreadyCompleted") || isContractError(e, "AlreadyCompleted")) {
+          markTutorialClaimed();
+          toast("You've already claimed the tutorial reward.");
+        } else {
+          toast.error("Tutorial claim failed");
+        }
+      } finally {
+        setPendingTutorialClaimPath(null);
       }
     },
     [
       address,
       activeChainId,
-      contractAddresses.TUTORIAL_CLAIM,
       continueToFleetSelection,
       currentStep?.id,
       isTutorialClaimPending,
       isTutorialClaimConfirming,
       isTutorialRewardAlreadyClaimed,
       isTutorialSelfieCheckBlocking,
+      markTutorialClaimed,
       onBack,
       openWalletSignIn,
-      publicClient,
-      switchToSelectedChainIfNeeded,
-      writeTutorialClaim,
+      sendNearCall,
     ],
   );
 
@@ -702,7 +588,7 @@ export function SimulatedGameDisplay({
   // A Selfie Check that blocks it leaves the button on Verify instead.
   useEffect(() => {
     if (!claimAfterSignIn || !address) return;
-    if (shouldReadTutorialCompletedFromChain && !isTutorialCompletedFetched) return;
+    if (!isTutorialCompletedFetched) return;
     if (tutorialSelfieCheckEligibility.isLoading) return;
     setClaimAfterSignIn(null);
     if (isTutorialSelfieCheckBlocking) return;
@@ -711,7 +597,6 @@ export function SimulatedGameDisplay({
   }, [
     claimAfterSignIn,
     address,
-    shouldReadTutorialCompletedFromChain,
     isTutorialCompletedFetched,
     tutorialSelfieCheckEligibility.isLoading,
     isTutorialSelfieCheckBlocking,

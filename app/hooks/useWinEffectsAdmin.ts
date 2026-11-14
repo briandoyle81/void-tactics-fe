@@ -1,56 +1,56 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePublicClient } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi, Address } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
-import { useSponsoredWriteContract } from "./useSponsoredWriteContract";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNearSession } from "../near/session";
+import { fetchAllRoguelikeNodes } from "../near/adapters/roguelike";
+import { GAS_HEAVY } from "../near/config";
+import { RL_GRAPH_QUERY_ROOT } from "./useGameLens";
+import type { WinEffect } from "../near/generated/voidTactics";
 
-// Owner-only config setters for the DEC Bonus and Heal Above Floor win-effect
-// resolvers; Grant Ship is per node (useShipGrants.ts's useShipGrantAdmin)
-// (see contracts/IWinEffect.sol and useWinEffects.ts's WIN_EFFECT_CATALOG)
-// — each targets a different singleton contract, not RoguelikeNodeMap, so
-// kept separate from useRoguelikeNodeMapAdmin.ts (which owns node/campaign
-// config on RoguelikeNodeMap itself).
-const CHAIN_ID = baseSepolia.id;
-
+/**
+ * Campaign-wide win-effect values. On NEAR each node stores its own DCC
+ * bonus / heal percent, so "set the bonus" rewrites every node that runs
+ * that effect (one transaction per node; NODE_EDITOR or owner).
+ */
 export function useWinEffectsAdmin() {
-  const { writeContractAsync } = useSponsoredWriteContract();
-  const publicClient = usePublicClient({ chainId: CHAIN_ID });
+  const { send } = useNearSession();
+  const queryClient = useQueryClient();
+
+  const rewriteNodes = useCallback(
+    async (change: (e: WinEffect) => WinEffect | null) => {
+      const nodes = await fetchAllRoguelikeNodes();
+      let last = null;
+      for (const { node, raw } of nodes) {
+        let changed = false;
+        const next = raw.win_effects.map((e) => {
+          const r = change(e);
+          if (!r) return e;
+          changed = true;
+          return r;
+        });
+        if (!changed) continue;
+        last = await send({
+          method: "set_rl_node_win_effects",
+          args: { node_id: node.id.toString(), effects: next },
+          gas: GAS_HEAVY,
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: [RL_GRAPH_QUERY_ROOT] });
+      return last?.hash ?? null;
+    },
+    [send, queryClient],
+  );
 
   const setDecBonusAmount = useCallback(
-    async (amount: bigint) => {
-      const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-        .DEC_BONUS_WIN_EFFECT as Address;
-      const hash = await writeContractAsync({
-        address,
-        abi: CONTRACT_ABIS.DEC_BONUS_WIN_EFFECT as Abi,
-        chainId: CHAIN_ID,
-        functionName: "setBonusAmount",
-        args: [amount],
-      });
-      await publicClient!.waitForTransactionReceipt({ hash });
-      return hash;
-    },
-    [writeContractAsync, publicClient],
+    (amount: bigint) =>
+      rewriteNodes((e) => ("DecBonus" in e ? { DecBonus: { amount: amount.toString() } } : null)),
+    [rewriteNodes],
   );
 
   const setHealAboveFloorPercent = useCallback(
-    async (percent: number) => {
-      const address = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-        .HEAL_ABOVE_FLOOR_WIN_EFFECT as Address;
-      const hash = await writeContractAsync({
-        address,
-        abi: CONTRACT_ABIS.HEAL_ABOVE_FLOOR_WIN_EFFECT as Abi,
-        chainId: CHAIN_ID,
-        functionName: "setHealToPercent",
-        args: [percent],
-      });
-      await publicClient!.waitForTransactionReceipt({ hash });
-      return hash;
-    },
-    [writeContractAsync, publicClient],
+    (percent: number) => rewriteNodes((e) => ("HealAboveFloor" in e ? { HealAboveFloor: { percent } } : null)),
+    [rewriteNodes],
   );
 
   return { setDecBonusAmount, setHealAboveFloorPercent };

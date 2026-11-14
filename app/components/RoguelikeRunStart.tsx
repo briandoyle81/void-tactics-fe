@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAccount } from "wagmi";
-import { baseSepolia } from "viem/chains";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { toast } from "react-hot-toast";
 import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useFleetShipAttributes } from "../hooks/useFleetShipAttributes";
@@ -20,7 +19,6 @@ import {
   getRoguelikeRunRequirements,
   isRunEligibleConstructedShip,
 } from "../utils/roguelikeRunRequirements";
-import { ConstructShipsButton } from "./ConstructShipsButton";
 import {
   BuyPremiumPacksButton,
   FLEET_HEADER_ACTION_CLASS,
@@ -45,11 +43,11 @@ interface RoguelikeRunStartProps {
 // run), then RoguelikeMatch.startRun. The picker is RoguelikeFleetPicker,
 // shared with the resupply node's fleet change (RoguelikeResupplyPanel).
 export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const { startRun } = useRoguelikeMatch();
   const [isStarting, setIsStarting] = React.useState(false);
 
-  const { ships, isLoading: shipsLoading, refetch: refetchShips } = useOwnedShips(baseSepolia.id);
+  const { ships, isLoading: shipsLoading, refetch: refetchShips } = useOwnedShips();
   // One claim-status instance for the header's claim action.
   const claim = useFreeShipsClaim();
 
@@ -73,10 +71,7 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
   });
 
   const shipIdsForAttributes = React.useMemo(() => fleet.ships.map((s) => s.id), [fleet.ships]);
-  const { attributesMap, attributesLoading } = useFleetShipAttributes(
-    shipIdsForAttributes,
-    baseSepolia.id,
-  );
+  const { attributesMap, attributesLoading } = useFleetShipAttributes(shipIdsForAttributes);
 
   const buildItems = (pageShips: typeof fleet.ships) =>
     buildFleetShipListItems({
@@ -203,11 +198,11 @@ export function RoguelikeRunStart({ onRunStarted }: RoguelikeRunStartProps) {
             />
           </>
         ) : step === "construct" ? (
-          <ConstructShipsButton
-            unconstructedShips={unconstructedShips}
-            className={FLEET_HEADER_ACTION_CLASS}
-            onConstructed={refetchShips}
-          />
+          // New ships build themselves a block or two after minting
+          // (useOwnedShips polls until they have).
+          <button type="button" disabled className={FLEET_HEADER_ACTION_CLASS} style={{ borderRadius: 0 }}>
+            [BUILDING {unconstructedShips.length} SHIPS…]
+          </button>
         ) : (
           <button
             type="button"

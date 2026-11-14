@@ -1,144 +1,86 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useReadContract, useReadContracts } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useQuery } from "@tanstack/react-query";
 import { RoguelikeNode } from "../types/roguelike";
 import { useWeb3NodeContent, mergeNodeContent, type ResolvedNodeContent } from "./useNodeContent";
-import { useRoguelikeCampaignGraph } from "./useGameLens";
+import { useRoguelikeCampaignGraph, RL_GRAPH_QUERY_ROOT } from "./useGameLens";
 import { ADMIN_DATA_STALE_MS } from "../config/queryTiming";
+import { useNearView } from "../near/useNearView";
+import { toBig } from "../near/codec";
+import { fetchAllRoguelikeNodes } from "../near/adapters/roguelike";
+import { viewGame } from "../near/rpc";
+import { ROLE } from "../near/config";
+import type { RlCampaign } from "../near/generated/voidTactics";
 
-// Roguelike is Base Sepolia only, same as the original single-player stack
-// (AIEncounters/NodeMap/SinglePlayerMatch) — pin to that chain directly
-// rather than following the connected wallet/picker chain.
-const CHAIN_ID = baseSepolia.id;
-const ROGUELIKE_NODE_MAP_ABI = CONTRACT_ABIS.ROGUELIKE_NODE_MAP as Abi;
-export const ROGUELIKE_NODE_MAP_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[
-  CHAIN_ID
-].ROGUELIKE_NODE_MAP as `0x${string}`;
+function useRlCampaign(campaignId: bigint | undefined) {
+  const args = useMemo(() => (campaignId != null ? { campaign_id: campaignId.toString() } : null), [campaignId]);
+  return useNearView("get_rl_campaign", args, { staleTime: ADMIN_DATA_STALE_MS });
+}
 
-export function useRoguelikeNodeMapContract() {
-  return {
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-  };
+function pick<T>(result: ReturnType<typeof useRlCampaign>, f: (c: RlCampaign) => T) {
+  return { ...result, data: result.data ? f(result.data) : undefined };
 }
 
 export function useCampaignAutoHealPercent(campaignId: bigint | undefined) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "campaignAutoHealPercent",
-    args: campaignId != null ? [campaignId] : undefined,
-    query: { enabled: campaignId != null },
-  });
-  return { ...result, data: result.data as number | undefined };
+  return pick(useRlCampaign(campaignId), (c) => c.auto_heal_percent);
 }
 
-/** 0 = unrestricted. Distinct contract from the original campaign's `NodeMap.campaignRequiredVariant` — don't conflate the two. */
+/** 0 = unrestricted. */
 export function useRoguelikeCampaignRequiredVariant(campaignId: bigint | undefined) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "campaignRequiredVariant",
-    args: campaignId != null ? [campaignId] : undefined,
-    query: { enabled: campaignId != null },
-  });
-  return { ...result, data: result.data as number | undefined };
+  return pick(useRlCampaign(campaignId), (c) => c.required_variant);
 }
 
 export function useRoguelikeCampaignRootNode(campaignId: bigint | undefined) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "campaignRootNode",
-    args: campaignId != null ? [campaignId] : undefined,
-    query: { enabled: campaignId != null },
-  });
-  return { ...result, data: result.data as bigint | undefined };
+  return pick(useRlCampaign(campaignId), (c) => toBig(c.root_node));
 }
 
 export function useRoguelikeCampaignInitialCostCap(campaignId: bigint | undefined) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "campaignInitialCostCap",
-    args: campaignId != null ? [campaignId] : undefined,
-    query: { enabled: campaignId != null },
-  });
-  return { ...result, data: result.data as bigint | undefined };
+  return pick(useRlCampaign(campaignId), (c) => toBig(c.initial_cost_cap));
 }
 
+/** Campaigns are numbered from 1; counts them by reading until the first missing id. */
 export function useRoguelikeCampaignCount() {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "campaignCount",
+  const result = useQuery({
+    queryKey: [RL_GRAPH_QUERY_ROOT, "campaign-count"],
+    queryFn: async () => {
+      let n = 0;
+      while (n < 100 && (await viewGame("get_rl_campaign", { campaign_id: String(n + 1) }))) n++;
+      return BigInt(n);
+    },
+    staleTime: ADMIN_DATA_STALE_MS,
   });
-  return { ...result, data: result.data as bigint | undefined };
+  return { ...result, data: result.data };
 }
 
-export function useIsRoguelikeNodeEditor(address: `0x${string}` | undefined) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "isNodeEditor",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
+/** Owner, or holds the NODE_EDITOR role. */
+export function useIsRoguelikeNodeEditor(address: string | undefined) {
+  const args = useMemo(() => (address ? { account_id: address } : null), [address]);
+  const roles = useNearView("get_roles", args, { staleTime: ADMIN_DATA_STALE_MS });
+  const owner = useNearView("owner_id", {}, { staleTime: ADMIN_DATA_STALE_MS });
+  const data =
+    address == null ? undefined : owner.data === address || ((roles.data ?? 0) & ROLE.NODE_EDITOR) !== 0;
+  return { ...roles, data };
+}
+
+function useAllRoguelikeNodesQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: [RL_GRAPH_QUERY_ROOT, "all"],
+    queryFn: () => fetchAllRoguelikeNodes(),
+    enabled,
+    staleTime: ADMIN_DATA_STALE_MS,
   });
-  return { ...result, data: result.data as boolean | undefined };
 }
 
 export function useRoguelikeNodeCount(enabled = true) {
-  const result = useReadContract({
-    address: ROGUELIKE_NODE_MAP_ADDRESS,
-    abi: ROGUELIKE_NODE_MAP_ABI,
-    chainId: CHAIN_ID,
-    functionName: "nodeCount",
-    query: { enabled, staleTime: ADMIN_DATA_STALE_MS },
-  });
-  return { ...result, data: result.data as bigint | undefined };
+  const result = useAllRoguelikeNodesQuery(enabled);
+  return { ...result, data: result.data ? BigInt(result.data.length) : undefined };
 }
 
-// RoguelikeNodeMap has no getAllNodes/getNodesInCampaign convenience call
-// (unlike the original NodeMap). Node ids are sequential starting at 1
-// (same convention as the original NodeMap), so this batches
-// getNode(1..nodeCount()) in one multicall. Used both by admin tooling and
-// by RoguelikeGraph.tsx to render the full campaign map (same "load
-// everything, filter client-side" approach CampaignGraph.tsx's
-// useCampaignGraph takes) — fine at these node-map-scale counts (tens of
-// nodes), not something to reach for at arbitrary scale.
+/** Every roguelike node, linked into a graph or not (the map editor needs both). */
 export function useAllRoguelikeNodes(enabled = true) {
-  const { data: nodeCount } = useRoguelikeNodeCount(enabled);
-  const ids = useMemo(() => {
-    const count = nodeCount != null ? Number(nodeCount) : 0;
-    return Array.from({ length: count }, (_, i) => BigInt(i + 1));
-  }, [nodeCount]);
-
-  const result = useReadContracts({
-    contracts: ids.map((id) => ({
-      address: ROGUELIKE_NODE_MAP_ADDRESS,
-      abi: ROGUELIKE_NODE_MAP_ABI,
-      chainId: CHAIN_ID,
-      functionName: "getNode" as const,
-      args: [id] as const,
-    })),
-    query: { enabled: enabled && ids.length > 0, staleTime: ADMIN_DATA_STALE_MS },
-  });
-
-  const nodes: RoguelikeNode[] = ids
-    .map((id, i) => result.data?.[i]?.result as RoguelikeNode | undefined)
-    .filter((n): n is RoguelikeNode => !!n && n.exists);
-
+  const result = useAllRoguelikeNodesQuery(enabled);
+  const nodes = useMemo(() => (result.data ?? []).map((n) => n.node), [result.data]);
   return { ...result, nodes };
 }
 
@@ -147,10 +89,8 @@ export type RoguelikeNodeWithContent = RoguelikeNode & ResolvedNodeContent;
 /**
  * The roguelike graph for one campaign, content included (node text from
  * app/data/content via useWeb3NodeContent). Two sources:
- * - default: every node in the campaign (nodeCount + getNode×N), which the
- *   map editor needs to see nodes not linked in yet;
- * - `reachableOnly`: GameLens.getCampaignGraph, one call returning only the
- *   nodes reachable from the root — all a player can ever visit.
+ * - default: every node, which the map editor needs to see nodes not linked in yet;
+ * - `reachableOnly`: only the nodes reachable from the root — all a player can visit.
  */
 export function useRoguelikeGraphWithContent(
   campaignId: bigint,

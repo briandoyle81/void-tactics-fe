@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount } from "wagmi";
+import { useChainAccount } from "../near/useChainAccount";
 import { useAppMode } from "./useAppMode";
 import { useCurrentUser } from "./useCurrentUser";
 import { useFreeShipClaiming } from "./useFreeShipClaiming";
@@ -19,7 +19,7 @@ const WEB2_CLAIM_COOLDOWN_SECONDS = 28 * 24 * 60 * 60;
  */
 export function useFreeShipClaimStatus() {
   const appMode = useAppMode();
-  const { isConnected, address } = useAccount();
+  const { isConnected, address } = useChainAccount();
   const { isLoggedIn } = useCurrentUser();
   const web3 = useFreeShipClaiming();
   const web2 = useClaimFreeEligibilityWeb2();
@@ -41,6 +41,7 @@ export function useFreeShipClaimStatus() {
     ? Boolean(web2.claimStatusError)
     : Boolean(web3.claimStatusError) || Boolean(web3.error);
   const cooldownSeconds = isWeb2 ? WEB2_CLAIM_COOLDOWN_SECONDS : web3.cooldownSeconds;
+  // contract-side view: verification gate (is_eligible) only blocks when the contract requires it
   const secondsUntilNextClaim = isWeb2 ? web2.secondsUntilNextClaim : web3.secondsUntilNextClaim;
 
   return {

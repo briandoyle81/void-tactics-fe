@@ -1,23 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { erc20Approval } from "../utils/approvalSteps";
+import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import {
-  CONTRACT_ABIS,
-  getContractAddresses,
-} from "../config/contracts";
-import { useAccount, useBalance, useReadContract, usePublicClient } from "wagmi";
-import type { Abi, TransactionReceipt } from "viem";
-import { formatEther } from "viem";
-import { toast } from "react-hot-toast";
-import { getSelectedChainId, getVariantForChainId } from "../config/networks";
 import posthog from "posthog-js";
-import { useConstructAfterMint } from "../hooks/useConstructAfterMint";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useNearBalance } from "@/app/near/useNearBalance";
+import { useTokenBalance } from "@/app/near/useTokenBalance";
+import { GAS_HEAVY, TOKEN_UTC } from "@/app/near/config";
 
 interface ShipPurchaseButtonProps {
   tier: number;
+  /** The pack's price: yoctoNEAR for "FLOW" (NEAR), 18-decimal UTC for "UTC". */
   price: bigint;
+  /** "FLOW" is the native token (NEAR); the name is kept from the Base build. */
   paymentMethod: "FLOW" | "UTC";
   children: React.ReactNode;
   className?: string;
@@ -25,43 +20,19 @@ interface ShipPurchaseButtonProps {
   onSuccess?: TransactionFollowUp;
   onError?: (error: Error) => void;
   refetch?: () => void | Promise<unknown>;
-  /** Faction/variant to mint. Defaults to the chain's configured variant when
-   * omitted. Variant 2 is gated on the Shattered Hive medal — the caller
-   * (VariantPicker) prevents selecting it without the NFT, and the contract
-   * reverts GateRequirementNotMet as a backstop. */
+  /** Faction to mint (default 1). Variant 2 needs the Shattered Hive medal;
+   * the picker prevents choosing it without one and the contract refuses as
+   * a backstop. */
   variant?: number;
 }
 
-const SHIP_PURCHASE_FLOW_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "_to", type: "address" },
-      { internalType: "uint8", name: "_tier", type: "uint8" },
-      { internalType: "address", name: "_referral", type: "address" },
-      { internalType: "uint16", name: "_variant", type: "uint16" },
-    ],
-    name: "purchaseWithFlow",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-] as const;
-
-const SHIP_PURCHASE_UTC_ABI = [
-  {
-    inputs: [
-      { internalType: "address", name: "_to", type: "address" },
-      { internalType: "uint8", name: "_tier", type: "uint8" },
-      { internalType: "address", name: "_referral", type: "address" },
-      { internalType: "uint16", name: "_variant", type: "uint16" },
-    ],
-    name: "purchaseWithUTC",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
+/**
+ * Buys a ship pack: with NEAR (purchase_ships_with_near, the exact price
+ * attached as the deposit, which also pays the ships' storage; the wallet
+ * confirms) or UTC (purchase_ships_with_utc, debited directly with no
+ * approval; signed by the session key). The ships construct themselves a
+ * block or two later.
+ */
 export function ShipPurchaseButton({
   tier,
   price,
@@ -74,195 +45,50 @@ export function ShipPurchaseButton({
   refetch,
   variant,
 }: ShipPurchaseButtonProps) {
-  const { address, chainId: walletChainId } = useAccount();
-  const activeChainId = walletChainId ?? getSelectedChainId();
-  const contractAddresses = getContractAddresses(activeChainId);
-  const purchaseVariant = variant ?? getVariantForChainId(activeChainId);
-  const { data: flowBalance } = useBalance({
+  const { address } = useChainAccount();
+  const purchaseVariant = variant ?? 1;
+  const { data: nearBalance } = useNearBalance(address);
+  const { data: utcBalance, isPending: utcBalancePending } = useTokenBalance(
     address,
-    chainId: activeChainId,
-  });
-
-  // Read UTC balance for UTC purchases
-  const {
-    data: utcBalance,
-    isPending: utcBalancePending,
-  } = useReadContract({
-    address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: paymentMethod === "UTC" && !!address },
-  });
-
-  // Read UTC allowance for ShipPurchaser contract
-  const { data: utcAllowance, refetch: refetchAllowance } = useReadContract({
-    address: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "allowance",
-    args: address && contractAddresses.SHIP_PURCHASER ? [address, contractAddresses.SHIP_PURCHASER] : undefined,
-    query: { enabled: paymentMethod === "UTC" },
-  });
-
-  const [utcApproved, setUtcApproved] = useState(false);
-  const referralAddress = "0xac5b774D7a700AcDb528048B6052bc1549cd73B9" as `0x${string}`;
-
-  // Check if UTC is approved
-  useEffect(() => {
-    if (paymentMethod === "UTC") {
-      if (utcAllowance !== undefined && price) {
-        setUtcApproved((utcAllowance as bigint) >= price);
-      } else {
-        // If allowance is not yet loaded, assume not approved
-        setUtcApproved(false);
-      }
-    } else {
-      // No approval needed for FLOW
-      setUtcApproved(true);
-    }
-  }, [paymentMethod, utcAllowance, price]);
-
-  const publicClient = usePublicClient({ chainId: activeChainId });
-
-  // Estimate gas for tier 4 purchases before transaction
-  useEffect(() => {
-    if (tier === 4 && address && publicClient) {
-      const estimateGas = async () => {
-        try {
-          let estimatedGas: bigint | undefined;
-          if (paymentMethod === "FLOW") {
-            estimatedGas = await publicClient.estimateContractGas({
-              address: contractAddresses.SHIPS as `0x${string}`,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              abi: SHIP_PURCHASE_FLOW_ABI as any,
-              functionName: "purchaseWithFlow",
-              args: [address, tier, referralAddress, purchaseVariant],
-              value: price,
-              account: address,
-            });
-          } else if (utcApproved) {
-            estimatedGas = await publicClient.estimateContractGas({
-              address: contractAddresses.SHIP_PURCHASER as `0x${string}`,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              abi: SHIP_PURCHASE_UTC_ABI as any,
-              functionName: "purchaseWithUTC",
-              args: [address, tier, referralAddress, purchaseVariant],
-              account: address,
-            });
-          }
-
-          if (estimatedGas && estimatedGas > 15_000_000n) {
-            toast.error(
-              `High gas usage detected: ${estimatedGas.toLocaleString()} gas estimated for tier 4 purchase. This may indicate a contract issue.`,
-              { duration: 10000 }
-            );
-          }
-        } catch (error) {
-          // If gas estimation fails, log but don't block
-          console.warn("Failed to estimate gas for tier 4 purchase:", error);
-        }
-      };
-
-      estimateGas();
-    }
-  }, [tier, address, paymentMethod, utcApproved, publicClient, referralAddress, purchaseVariant, price, contractAddresses.SHIPS, contractAddresses.SHIP_PURCHASER]);
+    TOKEN_UTC,
+    paymentMethod === "UTC",
+  );
 
   const validateBeforeTransaction = React.useCallback(() => {
-    if (!address) {
-      return "Please connect your wallet";
-    }
+    if (!address) return "Please sign in first";
     if (paymentMethod === "FLOW") {
-      if (!flowBalance || flowBalance.value < price) {
-        return "Insufficient FLOW balance";
-      }
+      if (!nearBalance || nearBalance.value < price) return "Not enough NEAR";
     } else {
-      if (utcBalancePending) {
-        return "Loading UTC balance…";
-      }
-      if (utcBalance === undefined || (utcBalance as bigint) < price) {
-        return "Insufficient UTC balance";
-      }
+      if (utcBalancePending) return "Loading UTC balance…";
+      if (utcBalance === undefined || utcBalance < price) return "Insufficient UTC balance";
     }
     return true;
-  }, [
-    address,
-    flowBalance,
-    utcBalance,
-    utcBalancePending,
-    price,
-    paymentMethod,
-  ]);
-
-  // Build the new ships right away, while their construction window is open
-  // (see useConstructAfterMint). Runs alongside the success follow-up.
-  const constructAfterMint = useConstructAfterMint();
-  const handleMintReceipt = React.useCallback(
-    (receipt: TransactionReceipt) => void constructAfterMint(receipt),
-    [constructAfterMint],
-  );
+  }, [address, nearBalance, utcBalance, utcBalancePending, price, paymentMethod]);
 
   const handleSuccess = React.useCallback(async () => {
-    posthog.capture("ship_purchased", {
-      tier,
-      payment_method: paymentMethod,
-      price_eth: formatEther(price),
-    });
-    if (paymentMethod === "UTC") void refetchAllowance();
+    posthog.capture("ship_purchased", { tier, payment_method: paymentMethod, price: price.toString() });
     await refetch?.();
     await onSuccess?.();
-  }, [onSuccess, refetch, refetchAllowance, tier, paymentMethod, price]);
+  }, [onSuccess, refetch, tier, paymentMethod, price]);
 
-  // Paying in UTC: the ShipPurchaser's allowance is approved first if it's
-  // short, then the purchase goes straight after (one click).
-  const utcApprovals = React.useMemo(
-    () =>
-      paymentMethod === "UTC" && address
-        ? [
-            erc20Approval({
-              token: contractAddresses.UNIVERSAL_CREDITS as `0x${string}`,
-              owner: address,
-              spender: contractAddresses.SHIP_PURCHASER as `0x${string}`,
-              amount: price,
-              loadingText: `[APPROVING ${formatEther(price)} UTC…]`,
-            }),
-          ]
-        : undefined,
-    [paymentMethod, address, contractAddresses.UNIVERSAL_CREDITS, contractAddresses.SHIP_PURCHASER, price],
-  );
+  const args = { tier, referral: null, variant: purchaseVariant };
 
   if (paymentMethod === "UTC") {
     return (
       <TransactionButton
         transactionId={`purchase-ships-utc-tier-${tier}-v${purchaseVariant}-${address}`}
-        contractAddress={contractAddresses.SHIP_PURCHASER as `0x${string}`}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        abi={SHIP_PURCHASE_UTC_ABI as any}
-        functionName="purchaseWithUTC"
-        args={[
-          address,
-          tier as number, // Tier is already 0-based (0-4) for contract (uint8)
-          referralAddress,
-          purchaseVariant,
-        ]}
-        approvals={utcApprovals}
+        call={{ method: "purchase_ships_with_utc", args, gas: GAS_HEAVY }}
         className={className}
-        disabled={
-          disabled ||
-          !address ||
-          (!utcBalancePending && (utcBalance === undefined || (utcBalance as bigint) < price))
-        }
+        disabled={disabled || !address || (!utcBalancePending && (utcBalance === undefined || utcBalance < price))}
         loadingText="[PURCHASING…]"
         errorText="[ERROR PURCHASING]"
-        onReceipt={handleMintReceipt}
         onSuccess={handleSuccess}
         onError={onError}
         validateBeforeTransaction={validateBeforeTransaction}
       >
         <div className="flex flex-col items-center gap-2">
           {children}
-          <span className="text-[11px] uppercase tracking-[0.08em]">
-            [CLICK TO PURCHASE]
-          </span>
+          <span className="text-[11px] uppercase tracking-[0.08em]">[CLICK TO PURCHASE]</span>
         </div>
       </TransactionButton>
     );
@@ -270,23 +96,12 @@ export function ShipPurchaseButton({
 
   return (
     <TransactionButton
-      transactionId={`purchase-ships-flow-tier-${tier}-v${purchaseVariant}-${address}`}
-      contractAddress={contractAddresses.SHIPS as `0x${string}`}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      abi={SHIP_PURCHASE_FLOW_ABI as any}
-      functionName="purchaseWithFlow"
-      args={[
-        address,
-        tier as number, // Tier is already 0-based (0-4) for contract (uint8)
-        referralAddress,
-        purchaseVariant,
-      ]}
-      value={price}
+      transactionId={`purchase-ships-near-tier-${tier}-v${purchaseVariant}-${address}`}
+      call={{ method: "purchase_ships_with_near", args, deposit: price, gas: GAS_HEAVY }}
       className={className}
       disabled={disabled}
       loadingText="[PURCHASING…]"
       errorText="[ERROR PURCHASING]"
-      onReceipt={handleMintReceipt}
       onSuccess={handleSuccess}
       onError={onError}
       validateBeforeTransaction={validateBeforeTransaction}

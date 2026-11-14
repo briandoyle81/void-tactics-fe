@@ -9,14 +9,14 @@ import type { Attributes } from "../types/types";
 // Lobbies.tsx and NodeMatchModal.tsx (each built its own attributesMap +
 // attributesAligned + effective-loading logic around the same underlying
 // useShipAttributesByIds call). See feedback_no_parallel_components memory.
-export function useFleetShipAttributes(shipIds: bigint[], chainIdOverride?: number) {
+export function useFleetShipAttributes(shipIds: bigint[]) {
   const {
     attributes,
     isLoading,
     isFromCache,
     error,
     refetch,
-  } = useShipAttributesByIds(shipIds, chainIdOverride);
+  } = useShipAttributesByIds(shipIds);
 
   const aligned = shipIds.length === 0 || attributes.length === shipIds.length;
 

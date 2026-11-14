@@ -26,8 +26,8 @@ import {
 import type { MapPickerMap } from "./MapPickerModal";
 import { RoguelikeNodeEditForm } from "./operations/RoguelikeNodeEditForm";
 import { MapEditScreen } from "./MapEditScreen";
-import { useAccount } from "wagmi";
-import { MAP_ADMIN_ADDRESS } from "../config/alpha";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useIsMapAdmin } from "../hooks/useIsMapAdmin";
 import { MapPlacementsEditor } from "./MapPlacementsEditor";
 import { EnemyFleetPreview } from "./EnemyFleetPreview";
 import { useGetMapPlacements } from "../hooks/useAIEncountersContract";
@@ -70,8 +70,8 @@ export function RoguelikeNodeEditPanel({
 }: RoguelikeNodeEditPanelProps) {
   const admin = useRoguelikeNodeMapAdmin();
   const { data: allMapsData, refetch: refetchAllMaps } = useGetAllPresetMaps();
-  const { address } = useAccount();
-  const isMapAdmin = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
+  const { address } = useChainAccount();
+  const isMapAdmin = useIsMapAdmin();
   const { data: allConfigs } = useGetAllAIShipConfigs();
   const { isEditor: isEncounterEditor, isLoading: isEncounterEditorLoading } =
     useIsEncounterEditor();
@@ -126,9 +126,9 @@ export function RoguelikeNodeEditPanel({
     if (!node) return;
     setIsSavingWinEffects(true);
     try {
-      const hash = await admin.setNodeWinEffects(node.id, selectedWinEffects as `0x${string}`[]);
+      const receipt = await admin.setNodeWinEffects(node.id, selectedWinEffects);
       await refetchWinEffects();
-      toast.success(`Win effects updated. (tx: ${hash.slice(0, 10)}…)`);
+      toast.success(`Win effects updated. (tx: ${receipt.hash.slice(0, 10)}…)`);
     } catch (error) {
       console.error("Failed to save win effects:", error);
       toast.error(error instanceof Error ? error.message : "Failed to save win effects");
@@ -218,22 +218,22 @@ export function RoguelikeNodeEditPanel({
       fleetEditorBlockedReason={() => {
         if (!address) return "Connect the Enemy Fleet Editor wallet to edit placements.";
         if (isEncounterEditorLoading) return "Checking Enemy Fleet Editor permission…";
-        if (!isEncounterEditor) return "This wallet is not an Enemy Fleet Editor. Ask an admin to grant isEncounterEditor.";
+        if (!isEncounterEditor) return "This account is not a map editor. Ask the contract owner to grant the MAP_EDITOR role.";
         return null;
       }}
       onSubmit={async (f) => {
         const mapId = f.isCombat ? BigInt(f.mapId) : 0n;
         const costCap = f.isCombat ? 0n : BigInt(f.costCapOverride);
         if (mode === "create") {
-          const hash = await admin.createNode(
+          const newId = await admin.createNode(
             campaignId, f.kind, mapId, BigInt(f.turnTime), BigInt(f.maxScore), f.creatorGoesFirst, costCap,
           );
-          return `Node created. (tx: ${hash.slice(0, 10)}…)`;
+          return `Node #${newId} created.`;
         }
-        const hash = await admin.updateNode(
+        await admin.updateNode(
           node!.id, node!.campaignId, f.kind, mapId, BigInt(f.turnTime), BigInt(f.maxScore), f.creatorGoesFirst, costCap,
         );
-        return `Node #${node!.id} updated. (tx: ${hash.slice(0, 10)}…)`;
+        return `Node #${node!.id} updated.`;
       }}
       onRemoveChild={(childId) => admin.removeChild(node!.id, BigInt(childId))}
       connectModeActive={connectModeActive}

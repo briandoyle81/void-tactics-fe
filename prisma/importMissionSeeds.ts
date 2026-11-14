@@ -1,15 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { resolve } from "node:path";
 import { PrismaClient, type Prisma } from "../app/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as dotenv from "dotenv";
 import { buildMissionImportRows, type MissionImportRows } from "../app/utils/missionSeedImport";
 import type { MissionSeedFiles } from "../app/utils/missionSeedExport";
 import {
-  contentSyncPath,
+  isNearDeploymentRecord,
   positionalSeedIds,
-  seedDeploymentIds,
-  syncStateFor,
+  seedIdsFromNearRecord,
   type SeedDeploymentIds,
 } from "../app/utils/seedDeploymentIds";
 import { MAP_NAMES } from "../app/data/content/mapNames";
@@ -24,11 +23,11 @@ import { CAMPAIGN_NODE_CONTENT, ROGUELIKE_NODE_CONTENT } from "../app/data/dialo
 //   npx tsx prisma/importMissionSeeds.ts --yes      write it
 //   --dir <path>  seed file folder (default: the contracts repo's
 //                 ignition/data next to this repo; run from the repo root)
-//   --deployment <path>  the deployment whose ids web2 copies (default:
-//                 ignition/deployments/chain-84532 next to --dir). Its
-//                 journal.jsonl and ignition/content-sync/<folder>.json give
-//                 each seed key's on-chain id (app/utils/seedDeploymentIds.ts).
-//   --fresh       use fresh-deploy ids (seed order) instead of a deployment
+//   --record <path>  the NEAR deployment record whose ids web2 copies
+//                 (default: near/deployments/testnet.json in the contracts
+//                 repo, next to --dir's ignition/). It gives each seed key's
+//                 onchain id (app/utils/seedDeploymentIds.ts).
+//   --fresh       use fresh-deploy ids (seed order) instead of a record
 //
 // Writes to DATABASE_URL (.env.local, then .env), in one transaction:
 // - Clears all mission progress: roguelike runs, rosters and cleared
@@ -37,8 +36,8 @@ import { CAMPAIGN_NODE_CONTENT, ROGUELIKE_NODE_CONTENT } from "../app/data/dialo
 //   are cancelled, their games abandoned and their ships freed.
 // - Replaces campaigns, campaign nodes, the roguelike campaign, its nodes,
 //   edges and reward ships, AI ship configs, enemy placements and node text.
-// - Overwrites maps by id and deletes maps the deployment doesn't map a seed
-//   key to (on live Base Sepolia that includes map 67, an ignored duplicate).
+// - Overwrites maps by id and deletes maps the record doesn't map a seed
+//   key to.
 //   Unfinished lobbies on a deleted map are cancelled too. Finished games
 //   keep their lobby; ones on a deleted map lose the link to it.
 // Ids match the contract deploy (see missionSeedImport.ts).
@@ -50,8 +49,8 @@ const write = args.includes("--yes");
 const dirArg = args.indexOf("--dir");
 const dir = resolve(dirArg >= 0 ? args[dirArg + 1] : "../void-tactics-contracts-eth-online-2026/ignition/data");
 
-const deploymentArg = args.indexOf("--deployment");
-const deploymentDir = resolve(deploymentArg >= 0 ? args[deploymentArg + 1] : resolve(dir, "../deployments/chain-84532"));
+const recordArg = args.indexOf("--record");
+const recordPath = resolve(recordArg >= 0 ? args[recordArg + 1] : resolve(dir, "../../near/deployments/testnet.json"));
 const fresh = args.includes("--fresh");
 
 const readSeed = (name: string) => JSON.parse(readFileSync(resolve(dir, name), "utf8"));
@@ -59,19 +58,13 @@ const readSeed = (name: string) => JSON.parse(readFileSync(resolve(dir, name), "
 /** Each seed key's id on the deployment, or seed order with --fresh. */
 function deploymentIds(files: MissionSeedFiles): SeedDeploymentIds {
   if (fresh) return positionalSeedIds(files);
-  const journal = resolve(deploymentDir, "journal.jsonl");
-  if (!existsSync(journal)) {
-    throw new Error(`No deployment journal at ${journal}. Pass --deployment <dir>, or --fresh for seed-order ids.`);
+  if (!existsSync(recordPath)) {
+    throw new Error(`No deployment record at ${recordPath}. Pass --record <file>, or --fresh for seed-order ids.`);
   }
-  const syncPath = resolve(dir, "..", contentSyncPath(basename(deploymentDir)));
-  const record = existsSync(syncPath) ? JSON.parse(readFileSync(syncPath, "utf8")) : null;
-  const addressesPath = resolve(deploymentDir, "deployed_addresses.json");
-  const mapsAddress = existsSync(addressesPath)
-    ? JSON.parse(readFileSync(addressesPath, "utf8"))["DeployModule#Maps"]
-    : undefined;
-  const syncState = syncStateFor(record, mapsAddress);
-  if (record && !syncState) console.warn(`${syncPath} is for an older deployment (Maps ${record.mapsAddress}); ignoring it.`);
-  return seedDeploymentIds(files, readFileSync(journal, "utf8"), syncState);
+  const record = JSON.parse(readFileSync(recordPath, "utf8"));
+  if (!isNearDeploymentRecord(record)) throw new Error(`${recordPath} isn't a NEAR deployment record.`);
+  console.log(`Ids from ${recordPath} (${record.game}, written ${record.written_at ?? "?"}).`);
+  return seedIdsFromNearRecord(record);
 }
 
 const UNFINISHED = ["OPEN", "FLEET_SELECTION", "IN_GAME"] as const;
@@ -103,7 +96,7 @@ async function main() {
     { mapNames: MAP_NAMES, campaignContent: CAMPAIGN_NODE_CONTENT, roguelikeContent: ROGUELIKE_NODE_CONTENT },
     ids,
   );
-  console.log(`Seed files: ${dir}\nIds: ${fresh ? "seed order (--fresh)" : deploymentDir}\n  ${summarize(rows)}`);
+  console.log(`Seed files: ${dir}\nIds: ${fresh ? "seed order (--fresh)" : recordPath}\n  ${summarize(rows)}`);
 
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
   const prisma = new PrismaClient({ adapter });

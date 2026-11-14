@@ -1,18 +1,9 @@
 "use client";
 
 import React from "react";
-import { useWaitForTransactionReceipt, usePublicClient } from "wagmi";
-import type { Abi, TransactionReceipt } from "viem";
 import { toast } from "react-hot-toast";
 import { useTransaction } from "../providers/TransactionContext";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
-import { useSwitchToSelectedChainIfNeeded } from "../hooks/useSwitchToSelectedChainIfNeeded";
-import {
-  bumpedLegacyGasPriceForRetry,
-  getLegacyGasPriceOverridesForWrite,
-} from "../utils/legacyGasPriceForWrite";
-import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
-import type { ApprovalStep } from "../utils/approvalSteps";
+import { useNearCall, type NearCallSpec, type NearReceipt } from "../near/useNearCall";
 
 export type TransactionFollowUp = () => void | Promise<void>;
 
@@ -20,21 +11,13 @@ interface TransactionButtonProps {
   // Transaction identification
   transactionId: string;
 
-  // Contract call configuration
-  contractAddress: `0x${string}`;
-  abi: Abi;
-  functionName: string;
-  args?: unknown[];
-  value?: bigint;
-  /** Gas limit; omitted, the wallet estimates it. */
-  gas?: bigint;
   /**
-   * Transactions this one needs first (e.g. a UTC approval; see
-   * utils/approvalSteps.ts). On the one click, each that's still needed is
-   * sent and confirmed in order, then this button's own transaction goes
-   * straight after, with no second click.
+   * The contract call (app/near/session.tsx NearCallSpec: method, args,
+   * optional deposit/gas). Null disables the button. Calls without a
+   * deposit are signed by the session key with no wallet prompt; a deposit
+   * (purchases, storage, 1-yocto transfers) goes through the wallet.
    */
-  approvals?: readonly ApprovalStep[];
+  call: NearCallSpec | null;
 
   // Button appearance
   children: React.ReactNode;
@@ -46,15 +29,17 @@ interface TransactionButtonProps {
   errorText?: string;
 
   // Callbacks. onSuccess may return a Promise; the button stays loading and
-  // disabled until that Promise settles (receipt plus any refetch/UI wait).
+  // disabled until that Promise settles (the transaction plus any refetch/UI wait).
   onSuccess?: TransactionFollowUp;
   onError?: (error: Error) => void;
-  onTransactionSent?: (hash: `0x${string}`) => void; // Called when transaction is sent (hash available)
-  onReceipt?: (receipt: TransactionReceipt) => void; // Called with the confirmed (not reverted) receipt
+  /** Called with the transaction hash once it has executed (before onReceipt/onSuccess). */
+  onTransactionSent?: (hash: string) => void;
+  /** Called with the executed (successful) transaction: return value and events. */
+  onReceipt?: (receipt: NearReceipt) => void;
 
   // Validation
   validateBeforeTransaction?: () => boolean | string; // Return true or error message
-  /** Called once per click after validation passes, before the wallet prompt — snapshot exactly what's being submitted here. */
+  /** Called once per click after validation passes, before sending — snapshot exactly what's being submitted here. */
   onBeforeSend?: () => void;
   /**
    * Asked after validation, before anything is sent (e.g. "hold fire with a
@@ -68,13 +53,7 @@ interface TransactionButtonProps {
 
 export function TransactionButton({
   transactionId,
-  contractAddress,
-  abi,
-  functionName,
-  args = [],
-  value,
-  gas,
-  approvals,
+  call,
   children,
   className = "",
   disabled = false,
@@ -90,354 +69,94 @@ export function TransactionButton({
   validateBeforeTransaction,
   style: buttonStyle,
 }: TransactionButtonProps) {
-  const selectedChainId = useSelectedChainId();
-  const switchToSelectedChainIfNeeded = useSwitchToSelectedChainIfNeeded();
-  const publicClient = usePublicClient({ chainId: selectedChainId });
-  const { writeContract, isPending, error, data: hash } = useSponsoredWriteContract();
-  // The approvals' own writes, kept apart so `hash` above stays this button's transaction.
-  const { writeContractAsync: writeApprovalAsync } = useSponsoredWriteContract();
-  /** The approval being sent, while one is (its loading text). */
-  const [approvalText, setApprovalText] = React.useState<string | null>(null);
-  const {
-    transactionState,
-    startTransaction,
-    setTransactionHash,
-    completeTransaction,
-    clearError,
-  } = useTransaction();
+  const { call: sendCall } = useNearCall();
+  const { transactionState, startTransaction, setTransactionHash, completeTransaction, clearError } =
+    useTransaction();
 
-  // Hydration safety - prevent mismatch between server and client
-  const [isHydrated, setIsHydrated] = React.useState(false);
+  const isActiveTransaction = transactionState.activeTransactionId === transactionId;
+  const [isLocallyPending, setIsLocallyPending] = React.useState(false);
+  const mountedRef = React.useRef(true);
   React.useEffect(() => {
-    setIsHydrated(true);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  // Check if this button is the active transaction
-  const isActiveTransaction =
-    transactionState.activeTransactionId === transactionId;
-
-  // Local state to track if we should consider the transaction as pending
-  const [isLocallyPending, setIsLocallyPending] = React.useState(false);
-
-  // Track if we've already called onTransactionSent for this hash
-  const transactionSentHashRef = React.useRef<`0x${string}` | null>(null);
-  // Track hashes we've already processed for completion callbacks
-  const completedHashRef = React.useRef<`0x${string}` | null>(null);
-
-  // Wait for transaction receipt
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    error: receiptError,
-    data: receipt,
-  } = useWaitForTransactionReceipt({
-    hash,
-    chainId: selectedChainId,
-    query: {
-      enabled:
-        !!hash &&
-        isHydrated &&
-        (isActiveTransaction ||
-          isLocallyPending ||
-          transactionSentHashRef.current === hash), // Keep receipt tracking alive for this button's tx even if global active ID is cleared early
-    },
-  });
-
-  const isTransactionPending =
-    (transactionState.isPending && isActiveTransaction) ||
-    (isHydrated && isConfirming && isActiveTransaction) ||
-    isLocallyPending;
+  const isTransactionPending = (transactionState.isPending && isActiveTransaction) || isLocallyPending;
   const hasTransactionError = transactionState.error && isActiveTransaction;
 
-  const messageFromUnknownError = React.useCallback((err: unknown): string => {
-    if (err instanceof Error) return err.message;
-    if (
-      typeof err === "object" &&
-      err !== null &&
-      "message" in err &&
-      typeof (err as { message: unknown }).message === "string"
-    ) {
-      return (err as { message: string }).message;
-    }
-    return String(err);
-  }, []);
-
-  const isTransactionUnderpricedError = React.useCallback(
-    (err: unknown): boolean => {
-      let current: unknown = err;
-      for (let i = 0; i < 8 && current != null; i++) {
-        const msg = messageFromUnknownError(current).toLowerCase();
-        if (msg.includes("transaction underpriced")) return true;
-        if (typeof current === "object" && current !== null && "cause" in current) {
-          current = (current as { cause: unknown }).cause;
-        } else {
-          break;
-        }
-      }
-      return false;
-    },
-    [messageFromUnknownError],
-  );
-
-  // Handle transaction execution
   const handleTransaction = async () => {
+    if (!call) return;
+    if (validateBeforeTransaction) {
+      const validation = validateBeforeTransaction();
+      if (validation !== true) {
+        toast.error(validation as string);
+        return;
+      }
+    }
+    if (confirmBeforeSend && !(await confirmBeforeSend())) return;
+    onBeforeSend?.();
+
+    startTransaction(transactionId);
+    setIsLocallyPending(true);
+    let receipt: NearReceipt;
     try {
-      // Validate before transaction if validator provided
-      if (validateBeforeTransaction) {
-        const validation = validateBeforeTransaction();
-        if (validation !== true) {
-          toast.error(validation as string);
-          return;
-        }
-      }
-      if (confirmBeforeSend && !(await confirmBeforeSend())) return;
-      onBeforeSend?.();
-
-      await switchToSelectedChainIfNeeded();
-
-      // Start transaction tracking
-      startTransaction(transactionId);
-      setIsLocallyPending(true); // Set local pending state
-
-      // What this needs first (approvals), each confirmed before the next.
-      for (const step of approvals ?? []) {
-        if (!publicClient) throw new Error("No RPC client available");
-        if (!(await step.isNeeded(publicClient))) continue;
-        setApprovalText(step.loadingText);
-        const approvalHash = await writeApprovalAsync({
-          ...step.call,
-          chainId: selectedChainId,
-          ...(await getLegacyGasPriceOverridesForWrite(selectedChainId, publicClient)),
-        } as Parameters<typeof writeApprovalAsync>[0]);
-        const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
-        if (approvalReceipt.status === "reverted") throw new Error("Approval reverted onchain");
-      }
-      setApprovalText(null);
-
-      // Execute the contract call
-      const writePayload = {
-        address: contractAddress,
-        abi,
-        functionName,
-        args,
-        value,
-        ...(gas != null ? { gas } : {}),
-        chainId: selectedChainId,
-      } as const;
-
-      try {
-        await writeContract({
-          ...writePayload,
-          ...(await getLegacyGasPriceOverridesForWrite(
-            selectedChainId,
-            publicClient,
-          )),
-        });
-      } catch (writeErr) {
-        if (!isTransactionUnderpricedError(writeErr) || !publicClient) {
-          throw writeErr;
-        }
-
-        // Some RPCs reject wallet-estimated fees with "transaction underpriced".
-        // Retry once with explicit legacy gasPrice above network quote.
-        const baseGasPrice = await publicClient.getGasPrice();
-        const bumpedGasPrice = bumpedLegacyGasPriceForRetry(
-          selectedChainId,
-          baseGasPrice,
-        );
-        await writeContract({
-          ...writePayload,
-          gasPrice: bumpedGasPrice,
-        });
-      }
-
-      // Note: The hash will be available in the hash variable from useSponsoredWriteContract
-      // We'll trigger onTransactionSent in a useEffect when hash becomes available
+      receipt = await sendCall(call);
     } catch (err: unknown) {
-      const detail = messageFromUnknownError(err);
-      const normalized = isTransactionUnderpricedError(err)
-        ? `${detail}\n\nHint: wallet/RPC nonce state may be stuck. Try clearing wallet activity/nonce state, then retry.`
-        : detail;
-      const error = new Error(normalized);
-      setApprovalText(null);
-      setIsLocallyPending(false); // Reset local pending state on error
+      const error = err instanceof Error ? err : new Error(String(err));
+      if (mountedRef.current) setIsLocallyPending(false);
       completeTransaction(transactionId, false, error);
       onError?.(error);
+      return;
+    }
+
+    setTransactionHash(transactionId, receipt.hash);
+    onTransactionSent?.(receipt.hash);
+    onReceipt?.(receipt);
+    try {
+      await onSuccess?.();
+    } catch (followUpError) {
+      console.error("Transaction follow-up failed:", followUpError);
+    } finally {
+      if (mountedRef.current) setIsLocallyPending(false);
+      completeTransaction(transactionId, true);
     }
   };
 
-  // onTransactionSent, once per hash. Called from both effects below: the
-  // receipt can land in the same render the hash appears (fast chains, a
-  // cached receipt), and callers that track the tx from "sent" (the move
-  // submit) must still hear about it, and before its success.
-  const notifySent = React.useCallback(
-    (sentHash: `0x${string}`) => {
-      if (transactionSentHashRef.current === sentHash) return;
-      transactionSentHashRef.current = sentHash;
-      setTransactionHash(transactionId, sentHash);
-      onTransactionSent?.(sentHash);
-    },
-    [setTransactionHash, transactionId, onTransactionSent],
-  );
-
-  // Handle transaction completion based on receipt confirmation
-  React.useEffect(() => {
-    const isOwnSentHash =
-      !!hash && transactionSentHashRef.current === hash;
-    const canHandleSuccess = isHydrated && (isActiveTransaction || isOwnSentHash);
-
-    if (canHandleSuccess && isConfirmed && receipt && hash) {
-      // Prevent duplicate handling for the same tx hash.
-      if (completedHashRef.current === hash) return;
-      completedHashRef.current = hash;
-      notifySent(hash);
-
-      // `isConfirmed` (useWaitForTransactionReceipt's isSuccess) only means
-      // a receipt was fetched — it stays true even when the transaction
-      // itself reverted onchain (status: "reverted"), since viem doesn't
-      // throw for that case. Without this check, every reverted write
-      // (wrong turn, invalid move, etc.) across the app was silently
-      // treated as a success: onSuccess fired, onError never did, and
-      // callers that record optimistic state on success (e.g. the move
-      // confirm widget) were left showing a move that never happened until
-      // something unrelated eventually reconciled the UI.
-      if (receipt.status === "reverted") {
-        setIsLocallyPending(false);
-        const revertError = new Error(
-          "Transaction reverted onchain",
-        );
-        completeTransaction(transactionId, false, revertError);
-        onError?.(revertError);
-        return;
-      }
-
-      // The confirmed receipt (e.g. minted ship ids for useConstructAfterMint)
-      if (onReceipt) {
-        onReceipt(receipt);
-      }
-
-      // Stay loading/disabled until follow-up UI work (refetch, wait for
-      // the new lobby to appear, etc.) finishes. completeTransaction is
-      // what re-enables the rest of the crypto buttons.
-      void (async () => {
-        try {
-          await onSuccess?.();
-        } catch (followUpError) {
-          console.error("Transaction follow-up failed:", followUpError);
-        } finally {
-          setIsLocallyPending(false);
-          completeTransaction(transactionId, true);
-        }
-      })();
-    } else if (isActiveTransaction && isHydrated && receiptError) {
-      // Transaction failed during confirmation
-      setIsLocallyPending(false); // Reset local pending state
-      completeTransaction(transactionId, false, receiptError);
-      onError?.(receiptError);
-    } else if (isActiveTransaction && !isPending && error) {
-      // Transaction failed during submission
-      setIsLocallyPending(false); // Reset local pending state
-      completeTransaction(transactionId, false, error);
-      onError?.(error);
-    }
-  }, [
-    isActiveTransaction,
-    isHydrated,
-    isConfirmed,
-    isPending,
-    error,
-    receiptError,
-    receipt,
-    hash,
-    transactionId,
-    completeTransaction,
-    onSuccess,
-    onError,
-    onReceipt,
-    notifySent,
-  ]);
-
-  // Clear error when component unmounts or transaction changes
+  // Clear this button's error when it unmounts.
   React.useEffect(() => {
     return () => {
-      if (isActiveTransaction) {
-        clearError(transactionId);
-      }
+      if (isActiveTransaction) clearError(transactionId);
     };
   }, [isActiveTransaction, transactionId, clearError]);
 
-  // If this button unmounts after the receipt already landed (move confirm
-  // widget calls handleCancelMove inside onSuccess), finish the global
-  // pending lock so the next ship's Fire is clickable.
+  // Re-enable after clearAllTransactions().
   React.useEffect(() => {
-    return () => {
-      if (completedHashRef.current) {
-        completeTransaction(transactionId, true);
-      }
-    };
-  }, [transactionId, completeTransaction]);
-
-  // Reset transaction state when transaction ID changes
-  React.useEffect(() => {
-    // Clear any stale transaction state when the transaction ID changes
-    if (transactionState.activeTransactionId !== transactionId) {
-      clearError(transactionId);
-      setIsLocallyPending(false); // Reset local pending state
-    }
-  }, [transactionId, transactionState.activeTransactionId, clearError]);
-
-  // Reset local pending state when all transactions are cleared (activeTransactionId becomes null)
-  // This ensures the button is re-enabled after clearAllTransactions() is called
-  React.useEffect(() => {
-    if (!transactionState.activeTransactionId && !transactionState.isPending) {
-      setIsLocallyPending(false);
-    }
+    if (!transactionState.activeTransactionId && !transactionState.isPending) setIsLocallyPending(false);
   }, [transactionState.activeTransactionId, transactionState.isPending]);
 
-  // Trigger onTransactionSent when the hash becomes available. Not gated on
-  // the receipt still loading: that query starts the moment the hash exists,
-  // and skipping "sent" whenever it had already flipped to confirming left
-  // callers that track the tx from here (the move submit) waiting forever.
-  React.useEffect(() => {
-    if (hash && (isActiveTransaction || isLocallyPending)) notifySent(hash);
-  }, [hash, isActiveTransaction, isLocallyPending, notifySent]);
-
-  // Reset the ref when transaction changes
-  React.useEffect(() => {
-    if (!isActiveTransaction) {
-      transactionSentHashRef.current = null;
-      completedHashRef.current = null;
-    }
-  }, [isActiveTransaction]);
-
-  // Determine button state
   const isDisabled =
     disabled ||
+    !call ||
     isTransactionPending ||
-    (!allowWhenOtherPending &&
-      transactionState.isPending &&
-      !isActiveTransaction);
+    (!allowWhenOtherPending && transactionState.isPending && !isActiveTransaction);
 
   let buttonContent = children;
-  if (isTransactionPending) {
-    buttonContent = approvalText ?? loadingText;
-  } else if (hasTransactionError) {
-    buttonContent = errorText;
-  }
+  if (isTransactionPending) buttonContent = loadingText;
+  else if (hasTransactionError) buttonContent = errorText;
 
   // Remove rounded classes from className to enforce square corners
   const cleanedClassName = className
     .replace(/\brounded(-\w+)?\b/g, "")
-    .replace(/\s+/g, " ") // Replace multiple spaces with single space
+    .replace(/\s+/g, " ")
     .trim();
 
   return (
     <button
       onClick={handleTransaction}
       disabled={isDisabled}
-      className={`${cleanedClassName} ${
-        isDisabled ? "opacity-50 cursor-not-allowed" : ""
-      }`}
+      className={`${cleanedClassName} ${isDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
       style={{
         ...(buttonStyle ?? {}),
         borderRadius: 0, // Force square corners for industrial theme

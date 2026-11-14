@@ -1,26 +1,15 @@
 "use client";
 
 import { useOpenWalletSignIn } from "../hooks/useOpenWalletSignIn";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useBalance, useConfig, useReadContract } from "wagmi";
+import React, { useEffect, useRef, useState } from "react";
 import { DynamicUserProfile, useDynamicContext } from "@dynamic-labs/sdk-react-core";
-import { formatEther } from "viem";
 import { toast } from "react-hot-toast";
-import { CONTRACT_ADDRESSES, CONTRACT_ABIS } from "../config/contracts";
-import type { Abi } from "viem";
-import {
-  DEFAULT_CHAIN_ID,
-  getSelectedChainId,
-  getNativeTokenSymbol,
-  getVariantForChainId,
-  isChainSelectableInUi,
-  isSupportedChainId,
-  setSelectedChainId,
-  SUPPORTED_CHAINS,
-  VOID_TACTICS_CHAIN_CHANGED_EVENT,
-} from "../config/networks";
-import { switchWalletToAppChain } from "../utils/switchWalletChain";
-import { readRpcErrorCode } from "../utils/ensureUiChainsInWallet";
+import { useChainAccount } from "../near/useChainAccount";
+import { useNearBalance } from "../near/useNearBalance";
+import { useTokenBalance } from "../near/useTokenBalance";
+import { NEAR_NETWORK, TOKEN_DEC, TOKEN_UTC } from "../near/config";
+import { formatUnits18 } from "../near/codec";
+import { shortAccount } from "../near/identity";
 import { HeaderAlphaBadge, HeaderDiscordLink, HeaderXLink } from "./BrandLinks";
 import { X_URL } from "../config/socialLinks";
 import { ALPHA_DISCORD_INVITE_URL, WEB2_SIGN_IN_ENABLED } from "../config/alpha";
@@ -50,34 +39,6 @@ import { CopyAddressButton } from "./CopyAddressButton";
 import { ETH_DISPLAY_DECIMALS, UTC_DISPLAY_DECIMALS, formatBalance, formatBalanceCompact } from "../utils/formatBalance";
 import { openRecoveryCodes, RecoveryCodesHost } from "./RecoveryCodesModal";
 import { creditsToUtc } from "../lib/credits";
-
-function resolveChainIdFromQueryParam(value: string | null): number | null {
-  if (!value) return null;
-  const normalized = value
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_]+/g, "-");
-  const numeric = Number(normalized);
-  if (Number.isFinite(numeric) && isChainSelectableInUi(numeric)) {
-    return numeric;
-  }
-  const byName: Record<string, number> = {
-    flow: 545,
-    "flow-testnet": 545,
-    ronin: 2021,
-    saigon: 2021,
-    "ronin-saigon": 2021,
-    base: 84532,
-    "base-sepolia": 84532,
-    xai: 37714555429,
-    "xai-testnet": 37714555429,
-    "xai-testnet-v2": 37714555429,
-  };
-  const chainId = byName[normalized];
-  return typeof chainId === "number" && isChainSelectableInUi(chainId)
-    ? chainId
-    : null;
-}
 
 function dispatchNavigateToProfile(push: (href: string) => void) {
   navigateToClientTab("Profile", "void-tactics-navigate-to-profile", push);
@@ -619,103 +580,28 @@ interface HeaderProps {
 /**
  * The game client's HUD: identity, resource pills (each + tops that
  * resource up), the your-turn bell and the settings menu (account, network,
- * lottery, Ops Console, community and legal links).
+ * Ops Console, community and legal links).
  */
 const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => {
   const [isHydrated, setIsHydrated] = useState(false);
-  const [hasVariantMismatch, setHasVariantMismatch] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [matchViewOpen, setMatchViewOpen] = useState(false);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const account = useAccount();
+  const account = useChainAccount();
   const router = useRouter();
   const { hasAccess: hasOpsConsoleAccess } = useOpsConsoleAccess();
-  const config = useConfig();
   const { setShowDynamicUserProfile, user: dynamicUser } = useDynamicContext();
   // Recovery codes only exist once the account has a passkey.
   const hasPasskey = dynamicUser?.verifiedCredentials?.some((vc) => vc.format === "passkey") ?? false;
 
-  const [selectedChainId, setSelectedChainIdState] = useState<number>(() => {
-    if (typeof window === "undefined") return DEFAULT_CHAIN_ID;
-    return getSelectedChainId();
-  });
-  const pendingSwitchChainIdRef = useRef<number | null>(null);
-  /** When true, do not overwrite the header picker from `account.chainId` while storage still targets another network. */
-  const userChoseNetworkThisSessionRef = useRef(false);
-  const lastSwitchRequestRef = useRef<{ chainId: number; at: number } | null>(
-    null,
-  );
-  const lastVariantWarningKeyRef = useRef<string | null>(null);
-  /** Apply `?chain=` / `?network=` only once so manual picks are not overwritten on every change. */
-  const urlChainQueryConsumedRef = useRef(false);
-
-  const nativeTokenSymbol = getNativeTokenSymbol(selectedChainId);
-  const selectedChainVariant = getVariantForChainId(selectedChainId);
+  const nativeTokenSymbol = "NEAR";
   const headerReadsEnabled = isHydrated && !matchViewOpen;
-  const { data: balance } = useBalance({
-    address: account.address,
-    chainId: selectedChainId,
-    query: {
-      enabled: headerReadsEnabled && !!account.address,
-      refetchOnWindowFocus: false,
-      notifyOnChangeProps: ["data", "error"],
-    },
-  });
-
-  const maxVariantConfig = useMemo(
-    () => ({
-      address: CONTRACT_ADDRESSES.SHIPS as `0x${string}`,
-      abi: CONTRACT_ABIS.SHIPS as Abi,
-      functionName: "maxVariant" as const,
-      chainId: selectedChainId,
-      query: {
-        enabled: headerReadsEnabled && isSupportedChainId(selectedChainId),
-        refetchOnWindowFocus: false,
-      },
-    }),
-    [headerReadsEnabled, selectedChainId],
-  );
-
-  const { data: maxVariant } = useReadContract(maxVariantConfig);
-
-  // Read UTC balance
-  const { data: utcBalance } = useReadContract({
-    address: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "balanceOf",
-    args: account.address ? [account.address] : undefined,
-    chainId: selectedChainId,
-    query: {
-      enabled: headerReadsEnabled && !!account.address,
-      refetchOnWindowFocus: false,
-      notifyOnChangeProps: ["data", "error"],
-    },
-  });
-
-  // Read Drone Cores balance — DroneEnergyCores is only deployed on Base
-  // Sepolia so far (resolves to the zero address on other chains), so gate
-  // the read on that rather than firing a doomed call and showing a
-  // misleading "0.00" on chains where the contract doesn't exist at all.
-  const droneEnergyCoresAddress = CONTRACT_ADDRESSES.DRONE_ENERGY_CORES as
-    | `0x${string}`
-    | undefined;
-  const isDroneEnergyCoresDeployed =
-    !!droneEnergyCoresAddress &&
-    droneEnergyCoresAddress.toLowerCase() !==
-      "0x0000000000000000000000000000000000000000";
-  const { data: droneCoresBalance } = useReadContract({
-    address: droneEnergyCoresAddress,
-    abi: CONTRACT_ABIS.DRONE_ENERGY_CORES as Abi,
-    functionName: "balanceOf",
-    args: account.address ? [account.address] : undefined,
-    chainId: selectedChainId,
-    query: {
-      enabled: headerReadsEnabled && !!account.address && isDroneEnergyCoresDeployed,
-      refetchOnWindowFocus: false,
-      notifyOnChangeProps: ["data", "error"],
-    },
-  });
+  const readAddress = headerReadsEnabled ? account.address : undefined;
+  const { data: balance } = useNearBalance(readAddress);
+  const { data: utcBalance } = useTokenBalance(readAddress, TOKEN_UTC);
+  const { data: droneCoresBalance } = useTokenBalance(readAddress, TOKEN_DEC);
+  const isDroneEnergyCoresDeployed = true;
 
   // Hydration safety
   useEffect(() => {
@@ -734,176 +620,8 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
       window.removeEventListener("void-tactics-games-detail-active", onDetail);
   }, []);
 
-  // Support links like `/?chain=ronin-saigon` to preselect network (once per page load).
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (urlChainQueryConsumedRef.current) return;
-
-    const params = new URLSearchParams(window.location.search);
-    const requestedChain =
-      resolveChainIdFromQueryParam(params.get("chain")) ??
-      resolveChainIdFromQueryParam(params.get("network"));
-
-    if (requestedChain == null) {
-      urlChainQueryConsumedRef.current = true;
-      return;
-    }
-
-    const stored = getSelectedChainId();
-    if (requestedChain === stored) {
-      urlChainQueryConsumedRef.current = true;
-      return;
-    }
-
-    urlChainQueryConsumedRef.current = true;
-    setSelectedChainId(requestedChain);
-    setSelectedChainIdState(requestedChain);
-    userChoseNetworkThisSessionRef.current = true;
-    pendingSwitchChainIdRef.current = requestedChain;
-    lastSwitchRequestRef.current = { chainId: requestedChain, at: Date.now() };
-  }, [isHydrated]);
-
   // Check if wallet is connecting
-  const isConnecting =
-    account.status === "connecting" || account.status === "reconnecting";
-
-  // Keep selected chain in sync with wallet chain after a successful switch/connect.
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (account.status !== "connected") return;
-    if (!isSupportedChainId(account.chainId)) return;
-    if (
-      pendingSwitchChainIdRef.current &&
-      account.chainId !== pendingSwitchChainIdRef.current
-    ) {
-      return;
-    }
-
-    pendingSwitchChainIdRef.current = null;
-    if (selectedChainId !== account.chainId) {
-      // Only sync app selection to the wallet chain when that chain is enabled in the UI picker.
-      if (!isChainSelectableInUi(account.chainId)) return;
-      // After the user picks a network here, do not snap the picker back to the old wallet chain
-      // while localStorage still matches their choice (switch in flight or MetaMask lag).
-      const storedTarget = getSelectedChainId();
-      if (
-        userChoseNetworkThisSessionRef.current &&
-        isChainSelectableInUi(storedTarget) &&
-        storedTarget !== account.chainId
-      ) {
-        return;
-      }
-      setSelectedChainId(account.chainId);
-      setSelectedChainIdState(account.chainId);
-    }
-  }, [isHydrated, account.status, account.chainId, selectedChainId]);
-
-  // Warn if chain variant mapping is incompatible with deployed contract config.
-  useEffect(() => {
-    if (!isHydrated || maxVariant == null) {
-      setHasVariantMismatch(false);
-      return;
-    }
-    const maxVariantNumber = Number(maxVariant);
-    if (!Number.isFinite(maxVariantNumber)) {
-      setHasVariantMismatch(false);
-      return;
-    }
-    if (selectedChainVariant <= maxVariantNumber) {
-      setHasVariantMismatch(false);
-      return;
-    }
-
-    setHasVariantMismatch(true);
-
-    const warningKey = `${selectedChainId}:${selectedChainVariant}:${maxVariantNumber}`;
-    if (lastVariantWarningKeyRef.current === warningKey) return;
-    lastVariantWarningKeyRef.current = warningKey;
-
-    toast.error(
-      `Network variant mismatch: selected variant ${selectedChainVariant} exceeds contract maxVariant ${maxVariantNumber}. Claims and purchases may fail until mapping is updated.`,
-      { duration: 8000 },
-    );
-  }, [isHydrated, maxVariant, selectedChainId, selectedChainVariant]);
-
-  // Resolve an explicit user-initiated network switch request.
-  useEffect(() => {
-    if (!isHydrated) return;
-    const pending = pendingSwitchChainIdRef.current;
-    if (pending == null) return;
-    if (account.status !== "connected") return;
-    if (!isSupportedChainId(pending)) return;
-    if (account.chainId === pending) {
-      pendingSwitchChainIdRef.current = null;
-      return;
-    }
-
-    // Avoid spamming switch requests while a wallet prompt is pending
-    const now = Date.now();
-    const last = lastSwitchRequestRef.current;
-    if (last && last.chainId === pending && now - last.at < 2000) {
-      return;
-    }
-    lastSwitchRequestRef.current = { chainId: pending, at: now };
-    const connector = account.connector;
-    if (!connector) return;
-    void switchWalletToAppChain(config, connector, pending).catch((err) => {
-      console.error("Network switch failed:", err);
-      const code = readRpcErrorCode(err);
-      toast.error(
-        err instanceof Error
-          ? `${err.message}${code != null ? ` (code ${code})` : ""}`
-          : "Could not switch network",
-      );
-    });
-  }, [account.status, account.chainId, account.connector, config, isHydrated]);
-
-  const handleNetworkChange = (nextId: number) => {
-    if (!isChainSelectableInUi(nextId)) {
-      toast.error("This network is unavailable for now");
-      return;
-    }
-    setSelectedChainId(nextId);
-    setSelectedChainIdState(nextId);
-    userChoseNetworkThisSessionRef.current = true;
-    pendingSwitchChainIdRef.current = nextId;
-    lastSwitchRequestRef.current = { chainId: nextId, at: Date.now() };
-    if (
-      isHydrated &&
-      account.status === "connected" &&
-      account.chainId !== nextId &&
-      account.connector
-    ) {
-      void switchWalletToAppChain(config, account.connector, nextId).catch(
-        (err) => {
-          console.error("Network switch failed:", err);
-          const code = readRpcErrorCode(err);
-          toast.error(
-            err instanceof Error
-              ? `${err.message}${code != null ? ` (code ${code})` : ""}`
-              : "Could not switch network",
-          );
-        },
-      );
-    }
-    setIsSettingsOpen(false);
-  };
-
-  useEffect(() => {
-    const handleChainChanged = () => {
-      setIsSettingsOpen(false);
-    };
-    window.addEventListener(
-      VOID_TACTICS_CHAIN_CHANGED_EVENT,
-      handleChainChanged,
-    );
-    return () => {
-      window.removeEventListener(
-        VOID_TACTICS_CHAIN_CHANGED_EVENT,
-        handleChainChanged,
-      );
-    };
-  }, []);
+  const isConnecting = account.status === "connecting";
 
   useEffect(() => {
     if (!isSettingsOpen) return;
@@ -926,13 +644,9 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
     };
   }, [isSettingsOpen]);
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}…${address.slice(-4)}`;
-  };
+  const formatAddress = (address: string) => shortAccount(address);
 
-  const handleBeforeLogOut = React.useCallback(() => {
-    userChoseNetworkThisSessionRef.current = false;
-  }, []);
+  const handleBeforeLogOut = React.useCallback(() => {}, []);
 
   const isConnected = account.isConnected;
   const {
@@ -978,7 +692,7 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
     : formatAddress(account.address || "");
   const initials = showWeb2Panel
     ? callsign.slice(0, 2).toUpperCase()
-    : (account.address ?? "").slice(2, 4).toUpperCase();
+    : (account.address ?? "").slice(0, 2).toUpperCase();
 
   const openCommandDeck = () =>
     navigateToClientTab("Command Deck", "void-tactics-navigate-to-info", router.push);
@@ -993,12 +707,12 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
   const utcValue = showWeb2Panel
     ? creditsToUtc(creditBalance)
     : utcBalance
-      ? Number(formatEther(utcBalance as bigint))
+      ? Number(formatUnits18(utcBalance, 6))
       : 0;
   const decValue = showWeb2Panel
     ? decBalance
     : droneCoresBalance
-      ? Number(droneCoresBalance as bigint) // DEC has 0 decimals: a count of cores
+      ? Number(droneCoresBalance) // DCC has 0 decimals: a count of cores
       : 0;
   const nativeValue = balance?.value ? Number(balance.formatted) : 0;
 
@@ -1254,35 +968,12 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
                     {showWeb3Panel && (
                       <>
                         <SettingsHeading>Network</SettingsHeading>
-                        {SUPPORTED_CHAINS.map((c) => {
-                          const isActive = c.id === selectedChainId;
-                          const selectable = isChainSelectableInUi(c.id);
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              disabled={!selectable || isConnecting}
-                              title={selectable ? undefined : "Unavailable on this build"}
-                              onClick={() => handleNetworkChange(c.id)}
-                              className={`${menuItemClass} ${
-                                isActive ? "bg-cyan text-near-black hover:bg-cyan" : "text-cyan"
-                              } ${!selectable ? "cursor-not-allowed opacity-45" : ""}`}
-                              style={{ fontFamily: MONO_FONT }}
-                            >
-                              {c.name}
-                            </button>
-                          );
-                        })}
-
-                        <SettingsHeading>Credits</SettingsHeading>
-                        <HeaderMenuItem
-                          onClick={() => {
-                            closeSettings();
-                            openStore("lottery");
-                          }}
+                        <div
+                          className={`${menuItemClass} bg-cyan text-near-black hover:bg-cyan`}
+                          style={{ fontFamily: MONO_FONT }}
                         >
-                          UTC Lottery
-                        </HeaderMenuItem>
+                          NEAR {NEAR_NETWORK}
+                        </div>
                       </>
                     )}
 
@@ -1376,24 +1067,6 @@ const Header: React.FC<HeaderProps> = ({ yourTurnCount, showSignIn = true }) => 
           )}
         </div>
       </div>
-
-      {/* Variant mismatch persistent banner */}
-      {hasVariantMismatch && (
-        <div
-          className="border-t border-solid px-4 py-1.5 text-xs font-bold tracking-wider uppercase"
-          style={{
-            fontFamily: MONO_FONT,
-            color: "var(--color-warning-red)",
-            backgroundColor:
-              "color-mix(in srgb, var(--color-warning-red) 10%, transparent)",
-            borderColor:
-              "color-mix(in srgb, var(--color-warning-red) 40%, transparent)",
-          }}
-        >
-          &#9888; Network variant mismatch — claims and purchases may fail. Try
-          switching networks.
-        </div>
-      )}
 
       {/* Dynamic's own profile modal (wallets, security, passkeys) — opened
           via My Account in the settings menu. Mounted here since the HUD

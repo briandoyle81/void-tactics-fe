@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { useGetRoguelikeRun, useHasActiveRoguelikeRun } from "../hooks/useRoguelikeRun";
 import { toast } from "react-hot-toast";
 import { RunStatus, type RoguelikeRun } from "../types/roguelike";
@@ -19,7 +19,7 @@ import { useTrackRunEnded } from "../hooks/useTrackRunEnded";
 // (`?fleet=select`). Players who haven't done the tutorial get it as the
 // first mission on that map (tutorialPrelude.ts), before Start run.
 export function RoguelikeCampaign() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useChainAccount();
   const { data: hasActiveRun, isLoading: hasActiveRunLoading, refetch: refetchHasActiveRun } =
     useHasActiveRoguelikeRun(address);
   const { data: run, isLoading: runLoading, refetch: refetchRun } = useGetRoguelikeRun(address);

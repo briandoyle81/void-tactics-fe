@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getUrlParam, setUrlParams, useUrlParam } from "../../utils/urlState";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import Header from "../../components/Header";
 import { SessionRestoreProbe } from "../../components/SessionRestoreProbe";
 import Maps from "../../components/Maps";
@@ -88,7 +88,7 @@ function ConsoleMessage({ children }: { children: React.ReactNode }) {
  */
 export default function OpsConsolePage() {
   const appMode = useAppMode();
-  const { status, isConnected } = useAccount();
+  const { status, isConnected } = useChainAccount();
   const [isRestoringSession, setIsRestoringSession] = useState(false);
   const { isLoggedIn, isLoading: isUserLoading } = useCurrentUser();
   const { tabs, hasAccess, isLoading: isAccessLoading } = useOpsConsoleAccess();
@@ -118,7 +118,7 @@ export default function OpsConsolePage() {
   const isCheckingSignIn =
     appMode === "web2"
       ? isUserLoading
-      : status === "connecting" || status === "reconnecting" || isRestoringSession;
+      : status === "connecting" || isRestoringSession;
 
   return (
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--color-near-black)" }}>

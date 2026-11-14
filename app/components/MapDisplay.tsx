@@ -44,12 +44,6 @@ interface MapDisplayProps {
   dragOverPosition?: { row: number; col: number } | null;
   showDeployZoneLabel?: boolean;
   pendingPlacementShipId?: bigint | null;
-  /** Pins the ship-attributes read to a specific chain instead of following
-   * the header network picker — NodeMatchModal.tsx (PvE, Base-Sepolia-only)
-   * passes `baseSepolia.id` here so the fleet-selection map's attributes
-   * stay correct even if the picker happens to be on a different chain;
-   * Lobbies.tsx (PvP, genuinely multi-chain) leaves this unset. */
-  chainIdOverride?: number;
   /**
    * Current hull on each ship (id string), e.g. a run's roster HP. Overlays
    * the calculated full-hull attributes so placement shows real damage.
@@ -76,7 +70,6 @@ export function MapDisplay({
   dragOverPosition = null,
   showDeployZoneLabel = false,
   pendingPlacementShipId = null,
-  chainIdOverride,
   hullPointsByShipId,
 }: MapDisplayProps) {
   const { data: blockedPositions } = useGetPresetMap(mapId);
@@ -142,10 +135,7 @@ export function MapDisplay({
         .map((ship) => ship.id),
     [fullShips],
   );
-  const { attributes, isLoading: attributesLoading } = useShipAttributesByIds(
-    shipIds,
-    chainIdOverride,
-  );
+  const { attributes, isLoading: attributesLoading } = useShipAttributesByIds(shipIds);
   const attributesMap = React.useMemo(() => {
     const map = new Map<string, Attributes>();
     // Index-aligned with shipIds (the filtered query), not fullShips —

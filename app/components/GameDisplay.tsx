@@ -2,12 +2,10 @@
 
 import { useHoldFireConfirm } from "./HoldFireConfirm";
 import { useHoldFireWarningSetting } from "../hooks/useHoldFireWarning";
-import { RESOLVER_ERRORS } from "../config/resolverErrors";
 import React, { useState } from "react";
-import { useAccount, useWaitForTransactionReceipt } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { isAoeSpecialWeb2, isLightningFieldSpecial, isRepairDronesSpecial } from "../utils/specialConfigWeb2";
 import { useQueryClient } from "@tanstack/react-query";
-import { baseSepolia } from "viem/chains";
 import posthog from "posthog-js";
 import {
   GameDataView,
@@ -27,7 +25,9 @@ import { isAnyBoardCovered } from "../hooks/useBoardCovered";
 import ShipCard from "./ShipCard";
 import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
-import { toOnChainActionType, gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
+import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
+import { AI_PLAYER, GAME_MODE, toNearAction } from "../near/adapters/game";
+import { GAS_DEFAULT, GAS_HEAVY } from "../near/config";
 import { GameFleetDetailsModal } from "./GameFleetDetailsModal";
 import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
@@ -48,16 +48,9 @@ import { GridHoverProvider } from "./GridHover";
 import { useGetGameMapState, usePresetMapState } from "../hooks/useMapsContract";
 import { nodeMapId } from "../utils/missionMaps";
 import { MapLoadingOverlay } from "./MapLoadingOverlay";
-import {
-  useGameContract,
-  useGetGame,
-  usePvPMatchContract,
-} from "../hooks/useGameContract";
-import {
-  globalGameRefetchFunctions,
-} from "../hooks/useContractEvents";
-import { SINGLE_PLAYER_MATCH_ADDRESS, useGameIdToNodeId } from "../hooks/useSinglePlayerMatch";
-import { ROGUELIKE_MATCH_ADDRESS } from "../hooks/useRoguelikeMatch";
+import { useGetGame } from "../hooks/useGameContract";
+import { globalGameRefetchFunctions } from "../near/sync/gameRefetchRegistry";
+import { useGameIdToNodeId } from "../hooks/useSinglePlayerMatch";
 import { GameResultModal, type MissionLossReason } from "./GameResultModal";
 import { resolveNodeContent, useWeb3NodeContent } from "../hooks/useNodeContent";
 import { inferVictoryReason } from "../utils/victoryReason";
@@ -135,10 +128,10 @@ import { saveGameRecord, loadGameRecord } from "../utils/gameRecordStorage";
 const GRID_WIDTH = GRID_DIMENSIONS.WIDTH;
 const GRID_HEIGHT = GRID_DIMENSIONS.HEIGHT;
 
-const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+/** "No winner yet" (the EVM build compared against the zero address). */
+const ZERO_ADDR = "";
 
 import { buildMapGridsFromContractMap, readGameMapState } from "../utils/mapGridUtils";
-import { useSelectedChainId } from "../hooks/useSelectedChainId";
 import { gameModeOf, gameResultOf } from "../utils/analytics/gameEvents";
 import { useTrackGameEnded } from "../hooks/useTrackGameEnded";
 import { LANDSCAPE_BOARD_HEIGHT } from "../utils/landscapeBoard";
@@ -177,24 +170,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   const debugMode = useDebugMode();
   // Tooltip disable toggle
   const [disableTooltips, setDisableTooltips] = React.useState(false);
-  const { address } = useAccount();
+  const { address } = useChainAccount();
   const queryClient = useQueryClient();
-  const appChainId = useSelectedChainId();
-  // Pinned to Base Sepolia — Game is currently only deployed there while
-  // multi-chain support is temporarily disabled (see networks.ts). Without
-  // this, a wallet connected to a different chain (still selectable via
-  // RainbowKit even though the in-app picker is locked to Base Sepolia)
-  // silently reads the wrong chain's Game contract.
-  const gameContract = useGameContract(
-    baseSepolia.id,
-    initialGame.metadata.gameId,
-  );
-  // A move can revert in a special's resolver: its errors decode by name too.
-  const moveShipAbi = React.useMemo(
-    () => [...(gameContract.abi as readonly unknown[]), ...RESOLVER_ERRORS] as unknown as typeof gameContract.abi,
-    [gameContract],
-  );
-  const pvpMatchContract = usePvPMatchContract();
+  /** Analytics network label (was the EVM chain id). */
+  const appChainId = "near";
 
   // ── Game record (persisted to localStorage) ────────────────────────────────
   // Keep this off React state: the growing turn list was never read in JSX
@@ -261,7 +240,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     isLoading: gameLoading,
     error: gameError,
     refetch: refetchGame,
-  } = useGetGame(Number(initialGame.metadata.gameId), baseSepolia.id);
+  } = useGetGame(Number(initialGame.metadata.gameId));
 
   // Prefer the latest fetched snapshot. Falling back to `initialGame` on a
   // brief `gameData` gap reused the stale list row (often still round 1)
@@ -695,7 +674,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     data: gameMapState,
     isLoading: mapLoading,
     refetch: refetchGameMapState,
-  } = useGetGameMapState(Number(game.metadata.gameId), { chainSource: "picker" });
+  } = useGetGameMapState(Number(game.metadata.gameId));
   // One-time scoring tiles (crystals) a ship collects are zeroed on chain at
   // round end, and getGameMapState leaves them out from then on. The map
   // state is otherwise read once, so re-read it on each new round (as of the
@@ -712,8 +691,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // own map state loads. Only for the run's live match, whose node is the
   // run's current one.
   const isRoguelikeMapGame =
-    game.metadata.orchestrator?.toLowerCase() === ROGUELIKE_MATCH_ADDRESS.toLowerCase();
-  const { data: runForMap } = useGetRoguelikeRun(address as `0x${string}` | undefined, isRoguelikeMapGame);
+    game.metadata.orchestrator === GAME_MODE.ROGUELIKE;
+  const { data: runForMap } = useGetRoguelikeRun(address, isRoguelikeMapGame);
   const presetMapId =
     isRoguelikeMapGame && runForMap && runForMap.activeGameId === game.metadata.gameId
       ? nodeMapId(Number(runForMap.currentNodeId))
@@ -753,7 +732,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // Fetch ship details for all ships in the game
   const { ships: gameShips, isLoading: shipsLoading } =
-    useShipsByIds(allShipIds);
+    useShipsByIds(allShipIds, initialGame.metadata.gameId);
 
   // Create a map of ship ID to ship object for quick lookup
   const shipMap = React.useMemo(() => {
@@ -953,12 +932,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // shape again, just orchestrated by RoguelikeMatch instead — a third
   // case, not a variant of isSinglePlayerGame (different contract entirely,
   // different "return to" destination).
-  const isSinglePlayerGame =
-    game.metadata.orchestrator?.toLowerCase() ===
-    SINGLE_PLAYER_MATCH_ADDRESS.toLowerCase();
-  const isRoguelikeGame =
-    game.metadata.orchestrator?.toLowerCase() ===
-    ROGUELIKE_MATCH_ADDRESS.toLowerCase();
+  const isSinglePlayerGame = game.metadata.orchestrator === GAME_MODE.SINGLE;
+  const isRoguelikeGame = game.metadata.orchestrator === GAME_MODE.ROGUELIKE;
   const isVsAIGame = isSinglePlayerGame || isRoguelikeGame;
   // Back from a battle against the AI returns to the Operations map it was
   // launched from (history.back() when that's the previous entry), not the
@@ -989,9 +964,8 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         </>
       )
     : undefined;
-  const aiOrchestratorAddress = isRoguelikeGame
-    ? ROGUELIKE_MATCH_ADDRESS
-    : SINGLE_PLAYER_MATCH_ADDRESS;
+  // The AI side of a single-player or roguelike game (the game contract).
+  const aiOrchestratorAddress = AI_PLAYER;
   const isAITurn =
     isVsAIGame &&
     game.turnState.currentTurn?.toLowerCase() ===
@@ -1772,7 +1746,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   // reads state at receipt time, so refetches that land first can't change
   // what's displayed.
   const [pendingMoveTx, setPendingMoveTx] = React.useState<{
-    hash: `0x${string}`;
+    hash: string;
     key: number;
     transactionId: string;
   } | null>(null);
@@ -1863,7 +1837,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
   ]);
 
   const handleMoveTxSent = React.useCallback(
-    (hash: `0x${string}`) => {
+    (hash: string) => {
       const pending = pendingMoveRef.current;
       if (!pending) return;
       markPendingMoveSent(pending.key);
@@ -1875,11 +1849,13 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
 
   // Watched here, not in the submit button: the button unmounts as soon as
   // the proposal clears, and its own receipt handling goes with it.
-  const { data: pendingMoveReceipt, error: pendingMoveReceiptError } = useWaitForTransactionReceipt({
-    hash: pendingMoveTx?.hash,
-    chainId: appChainId,
-    query: { enabled: !!pendingMoveTx },
-  });
+  // A NEAR move resolves once it has executed (the button reports "sent"
+  // only on success), so a pending move is already confirmed here.
+  const pendingMoveReceipt = React.useMemo(
+    () => (pendingMoveTx ? ({ status: "success" } as { status: "success" | "reverted" }) : undefined),
+    [pendingMoveTx],
+  );
+  const pendingMoveReceiptError = null as Error | null;
   React.useEffect(() => {
     if (!pendingMoveTx) return;
     if (pendingMoveReceipt) {
@@ -1929,17 +1905,22 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
     return (
       <TransactionButton
         transactionId={`move-ship-${selectedShipId}-${game.metadata.gameId}`}
-        contractAddress={gameContract.address}
-        abi={moveShipAbi}
-        functionName="moveShip"
-        args={[
-          game.metadata.gameId,
-          selectedShipId,
-          computedRow,
-          computedCol,
-          toOnChainActionType(computedActionType),
-          computedActionType === ActionType.Pass ? 0n : targetShipId || 0n,
-        ]}
+        call={
+          selectedShipId == null
+            ? null
+            : {
+                method: "move_ship",
+                args: {
+                  game_id: game.metadata.gameId.toString(),
+                  ship_id: selectedShipId.toString(),
+                  new_row: computedRow,
+                  new_col: computedCol,
+                  action: toNearAction(computedActionType),
+                  target_ship_id: (computedActionType === ActionType.Pass ? 0n : targetShipId || 0n).toString(),
+                },
+                gas: GAS_DEFAULT,
+              }
+        }
         allowWhenOtherPending
         className="flex-[2] px-4 py-2 text-xs uppercase font-bold tracking-widest transition-colors duration-100"
         style={{
@@ -1989,12 +1970,10 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
       </TransactionButton>
     );
   }, [
-    moveShipAbi,
     confirmHoldFireIfInRange,
     showConfirmWidget,
     selectedShipId,
     game.metadata.gameId,
-    gameContract.address,
     computedMoveCoords.row,
     computedMoveCoords.col,
     computedActionType,
@@ -2049,19 +2028,22 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             return (
                 <TransactionButton
                   transactionId={`move-ship-${selectedShipId}-${game.metadata.gameId}`}
-                  contractAddress={gameContract.address}
-                  abi={moveShipAbi}
-                  functionName="moveShip"
-                  args={[
-                    game.metadata.gameId,
-                    selectedShipId,
-                    computedRow,
-                    computedCol,
-                    toOnChainActionType(computedActionType),
-                    computedActionType === ActionType.Pass
-                      ? 0n
-                      : targetShipId || 0n,
-                  ]}
+                  call={
+                    selectedShipId == null
+                      ? null
+                      : {
+                          method: "move_ship",
+                          args: {
+                            game_id: game.metadata.gameId.toString(),
+                            ship_id: selectedShipId.toString(),
+                            new_row: computedRow,
+                            new_col: computedCol,
+                            action: toNearAction(computedActionType),
+                            target_ship_id: (computedActionType === ActionType.Pass ? 0n : targetShipId || 0n).toString(),
+                          },
+                          gas: GAS_DEFAULT,
+                        }
+                  }
                   allowWhenOtherPending
                   style={submitMoveButtonStyle}
                   className={`${buttonSize} uppercase font-semibold transition-colors duration-150 ${
@@ -2935,10 +2917,11 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
         claimTimeoutButton={
           <TransactionButton
             transactionId={`timeout-${game.metadata.gameId.toString()}`}
-            contractAddress={pvpMatchContract.address}
-            abi={pvpMatchContract.abi}
-            functionName="endGameOnTimeout"
-            args={[game.metadata.gameId]}
+            call={{
+              method: "end_game_on_timeout",
+              args: { game_id: game.metadata.gameId.toString() },
+              gas: GAS_HEAVY,
+            }}
             className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
             loadingText="Claiming…"
             errorText="Failed"

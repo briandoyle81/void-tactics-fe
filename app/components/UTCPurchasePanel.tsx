@@ -1,23 +1,21 @@
 "use client";
 
 import React from "react";
-import { useAccount, useReadContract } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
+import { useTokenBalance } from "@/app/near/useTokenBalance";
+import { TOKEN_UTC } from "@/app/near/config";
+import { formatNear, formatUnits18 } from "@/app/near/codec";
 import { UTCPurchaseButton } from "./UTCPurchaseButton";
 import { UTCPurchasePanelShell } from "./UTCPurchasePanelShell";
 import { getFaucetUrl } from "../config/faucets";
 import { UTCPurchaseTierCardContent } from "./UTCPurchaseTierCardContent";
-import { CONTRACT_ADDRESSES, CONTRACT_ABIS } from "../config/contracts";
-import { getNativeTokenSymbol, getSelectedChainId } from "../config/networks";
 import { useShipPurchaserPurchaseInfo } from "../hooks/useShipPurchaserPurchaseInfo";
-import type { Abi } from "viem";
-import { formatEther } from "viem";
 import { UTC_DISPLAY_DECIMALS, formatBalance } from "../utils/formatBalance";
 
-/** Store › Credits (web3): buy UTC with the chain's native token. */
+/** Store › Credits (web3): buy UTC with NEAR. */
 const UTCPurchasePanel: React.FC = () => {
-  const { address, chainId: walletChainId } = useAccount();
-  const activeChainId = walletChainId ?? getSelectedChainId();
-  const nativeTokenSymbol = getNativeTokenSymbol(activeChainId);
+  const { address } = useChainAccount();
+  const nativeTokenSymbol = "NEAR";
 
   const {
     tiers,
@@ -29,17 +27,10 @@ const UTCPurchasePanel: React.FC = () => {
     purchaserDeployed,
   } = useShipPurchaserPurchaseInfo();
 
-  // purchaseUTCWithFlow takes a tier's native-token price (flowTierPrices)
-  // and mints that tier's ship pack UTC price (tierPrices), so buying UTC and
-  // then ships with it costs the same as buying the ships (contracts repo,
-  // 2026-11-12; it used to mint tierShips * recycleReward).
-
-  const { data: utcBalance, refetch: refetchUTCBalance } = useReadContract({
-    address: CONTRACT_ADDRESSES.UNIVERSAL_CREDITS as `0x${string}`,
-    abi: CONTRACT_ABIS.UNIVERSAL_CREDITS as Abi,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-  });
+  // buy_utc_with_near takes a tier's NEAR price and mints that tier's ship
+  // pack UTC price, so buying UTC and then ships with it costs the same as
+  // buying the ships.
+  const { data: utcBalance, refetch: refetchUTCBalance } = useTokenBalance(address, TOKEN_UTC);
 
   const getTierColors = (tier: number) => {
     switch (tier) {
@@ -101,7 +92,7 @@ const UTCPurchasePanel: React.FC = () => {
   return (
     <UTCPurchasePanelShell
       balanceValueLabel={
-        `${formatBalance(utcBalance ? Number(formatEther(utcBalance as bigint)) : 0, UTC_DISPLAY_DECIMALS)} UTC`
+        `${formatBalance(utcBalance ? Number(formatUnits18(utcBalance)) : 0, UTC_DISPLAY_DECIMALS)} UTC`
       }
       balanceDescription={
         <>
@@ -114,7 +105,7 @@ const UTCPurchasePanel: React.FC = () => {
         <p className="mt-2 text-xs font-mono text-cyan/85">
           Need {nativeTokenSymbol}?{" "}
           <a
-            href={getFaucetUrl(activeChainId)}
+            href={getFaucetUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className="font-bold text-cyan underline underline-offset-2"
@@ -133,7 +124,7 @@ const UTCPurchasePanel: React.FC = () => {
     >
         {!purchaserDeployed ? (
           <p className="text-center text-warning-red font-mono py-6">
-            ShipPurchaser is not deployed on this network.
+            UTC purchases aren&apos;t available on this network.
           </p>
         ) : isLoadingTiers && tierCount === 0 ? (
           <p className="text-center text-text-muted font-mono py-6">
@@ -141,7 +132,7 @@ const UTCPurchasePanel: React.FC = () => {
           </p>
         ) : tierCount === 0 ? (
           <p className="text-center text-warning-red font-mono py-6">
-            No UTC purchase tiers from ShipPurchaser.
+            No UTC purchase tiers are set yet.
           </p>
         ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -149,9 +140,9 @@ const UTCPurchasePanel: React.FC = () => {
             // Pay the tier's native-token price; receive its ship pack's UTC price.
             const flowCost = flowPricesWei[index];
             if (flowCost === undefined) return null;
-            const flowCostFormatted = formatBalance(Number(formatEther(flowCost)), 6);
+            const flowCostFormatted = formatNear(flowCost, 4);
             const colors = getTierColors(tier);
-            const utcDisplay = formatEther(pricesWei[index] ?? 0n);
+            const utcDisplay = formatUnits18(pricesWei[index] ?? BigInt(0));
             const ships = shipsPerTier[index];
 
             return (

@@ -3,20 +3,23 @@
 import React, { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { JOINER_ZONE_CHANGED_NOTE } from "../utils/deploymentZone";
-import { useAccount, usePublicClient } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreatorZonePositions,
   useGetPresetMapImpassable,
   useJoinerZonePositions,
   useMapModes,
   useMapNames,
-  useMapsContract,
+  ALL_MAPS_KEY,
+  presetMapKey,
 } from "../hooks/useMapsContract";
 import { MapEditor, withMapViewCleared } from "./MapEditor";
 import { MapEditorHeader } from "./MapEditorHeader";
 import { MapMode, type MapPosition, type ScoringPosition } from "../types/types";
-import { MAP_ADMIN_ADDRESS } from "../config/alpha";
-import { useSponsoredWriteContract } from "../hooks/useSponsoredWriteContract";
+import { useIsMapAdmin } from "../hooks/useIsMapAdmin";
+import { useNearSession } from "../near/session";
+import { GAS_HEAVY } from "../near/config";
+import { fromMapMode, fromScoringPositions } from "../near/adapters/maps";
 
 interface MapEditScreenProps {
   /** Existing map to edit; omit to create a new map. */
@@ -40,16 +43,15 @@ export function MapEditScreen({
 }: MapEditScreenProps) {
   const onSaved = withMapViewCleared(onSavedProp);
   const onCancel = withMapViewCleared(onCancelProp);
-  const { address } = useAccount();
-  const canEdit = address?.toLowerCase() === MAP_ADMIN_ADDRESS.toLowerCase();
-  const mapsContract = useMapsContract();
-  const mapsWrite = useSponsoredWriteContract();
+  const canEdit = useIsMapAdmin();
   const isEditing = mapId !== undefined;
   // Mode for a map being created — Both by default, since that's valid for
   // every picker (PvP lobbies and campaign nodes alike) until the admin
   // narrows it deliberately.
   const [createMode, setCreateMode] = useState<MapMode>(MapMode.Both);
   const editorMapIds = useMemo(() => (isEditing ? [mapId] : []), [isEditing, mapId]);
+  const { send } = useNearSession();
+  const queryClient = useQueryClient();
   const { modeByMapId } = useMapModes(editorMapIds);
   // Names aren't on chain and aren't edited here: they ship in
   // app/data/content/mapNames.ts (edit that file to rename a map).
@@ -81,22 +83,20 @@ export function MapEditScreen({
             value={modeByMapId.get(mapId) ?? MapMode.Both}
             onChange={(e) => {
               const mode = Number(e.target.value) as MapMode;
-              // Fire-and-forget reclassify — separate write from the
-              // blocked/scoring tile save below, since setMapMode takes
-              // no tile data.
+              // A separate write from the tile save below (set_map_mode takes no tiles).
               void (async () => {
                 try {
-                  await mapsWrite.writeContractAsync({
-                    address: mapsContract.address,
-                    abi: mapsContract.abi,
-                    functionName: "setMapMode",
-                    args: [BigInt(mapId), mode],
-                  });
+                  await send({ method: "set_map_mode", args: { map_id: String(mapId), mode: fromMapMode(mode) } });
+                  toast.success("Map mode updated");
+                  void queryClient.invalidateQueries({ queryKey: ALL_MAPS_KEY });
+                  void queryClient.invalidateQueries({ queryKey: presetMapKey(mapId) });
                 } catch (error) {
                   console.error("Failed to reclassify map mode:", error);
+                  toast.error("Failed to update the map mode");
                 }
               })();
             }}
+            disabled={!canEdit}
             className="px-2 py-1 bg-near-black border text-cyan focus:outline-none"
             style={{ borderRadius: 0, borderColor: "var(--color-cyan)" }}
           >
@@ -151,6 +151,7 @@ export function MapEditScreen({
             initialJoinerZonePositions={initialJoinerZonePositions ?? []}
             mapId={mapId}
             createMode={createMode}
+            currentMode={isEditing ? (modeByMapId.get(mapId) ?? MapMode.Both) : createMode}
             blockedPositions={blockedPositions}
             impassablePositions={impassablePositions}
             scoringPositions={scoringPositions}
@@ -173,14 +174,15 @@ const scoringKey = (p: ScoringPosition) => `${posKey(p)}:${Number(p.points)}:${p
 const sameScoring = (a: ScoringPosition[], b: ScoringPosition[]) =>
   a.length === b.length && a.map(scoringKey).sort().join("|") === b.map(scoringKey).sort().join("|");
 
-// Creating a map is one createFullPresetMap call. Editing sends only what
-// changed: updatePresetMap for blocked + scoring tiles,
-// updatePresetMapImpassable for impassable tiles, setCreatorZone /
-// setJoinerZone for deployment zones. Names aren't on chain or edited here
-// (app/data/content/mapNames.ts).
+// Creating a map is one create_preset_map call. Saving a map being edited
+// writes its terrain and scoring in one update_full_preset_map call (its
+// mode is changed by the picker above) and its deployment zones with
+// set_deployment_zones. Running games keep their own copy of their map.
+// Names aren't onchain or edited here (app/data/content/mapNames.ts).
 function Web3MapSaveButton({
   mapId,
   createMode,
+  currentMode,
   blockedPositions,
   impassablePositions,
   scoringPositions,
@@ -196,6 +198,7 @@ function Web3MapSaveButton({
 }: {
   mapId?: number;
   createMode: MapMode;
+  currentMode: MapMode;
   blockedPositions: MapPosition[];
   impassablePositions: MapPosition[];
   scoringPositions: ScoringPosition[];
@@ -209,22 +212,11 @@ function Web3MapSaveButton({
   validationError: string | null;
   onSuccess: () => void;
 }) {
-  const mapsContract = useMapsContract();
-  const { writeContractAsync } = useSponsoredWriteContract();
-  const publicClient = usePublicClient();
+  const { send } = useNearSession();
+  const queryClient = useQueryClient();
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = mapId !== undefined;
-
-  const send = async (functionName: string, args: readonly unknown[]) => {
-    const hash = await writeContractAsync({
-      address: mapsContract.address,
-      abi: mapsContract.abi,
-      chainId: mapsContract.chainId,
-      functionName,
-      args,
-    } as Parameters<typeof writeContractAsync>[0]);
-    await publicClient!.waitForTransactionReceipt({ hash });
-  };
+  const pos = (list: MapPosition[]) => list.map((p) => ({ row: Number(p.row), col: Number(p.col) }));
 
   const handleClick = async () => {
     if (validationError) {
@@ -234,12 +226,18 @@ function Web3MapSaveButton({
     setIsSaving(true);
     try {
       if (!isEditing) {
-        await send("createFullPresetMap", [
-          blockedPositions,
-          impassablePositions,
-          scoringPositions,
-          createMode,
-        ]);
+        await send({
+          method: "create_preset_map",
+          args: {
+            blocked: pos(blockedPositions),
+            impassable: pos(impassablePositions),
+            scoring: fromScoringPositions(
+              scoringPositions.map((s) => ({ row: Number(s.row), col: Number(s.col), points: Number(s.points), onlyOnce: s.onlyOnce })),
+            ),
+            mode: fromMapMode(createMode),
+          },
+          gas: GAS_HEAVY,
+        });
         toast.success("Map created");
       } else {
         const tilesChanged =
@@ -257,21 +255,34 @@ function Web3MapSaveButton({
           toast("No changes to save");
           return;
         }
-        if (tilesChanged) {
-          await send("updatePresetMap", [BigInt(mapId), blockedPositions, scoringPositions]);
+        if (tilesChanged || impassableChanged) {
+          // One call for the whole terrain; deployment zones are kept.
+          await send({
+            method: "update_full_preset_map",
+            args: {
+              map_id: String(mapId),
+              blocked: pos(blockedPositions),
+              impassable: pos(impassablePositions),
+              scoring: fromScoringPositions(
+                scoringPositions.map((s) => ({ row: Number(s.row), col: Number(s.col), points: Number(s.points), onlyOnce: s.onlyOnce })),
+              ),
+              mode: fromMapMode(currentMode),
+            },
+            gas: GAS_HEAVY,
+          });
         }
-        if (impassableChanged) {
-          await send("updatePresetMapImpassable", [BigInt(mapId), impassablePositions]);
-        }
-        if (creatorZoneChanged) {
-          await send("setCreatorZone", [BigInt(mapId), creatorZonePositions]);
-        }
-        if (joinerZoneChanged) {
-          await send("setJoinerZone", [BigInt(mapId), joinerZonePositions]);
+        if (creatorZoneChanged || joinerZoneChanged) {
+          await send({
+            method: "set_deployment_zones",
+            args: { map_id: String(mapId), creator_zone: pos(creatorZonePositions), joiner_zone: pos(joinerZonePositions) },
+            gas: GAS_HEAVY,
+          });
         }
         toast.success("Map updated");
         if (joinerZoneChanged) toast(JOINER_ZONE_CHANGED_NOTE, { duration: 8000 });
       }
+      void queryClient.invalidateQueries({ queryKey: ALL_MAPS_KEY });
+      if (isEditing) void queryClient.invalidateQueries({ queryKey: presetMapKey(mapId) });
       onSuccess();
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -296,7 +307,7 @@ function Web3MapSaveButton({
         {isSaving ? "Saving…" : isEditing ? "Update Map" : "Create Map"}
       </button>
       <p className="max-w-[16rem] text-xs text-text-muted">
-        Saving can take multiple transactions. Confirm each one.
+        Saving sends one transaction.
       </p>
     </div>
   );

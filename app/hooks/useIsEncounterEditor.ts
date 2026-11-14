@@ -1,29 +1,11 @@
 "use client";
 
-import { useAccount, useReadContract } from "wagmi";
-import { baseSepolia } from "viem/chains";
-import type { Abi } from "viem";
-import { CONTRACT_ABIS, CONTRACT_ADDRESSES_BY_CHAIN_ID } from "../config/contracts";
+import { useRoles } from "../near/useRoles";
+import { ROLE } from "../near/config";
 
-const CHAIN_ID = baseSepolia.id;
-const AI_ENCOUNTERS_ABI = CONTRACT_ABIS.AI_ENCOUNTERS as Abi;
-const AI_ENCOUNTERS_ADDRESS = CONTRACT_ADDRESSES_BY_CHAIN_ID[CHAIN_ID]
-  .AI_ENCOUNTERS as `0x${string}`;
-
-// AIEncounters has its own onchain, multi-address editor permission system
-// (isEncounterEditor/setEncounterEditor) — separate from MAP_ADMIN_ADDRESS,
-// which only gates map-geometry editing. Don't conflate the two.
+// AI fleet configs and map placements are edited by MAP_EDITOR (or the
+// owner) on the game contract.
 export function useIsEncounterEditor() {
-  const { address } = useAccount();
-
-  const result = useReadContract({
-    address: AI_ENCOUNTERS_ADDRESS,
-    abi: AI_ENCOUNTERS_ABI,
-    chainId: CHAIN_ID,
-    functionName: "isEncounterEditor",
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  });
-
-  return { isEditor: result.data === true, isLoading: result.isLoading };
+  const roles = useRoles();
+  return { isEditor: roles.has(ROLE.MAP_EDITOR), isLoading: roles.isLoading };
 }

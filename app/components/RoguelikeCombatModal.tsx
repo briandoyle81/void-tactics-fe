@@ -1,11 +1,9 @@
 "use client";
 
 import React from "react";
-import { useAccount, useConfig, usePublicClient } from "wagmi";
+import { useChainAccount } from "@/app/near/useChainAccount";
 import { waitForPlayerGame } from "../utils/waitForPlayerGame";
 import { useQueryClient } from "@tanstack/react-query";
-import { baseSepolia } from "viem/chains";
-import { parseEventLogs, type Abi } from "viem";
 import { toast } from "react-hot-toast";
 import {
   RoguelikeCombatFleetModal,
@@ -26,7 +24,6 @@ import {
 import type { AIShipConfig, Ship } from "../types/types";
 import { RoguelikeRun, RoguelikeNode } from "../types/roguelike";
 import { aiConfigToPreviewShip } from "../utils/aiShipConfig";
-import { CONTRACT_ABIS } from "../config/contracts";
 import { navigateToGame } from "../utils/navigateToGame";
 import { DUPLICATE_SHIP_ID_TOAST } from "../utils/fleetShipIds";
 import { useRoguelikeRunView } from "../hooks/useGameLens";
@@ -56,17 +53,15 @@ export function RoguelikeCombatModal({
   onLaunched,
 }: RoguelikeCombatModalProps) {
   const { enterCombatNode } = useRoguelikeMatch();
-  const { address } = useAccount();
-  const publicClient = usePublicClient({ chainId: baseSepolia.id });
+  const { address } = useChainAccount();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   // "warping" = tx confirmed, waiting for the Games tab's list to have the
   // new game so navigation opens it directly.
   const [isWarping, setIsWarping] = React.useState(false);
-  const wagmiConfig = useConfig();
   const [showInGameProperties, setShowInGameProperties] = React.useState(true);
 
-  const { ships: ownedShips, isLoading: shipsLoading } = useOwnedShips(baseSepolia.id);
+  const { ships: ownedShips, isLoading: shipsLoading } = useOwnedShips();
   const rosterIdSet = React.useMemo(
     () => new Set(run.rosterShipIds.map((id) => id.toString())),
     [run.rosterShipIds],
@@ -125,7 +120,7 @@ export function RoguelikeCombatModal({
     attributesMap,
     attributesLoading: attributesLoadingEffective,
     isFromCache: isAttributesFromCache,
-  } = useFleetShipAttributes(shipIdsForAttributes, baseSepolia.id);
+  } = useFleetShipAttributes(shipIdsForAttributes);
   const { hpByShipId } = useRoguelikeRunView(address, run.rosterShipIds.length > 0);
   const attributesWithRosterHull = React.useMemo(
     () =>
@@ -154,17 +149,11 @@ export function RoguelikeCombatModal({
         toast.error("Every roster ship needs a starting position.");
         return;
       }
-      const hash = await enterCombatNode(targetNode.id, orderedPositions);
-      if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        const logs = parseEventLogs({
-          abi: CONTRACT_ABIS.ROGUELIKE_MATCH as Abi,
-          logs: receipt.logs,
-          eventName: "CombatNodeEntered",
-        });
-        const gameId = (logs[0]?.args as { gameId?: bigint } | undefined)?.gameId;
+      // Resolves with the new game's id (enter_combat_node's return value).
+      const gameId = await enterCombatNode(targetNode.id, orderedPositions);
+      {
         if (!gameId) {
-          console.error("CombatNodeEntered event not found in receipt", receipt);
+          console.error("enter_combat_node returned no game id");
         } else {
           setIsWarping(true);
           // The battle reads its mission (dialog, title, music) from the
@@ -172,7 +161,7 @@ export function RoguelikeCombatModal({
           // previous node's cached run and plays that mission's dialog.
           const [found] = await Promise.all([
             address
-              ? waitForPlayerGame({ config: wagmiConfig, queryClient, playerAddress: address, gameId })
+              ? waitForPlayerGame({ queryClient, playerAddress: address, gameId })
               : Promise.resolve(false),
             invalidateRoguelikeRunQueries(queryClient),
           ]);
@@ -237,7 +226,6 @@ export function RoguelikeCombatModal({
     <MapDisplay
       mapId={Number(targetNode.mapId)}
       className="w-full h-full"
-      chainIdOverride={baseSepolia.id}
       showPlayerOverlay={true}
       isCreator={true}
       isCreatorViewer={true}

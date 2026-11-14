@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import type { Address } from "@/app/types/chain";
 import { Position, Attributes, ActionType } from "./types";
 
 /**
