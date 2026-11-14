@@ -3,9 +3,9 @@
 /**
  * "Activate your account": shown once a signed-in player's NEAR account
  * isn't fully set up (app/near/session.tsx onboarding). One click runs the
- * missing steps; the wallet asks to confirm the two that need its key
- * (adding the session key and the first storage deposit). After that,
- * playing needs no confirmations.
+ * missing steps (funding, adding the session key, the first storage
+ * deposit). It can't be closed until the account is ready: nothing in the
+ * game works without it. The only way out is signing out.
  *
  * Also listens for OPEN_STORAGE_TOP_UP_EVENT (a write that ran out of
  * storage) and offers a storage top-up.
@@ -29,8 +29,8 @@ export function openStorageTopUp(): void {
 
 const STEP_TEXT: Record<string, string> = {
   funding: "Funding your account…",
-  "adding-key": "Confirm in your wallet: this lets the game play your moves without asking each time.",
-  registering: "Confirm in your wallet: this sets aside room for your ships and battles.",
+  "adding-key": "Setting up moves without confirmations…",
+  registering: "Setting aside room for your ships and battles…",
 };
 
 export function NearOnboardingHost() {
@@ -38,7 +38,6 @@ export function NearOnboardingHost() {
   const session = useNearSession();
   const queryClient = useQueryClient();
   const [running, setRunning] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
   const [toppingUp, setToppingUp] = useState(false);
 
@@ -47,11 +46,6 @@ export function NearOnboardingHost() {
     window.addEventListener(OPEN_STORAGE_TOP_UP_EVENT, open);
     return () => window.removeEventListener(OPEN_STORAGE_TOP_UP_EVENT, open);
   }, []);
-
-  // A different account signs in: ask again.
-  useEffect(() => {
-    setDismissed(false);
-  }, [session.accountId]);
 
   const setupKnown =
     session.accountExists !== null && session.sessionKeyReady !== null && session.storageRegistered !== null;
@@ -109,14 +103,14 @@ export function NearOnboardingHost() {
     );
   }
 
-  if (!needsSetup || dismissed) return null;
+  if (!needsSetup) return null;
 
   const stepText = STEP_TEXT[session.onboardingStep];
   return (
-    <Shell title="Activate your account" onClose={running ? undefined : () => setDismissed(true)}>
+    <Shell title="Activate your account">
       <p className="text-sm text-text-secondary">
-        One-time setup before your first battle. Your wallet will ask you to confirm twice; after that, the game
-        plays your moves without asking.
+        One-time setup before your first battle. It takes a few seconds; after that, the game plays your moves
+        without asking.
       </p>
       <ol className="grid gap-1 font-mono text-xs text-text-secondary">
         <SetupRow done={session.accountExists === true} label="Account funded" />
@@ -135,6 +129,15 @@ export function NearOnboardingHost() {
       >
         {running ? "[ACTIVATING…]" : session.onboardingStep === "error" ? "TRY AGAIN" : "ACTIVATE"}
       </button>
+      {!running && (
+        <button
+          type="button"
+          onClick={() => void session.logout()}
+          className="justify-self-center font-mono text-xs uppercase tracking-wider text-text-muted hover:text-cyan"
+        >
+          Sign out
+        </button>
+      )}
     </Shell>
   );
 }

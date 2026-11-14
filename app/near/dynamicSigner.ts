@@ -17,6 +17,9 @@
  *     The embedded wallet's signer turns the bytes into a UTF-8 string
  *     first (Buffer.from(bytes).toString()), so it would show the player
  *     garbled text and sign that string instead of the hash.
+ * Like Dynamic's own wallet methods, it first syncs the wallet (sync() /
+ * connector.validateActiveWallet(address)), which sets the connector's
+ * active account; the embedded wallet refuses to sign without it.
  * A signature that doesn't verify is never broadcast.
  */
 import { PublicKey, Signer, KeyType, baseDecode, baseEncode } from "near-api-js";
@@ -27,6 +30,8 @@ export interface DynamicSolanaWalletLike {
   address: string;
   connector?: unknown;
   getSigner?: () => Promise<unknown>;
+  /** Dynamic's Wallet.sync(): makes this the connector's active account. */
+  sync?: () => Promise<unknown>;
 }
 
 type SignedLike = string | Uint8Array | number[] | { signature?: Uint8Array | string } | undefined | null;
@@ -92,10 +97,13 @@ export class DynamicNearSigner extends Signer {
     const connector = this.wallet.connector as
       | {
           key?: string;
+          validateActiveWallet?: (address: string) => Promise<unknown>;
+          setActiveAccountAddress?: (address: string) => void;
           signMessage?: (m: string) => Promise<SignedLike>;
           signRawMessage?: (a: { accountAddress: string; message: string }) => Promise<SignedLike>;
         }
       | undefined;
+    await this.syncActiveAccount(connector);
     const isEmbedded = connector?.key === "dynamicwaas" || typeof connector?.signRawMessage === "function";
     const attempts: Array<() => Promise<SignedLike>> = [];
     if (connector?.signRawMessage && bytes.length === 32) {
@@ -109,21 +117,39 @@ export class DynamicNearSigner extends Signer {
       });
     }
 
-    let lastError: unknown = null;
-    for (const attempt of attempts) {
+    // Every attempt's failure, so the first (and usually most telling) isn't hidden by a later one.
+    const failures: string[] = [];
+    for (const [i, attempt] of attempts.entries()) {
       try {
         const sig = decodeSignature(await attempt());
         if (sig && this.publicKey.verify(bytes, sig)) return sig;
+        failures.push(`#${i + 1}: ${sig ? "signature didn't verify" : "no signature returned"}`);
       } catch (e) {
         // A user rejection ends it; anything else tries the next method.
-        const text = String((e as Error)?.message ?? e).toLowerCase();
-        if (text.includes("reject") || text.includes("denied") || text.includes("cancel")) throw e;
-        lastError = e;
+        const text = String((e as Error)?.message ?? e);
+        const lower = text.toLowerCase();
+        if (lower.includes("reject") || lower.includes("denied") || lower.includes("cancel")) throw e;
+        failures.push(`#${i + 1}: ${text}`);
       }
     }
+    console.warn("[near] wallet signing failed:", failures);
     throw new Error(
-      `The wallet couldn't sign this NEAR transaction (key ${baseEncode(this.publicKey.data).slice(0, 8)}…).` +
-        (lastError ? ` ${String((lastError as Error)?.message ?? lastError)}` : ""),
+      `The wallet couldn't sign this NEAR transaction (key ${baseEncode(this.publicKey.data).slice(0, 8)}…). ` +
+        failures.join("; "),
     );
+  }
+
+  /** Makes this wallet the connector's active account, as Dynamic's own methods do before signing. */
+  private async syncActiveAccount(connector: {
+    validateActiveWallet?: (address: string) => Promise<unknown>;
+    setActiveAccountAddress?: (address: string) => void;
+  } | undefined) {
+    try {
+      if (this.wallet.sync) await this.wallet.sync();
+      else if (connector?.validateActiveWallet) await connector.validateActiveWallet(this.wallet.address);
+    } catch (e) {
+      console.warn("[near] wallet sync failed:", e);
+    }
+    connector?.setActiveAccountAddress?.(this.wallet.address);
   }
 }
