@@ -36,7 +36,7 @@ import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
 import { useTransaction } from "../providers/TransactionContext";
 import { TransactionButton } from "./TransactionButton";
-import { GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { useCurrentCostsVersion, useMaxVariant } from "../hooks/useShipAttributesContract";
 import { useGameSettings } from "../near/useGameSettings";
 import type { GameSettings } from "../near/generated/voidTactics";
@@ -777,7 +777,7 @@ const ManageNavy: React.FC = () => {
     staleCostSyncShipIds.length === 0 ? null : (
       <TransactionButton
         transactionId="manage-navy-sync-stale-costs-bulk"
-        call={{ method: "sync_ship_costs", args: { ship_ids: staleCostSyncBatch.map(String) }, gas: GAS_HEAVY }}
+        call={{ method: "sync_ship_costs", args: { ship_ids: staleCostSyncBatch.map(String) }, gas: GAS_DEFAULT }}
         disabled={transactionState.isPending}
         className="w-full justify-center px-6 py-3 rounded-none border-2 border-amber text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed md:w-auto"
         style={{ borderRadius: 0 }}
@@ -1322,7 +1322,7 @@ const ManageNavy: React.FC = () => {
           shipToRecycle && (
             <TransactionButton
               transactionId={`recycle-ship-${shipToRecycle.id}`}
-              call={{ method: "recycle_ships", args: { ship_ids: [shipToRecycle.id.toString()] }, gas: GAS_HEAVY }}
+              call={{ method: "recycle_ships", args: { ship_ids: [shipToRecycle.id.toString()] }, gas: GAS_DEFAULT }}
               className="px-6 py-2 border border-warning-red text-warning-red hover:bg-warning-red/10 rounded-none font-mono font-bold transition-all duration-200"
               onSuccess={async () => {
                 toast.success("Ship recycled successfully!");

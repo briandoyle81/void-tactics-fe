@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useChainAccount } from "../near/useChainAccount";
 import { useNearSession } from "../near/session";
-import { GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { toBig } from "../near/codec";
 import type { Address } from "../types/chain";
 import { useLobbyCount, usePlayerLobbyState, useLobbySettings } from "./useLobbiesContract";
@@ -43,7 +43,7 @@ export function useLobbies() {
   const call = useCallback(
     async <M extends keyof Calls>(method: M, args: Calls[M]["args"]) => {
       if (!address) throw new Error("No wallet connected");
-      return send({ method, args, gas: GAS_HEAVY } as NearCallSpec);
+      return send({ method, args, gas: GAS_DEFAULT } as NearCallSpec);
     },
     [address, send],
   );

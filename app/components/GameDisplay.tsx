@@ -27,7 +27,7 @@ import { ShipImage } from "./ShipImage";
 import { toShipCardData } from "../utils/toShipCardData";
 import { gameStateSyncKey, isOlderGameState } from "../utils/normalizeGameDataView";
 import { AI_PLAYER, GAME_MODE, toNearAction } from "../near/adapters/game";
-import { GAS_DEFAULT, GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { GameFleetDetailsModal } from "./GameFleetDetailsModal";
 import { GameFleetDetailShipCard } from "./GameFleetDetailShipCard";
 import { GameTooltipShipCard } from "./GameTooltipShipCard";
@@ -2920,7 +2920,7 @@ const GameDisplay: React.FC<GameDisplayProps> = ({
             call={{
               method: "end_game_on_timeout",
               args: { game_id: game.metadata.gameId.toString() },
-              gas: GAS_HEAVY,
+              gas: GAS_DEFAULT,
             }}
             className="px-3 py-1 uppercase font-semibold tracking-wider transition-colors duration-150 w-full h-full animate-timeout-soft"
             loadingText="Claiming…"

@@ -3,7 +3,7 @@
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
 import type { Ship } from "../types/types";
-import { GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import posthog from "posthog-js";
 
 interface ShipActionButtonProps {
@@ -31,7 +31,7 @@ export function ShipActionButton({
   const call = React.useMemo(
     () =>
       shipIds && shipIds.length > 0
-        ? { method: "recycle_ships" as const, args: { ship_ids: shipIds.map(String) }, gas: GAS_HEAVY }
+        ? { method: "recycle_ships" as const, args: { ship_ids: shipIds.map(String) }, gas: GAS_DEFAULT }
         : null,
     [shipIds],
   );

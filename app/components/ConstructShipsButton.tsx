@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import type { Ship } from "../types/types";
 import { useNearSession } from "../near/session";
-import { GAS_HEAVY } from "../near/config";
+import { gasForShips } from "../near/config";
 import { isContractError, shortErrorMessage } from "../near/errors";
 import { openStorageTopUp } from "../near/onboarding/NearOnboardingHost";
 
@@ -49,7 +49,7 @@ export function ConstructShipsButton({
       // construct_ships builds up to 50 per call.
       for (let i = 0; i < count; i += CONSTRUCT_BATCH) {
         const ids = unconstructedShips.slice(i, i + CONSTRUCT_BATCH).map((ship) => ship.id.toString());
-        await send({ method: "construct_ships", args: { ship_ids: ids }, gas: GAS_HEAVY });
+        await send({ method: "construct_ships", args: { ship_ids: ids }, gas: gasForShips(ids.length) });
       }
       toast.success(`Built ${count} ship${count === 1 ? "" : "s"}.`);
       await onConstructed?.();

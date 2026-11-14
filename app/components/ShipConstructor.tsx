@@ -9,7 +9,7 @@ import { useOwnedShips } from "../hooks/useOwnedShips";
 import { useChainAccount } from "@/app/near/useChainAccount";
 import { useNearView } from "@/app/near/useNearView";
 import { useTokenBalance } from "@/app/near/useTokenBalance";
-import { GAS_HEAVY, TOKEN_UTC } from "@/app/near/config";
+import { GAS_DEFAULT, TOKEN_UTC } from "@/app/near/config";
 import { formatUnits18 } from "@/app/near/codec";
 import { fromEquipment } from "@/app/near/adapters/ship";
 import { TransactionButton } from "./TransactionButton";
@@ -744,7 +744,7 @@ const ShipConstructor: React.FC<ShipConstructorProps> = ({
                 >
                   <TransactionButton
                     transactionId={`customize-ship-${selectedShipId}-${address}`}
-                    call={modifyArgs ? { method: "modify_ship", args: modifyArgs, gas: GAS_HEAVY } : null}
+                    call={modifyArgs ? { method: "modify_ship", args: modifyArgs, gas: GAS_DEFAULT } : null}
                     className="w-full px-6 py-3 rounded-none border-2 border-amber text-amber hover:border-amber hover:text-amber hover:bg-amber/10 font-mono font-bold tracking-wider transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     loadingText="[CUSTOMIZING SHIP…]"
                     errorText="[ERROR CUSTOMIZING]"

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useChainAccount } from "../near/useChainAccount";
 import { useNearSession } from "../near/session";
 import { useNearView } from "../near/useNearView";
-import { GAS_HEAVY } from "../near/config";
+import { gasForShips } from "../near/config";
 import { isContractError, isUserRejection, shortErrorMessage } from "../near/errors";
 import { openStorageTopUp } from "../near/onboarding/NearOnboardingHost";
 import { useOwnedShips } from "./useOwnedShips";
@@ -76,7 +76,8 @@ export function useFreeShipClaiming() {
       const receipt = await send({
         method: "claim_free_ships",
         args: { variant: selectedVariant },
-        gas: GAS_HEAVY,
+        // Sized to the claim (ships_per_claim); 300 Tgas would need ~0.3 NEAR up front.
+        gas: gasForShips(status?.ships_per_claim ?? 20),
       });
       const ids = (receipt.returnValue as string[] | null) ?? [];
       setIsConfirmed(true);
@@ -93,7 +94,7 @@ export function useFreeShipClaiming() {
     } finally {
       setIsPending(false);
     }
-  }, [address, isEligible, send, selectedVariant, refetchClaimStatus, refetchShips]);
+  }, [address, isEligible, send, selectedVariant, status?.ships_per_claim, refetchClaimStatus, refetchShips]);
 
   return {
     isEligible,

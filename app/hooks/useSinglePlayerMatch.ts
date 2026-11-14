@@ -2,7 +2,7 @@
 import { useCallback, useMemo } from "react";
 import { useNearSession } from "../near/session";
 import { useNearView } from "../near/useNearView";
-import { GAS_DEFAULT, GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { toBig } from "../near/codec";
 
 /** The game contract plays the AI; take_ai_turns serves single-player and roguelike games alike. */
@@ -17,7 +17,7 @@ export function useSinglePlayerMatch() {
       const receipt = await send({
         method: "start_node_match",
         args: { node_id: nodeId.toString(), ship_ids: shipIds.map(String), positions },
-        gas: GAS_HEAVY,
+        gas: GAS_DEFAULT,
       });
       const gameId = toBig(receipt.returnValue as string);
       return gameId;
@@ -35,7 +35,7 @@ export function useSinglePlayerMatch() {
       send({
         method: "take_ai_turns",
         args: { game_id: gameId.toString(), max_moves: Math.max(1, Math.min(AI_TURNS_PER_CALL_MAX, maxMoves)) },
-        gas: GAS_HEAVY,
+        gas: GAS_DEFAULT,
       }),
     [send],
   );

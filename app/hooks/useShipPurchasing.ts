@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import { useChainAccount } from "../near/useChainAccount";
 import { useNearSession } from "../near/session";
 import { useNearBalance } from "../near/useNearBalance";
-import { GAS_HEAVY } from "../near/config";
+import { gasForShips } from "../near/config";
 import { formatNear } from "../near/codec";
 import { isUserRejection, shortErrorMessage } from "../near/errors";
 import { useOwnedShips } from "./useOwnedShips";
@@ -49,7 +49,7 @@ export function useShipPurchasing() {
           method: "purchase_ships_with_near",
           args: { tier, referral: null, variant },
           deposit: price,
-          gas: GAS_HEAVY,
+          gas: gasForShips(Number(shipsPerTier[tier] ?? 60)),
         });
         toast.success("Ships purchased! They're being built now.");
         await refetch();
@@ -61,7 +61,7 @@ export function useShipPurchasing() {
         setIsPending(false);
       }
     },
-    [address, tiers.length, pricesWei, nearBalance, send, refetch],
+    [address, tiers.length, pricesWei, shipsPerTier, nearBalance, send, refetch],
   );
 
   const getPurchaseCosts = (tier: number) => {

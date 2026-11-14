@@ -3,7 +3,7 @@
 import React from "react";
 import { useChainAccount } from "@/app/near/useChainAccount";
 import { useTokenBalance } from "@/app/near/useTokenBalance";
-import { GAS_HEAVY, TOKEN_UTC } from "@/app/near/config";
+import { GAS_DEFAULT, TOKEN_UTC } from "@/app/near/config";
 import { toast } from "react-hot-toast";
 import { TransactionButton } from "./TransactionButton";
 import { formatUtcWei } from "../utils/formatUtc";
@@ -285,7 +285,7 @@ export function RoguelikeResupplyPanel({ run, node, onDone }: RoguelikeResupplyP
         confirmButton={
           <TransactionButton
             transactionId={`repair-roguelike-roster-${address}`}
-            call={{ method: "resupply_repair", args: { ship_ids: repairKeys.map(String) }, gas: GAS_HEAVY }}
+            call={{ method: "resupply_repair", args: { ship_ids: repairKeys.map(String) }, gas: GAS_DEFAULT }}
             validateBeforeTransaction={() => (canAffordRepair ? true : "Insufficient UTC balance")}
             className="h-11 w-full border-2 border-phosphor-green bg-phosphor-green/10 px-4 text-sm font-bold uppercase tracking-wider text-phosphor-green transition-colors hover:bg-phosphor-green/20 disabled:cursor-not-allowed disabled:opacity-50"
             loadingText="[REPAIRING…]"

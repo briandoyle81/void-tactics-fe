@@ -39,6 +39,19 @@ export const GAS_DEFAULT = BigInt(50) * TGAS;
 /** Claims, purchases, AI turns and other heavy calls. */
 export const GAS_HEAVY = BigInt(300) * TGAS;
 
+/**
+ * Gas for a call that mints `ships` ships: the call itself plus the
+ * randomness callback it schedules (10 Tgas + 3 per ship, the contract's
+ * randomness.rs), with room to spare. NEAR makes the signer hold the full
+ * attached gas's cost up front (about 0.001 NEAR per Tgas on testnet,
+ * refunded after), so a new player with a small balance can't attach 300
+ * Tgas: player calls attach what they need. GAS_HEAVY is for admin tools.
+ */
+export function gasForShips(ships: number): bigint {
+  const tgas = 40 + 3 * Math.max(1, Math.ceil(ships));
+  return BigInt(Math.min(300, tgas)) * TGAS;
+}
+
 export const YOCTO_PER_NEAR = BigInt(10) ** BigInt(24);
 export const ONE_YOCTO = BigInt(1);
 

@@ -2,7 +2,7 @@ import { toast } from "react-hot-toast";
 import { useCallback, useState } from "react";
 import { useChainAccount } from "../near/useChainAccount";
 import { useNearSession } from "../near/session";
-import { GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT, gasForShips } from "../near/config";
 import { isUserRejection, shortErrorMessage } from "../near/errors";
 import { useOwnedShips } from "./useOwnedShips";
 
@@ -45,7 +45,7 @@ export function useShipActions() {
   const constructShip = useCallback(
     (shipId: bigint) =>
       run(
-        () => send({ method: "construct_ship", args: { ship_id: shipId.toString() }, gas: GAS_HEAVY }),
+        () => send({ method: "construct_ship", args: { ship_id: shipId.toString() }, gas: gasForShips(1) }),
         "Ship constructed!",
         "Couldn't construct ship",
       ),
@@ -59,7 +59,7 @@ export function useShipActions() {
         return Promise.resolve();
       }
       return run(
-        () => send({ method: "recycle_ships", args: { ship_ids: shipIds.map(String) }, gas: GAS_HEAVY }),
+        () => send({ method: "recycle_ships", args: { ship_ids: shipIds.map(String) }, gas: GAS_DEFAULT }),
         `Recycled ${shipIds.length} ships for UTC!`,
         "Couldn't recycle ships",
       );

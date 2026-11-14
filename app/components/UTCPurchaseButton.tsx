@@ -4,7 +4,7 @@ import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
 import { useChainAccount } from "@/app/near/useChainAccount";
 import { useNearBalance } from "@/app/near/useNearBalance";
-import { GAS_HEAVY } from "@/app/near/config";
+import { GAS_DEFAULT } from "@/app/near/config";
 import posthog from "posthog-js";
 
 interface UTCPurchaseButtonProps {
@@ -50,7 +50,7 @@ export function UTCPurchaseButton({
   return (
     <TransactionButton
       transactionId={`purchase-utc-tier-${tier}-${address}`}
-      call={{ method: "buy_utc_with_near", args: { tier }, deposit: flowCost, gas: GAS_HEAVY }}
+      call={{ method: "buy_utc_with_near", args: { tier }, deposit: flowCost, gas: GAS_DEFAULT }}
       className={className}
       disabled={disabled}
       loadingText="[PURCHASING UTC…]"

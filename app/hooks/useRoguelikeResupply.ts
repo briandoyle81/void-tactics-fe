@@ -3,7 +3,7 @@
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNearSession } from "../near/session";
-import { GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { invalidateRoguelikeRunQueries } from "./useRoguelikeRun";
 import { useGameSettings } from "../near/useGameSettings";
 import type { GameSettings } from "../near/generated/voidTactics";
@@ -28,7 +28,7 @@ export function useRoguelikeResupply() {
       const receipt = await send({
         method: "resupply_modify_roster",
         args: { add: shipIdsToAdd.map(String), remove: shipIdsToRemove.map(String) },
-        gas: GAS_HEAVY,
+        gas: GAS_DEFAULT,
       });
       void invalidateRoguelikeRunQueries(queryClient);
       return receipt;
@@ -41,7 +41,7 @@ export function useRoguelikeResupply() {
       const receipt = await send({
         method: "resupply_repair",
         args: { ship_ids: shipIds.map(String) },
-        gas: GAS_HEAVY,
+        gas: GAS_DEFAULT,
       });
       void invalidateRoguelikeRunQueries(queryClient);
       return receipt;

@@ -127,7 +127,7 @@ import type { GameScoreData } from "../types/gameDisplayData";
 import { useRoundStartAnnouncement } from "../hooks/useRoundStartAnnouncement";
 import { useChainAccount } from "@/app/near/useChainAccount";
 import { useNearCall } from "@/app/near/useNearCall";
-import { GAS_HEAVY } from "@/app/near/config";
+import { gasForShips } from "@/app/near/config";
 import { isContractError, isUserRejection } from "@/app/near/errors";
 import { TUTORIAL_CLAIM_SCOPE } from "../hooks/useTutorialCompleted";
 import { useAppMode } from "../hooks/useAppMode";
@@ -551,7 +551,7 @@ export function SimulatedGameDisplay({
         chain_id: activeChainId,
       });
       try {
-        await sendNearCall({ method: "complete_tutorial", args: { win_path: path === "win" }, gas: GAS_HEAVY });
+        await sendNearCall({ method: "complete_tutorial", args: { win_path: path === "win" }, gas: gasForShips(10) });
         markTutorialClaimed();
         toast.success("Tutorial reward claimed");
       } catch (e) {

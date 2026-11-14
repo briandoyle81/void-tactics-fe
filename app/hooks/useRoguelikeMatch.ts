@@ -6,7 +6,7 @@ import { invalidateShipsReads } from "./useShipsContract";
 import { RoguelikePosition } from "../types/roguelike";
 import { trackMissionStarted, trackResupplyEntered, trackRunStarted } from "../utils/analytics/gameEvents";
 import { useNearSession } from "../near/session";
-import { GAS_DEFAULT, GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { toBig } from "../near/codec";
 import { nearViewPrefix } from "../near/useNearView";
 import { useSinglePlayerMatch } from "./useSinglePlayerMatch";
@@ -29,7 +29,7 @@ export function useRoguelikeMatch() {
       const receipt = await send({
         method: "start_run",
         args: { campaign_id: campaignId.toString(), ship_ids: shipIds.map(String) },
-        gas: GAS_HEAVY,
+        gas: GAS_DEFAULT,
       });
       afterRunChange();
       trackRunStarted({ appMode: "web3", campaignId, fleetSize: shipIds.length });
@@ -47,7 +47,7 @@ export function useRoguelikeMatch() {
           node_id: targetNodeId.toString(),
           positions: positions.map((p) => ({ row: Number(p.row), col: Number(p.col) })),
         },
-        gas: GAS_HEAVY,
+        gas: GAS_DEFAULT,
       });
       const gameId = toBig(receipt.returnValue as string);
       afterRunChange();
@@ -75,7 +75,7 @@ export function useRoguelikeMatch() {
   // gameId if retreating mid-combat.
   const retreatRun = useCallback(
     async (gameId: bigint) => {
-      const receipt = await send({ method: "retreat_run", args: { game_id: gameId.toString() }, gas: GAS_HEAVY });
+      const receipt = await send({ method: "retreat_run", args: { game_id: gameId.toString() }, gas: GAS_DEFAULT });
       afterRunChange();
       return receipt;
     },

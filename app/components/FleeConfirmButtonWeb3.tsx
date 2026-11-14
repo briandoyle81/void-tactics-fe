@@ -2,7 +2,7 @@
 
 import React from "react";
 import { TransactionButton, type TransactionFollowUp } from "./TransactionButton";
-import { GAS_HEAVY } from "../near/config";
+import { GAS_DEFAULT } from "../near/config";
 import { toast } from "react-hot-toast";
 import type { NearCallSpec } from "../near/session";
 
@@ -26,8 +26,8 @@ export function FleeConfirmButtonWeb3({
   const call = React.useMemo<NearCallSpec>(
     () =>
       isRoguelike
-        ? { method: "retreat_run", args: { game_id: gameId.toString() }, gas: GAS_HEAVY }
-        : { method: "flee", args: { game_id: gameId.toString() }, gas: GAS_HEAVY },
+        ? { method: "retreat_run", args: { game_id: gameId.toString() }, gas: GAS_DEFAULT }
+        : { method: "flee", args: { game_id: gameId.toString() }, gas: GAS_DEFAULT },
     [isRoguelike, gameId],
   );
 

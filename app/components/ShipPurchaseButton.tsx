@@ -6,7 +6,8 @@ import posthog from "posthog-js";
 import { useChainAccount } from "@/app/near/useChainAccount";
 import { useNearBalance } from "@/app/near/useNearBalance";
 import { useTokenBalance } from "@/app/near/useTokenBalance";
-import { GAS_HEAVY, TOKEN_UTC } from "@/app/near/config";
+import { TOKEN_UTC, gasForShips } from "@/app/near/config";
+import { usePriceTiers } from "../hooks/usePriceTiers";
 
 interface ShipPurchaseButtonProps {
   tier: number;
@@ -47,6 +48,10 @@ export function ShipPurchaseButton({
 }: ShipPurchaseButtonProps) {
   const { address } = useChainAccount();
   const purchaseVariant = variant ?? 1;
+  // Gas sized to the pack (the ships' randomness callback); a full 300 Tgas
+  // needs ~0.3 NEAR held up front, which a UTC buyer may not have.
+  const { data: priceTiers } = usePriceTiers();
+  const gas = gasForShips(priceTiers?.[tier]?.ships ?? 60);
   const { data: nearBalance } = useNearBalance(address);
   const { data: utcBalance, isPending: utcBalancePending } = useTokenBalance(
     address,
@@ -77,7 +82,7 @@ export function ShipPurchaseButton({
     return (
       <TransactionButton
         transactionId={`purchase-ships-utc-tier-${tier}-v${purchaseVariant}-${address}`}
-        call={{ method: "purchase_ships_with_utc", args, gas: GAS_HEAVY }}
+        call={{ method: "purchase_ships_with_utc", args, gas }}
         className={className}
         disabled={disabled || !address || (!utcBalancePending && (utcBalance === undefined || utcBalance < price))}
         loadingText="[PURCHASING…]"
@@ -97,7 +102,7 @@ export function ShipPurchaseButton({
   return (
     <TransactionButton
       transactionId={`purchase-ships-near-tier-${tier}-v${purchaseVariant}-${address}`}
-      call={{ method: "purchase_ships_with_near", args, deposit: price, gas: GAS_HEAVY }}
+      call={{ method: "purchase_ships_with_near", args, deposit: price, gas }}
       className={className}
       disabled={disabled}
       loadingText="[PURCHASING…]"
