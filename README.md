@@ -50,14 +50,14 @@ On the live build, against NEAR testnet:
 
 ### How the pieces fit
 
-| Piece | Where |
-|---|---|
-| Chain layer (views, sends, sync, onboarding) | `app/near/` |
-| Session key and Dynamic signer | `app/near/session.tsx`, `app/near/dynamicSigner.ts`, `app/near/sessionKey.ts` |
-| Polling by change counters | `app/near/sync/NearSyncHost.tsx` |
-| Generated contract types | `app/near/generated/`, from `app/near/abi/*.json` |
+| Piece                                                              | Where                                                                           |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Chain layer (views, sends, sync, onboarding)                       | `app/near/`                                                                     |
+| Session key and Dynamic signer                                     | `app/near/session.tsx`, `app/near/dynamicSigner.ts`, `app/near/sessionKey.ts`   |
+| Polling by change counters                                         | `app/near/sync/NearSyncHost.tsx`                                                |
+| Generated contract types                                           | `app/near/generated/`, from `app/near/abi/*.json`                               |
 | Privileged server calls (faucet, Selfie Check verifier, card mint) | `app/api/faucet/near/`, `app/api/selfie-check/verify/`, `app/api/flow/fulfill/` |
-| Contract-side ids for seed content | `app/near/deployments/testnet.json` (a copy of the contracts repo's record) |
+| Contract-side ids for seed content                                 | `app/near/deployments/testnet.json` (a copy of the contracts repo's record)     |
 
 ---
 
@@ -80,8 +80,6 @@ Resource tiles award points to the side holding them at the end of each round (s
 ### Onboarding
 
 First Contact, a fully scripted battle (simulated locally, no gas), teaches movement, inspecting ships, nebulae, scoring, shooting, EMPs, reactor damage and the choice between saving a ship and winning the round. Completing it unlocks a claimable ship reward onchain.
-
----
 
 ---
 
