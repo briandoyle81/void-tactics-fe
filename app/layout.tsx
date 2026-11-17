@@ -7,6 +7,7 @@ import "./utils/bigintJson";
 import AlphaNoticeModal from "./components/AlphaNoticeModal";
 import { Toaster } from "react-hot-toast";
 import { LocalhostFrame } from "./components/LocalhostFrame";
+import { GoogleAnalytics } from "./components/GoogleAnalytics";
 
 const rajdhani = Rajdhani({
   variable: "--font-rajdhani",
@@ -22,6 +23,10 @@ const jetbrainsMono = JetBrains_Mono({
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://voidtactics.xyz";
+
+// Google Search Console's HTML-tag verification token (the content of its
+// google-site-verification meta tag). Unset: no tag.
+const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
 const defaultPageTitle =
   "Void Tactics: Turn-Based Space Tactics, Fully Onchain";
@@ -107,6 +112,7 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
   // Talent App domain / project verification (public token, non-executable).
   other: {
     "talentapp:project_verification":
@@ -165,6 +171,7 @@ export default function RootLayout({
         {children}
         <AlphaNoticeModal />
         <LocalhostFrame />
+        <GoogleAnalytics />
         <Toaster
           position="top-right"
           toastOptions={{

@@ -39,7 +39,7 @@ export default function PrivacyPolicyPage() {
           className="mb-10 text-sm uppercase tracking-wider"
           style={{ color: "var(--color-text-muted)" }}
         >
-          Last updated: November 11, 2026
+          Last updated: November 17, 2026
         </p>
 
         <div className="space-y-6 text-sm leading-relaxed sm:text-base">
@@ -134,6 +134,50 @@ export default function PrivacyPolicyPage() {
                 PostHog privacy information
               </a>{" "}
               for how they process data.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2
+              className="text-lg font-bold uppercase tracking-wide"
+              style={{
+                fontFamily: "var(--font-rajdhani), 'Arial Black', sans-serif",
+              }}
+            >
+              Analytics (Google Analytics)
+            </h2>
+            <p style={{ color: "var(--color-text-secondary)" }}>
+              We also use{" "}
+              <a
+                href="https://marketingplatform.google.com/about/analytics/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Google Analytics
+              </a>{" "}
+              to measure site traffic: which pages are visited, how visitors arrive (for
+              example from search or a link), and general device, browser, and approximate
+              location data. Google Analytics uses cookies to tell visits apart. We do not
+              send your wallet address, email, or in-game actions to Google Analytics. Review{" "}
+              <a
+                href="https://policies.google.com/technologies/partner-sites"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                how Google uses data from sites that use its services
+              </a>
+              , or opt out with the{" "}
+              <a
+                href="https://tools.google.com/dlpage/gaoptout"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-cyan underline decoration-cyan/50 underline-offset-4 hover:text-cyan/80"
+              >
+                Google Analytics opt-out add-on
+              </a>
+              .
             </p>
           </section>
 
