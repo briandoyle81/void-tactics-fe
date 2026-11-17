@@ -22,6 +22,7 @@ import { toast } from "react-hot-toast";
 import { NEAR_TX_SETTLED_EVENT, useNearSession, type NearSettledDetail } from "../session";
 import { nearViewPrefix } from "../useNearView";
 import { viewGame } from "../rpc";
+import { loadedGameVersion } from "../adapters/game";
 import { globalGameRefetchFunctions, NEAR_QUERY_ROOTS } from "./gameRefetchRegistry";
 import { usePageVisible, useWindowFocused } from "../../hooks/usePageVisible";
 import {
@@ -151,12 +152,11 @@ export function NearSyncHost() {
     return () => window.removeEventListener(NEAR_TX_SETTLED_EVENT, onSettled);
   }, [queryClient]);
 
-  // Fast cadence: each open match checks its version, and refetches its
-  // board only when it moved. The first check after a game opens refetches
-  // once (the board may have loaded before a change).
+  // Fast cadence: each open match checks its version and refetches its
+  // board while the chain's version differs from the board last loaded
+  // (loadedGameVersion), so a refetch that failed is retried next tick.
   const fast = matchViewOpen || fastRequested;
   const watching = !!accountId && (isPageVisible || hiddenTurnWatch);
-  const gameVersionsRef = useRef<Map<number, string>>(new Map());
   useEffect(() => {
     if (!watching || !fast) return;
     const interval = !isPageVisible ? HIDDEN_TURN_POLL_MS : isWindowFocused ? FAST_POLL_MS : BLURRED_POLL_MS;
@@ -168,10 +168,8 @@ export function NearSyncHost() {
       void Promise.all(
         entries.map(async ([gameId, refetch]) => {
           const version = await viewGame("get_game_version", { game_id: String(gameId) }).catch(() => undefined);
-          if (version === undefined) return;
-          const seen = gameVersionsRef.current.get(gameId);
-          gameVersionsRef.current.set(gameId, String(version));
-          if (seen !== String(version)) refetch();
+          if (version == null) return;
+          if (loadedGameVersion(gameId) !== Number(version)) refetch();
         }),
       ).finally(() => {
         inFlight = false;

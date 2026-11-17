@@ -154,6 +154,21 @@ function toLastMove(m: NearLastMove | null | undefined): LastMove | undefined {
   };
 }
 
+// The version (GameState.version) of the board last loaded per game, set
+// only when a read succeeds. NearSyncHost refetches a game while its chain
+// version differs from this, so a failed refetch (a rate-limited read) is
+// retried on the next poll instead of leaving the board stale.
+const loadedVersions = new Map<string, number>();
+
+function noteLoaded(state: GameState) {
+  loadedVersions.set(String(state.game_id), Number(state.version));
+}
+
+/** The version of the board last loaded for this game (undefined before the first read). */
+export function loadedGameVersion(gameId: bigint | number | string): number | undefined {
+  return loadedVersions.get(String(gameId));
+}
+
 /** GameState + who plays it -> GameDataView. */
 export function toGameDataView(state: GameState, meta: GameMeta): GameDataView {
   const board = state.board;
@@ -245,7 +260,10 @@ export async function fetchGameDataView(
     viewGame("get_game", { game_id: String(gameId) }),
     fetchGameMeta(gameId),
   ]);
-  if (state) onState?.(state);
+  if (state) {
+    noteLoaded(state);
+    onState?.(state);
+  }
   if (!state || !meta) return null;
   return toGameDataView(state, meta);
 }
@@ -264,6 +282,7 @@ export async function fetchGameDataViews(gameIds: Array<bigint | number | string
   gameIds.forEach((id, i) => {
     const state = byId.get(String(id));
     const meta = metas[i];
+    if (state) noteLoaded(state);
     if (state && meta) out.push(toGameDataView(state, meta));
   });
   return out;

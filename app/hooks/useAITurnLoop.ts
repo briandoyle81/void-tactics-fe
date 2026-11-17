@@ -15,6 +15,12 @@ const MAX_ITERATIONS = 20;
 // before the board changes again.
 const MOVE_PACING_MS = 1800;
 
+// A failed AI call (often a rate-limited RPC read) is retried this many
+// times, after refetching the board, before the loop gives up and asks for
+// a refresh.
+const MAX_FAILURE_RETRIES = 3;
+const RETRY_DELAY_MS = 2500;
+
 interface UseAITurnLoopParams {
   gameId: bigint;
   isAITurn: boolean;
@@ -51,12 +57,15 @@ export function useAITurnLoop({
   const [isWaitingToAct, setIsWaitingToAct] = useState(false);
   const inFlightRef = useRef(false);
   const iterationRef = useRef(0);
+  const failuresRef = useRef(0);
+  const [retryTick, setRetryTick] = useState(0);
   const lastMoveSignalRef = useRef(lastMoveSignal);
   lastMoveSignalRef.current = lastMoveSignal;
 
   useEffect(() => {
     if (!isAITurn || isGameOver) {
       iterationRef.current = 0;
+      failuresRef.current = 0;
       setMoveCount((c) => (c === 0 ? c : 0));
       setError((e) => (e == null ? e : null));
       setIsWaitingToAct((w) => (w ? false : w));
@@ -87,6 +96,7 @@ export function useAITurnLoop({
         dispatchGameMoves(aiMovesFromTurns(receipt.hash, receipt.events, before, after));
       })()
         .then(() => {
+          failuresRef.current = 0;
           setMoveCount((c) => c + 1);
           void refetchUntilChanged({
             refetch: refetchGame,
@@ -95,6 +105,15 @@ export function useAITurnLoop({
         })
         .catch((err) => {
           console.error("take_ai_turns failed:", err);
+          if (failuresRef.current < MAX_FAILURE_RETRIES) {
+            // Transient (usually a rate-limited read): refetch the board (the
+            // AI may have moved after all) and try again shortly.
+            failuresRef.current += 1;
+            iterationRef.current = Math.max(0, iterationRef.current - 1);
+            refetchGame();
+            setTimeout(() => setRetryTick((t) => t + 1), RETRY_DELAY_MS * failuresRef.current);
+            return;
+          }
           setError("AI turn failed — please refresh.");
           trackAITurnFailed({ appMode: "web3", gameMode, gameId, reason: "failed" });
         })
@@ -114,7 +133,7 @@ export function useAITurnLoop({
     // lastMoveSignal re-runs this once fresh state confirms the previous AI
     // move landed, so the next call never fires against stale data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAITurn, isGameOver, gameId, lastMoveSignal]);
+  }, [isAITurn, isGameOver, gameId, lastMoveSignal, retryTick]);
 
   return {
     isAIThinking: isAITurn && !isGameOver && !error,

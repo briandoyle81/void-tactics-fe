@@ -12,14 +12,37 @@ export type NearNetwork = "testnet" | "mainnet" | "sandbox";
 export const NEAR_NETWORK: NearNetwork =
   (process.env.NEXT_PUBLIC_NEAR_NETWORK as NearNetwork | undefined) ?? "testnet";
 
-const DEFAULT_RPC: Record<NearNetwork, string> = {
-  testnet: "https://test.rpc.fastnear.com",
-  mainnet: "https://rpc.mainnet.fastnear.com",
-  sandbox: "http://127.0.0.1:3030",
+/**
+ * Free public endpoints (no key), each with its own rate limit. The client
+ * spreads reads across them and moves on to the next when one rate-limits
+ * (app/near/rpc.ts). Checked 2026-11-14: Lava's NEAR testnet endpoint is
+ * discontinued and Ankr's needs a paid key.
+ */
+const DEFAULT_RPCS: Record<NearNetwork, string[]> = {
+  testnet: ["https://test.rpc.fastnear.com", "https://near-testnet.drpc.org", "https://rpc.testnet.near.org"],
+  mainnet: ["https://rpc.mainnet.fastnear.com", "https://near.drpc.org", "https://rpc.mainnet.near.org"],
+  sandbox: ["http://127.0.0.1:3030"],
 };
 
-/** Never hardcode a keyed URL: a keyed provider goes in NEXT_PUBLIC_NEAR_RPC_URL. */
-export const NEAR_RPC_URL = process.env.NEXT_PUBLIC_NEAR_RPC_URL || DEFAULT_RPC[NEAR_NETWORK];
+/**
+ * The RPC endpoints, in order of preference: NEXT_PUBLIC_NEAR_RPC_URLS
+ * (comma-separated) or NEXT_PUBLIC_NEAR_RPC_URL (one, tried before the
+ * public ones), else the public list. Never hardcode a keyed URL: a keyed
+ * provider goes in the env.
+ */
+export const NEAR_RPC_URLS: string[] = (() => {
+  const list = (process.env.NEXT_PUBLIC_NEAR_RPC_URLS ?? "")
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean);
+  if (list.length > 0) return list;
+  const one = process.env.NEXT_PUBLIC_NEAR_RPC_URL;
+  const defaults = DEFAULT_RPCS[NEAR_NETWORK];
+  return one ? [one, ...defaults.filter((u) => u !== one)] : defaults;
+})();
+
+/** The preferred endpoint (server routes and anything that needs exactly one). */
+export const NEAR_RPC_URL = NEAR_RPC_URLS[0];
 
 export const GAME_CONTRACT = process.env.NEXT_PUBLIC_NEAR_GAME_CONTRACT || "game.void-tactics.testnet";
 export const RENDERER_CONTRACT =
